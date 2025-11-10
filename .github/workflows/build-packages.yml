@@ -16,6 +16,11 @@ on:
         required: false
         default: ''
         type: string
+      architectures:
+        description: 'Target architectures (comma-separated, e.g. "x86_64" or "x86_64,aarch64")'
+        required: false
+        default: 'x86_64'
+        type: string
 
 permissions:
   contents: read
@@ -29,6 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       packages: ${{ steps.find-packages.outputs.packages }}
+      architectures: ${{ steps.find-packages.outputs.architectures }}
 
     steps:
       - name: Checkout repository
@@ -47,9 +53,19 @@ jobs:
             packages=$(echo "$packages" | jq -c --argjson filters "$filter_list" '[.[] | select(. as $pkg | $filters | index($pkg))]')
           fi
 
+          # Process architectures parameter (default: x86_64)
+          ARCH_INPUT="${{ github.event.inputs.architectures }}"
+          if [ -z "$ARCH_INPUT" ]; then
+            ARCH_INPUT="x86_64"
+          fi
+          architectures=$(echo "$ARCH_INPUT" | jq -R 'split(",")')
+
           echo "packages=$packages" >> $GITHUB_OUTPUT
+          echo "architectures=$architectures" >> $GITHUB_OUTPUT
           echo "Found packages:"
           echo "$packages" | jq .
+          echo "Target architectures:"
+          echo "$architectures" | jq .
 
   build-packages:
     name: Build ${{ matrix.package }} - ${{ matrix.arch }}
@@ -59,7 +75,7 @@ jobs:
       fail-fast: false
       matrix:
         package: ${{ fromJson(needs.prepare-build-matrix.outputs.packages) }}
-        arch: [x86_64, aarch64]
+        arch: ${{ fromJson(needs.prepare-build-matrix.outputs.architectures) }}
 
     steps:
       - name: Checkout repository
@@ -176,10 +192,5 @@ jobs:
           echo "Total size:"
           du -sh all-artifacts
           echo ""
-          echo "Packages by architecture:"
-          echo ""
-          echo "x86_64:"
+          echo "x86_64 packages:"
           find all-artifacts -path "*x86_64*" -name "*.apk" -exec basename {} \; | sort
-          echo ""
-          echo "aarch64:"
-          find all-artifacts -path "*aarch64*" -name "*.apk" -exec basename {} \; | sort
