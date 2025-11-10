@@ -124,6 +124,7 @@ jobs:
 
           # Use lftp to mirror from SourceForge public HTTP
           # SourceForge HTTP download URL: https://sourceforge.net/projects/wolfi/files/
+          # Exclude APKINDEX - we'll generate our own with local signing keys
           lftp -c "
             set ssl:verify-certificate no
             set net:timeout 30
@@ -133,6 +134,7 @@ jobs:
             mirror --verbose --parallel=3 \
               --exclude-glob .git/ \
               --exclude-glob '*.tmp' \
+              --exclude-glob 'APKINDEX*' \
               ${{ matrix.arch }}/ ./custom-repo/${{ matrix.arch }}/
           " || {
             echo "lftp mirror failed, repository may be empty or not accessible"
