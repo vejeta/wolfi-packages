@@ -111,22 +111,38 @@ jobs:
           chmod 600 melange.rsa
           chmod 644 melange.rsa.pub wolfi-signing.rsa.pub
 
-      - name: Download custom packages from SourceForge
+      - name: Download GRUPO 1 packages from previous build
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # Download APKINDEX and packages from our SourceForge repository
-          mkdir -p ./custom-repo/${{ matrix.arch }}
-          cd ./custom-repo/${{ matrix.arch }}
+          # Download artifacts from most recent successful build (GRUPO 1)
+          # Find the latest successful build run ID
+          LATEST_RUN=$(gh run list --workflow=build-packages.yml --status=success --limit=1 --json databaseId --jq '.[0].databaseId' -R ${{ github.repository }})
 
-          # Download APKINDEX
-          wget -q https://sourceforge.net/projects/wolfi-packages-vejeta/files/packages/x86_64/APKINDEX.tar.gz || echo "No custom APKINDEX yet"
+          if [ -n "$LATEST_RUN" ]; then
+            echo "Downloading packages from run $LATEST_RUN"
+            mkdir -p ./custom-repo/${{ matrix.arch }}
 
-          # Download all APK files (from GRUPO 1)
-          for pkg in libass libbluray libcdio libvpx libxcb libxpresent rubberband shaderc uchardet vulkan-loader zimg zlib; do
-            wget -q -r -np -nd -A "*.apk" "https://sourceforge.net/projects/wolfi-packages-vejeta/files/packages/x86_64/${pkg}*" || echo "Package $pkg not found"
-          done
+            # Download all artifacts from that run
+            gh run download $LATEST_RUN -D ./artifacts -R ${{ github.repository }} || echo "No artifacts to download"
 
-          ls -lh
-          cd ../..
+            # Move APK files to custom-repo
+            find ./artifacts -name "*.apk" -exec cp {} ./custom-repo/${{ matrix.arch }}/ \; || echo "No APK files found"
+
+            # Generate APKINDEX for the custom repo
+            if [ -d "./custom-repo/${{ matrix.arch }}" ] && [ "$(ls -A ./custom-repo/${{ matrix.arch }}/*.apk 2>/dev/null)" ]; then
+              docker run --rm \
+                -v $PWD:/work \
+                -w /work \
+                alpine:latest \
+                sh -c "apk add --no-cache apk-tools && cd /work/custom-repo/${{ matrix.arch }} && apk index -o APKINDEX.tar.gz *.apk && ls -lh"
+            fi
+
+            ls -lh ./custom-repo/${{ matrix.arch }}/
+          else
+            echo "No previous successful builds found"
+            mkdir -p ./custom-repo/${{ matrix.arch }}
+          fi
 
       - name: Build package with Melange
         run: |
