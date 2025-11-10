@@ -58,7 +58,7 @@ jobs:
           if [ -z "$ARCH_INPUT" ]; then
             ARCH_INPUT="x86_64"
           fi
-          architectures=$(echo "$ARCH_INPUT" | jq -R 'split(",")')
+          architectures=$(echo "$ARCH_INPUT" | jq -R -c 'split(",")')
 
           echo "packages=$packages" >> $GITHUB_OUTPUT
           echo "architectures=$architectures" >> $GITHUB_OUTPUT
