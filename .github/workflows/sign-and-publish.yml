@@ -90,6 +90,28 @@ jobs:
           echo "=== Repository structure ==="
           tree -h repo/ || find repo/ -type f -exec ls -lh {} \;
 
+      - name: Generate APKINDEX for each architecture
+        run: |
+          echo "=== Generating APKINDEX ==="
+
+          for arch in x86_64 aarch64; do
+            echo "Generating APKINDEX for $arch..."
+
+            cd repo/$arch
+
+            # Use Alpine container to generate APKINDEX (apk index is built-in)
+            docker run --rm \
+              -v $PWD:/packages \
+              -w /packages \
+              alpine:latest \
+              sh -c "apk index -o APKINDEX.tar.gz *.apk && ls -lh APKINDEX.tar.gz"
+
+            cd ../..
+          done
+
+          echo "=== APKINDEX files created ==="
+          ls -lh repo/*/APKINDEX.tar.gz
+
       - name: Verify repository structure
         run: |
           echo "=== Final repository structure ==="
