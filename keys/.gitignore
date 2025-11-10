@@ -1,0 +1,11 @@
+# NEVER commit private keys to Git
+*.rsa
+*.rsa.priv
+*.key
+*.pem
+*.priv
+id_rsa*
+
+# Only allow README.md and public keys
+!README.md
+!*.rsa.pub

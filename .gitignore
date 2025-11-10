@@ -1,0 +1,44 @@
+# Compiled APK packages
+*.apk
+*.tar.gz
+
+# Build artifacts
+/build/
+/dist/
+/artifacts/
+
+# Private keys (NEVER commit these)
+*.rsa
+*.rsa.priv
+*.key
+*.pem
+id_rsa*
+
+# Melange cache
+.melange-cache/
+/packages/*/.melange-cache/
+
+# Temporary files
+*.tmp
+*.log
+*.swp
+*~
+
+# macOS
+.DS_Store
+
+# Linux
+.directory
+
+# Editor files
+.vscode/
+.idea/
+*.iml
+
+# Environment files
+.env
+.env.local
+
+# SSH config (contains sensitive data)
+ssh_config
+known_hosts

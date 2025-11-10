@@ -1,0 +1,185 @@
+name: Build Wolfi APK Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      package_filter:
+        description: 'Build specific package (leave empty for all)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  MELANGE_VERSION: latest
+
+jobs:
+  prepare-build-matrix:
+    name: Prepare Build Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.find-packages.outputs.packages }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find all package configurations
+        id: find-packages
+        run: |
+          # Find all .yaml files in packages/ directory
+          packages=$(find packages -name "*.yaml" -type f | sed 's|packages/||' | sed 's|/.*\.yaml||' | sort -u | jq -R -s -c 'split("\n")[:-1]')
+
+          # If package_filter is set, filter the list
+          if [ -n "${{ github.event.inputs.package_filter }}" ]; then
+            packages=$(echo "$packages" | jq -c --arg filter "${{ github.event.inputs.package_filter }}" '[.[] | select(. == $filter)]')
+          fi
+
+          echo "packages=$packages" >> $GITHUB_OUTPUT
+          echo "Found packages:"
+          echo "$packages" | jq .
+
+  build-packages:
+    name: Build ${{ matrix.package }} - ${{ matrix.arch }}
+    needs: prepare-build-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.prepare-build-matrix.outputs.packages) }}
+        arch: [x86_64, aarch64]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for multi-architecture builds
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Install Melange
+        run: |
+          # Install melange from Chainguard
+          wget https://github.com/chainguard-dev/melange/releases/download/v0.8.0/melange_0.8.0_linux_amd64.tar.gz
+          tar -xzf melange_0.8.0_linux_amd64.tar.gz
+          sudo mv melange /usr/local/bin/
+          melange version
+
+      - name: Install apko (for building Wolfi images)
+        run: |
+          wget https://github.com/chainguard-dev/apko/releases/download/v0.12.0/apko_0.12.0_linux_amd64.tar.gz
+          tar -xzf apko_0.12.0_linux_amd64.tar.gz
+          sudo mv apko /usr/local/bin/
+          apko version
+
+      - name: Create build directory
+        run: |
+          mkdir -p ./build-output/${{ matrix.arch }}
+          mkdir -p ./workspace
+
+      - name: Build package with Melange
+        run: |
+          # Find the package YAML file
+          PACKAGE_YAML=$(find packages/${{ matrix.package }} -name "*.yaml" -type f | head -1)
+
+          if [ -z "$PACKAGE_YAML" ]; then
+            echo "Error: No YAML file found for package ${{ matrix.package }}"
+            exit 1
+          fi
+
+          echo "Building package: ${{ matrix.package }}"
+          echo "Using configuration: $PACKAGE_YAML"
+          echo "Target architecture: ${{ matrix.arch }}"
+
+          # Map GitHub Actions arch to apk arch
+          case "${{ matrix.arch }}" in
+            x86_64)
+              DOCKER_PLATFORM="linux/amd64"
+              ;;
+            aarch64)
+              DOCKER_PLATFORM="linux/arm64"
+              ;;
+            *)
+              echo "Unsupported architecture: ${{ matrix.arch }}"
+              exit 1
+              ;;
+          esac
+
+          # Run melange build
+          # Note: Using --arch flag to specify target architecture
+          sudo melange build "$PACKAGE_YAML" \
+            --arch ${{ matrix.arch }} \
+            --out-dir ./build-output/${{ matrix.arch }} \
+            --workspace-dir ./workspace \
+            --signing-key melange.rsa \
+            --generate-index false
+
+      - name: List built packages
+        run: |
+          echo "=== Built APK packages for ${{ matrix.arch }} ==="
+          ls -lh ./build-output/${{ matrix.arch }}/
+
+          # Show package info
+          for apk in ./build-output/${{ matrix.arch }}/*.apk; do
+            if [ -f "$apk" ]; then
+              echo "Package: $(basename $apk)"
+              echo "Size: $(du -h $apk | cut -f1)"
+            fi
+          done
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-packages-${{ matrix.package }}-${{ matrix.arch }}
+          path: ./build-output/${{ matrix.arch }}/*.apk
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload Melange signing key (for repository signing)
+        if: matrix.package == 'stremio' && matrix.arch == 'x86_64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: melange-signing-key
+          path: melange.rsa*
+          retention-days: 1
+
+  build-summary:
+    name: Build Summary
+    needs: build-packages
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+
+      - name: Display build summary
+        run: |
+          echo "=== Build Summary ==="
+          echo ""
+          echo "Total artifacts:"
+          find all-artifacts -name "*.apk" | wc -l
+          echo ""
+          echo "Total size:"
+          du -sh all-artifacts
+          echo ""
+          echo "Packages by architecture:"
+          echo ""
+          echo "x86_64:"
+          find all-artifacts -path "*x86_64*" -name "*.apk" -exec basename {} \; | sort
+          echo ""
+          echo "aarch64:"
+          find all-artifacts -path "*aarch64*" -name "*.apk" -exec basename {} \; | sort

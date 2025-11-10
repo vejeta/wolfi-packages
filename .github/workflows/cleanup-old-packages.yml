@@ -1,0 +1,159 @@
+name: Cleanup Old Packages
+
+on:
+  schedule:
+    # Run monthly on the 1st at 03:00 UTC
+    - cron: '0 3 1 * *'
+  workflow_dispatch:
+    inputs:
+      keep_versions:
+        description: 'Number of versions to keep per package'
+        required: false
+        default: '3'
+        type: string
+      dry_run:
+        description: 'Dry run (do not delete, just show what would be deleted)'
+        required: false
+        default: 'true'
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    name: Cleanup Old Package Versions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install required tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rsync openssh-client
+
+      - name: Setup SSH for SourceForge
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          echo "${{ secrets.SOURCEFORGE_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts
+          ssh-keyscan -H web.sourceforge.net >> ~/.ssh/known_hosts
+
+      - name: List current packages on SourceForge
+        run: |
+          echo "=== Current packages on SourceForge ==="
+
+          # Create a script to list packages via SSH
+          cat > list-packages.sh << 'SCRIPT'
+          #!/bin/bash
+          for arch in x86_64 aarch64; do
+            echo "=== $arch packages ==="
+            ls -lh /home/frs/project/wolfi/repo/$arch/*.apk 2>/dev/null | awk '{print $9, $5}' | sort || echo "No packages found"
+            echo ""
+          done
+          SCRIPT
+
+          chmod +x list-packages.sh
+
+          # Execute remotely via SSH
+          ssh jmendezr@frs.sourceforge.net 'bash -s' < list-packages.sh
+
+      - name: Identify old packages to remove
+        run: |
+          KEEP_VERSIONS="${{ github.event.inputs.keep_versions || '3' }}"
+          DRY_RUN="${{ github.event.inputs.dry_run || 'true' }}"
+
+          echo "=== Cleanup Configuration ==="
+          echo "Keep versions: $KEEP_VERSIONS"
+          echo "Dry run: $DRY_RUN"
+          echo ""
+
+          # Create cleanup script
+          cat > cleanup-packages.sh << SCRIPT
+          #!/bin/bash
+          set -euo pipefail
+
+          KEEP_VERSIONS=$KEEP_VERSIONS
+          DRY_RUN=$DRY_RUN
+
+          for arch in x86_64 aarch64; do
+            REPO_DIR="/home/frs/project/wolfi/repo/\$arch"
+
+            echo "=== Cleaning \$arch packages ==="
+
+            if [ ! -d "\$REPO_DIR" ]; then
+              echo "Directory \$REPO_DIR not found, skipping..."
+              continue
+            fi
+
+            cd "\$REPO_DIR"
+
+            # Get list of package names (without version)
+            # Format: packagename-version-r0.apk -> packagename
+            packages=\$(ls -1 *.apk 2>/dev/null | sed 's/-[0-9].*//' | sort -u)
+
+            for package in \$packages; do
+              echo "Processing package: \$package"
+
+              # Find all versions of this package
+              versions=\$(ls -1t \$package-*.apk 2>/dev/null | head -n 100)
+              version_count=\$(echo "\$versions" | wc -l)
+
+              echo "  Found \$version_count versions"
+
+              if [ "\$version_count" -gt "\$KEEP_VERSIONS" ]; then
+                # Keep the N newest, delete the rest
+                to_delete=\$(echo "\$versions" | tail -n +\$((KEEP_VERSIONS + 1)))
+
+                echo "  Removing \$((version_count - KEEP_VERSIONS)) old versions:"
+                for file in \$to_delete; do
+                  if [ "\$DRY_RUN" == "true" ]; then
+                    echo "    [DRY RUN] Would delete: \$file"
+                  else
+                    echo "    Deleting: \$file"
+                    rm -f "\$file"
+                  fi
+                done
+              else
+                echo "  No cleanup needed (only \$version_count versions)"
+              fi
+              echo ""
+            done
+          done
+
+          echo "Cleanup completed!"
+          SCRIPT
+
+          chmod +x cleanup-packages.sh
+
+          # Execute cleanup script on SourceForge
+          if [ "$DRY_RUN" == "true" ]; then
+            echo "=== DRY RUN MODE - No files will be deleted ==="
+          fi
+
+          ssh jmendezr@frs.sourceforge.net 'bash -s' < cleanup-packages.sh
+
+      - name: Regenerate APKINDEX after cleanup
+        if: github.event.inputs.dry_run != 'true'
+        run: |
+          echo "=== Regenerating APKINDEX after cleanup ==="
+
+          # This would require downloading packages, regenerating index, and re-uploading
+          # For now, we'll trigger a manual rebuild
+          echo "APKINDEX regeneration should be triggered manually or automatically on next build"
+
+      - name: Cleanup summary
+        run: |
+          if [ "${{ github.event.inputs.dry_run || 'true' }}" == "true" ]; then
+            echo "✅ Cleanup dry run completed successfully"
+            echo "To actually delete files, run this workflow with dry_run=false"
+          else
+            echo "✅ Cleanup completed successfully"
+            echo "Old package versions have been removed from SourceForge"
+          fi

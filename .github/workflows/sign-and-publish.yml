@@ -1,0 +1,242 @@
+name: Sign and Publish APK Repository
+
+on:
+  workflow_run:
+    workflows: ["Build Wolfi APK Packages"]
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: 'Force publish (ignore build status)'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  sign-and-publish:
+    name: Sign and Publish to SourceForge
+    runs-on: ubuntu-latest
+    # Only run if build was successful or force_publish is true
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event.inputs.force_publish == 'true' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install required tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rsync openssh-client apk-tools tree
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: build-artifacts
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Organize packages by architecture
+        run: |
+          echo "=== Organizing packages by architecture ==="
+
+          # Create repository structure
+          mkdir -p repo/x86_64 repo/aarch64
+
+          # Move packages to appropriate directories
+          find build-artifacts -name "*.apk" | while read apk; do
+            if [[ "$apk" =~ x86_64 ]]; then
+              cp -v "$apk" repo/x86_64/
+            elif [[ "$apk" =~ aarch64 ]]; then
+              cp -v "$apk" repo/aarch64/
+            else
+              echo "Warning: Could not determine architecture for $apk"
+            fi
+          done
+
+          echo ""
+          echo "=== Repository structure ==="
+          tree repo/ || find repo/ -type f
+
+      - name: Import APK signing key
+        run: |
+          echo "=== Importing APK signing key ==="
+
+          # Create keys directory
+          mkdir -p keys
+
+          # Import private key from GitHub Secrets
+          echo "${{ secrets.APK_SIGNING_KEY }}" > keys/${{ secrets.APK_KEY_NAME }}
+          chmod 600 keys/${{ secrets.APK_KEY_NAME }}
+
+          # Import public key (will be published)
+          echo "${{ secrets.APK_SIGNING_KEY }}" | openssl rsa -pubout > keys/${{ secrets.APK_KEY_NAME }}.pub 2>/dev/null || true
+
+          echo "Key imported successfully"
+          ls -lh keys/
+
+      - name: Sign APK packages
+        run: |
+          echo "=== Signing APK packages ==="
+
+          chmod +x scripts/sign-apk.sh
+
+          for arch in x86_64 aarch64; do
+            echo "Signing packages for $arch..."
+
+            for apk in repo/$arch/*.apk; do
+              if [ -f "$apk" ]; then
+                echo "  Signing: $(basename $apk)"
+                ./scripts/sign-apk.sh "$apk" "keys/${{ secrets.APK_KEY_NAME }}"
+              fi
+            done
+          done
+
+          echo "All packages signed successfully"
+
+      - name: Generate APKINDEX
+        run: |
+          echo "=== Generating APKINDEX for each architecture ==="
+
+          chmod +x scripts/generate-apkindex.sh
+
+          for arch in x86_64 aarch64; do
+            echo "Generating APKINDEX for $arch..."
+            ./scripts/generate-apkindex.sh \
+              "repo/$arch" \
+              "keys/${{ secrets.APK_KEY_NAME }}"
+          done
+
+          echo ""
+          echo "=== APKINDEX files created ==="
+          ls -lh repo/*/APKINDEX.tar.gz
+
+      - name: Verify repository structure
+        run: |
+          echo "=== Final repository structure ==="
+          tree -h repo/ || find repo/ -type f -exec ls -lh {} \;
+
+          echo ""
+          echo "=== Package count ==="
+          echo "x86_64: $(find repo/x86_64 -name "*.apk" | wc -l) packages"
+          echo "aarch64: $(find repo/aarch64 -name "*.apk" | wc -l) packages"
+
+          echo ""
+          echo "=== Total repository size ==="
+          du -sh repo/
+
+      - name: Prepare public key for distribution
+        run: |
+          # Copy public key to repo for users to download
+          mkdir -p repo/keys
+          cp keys/${{ secrets.APK_KEY_NAME }}.pub repo/keys/vejeta-wolfi.rsa.pub
+
+          echo "Public key prepared for distribution"
+          cat repo/keys/vejeta-wolfi.rsa.pub
+
+      - name: Setup SSH for SourceForge
+        run: |
+          # Create .ssh directory
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          # Add SourceForge SSH key
+          echo "${{ secrets.SOURCEFORGE_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          # Add SourceForge to known hosts
+          ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts
+          ssh-keyscan -H web.sourceforge.net >> ~/.ssh/known_hosts
+
+          echo "SSH configured for SourceForge"
+
+      - name: Test SourceForge SSH connection
+        run: |
+          echo "Testing SSH connection to SourceForge..."
+          ssh -v jmendezr@frs.sourceforge.net 'echo "SSH connection successful"' || echo "Connection test completed"
+
+      - name: Sync to SourceForge
+        run: |
+          echo "=== Syncing repository to SourceForge ==="
+
+          chmod +x scripts/sync-sourceforge.sh
+
+          ./scripts/sync-sourceforge.sh \
+            repo/ \
+            jmendezr@frs.sourceforge.net:/home/frs/project/wolfi/
+
+          echo "Repository published to SourceForge successfully!"
+
+      - name: Create deployment summary
+        run: |
+          cat > deployment-summary.md << 'EOF'
+          # Wolfi APK Repository Deployment Summary
+
+          ## Repository Information
+
+          **SourceForge URL**: https://sourceforge.net/projects/wolfi/files/
+
+          ## Installation Instructions
+
+          ### For Wolfi Linux users:
+
+          ```bash
+          # Add repository signing key
+          wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
+            https://sourceforge.net/projects/wolfi/files/keys/vejeta-wolfi.rsa.pub
+
+          # Add repository to /etc/apk/repositories
+          echo "https://downloads.sourceforge.net/project/wolfi/repo/$(uname -m)" >> /etc/apk/repositories
+
+          # Update package index
+          apk update
+
+          # Install packages
+          apk add stremio mpv qt5-qtwebengine
+          ```
+
+          ## Package Statistics
+
+          - **x86_64 packages**: $(find repo/x86_64 -name "*.apk" | wc -l)
+          - **aarch64 packages**: $(find repo/aarch64 -name "*.apk" | wc -l)
+          - **Total size**: $(du -sh repo/ | cut -f1)
+
+          ## Build Information
+
+          - **Workflow**: ${{ github.workflow }}
+          - **Run ID**: ${{ github.run_id }}
+          - **Commit**: ${{ github.sha }}
+          - **Date**: $(date -u +"%Y-%m-%d %H:%M UTC")
+
+          EOF
+
+          cat deployment-summary.md
+
+      - name: Upload deployment summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-summary
+          path: deployment-summary.md
+          retention-days: 90
+
+  notify-deployment:
+    name: Notify Deployment Status
+    needs: sign-and-publish
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Deployment Status
+        run: |
+          if [ "${{ needs.sign-and-publish.result }}" == "success" ]; then
+            echo "✅ Repository successfully deployed to SourceForge!"
+            echo "Users can now install packages from: https://sourceforge.net/projects/wolfi/files/"
+          else
+            echo "❌ Deployment failed. Check logs above for details."
+            exit 1
+          fi
