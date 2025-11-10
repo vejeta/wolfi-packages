@@ -111,20 +111,34 @@ jobs:
           chmod 600 melange.rsa
           chmod 644 melange.rsa.pub wolfi-signing.rsa.pub
 
-      - name: Download packages from SourceForge using rsync
+      - name: Install lftp for SourceForge downloads
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lftp
+
+      - name: Download packages from SourceForge using lftp
         run: |
           # SourceForge acts as accumulative repository (all successful builds)
-          echo "=== Downloading packages from SourceForge via rsync ==="
+          echo "=== Downloading packages from SourceForge via lftp ==="
           mkdir -p ./custom-repo/${{ matrix.arch }}
 
-          # Try rsync first (SourceForge supports public rsync downloads)
-          rsync -av \
-            rsync://download.sourceforge.net/pub/sourceforge/w/wo/wolfi/${{ matrix.arch }}/ \
-            ./custom-repo/${{ matrix.arch }}/ || {
-              echo "rsync failed, repository may be empty or not accessible"
-              echo "Downloaded 0 packages from SourceForge"
-              exit 0
-            }
+          # Use lftp to mirror from SourceForge public HTTP
+          # SourceForge HTTP download URL: https://sourceforge.net/projects/wolfi/files/
+          lftp -c "
+            set ssl:verify-certificate no
+            set net:timeout 30
+            set net:max-retries 3
+            set net:reconnect-interval-base 5
+            open https://sourceforge.net/projects/wolfi/files/
+            mirror --verbose --parallel=3 \
+              --exclude-glob .git/ \
+              --exclude-glob '*.tmp' \
+              ${{ matrix.arch }}/ ./custom-repo/${{ matrix.arch }}/
+          " || {
+            echo "lftp mirror failed, repository may be empty or not accessible"
+            echo "Downloaded 0 packages from SourceForge"
+            # Continue anyway - we'll build without dependencies
+          }
 
           # Count downloaded packages
           PKG_COUNT=$(find ./custom-repo/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l)
