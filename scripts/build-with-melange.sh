@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build a single package with Melange
+# Build a single package with Melange using official container
 # Usage: ./build-with-melange.sh <package-yaml> <architecture> <output-dir>
 
 set -euo pipefail
@@ -17,33 +17,53 @@ fi
 # Create output directory
 mkdir -p "$OUTPUT_DIR/$ARCH"
 
-echo "=== Building APK Package with Melange ==="
+echo "=== Building APK Package with Melange Container ==="
 echo "Package configuration: $PACKAGE_YAML"
 echo "Target architecture: $ARCH"
 echo "Output directory: $OUTPUT_DIR/$ARCH"
 echo ""
 
-# Check if melange is installed
-if ! command -v melange &> /dev/null; then
-    echo "Error: melange is not installed"
-    echo "Install from: https://github.com/chainguard-dev/melange"
-    exit 1
-fi
+# Map architecture to Docker platform
+case "$ARCH" in
+    x86_64)
+        DOCKER_PLATFORM="linux/amd64"
+        ;;
+    aarch64)
+        DOCKER_PLATFORM="linux/arm64"
+        ;;
+    *)
+        echo "Error: Unsupported architecture: $ARCH"
+        exit 1
+        ;;
+esac
 
 # Generate signing key if it doesn't exist
 if [ ! -f "melange.rsa" ]; then
-    echo "Generating Melange signing key..."
-    melange keygen melange.rsa
+    echo "Generating Melange signing key using container..."
+    docker run --rm \
+        -v $PWD:/work \
+        -w /work \
+        cgr.dev/chainguard/melange:latest \
+        keygen melange.rsa
+
+    chmod 600 melange.rsa
+    chmod 644 melange.rsa.pub
 fi
 
-# Build the package
-echo "=== Starting build ==="
-melange build "$PACKAGE_YAML" \
+# Build the package using Melange container
+echo "=== Starting build with Melange container ==="
+docker run --rm --privileged \
+    --platform "$DOCKER_PLATFORM" \
+    -v $PWD:/work \
+    -w /work \
+    cgr.dev/chainguard/melange:latest \
+    build \
     --arch "$ARCH" \
-    --out-dir "$OUTPUT_DIR/$ARCH" \
-    --workspace-dir ./workspace \
     --signing-key melange.rsa \
-    --generate-index false
+    --keyring-append /work/melange.rsa.pub \
+    --repository-append https://packages.wolfi.dev/os \
+    --out-dir "$OUTPUT_DIR/$ARCH" \
+    "$PACKAGE_YAML"
 
 # Check if build was successful
 if [ $? -eq 0 ]; then

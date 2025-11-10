@@ -7,6 +7,13 @@ Community APK repository for [Wolfi Linux](https://wolfi.dev) providing **Stremi
 
 **Hosted on SourceForge** • **Automated CI/CD** • **Cryptographically signed** • **Multi-architecture support**
 
+> **Important**: This is a community repository providing early access to packages from [PR #69098](https://github.com/wolfi-dev/os/pull/69098) which is currently under review by the official Wolfi team.
+>
+> **If/when the PR is merged into wolfi-dev/os**, this repository may become unnecessary, and users should migrate to the official Wolfi packages. Until then, this repository serves as:
+> - Early access for users who need these packages immediately
+> - Testing ground for the package configurations before official inclusion
+> - Learning resource for Wolfi packaging and CI/CD
+
 ---
 
 ## Quick Installation

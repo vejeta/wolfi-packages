@@ -68,25 +68,26 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
 
-      - name: Install Melange
-        run: |
-          # Install melange from Chainguard
-          wget https://github.com/chainguard-dev/melange/releases/download/v0.8.0/melange_0.8.0_linux_amd64.tar.gz
-          tar -xzf melange_0.8.0_linux_amd64.tar.gz
-          sudo mv melange /usr/local/bin/
-          melange version
-
-      - name: Install apko (for building Wolfi images)
-        run: |
-          wget https://github.com/chainguard-dev/apko/releases/download/v0.12.0/apko_0.12.0_linux_amd64.tar.gz
-          tar -xzf apko_0.12.0_linux_amd64.tar.gz
-          sudo mv apko /usr/local/bin/
-          apko version
-
-      - name: Create build directory
+      - name: Create build directories
         run: |
           mkdir -p ./build-output/${{ matrix.arch }}
           mkdir -p ./workspace
+
+      - name: Generate Melange signing key
+        run: |
+          # Generate signing key using Melange container
+          docker run --rm \
+            -v $PWD:/work \
+            -w /work \
+            cgr.dev/chainguard/melange:latest \
+            keygen melange.rsa
+
+          # Verify key was created
+          ls -lh melange.rsa melange.rsa.pub
+
+          # Set proper permissions
+          chmod 600 melange.rsa
+          chmod 644 melange.rsa.pub
 
       - name: Build package with Melange
         run: |
@@ -102,7 +103,7 @@ jobs:
           echo "Using configuration: $PACKAGE_YAML"
           echo "Target architecture: ${{ matrix.arch }}"
 
-          # Map GitHub Actions arch to apk arch
+          # Map GitHub Actions arch to Docker platform
           case "${{ matrix.arch }}" in
             x86_64)
               DOCKER_PLATFORM="linux/amd64"
@@ -116,14 +117,19 @@ jobs:
               ;;
           esac
 
-          # Run melange build
-          # Note: Using --arch flag to specify target architecture
-          sudo melange build "$PACKAGE_YAML" \
+          # Build using Melange container (official approach)
+          docker run --rm --privileged \
+            --platform "$DOCKER_PLATFORM" \
+            -v $PWD:/work \
+            -w /work \
+            cgr.dev/chainguard/melange:latest \
+            build \
             --arch ${{ matrix.arch }} \
-            --out-dir ./build-output/${{ matrix.arch }} \
-            --workspace-dir ./workspace \
             --signing-key melange.rsa \
-            --generate-index false
+            --keyring-append /work/melange.rsa.pub \
+            --repository-append https://packages.wolfi.dev/os \
+            --out-dir ./build-output/${{ matrix.arch }} \
+            "$PACKAGE_YAML"
 
       - name: List built packages
         run: |
