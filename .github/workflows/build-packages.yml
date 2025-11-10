@@ -129,6 +129,7 @@ jobs:
             --signing-key melange.rsa \
             --keyring-append /work/melange.rsa.pub \
             --repository-append https://packages.wolfi.dev/os \
+            --pipeline-dir /work/pipelines \
             --out-dir ./build-output/${{ matrix.arch }} \
             "$PACKAGE_YAML"
 
