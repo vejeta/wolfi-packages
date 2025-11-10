@@ -40,7 +40,7 @@ jobs:
       - name: Install required tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y rsync openssh-client tree
+          sudo apt-get install -y lftp openssh-client tree
 
       - name: Get build run ID
         id: get-run-id
@@ -137,19 +137,23 @@ jobs:
           chmod 700 ~/.ssh
 
           # Add SourceForge SSH key
-          echo "${{ secrets.SOURCEFORGE_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.SOURCEFORGE_SSH_KEY }}" > ~/.ssh/sourceforge_wolfi_rsa
+          chmod 600 ~/.ssh/sourceforge_wolfi_rsa
 
           # Add SourceForge to known hosts
           ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts
           ssh-keyscan -H web.sourceforge.net >> ~/.ssh/known_hosts
 
-          echo "SSH configured for SourceForge"
+          # Create SSH config for SourceForge (lftp uses SSH config)
+          cat >> ~/.ssh/config << 'EOF'
+          Host frs.sourceforge.net
+              User jmendezr
+              IdentityFile ~/.ssh/sourceforge_wolfi_rsa
+              StrictHostKeyChecking no
+          EOF
+          chmod 600 ~/.ssh/config
 
-      - name: Test SourceForge SSH connection
-        run: |
-          echo "Testing SSH connection to SourceForge..."
-          ssh -v jmendezr@frs.sourceforge.net 'echo "SSH connection successful"' || echo "Connection test completed"
+          echo "SSH configured for SourceForge with lftp support"
 
       - name: Sync to SourceForge
         run: |
