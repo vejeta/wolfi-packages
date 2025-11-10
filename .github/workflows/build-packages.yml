@@ -80,7 +80,7 @@ jobs:
             -v $PWD:/work \
             -w /work \
             cgr.dev/chainguard/melange:latest \
-            keygen melange.rsa
+            keygen
 
           # Verify key was created
           ls -lh melange.rsa melange.rsa.pub
@@ -104,32 +104,18 @@ jobs:
           echo "Using configuration: $PACKAGE_YAML"
           echo "Target architecture: ${{ matrix.arch }}"
 
-          # Map GitHub Actions arch to Docker platform
-          case "${{ matrix.arch }}" in
-            x86_64)
-              DOCKER_PLATFORM="linux/amd64"
-              ;;
-            aarch64)
-              DOCKER_PLATFORM="linux/arm64"
-              ;;
-            *)
-              echo "Unsupported architecture: ${{ matrix.arch }}"
-              exit 1
-              ;;
-          esac
-
-          # Build using Melange container (official approach)
+          # Build using Melange container
           docker run --rm --privileged \
-            --platform "$DOCKER_PLATFORM" \
             -v $PWD:/work \
             -w /work \
             cgr.dev/chainguard/melange:latest \
             build \
             --arch ${{ matrix.arch }} \
             --signing-key melange.rsa \
-            --keyring-append /work/melange.rsa.pub \
+            --keyring-append melange.rsa.pub \
             --repository-append https://packages.wolfi.dev/os \
-            --pipeline-dir /work/pipelines \
+            --pipeline-dir pipelines \
+            --generate-index \
             --out-dir ./build-output/${{ matrix.arch }} \
             "$PACKAGE_YAML"
 
