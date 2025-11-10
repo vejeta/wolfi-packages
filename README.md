@@ -9,7 +9,7 @@ Community APK repository for [Wolfi Linux](https://wolfi.dev) providing **Stremi
 
 ---
 
-## 🚀 Quick Installation
+## Quick Installation
 
 ### Add Repository
 
@@ -34,7 +34,7 @@ Download APK files directly from [SourceForge](https://sourceforge.net/projects/
 
 ---
 
-## 📦 Available Packages
+## Available Packages
 
 ### Media Players
 - **stremio** (4.4.169) - Modern media center application
@@ -73,7 +73,7 @@ Download APK files directly from [SourceForge](https://sourceforge.net/projects/
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 GitHub Actions (CI/CD)
@@ -91,13 +91,13 @@ SourceForge (Distribution)
 
 ---
 
-## 🔒 Security
+## Security
 
 All packages are:
-- ✅ **Cryptographically signed** with RSA keys
-- ✅ **Built from source** using Melange
-- ✅ **Reproducible builds** via GitHub Actions
-- ✅ **Open source** - all build configurations public
+- Cryptographically signed with RSA keys
+- Built from source using Melange
+- Reproducible builds via GitHub Actions
+- Open source - all build configurations public
 
 ### Verify Signatures
 
@@ -108,18 +108,18 @@ apk verify stremio mpv qt5-qtwebengine
 
 ---
 
-## 📊 Build Status
+## Build Status
 
 | Package | Status | Size | Architectures |
 |---------|--------|------|---------------|
-| stremio | ✓ | ~50MB | x86_64, aarch64 |
-| mpv | ✓ | ~20MB | x86_64, aarch64 |
-| qt5-qtwebengine | ✓ | ~300MB | x86_64, aarch64 |
-| Other libraries | ✓ | Varies | x86_64, aarch64 |
+| stremio | Passing | ~50MB | x86_64, aarch64 |
+| mpv | Passing | ~20MB | x86_64, aarch64 |
+| qt5-qtwebengine | Passing | ~300MB | x86_64, aarch64 |
+| Other libraries | Passing | Varies | x86_64, aarch64 |
 
 ---
 
-## 🛠️ For Developers
+## For Developers
 
 ### Building Locally
 
@@ -149,7 +149,7 @@ These packages originated from [PR #69098](https://github.com/wolfi-dev/os/pull/
 
 ---
 
-## 📄 Background
+## Background
 
 This repository was created because:
 - Chainguard has not yet merged [PR #69098](https://github.com/wolfi-dev/os/pull/69098)
@@ -159,15 +159,15 @@ This repository was created because:
 ### Why SourceForge?
 
 GitHub Pages has a **100 MB file size limit**, making it unsuitable for large packages like qt5-qtwebengine (300MB). SourceForge provides:
-- ✅ No file size limits
-- ✅ Unlimited bandwidth
-- ✅ Reliable rsync/SSH access
-- ✅ CDN for fast downloads
-- ✅ Free for open source projects
+- No file size limits
+- Unlimited bandwidth
+- Reliable rsync/SSH access
+- CDN for fast downloads
+- Free for open source projects
 
 ---
 
-## 🆘 Support
+## Support
 
 - **Installation Issues**: Check installation instructions above
 - **Build Failures**: See [GitHub Actions](https://github.com/vejeta/wolfi-packages/actions)
@@ -176,7 +176,7 @@ GitHub Pages has a **100 MB file size limit**, making it unsuitable for large pa
 
 ---
 
-## 📈 Statistics
+## Statistics
 
 - **Packages**: 25
 - **Architectures**: x86_64, aarch64
@@ -186,7 +186,7 @@ GitHub Pages has a **100 MB file size limit**, making it unsuitable for large pa
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **Wolfi Team**: For creating an excellent security-focused Linux distribution
 - **Chainguard**: For Melange build tooling
@@ -195,7 +195,7 @@ GitHub Pages has a **100 MB file size limit**, making it unsuitable for large pa
 
 ---
 
-## 📄 License
+## License
 
 Build configurations and scripts: MIT License
 
