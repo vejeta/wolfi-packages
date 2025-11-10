@@ -85,7 +85,8 @@ jobs:
           # Verify key was created
           ls -lh melange.rsa melange.rsa.pub
 
-          # Set proper permissions
+          # Fix permissions (files created by container are owned by root)
+          sudo chown $(id -u):$(id -g) melange.rsa melange.rsa.pub
           chmod 600 melange.rsa
           chmod 644 melange.rsa.pub
 
