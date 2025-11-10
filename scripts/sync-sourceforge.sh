@@ -38,10 +38,10 @@ echo ""
 # Use lftp to mirror the local directory to SourceForge
 # Options:
 #   -R: Reverse mirror (upload from local to remote)
-#   --delete-first: Delete files on remote that don't exist locally (before transfer)
 #   --verbose: Show detailed progress
 #   --exclude-glob: Exclude patterns
 #   --parallel=3: Upload 3 files in parallel for speed
+# NOTE: NO --delete flags - we want to accumulate packages from multiple builds
 
 lftp sftp://${REMOTE_HOST} <<EOF
 set sftp:auto-confirm yes
@@ -50,7 +50,7 @@ set net:max-retries 3
 set net:reconnect-interval-base 5
 
 cd ${REMOTE_DIR}
-mirror -R --delete-first --verbose --parallel=3 \
+mirror -R --verbose --parallel=3 \
     --exclude-glob .git/ \
     --exclude-glob .git \
     --exclude-glob '*.tmp' \
