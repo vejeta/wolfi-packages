@@ -82,13 +82,16 @@ jobs:
             cgr.dev/chainguard/melange:latest \
             keygen
 
-          # Verify key was created
-          ls -lh melange.rsa melange.rsa.pub
+          # Download official Wolfi signing key for repository verification
+          curl -o wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+
+          # Verify keys were created
+          ls -lh melange.rsa melange.rsa.pub wolfi-signing.rsa.pub
 
           # Fix permissions (files created by container are owned by root)
           sudo chown $(id -u):$(id -g) melange.rsa melange.rsa.pub
           chmod 600 melange.rsa
-          chmod 644 melange.rsa.pub
+          chmod 644 melange.rsa.pub wolfi-signing.rsa.pub
 
       - name: Build package with Melange
         run: |
@@ -113,6 +116,7 @@ jobs:
             --arch ${{ matrix.arch }} \
             --signing-key melange.rsa \
             --keyring-append melange.rsa.pub \
+            --keyring-append wolfi-signing.rsa.pub \
             --repository-append https://packages.wolfi.dev/os \
             --pipeline-dir pipelines \
             --generate-index \
