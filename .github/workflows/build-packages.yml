@@ -70,7 +70,7 @@ jobs:
 
       - name: Create build directories
         run: |
-          mkdir -p ./build-output/${{ matrix.arch }}
+          mkdir -p ./build-output
           mkdir -p ./workspace
 
       - name: Generate Melange signing key
@@ -120,7 +120,7 @@ jobs:
             --repository-append https://packages.wolfi.dev/os \
             --pipeline-dir pipelines \
             --generate-index \
-            --out-dir ./build-output/${{ matrix.arch }} \
+            --out-dir ./build-output \
             "$PACKAGE_YAML"
 
       - name: List built packages
