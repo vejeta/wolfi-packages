@@ -90,7 +90,7 @@ jobs:
         uses: actions/cache/restore@v4
         id: cache-restore
         with:
-          path: ./package-cache/${{ matrix.arch }}
+          path: ./consolidated-cache/${{ matrix.arch }}
           key: ${{ github.run_id }}
           restore-keys: |
             wolfi-packages-consolidated-${{ matrix.arch }}-
@@ -99,7 +99,7 @@ jobs:
         run: |
           mkdir -p ./build-output
           mkdir -p ./workspace
-          mkdir -p ./package-cache/${{ matrix.arch }}
+          mkdir -p ./consolidated-cache/${{ matrix.arch }}
 
       - name: Generate Melange signing key
         run: |
@@ -124,12 +124,12 @@ jobs:
       - name: Setup package cache as local repository
         run: |
           echo "=== Checking package cache ==="
-          CACHE_PKG_COUNT=$(find ./package-cache/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l || echo "0")
+          CACHE_PKG_COUNT=$(find ./consolidated-cache/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l || echo "0")
           echo "Found $CACHE_PKG_COUNT packages in GitHub Actions cache"
 
           if [ "$CACHE_PKG_COUNT" -gt 0 ]; then
             echo "Using cached packages from previous builds"
-            cd ./package-cache/${{ matrix.arch }}
+            cd ./consolidated-cache/${{ matrix.arch }}
 
             # Generate APKINDEX for cached packages
             docker run --rm \
@@ -147,13 +147,13 @@ jobs:
           fi
 
       - name: Install lftp for SourceForge downloads
-        if: hashFiles('package-cache/${{ matrix.arch }}/*.apk') == ''
+        if: hashFiles('consolidated-cache/${{ matrix.arch }}/*.apk') == ''
         run: |
           sudo apt-get update
           sudo apt-get install -y lftp
 
       - name: Download packages from SourceForge (fallback if cache empty)
-        if: hashFiles('package-cache/${{ matrix.arch }}/*.apk') == ''
+        if: hashFiles('consolidated-cache/${{ matrix.arch }}/*.apk') == ''
         run: |
           # SourceForge acts as fallback repository when cache is empty
           echo "=== Cache empty, downloading from SourceForge via lftp ==="
@@ -169,20 +169,20 @@ jobs:
             mirror --verbose --parallel=3 \
               --include-glob '*.apk' \
               --exclude-glob '*' \
-              ${{ matrix.arch }}/ ./package-cache/${{ matrix.arch }}/
+              ${{ matrix.arch }}/ ./consolidated-cache/${{ matrix.arch }}/
           " || {
             echo "lftp mirror failed, repository may be empty or not accessible"
             echo "Downloaded 0 packages from SourceForge"
           }
 
           # Count downloaded packages
-          PKG_COUNT=$(find ./package-cache/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l)
+          PKG_COUNT=$(find ./consolidated-cache/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l)
           echo "Downloaded $PKG_COUNT packages from SourceForge"
 
           # If we have packages, generate APKINDEX
           if [ "$PKG_COUNT" -gt 0 ]; then
             echo "Generating APKINDEX for SourceForge packages..."
-            cd ./package-cache/${{ matrix.arch }}
+            cd ./consolidated-cache/${{ matrix.arch }}
             docker run --rm \
               -v $PWD:/work \
               -w /work \
@@ -222,7 +222,7 @@ jobs:
             --keyring-append melange.rsa.pub \
             --keyring-append wolfi-signing.rsa.pub \
             --repository-append https://packages.wolfi.dev/os \
-            --repository-append ./package-cache \
+            --repository-append ./consolidated-cache \
             --pipeline-dir pipelines \
             --generate-index \
             --out-dir ./build-output \
