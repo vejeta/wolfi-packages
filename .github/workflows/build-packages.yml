@@ -43,8 +43,8 @@ jobs:
       - name: Find all package configurations
         id: find-packages
         run: |
-          # Find all .yaml files in packages/ directory
-          packages=$(find packages -name "*.yaml" -type f | sed 's|packages/||' | sed 's|/.*\.yaml||' | sort -u | jq -R -s -c 'split("\n")[:-1]')
+          # Find all .yaml files in packages/ directory (flat structure like wolfi-os)
+          packages=$(find packages -maxdepth 1 -name "*.yaml" -type f | sed 's|packages/||' | sed 's|\.yaml||' | sort -u | jq -R -s -c 'split("\n")[:-1]')
 
           # If package_filter is set, filter the list
           if [ -n "${{ github.event.inputs.package_filter }}" ]; then
@@ -113,11 +113,11 @@ jobs:
 
       - name: Build package with Melange
         run: |
-          # Find the package YAML file
-          PACKAGE_YAML=$(find packages/${{ matrix.package }} -name "*.yaml" -type f | head -1)
+          # Use direct path to package YAML file (flat structure like wolfi-os)
+          PACKAGE_YAML="packages/${{ matrix.package }}.yaml"
 
-          if [ -z "$PACKAGE_YAML" ]; then
-            echo "Error: No YAML file found for package ${{ matrix.package }}"
+          if [ ! -f "$PACKAGE_YAML" ]; then
+            echo "Error: No YAML file found at $PACKAGE_YAML"
             exit 1
           fi
 
