@@ -91,7 +91,7 @@ jobs:
         id: cache-restore
         with:
           path: ./package-cache/${{ matrix.arch }}
-          key: wolfi-packages-consolidated-${{ matrix.arch }}-
+          key: ${{ github.run_id }}
           restore-keys: |
             wolfi-packages-consolidated-${{ matrix.arch }}-
 
