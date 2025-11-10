@@ -129,6 +129,10 @@ jobs:
 
           if [ "$CACHE_PKG_COUNT" -gt 0 ]; then
             echo "Using cached packages from previous builds"
+
+            # Copy signing key into cache directory so docker can access it
+            cp melange.rsa ./consolidated-cache/${{ matrix.arch }}/
+
             cd ./consolidated-cache/${{ matrix.arch }}
 
             # Generate APKINDEX for cached packages
@@ -138,7 +142,7 @@ jobs:
               alpine:latest \
               sh -c "apk add --no-cache apk-tools abuild && \
                 apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
-                abuild-sign -k /work/../../melange.rsa APKINDEX.tar.gz"
+                abuild-sign -k /work/melange.rsa APKINDEX.tar.gz"
 
             ls -lh
             cd ../..
@@ -182,6 +186,10 @@ jobs:
           # If we have packages, generate APKINDEX
           if [ "$PKG_COUNT" -gt 0 ]; then
             echo "Generating APKINDEX for SourceForge packages..."
+
+            # Copy signing key into cache directory so docker can access it
+            cp melange.rsa ./consolidated-cache/${{ matrix.arch }}/
+
             cd ./consolidated-cache/${{ matrix.arch }}
             docker run --rm \
               -v $PWD:/work \
@@ -189,7 +197,7 @@ jobs:
               alpine:latest \
               sh -c "apk add --no-cache apk-tools abuild && \
                 apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
-                abuild-sign -k /work/../../melange.rsa APKINDEX.tar.gz"
+                abuild-sign -k /work/melange.rsa APKINDEX.tar.gz"
             ls -lh
             cd ../..
           else
