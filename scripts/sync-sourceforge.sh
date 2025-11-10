@@ -24,9 +24,20 @@ if ! command -v rsync &> /dev/null; then
     exit 1
 fi
 
-# No SSH test needed - SourceForge has a restricted shell that doesn't allow commands
-# rsync will fail immediately if SSH doesn't work
-echo "Starting rsync to SourceForge..."
+# Check SSH connectivity
+echo "Testing SSH connection..."
+SOURCEFORGE_HOST=$(echo "$REMOTE_PATH" | cut -d@ -f2 | cut -d: -f1)
+SOURCEFORGE_USER=$(echo "$REMOTE_PATH" | cut -d@ -f1)
+
+ssh -o BatchMode=yes -o ConnectTimeout=10 "${SOURCEFORGE_USER}@${SOURCEFORGE_HOST}" 'echo "SSH connection successful"' 2>/dev/null
+
+if [ $? -ne 0 ]; then
+    echo "⚠ SSH connection test failed, but proceeding anyway..."
+    echo "Make sure SSH keys are properly configured"
+fi
+
+echo ""
+echo "Starting rsync..."
 
 # Sync with rsync
 # Options:

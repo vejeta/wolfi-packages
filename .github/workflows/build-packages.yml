@@ -70,7 +70,7 @@ jobs:
 
       - name: Create build directories
         run: |
-          mkdir -p ./build-output
+          mkdir -p ./build-output/${{ matrix.arch }}
           mkdir -p ./workspace
 
       - name: Generate Melange signing key
@@ -80,18 +80,15 @@ jobs:
             -v $PWD:/work \
             -w /work \
             cgr.dev/chainguard/melange:latest \
-            keygen
+            keygen melange.rsa
 
-          # Download official Wolfi signing key for repository verification
-          curl -o wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-
-          # Verify keys were created
-          ls -lh melange.rsa melange.rsa.pub wolfi-signing.rsa.pub
+          # Verify key was created
+          ls -lh melange.rsa melange.rsa.pub
 
           # Fix permissions (files created by container are owned by root)
           sudo chown $(id -u):$(id -g) melange.rsa melange.rsa.pub
           chmod 600 melange.rsa
-          chmod 644 melange.rsa.pub wolfi-signing.rsa.pub
+          chmod 644 melange.rsa.pub
 
       - name: Build package with Melange
         run: |
@@ -107,20 +104,33 @@ jobs:
           echo "Using configuration: $PACKAGE_YAML"
           echo "Target architecture: ${{ matrix.arch }}"
 
-          # Build using Melange container
+          # Map GitHub Actions arch to Docker platform
+          case "${{ matrix.arch }}" in
+            x86_64)
+              DOCKER_PLATFORM="linux/amd64"
+              ;;
+            aarch64)
+              DOCKER_PLATFORM="linux/arm64"
+              ;;
+            *)
+              echo "Unsupported architecture: ${{ matrix.arch }}"
+              exit 1
+              ;;
+          esac
+
+          # Build using Melange container (official approach)
           docker run --rm --privileged \
+            --platform "$DOCKER_PLATFORM" \
             -v $PWD:/work \
             -w /work \
             cgr.dev/chainguard/melange:latest \
             build \
             --arch ${{ matrix.arch }} \
             --signing-key melange.rsa \
-            --keyring-append melange.rsa.pub \
-            --keyring-append wolfi-signing.rsa.pub \
+            --keyring-append /work/melange.rsa.pub \
             --repository-append https://packages.wolfi.dev/os \
-            --pipeline-dir pipelines \
-            --generate-index \
-            --out-dir ./build-output \
+            --pipeline-dir /work/pipelines \
+            --out-dir ./build-output/${{ matrix.arch }} \
             "$PACKAGE_YAML"
 
       - name: List built packages
