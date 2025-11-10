@@ -120,8 +120,8 @@ jobs:
 
           # Download all .apk files from SourceForge
           # Note: We use wget with recursive, no-parent, and accept only .apk files
-          wget -r -np -nH --cut-dirs=3 -R "index.html*" -A "*.apk" \
-            https://downloads.sourceforge.net/project/wolfi/${{ matrix.arch }}/ \
+          wget -r -np -nH --cut-dirs=5 -R "index.html*" -A "*.apk" \
+            https://sourceforge.net/projects/wolfi/files/${{ matrix.arch }}/ \
             -P ./custom-repo/${{ matrix.arch }}/ || echo "No packages found or download failed"
 
           # Count downloaded packages
