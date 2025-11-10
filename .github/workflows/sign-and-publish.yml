@@ -27,11 +27,11 @@ jobs:
   sign-and-publish:
     name: Sign and Publish to SourceForge
     runs-on: ubuntu-latest
-    # Only run if:
-    # 1. Triggered by successful build workflow, OR
-    # 2. Manually triggered (workflow_dispatch), OR
-    # 3. force_publish is true
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    # Always run when:
+    # 1. Build workflow completes (success or failure with artifacts), OR
+    # 2. Manually triggered (workflow_dispatch)
+    # This allows uploading successful packages even if some packages in the build failed
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure') }}
 
     steps:
       - name: Checkout repository
@@ -60,10 +60,12 @@ jobs:
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           path: build-artifacts
           run-id: ${{ steps.get-run-id.outputs.run_id }}
           github-token: ${{ github.token }}
+          pattern: 'apk-packages-*'
 
       - name: Organize repository by architecture
         run: |
@@ -95,22 +97,29 @@ jobs:
           echo "=== Generating APKINDEX ==="
 
           for arch in x86_64 aarch64; do
-            echo "Generating APKINDEX for $arch..."
+            echo "Checking $arch..."
 
-            cd repo/$arch
+            # Only generate APKINDEX if there are APK packages
+            if ls repo/$arch/*.apk 1> /dev/null 2>&1; then
+              echo "Generating APKINDEX for $arch..."
 
-            # Use Alpine container to generate APKINDEX (apk index is built-in)
-            docker run --rm \
-              -v $PWD:/packages \
-              -w /packages \
-              alpine:latest \
-              sh -c "apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && ls -lh APKINDEX.tar.gz"
+              cd repo/$arch
 
-            cd ../..
+              # Use Alpine container to generate APKINDEX (apk index is built-in)
+              docker run --rm \
+                -v $PWD:/packages \
+                -w /packages \
+                alpine:latest \
+                sh -c "apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && ls -lh APKINDEX.tar.gz"
+
+              cd ../..
+            else
+              echo "No packages found for $arch, skipping APKINDEX generation"
+            fi
           done
 
           echo "=== APKINDEX files created ==="
-          ls -lh repo/*/APKINDEX.tar.gz
+          ls -lh repo/*/APKINDEX.tar.gz 2>/dev/null || echo "No APKINDEX files generated"
 
       - name: Verify repository structure
         run: |
