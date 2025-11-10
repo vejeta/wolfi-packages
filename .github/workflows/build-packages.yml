@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       package_filter:
-        description: 'Build specific package (leave empty for all)'
+        description: 'Build specific packages (comma-separated, e.g. "libass,zlib" or leave empty for all)'
         required: false
         default: ''
         type: string
@@ -42,7 +42,9 @@ jobs:
 
           # If package_filter is set, filter the list
           if [ -n "${{ github.event.inputs.package_filter }}" ]; then
-            packages=$(echo "$packages" | jq -c --arg filter "${{ github.event.inputs.package_filter }}" '[.[] | select(. == $filter)]')
+            # Split comma-separated filter into array and match any
+            filter_list=$(echo "${{ github.event.inputs.package_filter }}" | jq -R 'split(",")')
+            packages=$(echo "$packages" | jq -c --argjson filters "$filter_list" '[.[] | select(. as $pkg | $filters | index($pkg))]')
           fi
 
           echo "packages=$packages" >> $GITHUB_OUTPUT
@@ -70,7 +72,7 @@ jobs:
 
       - name: Create build directories
         run: |
-          mkdir -p ./build-output/${{ matrix.arch }}
+          mkdir -p ./build-output
           mkdir -p ./workspace
 
       - name: Generate Melange signing key
@@ -80,15 +82,18 @@ jobs:
             -v $PWD:/work \
             -w /work \
             cgr.dev/chainguard/melange:latest \
-            keygen melange.rsa
+            keygen
 
-          # Verify key was created
-          ls -lh melange.rsa melange.rsa.pub
+          # Download official Wolfi signing key for repository verification
+          curl -o wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+
+          # Verify keys were created
+          ls -lh melange.rsa melange.rsa.pub wolfi-signing.rsa.pub
 
           # Fix permissions (files created by container are owned by root)
           sudo chown $(id -u):$(id -g) melange.rsa melange.rsa.pub
           chmod 600 melange.rsa
-          chmod 644 melange.rsa.pub
+          chmod 644 melange.rsa.pub wolfi-signing.rsa.pub
 
       - name: Build package with Melange
         run: |
@@ -104,33 +109,20 @@ jobs:
           echo "Using configuration: $PACKAGE_YAML"
           echo "Target architecture: ${{ matrix.arch }}"
 
-          # Map GitHub Actions arch to Docker platform
-          case "${{ matrix.arch }}" in
-            x86_64)
-              DOCKER_PLATFORM="linux/amd64"
-              ;;
-            aarch64)
-              DOCKER_PLATFORM="linux/arm64"
-              ;;
-            *)
-              echo "Unsupported architecture: ${{ matrix.arch }}"
-              exit 1
-              ;;
-          esac
-
-          # Build using Melange container (official approach)
+          # Build using Melange container
           docker run --rm --privileged \
-            --platform "$DOCKER_PLATFORM" \
             -v $PWD:/work \
             -w /work \
             cgr.dev/chainguard/melange:latest \
             build \
             --arch ${{ matrix.arch }} \
             --signing-key melange.rsa \
-            --keyring-append /work/melange.rsa.pub \
+            --keyring-append melange.rsa.pub \
+            --keyring-append wolfi-signing.rsa.pub \
             --repository-append https://packages.wolfi.dev/os \
-            --pipeline-dir /work/pipelines \
-            --out-dir ./build-output/${{ matrix.arch }} \
+            --pipeline-dir pipelines \
+            --generate-index \
+            --out-dir ./build-output \
             "$PACKAGE_YAML"
 
       - name: List built packages
