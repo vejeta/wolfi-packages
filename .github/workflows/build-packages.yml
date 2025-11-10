@@ -91,9 +91,9 @@ jobs:
         id: cache-restore
         with:
           path: ./package-cache/${{ matrix.arch }}
-          key: wolfi-packages-${{ matrix.arch }}-${{ github.run_id }}
+          key: wolfi-packages-consolidated-${{ matrix.arch }}-
           restore-keys: |
-            wolfi-packages-${{ matrix.arch }}-
+            wolfi-packages-consolidated-${{ matrix.arch }}-
 
       - name: Create build directories
         run: |
@@ -241,30 +241,6 @@ jobs:
             fi
           done
 
-      - name: Add newly built packages to cache
-        if: always()
-        run: |
-          echo "=== Adding new packages to cache ==="
-
-          # Copy newly built packages to cache directory
-          if [ -d "./build-output/${{ matrix.arch }}" ]; then
-            cp -v ./build-output/${{ matrix.arch }}/*.apk ./package-cache/${{ matrix.arch }}/ 2>/dev/null || true
-          fi
-
-          # Show cache contents
-          echo "Current cache contents:"
-          ls -lh ./package-cache/${{ matrix.arch }}/*.apk 2>/dev/null || echo "No packages in cache"
-
-          TOTAL_CACHED=$(find ./package-cache/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l)
-          echo "Total packages in cache: $TOTAL_CACHED"
-
-      - name: Save package cache
-        uses: actions/cache/save@v4
-        if: always()
-        with:
-          path: ./package-cache/${{ matrix.arch }}
-          key: wolfi-packages-${{ matrix.arch }}-${{ github.run_id }}
-
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -305,3 +281,86 @@ jobs:
           echo ""
           echo "x86_64 packages:"
           find all-artifacts -path "*x86_64*" -name "*.apk" -exec basename {} \; | sort
+
+  consolidate-cache:
+    name: Consolidate Package Cache
+    needs: [prepare-build-matrix, build-packages]
+    runs-on: ubuntu-latest
+    if: always()
+    strategy:
+      matrix:
+        arch: ${{ fromJson(needs.prepare-build-matrix.outputs.architectures) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts for ${{ matrix.arch }}
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: 'apk-packages-*-${{ matrix.arch }}'
+
+      - name: Restore existing package cache
+        uses: actions/cache/restore@v4
+        id: cache-restore
+        with:
+          path: ./consolidated-cache/${{ matrix.arch }}
+          key: wolfi-packages-consolidated-${{ matrix.arch }}-${{ github.run_id }}
+          restore-keys: |
+            wolfi-packages-consolidated-${{ matrix.arch }}-
+
+      - name: Consolidate packages into cache directory
+        run: |
+          echo "=== Consolidating packages into cache ==="
+          mkdir -p ./consolidated-cache/${{ matrix.arch }}
+
+          # Count existing cached packages
+          EXISTING_COUNT=$(find ./consolidated-cache/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l || echo "0")
+          echo "Existing packages in cache: $EXISTING_COUNT"
+
+          # Copy all newly built packages
+          echo "Copying newly built packages..."
+          find artifacts -name "*.apk" -exec cp -v {} ./consolidated-cache/${{ matrix.arch }}/ \;
+
+          # Count total packages
+          TOTAL_COUNT=$(find ./consolidated-cache/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l)
+          NEW_COUNT=$((TOTAL_COUNT - EXISTING_COUNT))
+
+          echo ""
+          echo "=== Cache Statistics ==="
+          echo "Previously cached: $EXISTING_COUNT packages"
+          echo "Newly added: $NEW_COUNT packages"
+          echo "Total in cache: $TOTAL_COUNT packages"
+          echo ""
+          echo "Cache contents:"
+          ls -lh ./consolidated-cache/${{ matrix.arch }}/*.apk 2>/dev/null | tail -20
+
+      - name: Generate APKINDEX for cache
+        run: |
+          echo "=== Generating APKINDEX for cache ==="
+
+          if ls ./consolidated-cache/${{ matrix.arch }}/*.apk 1> /dev/null 2>&1; then
+            cd ./consolidated-cache/${{ matrix.arch }}
+
+            # Generate APKINDEX using Alpine container
+            docker run --rm \
+              -v $PWD:/work \
+              -w /work \
+              alpine:latest \
+              sh -c "apk add --no-cache apk-tools abuild && \
+                apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
+                ls -lh APKINDEX.tar.gz"
+
+            cd ../..
+            echo "APKINDEX generated successfully"
+          else
+            echo "No packages to index"
+          fi
+
+      - name: Save consolidated cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ./consolidated-cache/${{ matrix.arch }}
+          key: wolfi-packages-consolidated-${{ matrix.arch }}-${{ github.run_id }}
