@@ -111,25 +111,27 @@ jobs:
           chmod 600 melange.rsa
           chmod 644 melange.rsa.pub wolfi-signing.rsa.pub
 
-      - name: Download packages from SourceForge repository
+      - name: Download packages from SourceForge using rsync
         run: |
-          # Download all previously built packages from SourceForge
           # SourceForge acts as accumulative repository (all successful builds)
-          echo "=== Downloading packages from SourceForge ==="
+          echo "=== Downloading packages from SourceForge via rsync ==="
           mkdir -p ./custom-repo/${{ matrix.arch }}
 
-          # Download all .apk files from SourceForge
-          # Note: We use wget with recursive, no-parent, and accept only .apk files
-          wget -r -np -nH --cut-dirs=5 -R "index.html*" -A "*.apk" \
-            https://sourceforge.net/projects/wolfi/files/${{ matrix.arch }}/ \
-            -P ./custom-repo/${{ matrix.arch }}/ || echo "No packages found or download failed"
+          # Try rsync first (SourceForge supports public rsync downloads)
+          rsync -av \
+            rsync://download.sourceforge.net/pub/sourceforge/w/wo/wolfi/${{ matrix.arch }}/ \
+            ./custom-repo/${{ matrix.arch }}/ || {
+              echo "rsync failed, repository may be empty or not accessible"
+              echo "Downloaded 0 packages from SourceForge"
+              exit 0
+            }
 
           # Count downloaded packages
           PKG_COUNT=$(find ./custom-repo/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l)
           echo "Downloaded $PKG_COUNT packages from SourceForge"
 
-          # Generate and sign APKINDEX for the custom repo
-          if [ "$PKG_COUNT" -gt 0 ]; then
+          # If we have packages but no APKINDEX, generate it
+          if [ "$PKG_COUNT" -gt 0 ] && [ ! -f "./custom-repo/${{ matrix.arch }}/APKINDEX.tar.gz" ]; then
             echo "Generating APKINDEX for custom repository..."
             docker run --rm \
               -v $PWD:/work \
@@ -142,6 +144,9 @@ jobs:
                 ls -lh"
 
             echo "=== Custom repository ready ==="
+            ls -lh ./custom-repo/${{ matrix.arch }}/
+          elif [ "$PKG_COUNT" -gt 0 ]; then
+            echo "=== Custom repository ready with existing APKINDEX ==="
             ls -lh ./custom-repo/${{ matrix.arch }}/
           else
             echo "No packages available, starting fresh build"
