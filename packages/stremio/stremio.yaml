@@ -127,6 +127,7 @@ pipeline:
         install -Dm644 "icons/smartcode-stremio-tray_${size}.png" \
           "${{targets.destdir}}"/usr/share/stremio/icons/
       done
+#  - uses: strip
 subpackages:
   - name: stremio-doc
     description: Stremio documentation
