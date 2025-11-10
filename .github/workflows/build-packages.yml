@@ -111,41 +111,40 @@ jobs:
           chmod 600 melange.rsa
           chmod 644 melange.rsa.pub wolfi-signing.rsa.pub
 
-      - name: Download GRUPO 1 packages from previous build
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Download packages from SourceForge repository
         run: |
-          # Download artifacts from most recent successful build (GRUPO 1)
-          # Find the latest successful build run ID
-          LATEST_RUN=$(gh run list --workflow=build-packages.yml --status=success --limit=1 --json databaseId --jq '.[0].databaseId' -R ${{ github.repository }})
+          # Download all previously built packages from SourceForge
+          # SourceForge acts as accumulative repository (all successful builds)
+          echo "=== Downloading packages from SourceForge ==="
+          mkdir -p ./custom-repo/${{ matrix.arch }}
 
-          if [ -n "$LATEST_RUN" ]; then
-            echo "Downloading packages from run $LATEST_RUN"
-            mkdir -p ./custom-repo/${{ matrix.arch }}
+          # Download all .apk files from SourceForge
+          # Note: We use wget with recursive, no-parent, and accept only .apk files
+          wget -r -np -nH --cut-dirs=3 -R "index.html*" -A "*.apk" \
+            https://downloads.sourceforge.net/project/wolfi/${{ matrix.arch }}/ \
+            -P ./custom-repo/${{ matrix.arch }}/ || echo "No packages found or download failed"
 
-            # Download all artifacts from that run
-            gh run download $LATEST_RUN -D ./artifacts -R ${{ github.repository }} || echo "No artifacts to download"
+          # Count downloaded packages
+          PKG_COUNT=$(find ./custom-repo/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l)
+          echo "Downloaded $PKG_COUNT packages from SourceForge"
 
-            # Move APK files to custom-repo
-            find ./artifacts -name "*.apk" -exec cp {} ./custom-repo/${{ matrix.arch }}/ \; || echo "No APK files found"
+          # Generate and sign APKINDEX for the custom repo
+          if [ "$PKG_COUNT" -gt 0 ]; then
+            echo "Generating APKINDEX for custom repository..."
+            docker run --rm \
+              -v $PWD:/work \
+              -w /work \
+              alpine:latest \
+              sh -c "apk add --no-cache apk-tools abuild && \
+                cd /work/custom-repo/${{ matrix.arch }} && \
+                apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
+                abuild-sign -k /work/melange.rsa APKINDEX.tar.gz && \
+                ls -lh"
 
-            # Generate and sign APKINDEX for the custom repo
-            if [ -d "./custom-repo/${{ matrix.arch }}" ] && [ "$(ls -A ./custom-repo/${{ matrix.arch }}/*.apk 2>/dev/null)" ]; then
-              docker run --rm \
-                -v $PWD:/work \
-                -w /work \
-                alpine:latest \
-                sh -c "apk add --no-cache apk-tools abuild && \
-                  cd /work/custom-repo/${{ matrix.arch }} && \
-                  apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
-                  abuild-sign -k /work/melange.rsa APKINDEX.tar.gz && \
-                  ls -lh"
-            fi
-
+            echo "=== Custom repository ready ==="
             ls -lh ./custom-repo/${{ matrix.arch }}/
           else
-            echo "No previous successful builds found"
-            mkdir -p ./custom-repo/${{ matrix.arch }}
+            echo "No packages available, starting fresh build"
           fi
 
       - name: Build package with Melange
