@@ -129,13 +129,17 @@ jobs:
             # Move APK files to custom-repo
             find ./artifacts -name "*.apk" -exec cp {} ./custom-repo/${{ matrix.arch }}/ \; || echo "No APK files found"
 
-            # Generate APKINDEX for the custom repo
+            # Generate and sign APKINDEX for the custom repo
             if [ -d "./custom-repo/${{ matrix.arch }}" ] && [ "$(ls -A ./custom-repo/${{ matrix.arch }}/*.apk 2>/dev/null)" ]; then
               docker run --rm \
                 -v $PWD:/work \
                 -w /work \
                 alpine:latest \
-                sh -c "apk add --no-cache apk-tools && cd /work/custom-repo/${{ matrix.arch }} && apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && ls -lh"
+                sh -c "apk add --no-cache apk-tools abuild && \
+                  cd /work/custom-repo/${{ matrix.arch }} && \
+                  apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
+                  abuild-sign -k /work/melange.rsa APKINDEX.tar.gz && \
+                  ls -lh"
             fi
 
             ls -lh ./custom-repo/${{ matrix.arch }}/
