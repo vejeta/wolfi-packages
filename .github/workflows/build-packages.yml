@@ -86,10 +86,20 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
 
+      - name: Restore package cache
+        uses: actions/cache/restore@v4
+        id: cache-restore
+        with:
+          path: ./package-cache/${{ matrix.arch }}
+          key: wolfi-packages-${{ matrix.arch }}-${{ github.run_id }}
+          restore-keys: |
+            wolfi-packages-${{ matrix.arch }}-
+
       - name: Create build directories
         run: |
           mkdir -p ./build-output
           mkdir -p ./workspace
+          mkdir -p ./package-cache/${{ matrix.arch }}
 
       - name: Generate Melange signing key
         run: |
@@ -111,19 +121,44 @@ jobs:
           chmod 600 melange.rsa
           chmod 644 melange.rsa.pub wolfi-signing.rsa.pub
 
+      - name: Setup package cache as local repository
+        run: |
+          echo "=== Checking package cache ==="
+          CACHE_PKG_COUNT=$(find ./package-cache/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l || echo "0")
+          echo "Found $CACHE_PKG_COUNT packages in GitHub Actions cache"
+
+          if [ "$CACHE_PKG_COUNT" -gt 0 ]; then
+            echo "Using cached packages from previous builds"
+            cd ./package-cache/${{ matrix.arch }}
+
+            # Generate APKINDEX for cached packages
+            docker run --rm \
+              -v $PWD:/work \
+              -w /work \
+              alpine:latest \
+              sh -c "apk add --no-cache apk-tools abuild && \
+                apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
+                abuild-sign -k /work/../../melange.rsa APKINDEX.tar.gz"
+
+            ls -lh
+            cd ../..
+          else
+            echo "No packages in cache, will attempt SourceForge download"
+          fi
+
       - name: Install lftp for SourceForge downloads
+        if: hashFiles('package-cache/${{ matrix.arch }}/*.apk') == ''
         run: |
           sudo apt-get update
           sudo apt-get install -y lftp
 
-      - name: Download packages from SourceForge using lftp
+      - name: Download packages from SourceForge (fallback if cache empty)
+        if: hashFiles('package-cache/${{ matrix.arch }}/*.apk') == ''
         run: |
-          # SourceForge acts as accumulative repository (all successful builds)
-          echo "=== Downloading packages from SourceForge via lftp ==="
-          mkdir -p ./custom-repo/${{ matrix.arch }}
+          # SourceForge acts as fallback repository when cache is empty
+          echo "=== Cache empty, downloading from SourceForge via lftp ==="
 
           # Use lftp to mirror from SourceForge public HTTP
-          # SourceForge HTTP download URL: https://sourceforge.net/projects/wolfi/files/
           # Only download .apk files, exclude APKINDEX (we'll generate our own)
           lftp -c "
             set ssl:verify-certificate no
@@ -134,37 +169,31 @@ jobs:
             mirror --verbose --parallel=3 \
               --include-glob '*.apk' \
               --exclude-glob '*' \
-              ${{ matrix.arch }}/ ./custom-repo/${{ matrix.arch }}/
+              ${{ matrix.arch }}/ ./package-cache/${{ matrix.arch }}/
           " || {
             echo "lftp mirror failed, repository may be empty or not accessible"
             echo "Downloaded 0 packages from SourceForge"
-            # Continue anyway - we'll build without dependencies
           }
 
           # Count downloaded packages
-          PKG_COUNT=$(find ./custom-repo/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l)
+          PKG_COUNT=$(find ./package-cache/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l)
           echo "Downloaded $PKG_COUNT packages from SourceForge"
 
-          # If we have packages but no APKINDEX, generate it
-          if [ "$PKG_COUNT" -gt 0 ] && [ ! -f "./custom-repo/${{ matrix.arch }}/APKINDEX.tar.gz" ]; then
-            echo "Generating APKINDEX for custom repository..."
+          # If we have packages, generate APKINDEX
+          if [ "$PKG_COUNT" -gt 0 ]; then
+            echo "Generating APKINDEX for SourceForge packages..."
+            cd ./package-cache/${{ matrix.arch }}
             docker run --rm \
               -v $PWD:/work \
               -w /work \
               alpine:latest \
               sh -c "apk add --no-cache apk-tools abuild && \
-                cd /work/custom-repo/${{ matrix.arch }} && \
                 apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
-                abuild-sign -k /work/melange.rsa APKINDEX.tar.gz && \
-                ls -lh"
-
-            echo "=== Custom repository ready ==="
-            ls -lh ./custom-repo/${{ matrix.arch }}/
-          elif [ "$PKG_COUNT" -gt 0 ]; then
-            echo "=== Custom repository ready with existing APKINDEX ==="
-            ls -lh ./custom-repo/${{ matrix.arch }}/
+                abuild-sign -k /work/../../melange.rsa APKINDEX.tar.gz"
+            ls -lh
+            cd ../..
           else
-            echo "No packages available, starting fresh build"
+            echo "No packages available from SourceForge, starting fresh build"
           fi
 
       - name: Build package with Melange
@@ -182,6 +211,7 @@ jobs:
           echo "Target architecture: ${{ matrix.arch }}"
 
           # Build using Melange container
+          # Use package-cache as local repository (contains cached + SourceForge packages)
           docker run --rm --privileged \
             -v $PWD:/work \
             -w /work \
@@ -192,7 +222,7 @@ jobs:
             --keyring-append melange.rsa.pub \
             --keyring-append wolfi-signing.rsa.pub \
             --repository-append https://packages.wolfi.dev/os \
-            --repository-append ./custom-repo \
+            --repository-append ./package-cache \
             --pipeline-dir pipelines \
             --generate-index \
             --out-dir ./build-output \
@@ -210,6 +240,30 @@ jobs:
               echo "Size: $(du -h $apk | cut -f1)"
             fi
           done
+
+      - name: Add newly built packages to cache
+        if: always()
+        run: |
+          echo "=== Adding new packages to cache ==="
+
+          # Copy newly built packages to cache directory
+          if [ -d "./build-output/${{ matrix.arch }}" ]; then
+            cp -v ./build-output/${{ matrix.arch }}/*.apk ./package-cache/${{ matrix.arch }}/ 2>/dev/null || true
+          fi
+
+          # Show cache contents
+          echo "Current cache contents:"
+          ls -lh ./package-cache/${{ matrix.arch }}/*.apk 2>/dev/null || echo "No packages in cache"
+
+          TOTAL_CACHED=$(find ./package-cache/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l)
+          echo "Total packages in cache: $TOTAL_CACHED"
+
+      - name: Save package cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ./package-cache/${{ matrix.arch }}
+          key: wolfi-packages-${{ matrix.arch }}-${{ github.run_id }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
