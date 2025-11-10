@@ -111,6 +111,23 @@ jobs:
           chmod 600 melange.rsa
           chmod 644 melange.rsa.pub wolfi-signing.rsa.pub
 
+      - name: Download custom packages from SourceForge
+        run: |
+          # Download APKINDEX and packages from our SourceForge repository
+          mkdir -p ./custom-repo/${{ matrix.arch }}
+          cd ./custom-repo/${{ matrix.arch }}
+
+          # Download APKINDEX
+          wget -q https://sourceforge.net/projects/wolfi-packages-vejeta/files/packages/x86_64/APKINDEX.tar.gz || echo "No custom APKINDEX yet"
+
+          # Download all APK files (from GRUPO 1)
+          for pkg in libass libbluray libcdio libvpx libxcb libxpresent rubberband shaderc uchardet vulkan-loader zimg zlib; do
+            wget -q -r -np -nd -A "*.apk" "https://sourceforge.net/projects/wolfi-packages-vejeta/files/packages/x86_64/${pkg}*" || echo "Package $pkg not found"
+          done
+
+          ls -lh
+          cd ../..
+
       - name: Build package with Melange
         run: |
           # Use direct path to package YAML file (flat structure like wolfi-os)
@@ -136,6 +153,7 @@ jobs:
             --keyring-append melange.rsa.pub \
             --keyring-append wolfi-signing.rsa.pub \
             --repository-append https://packages.wolfi.dev/os \
+            --repository-append ./custom-repo \
             --pipeline-dir pipelines \
             --generate-index \
             --out-dir ./build-output \
