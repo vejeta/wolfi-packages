@@ -1,0 +1,125 @@
+package:
+  name: stremio-server
+  version: 4.20.12
+  epoch: 0
+  description: Proprietary streaming server component for Stremio (BitTorrent support)
+  copyright:
+    - license: LicenseRef-Proprietary-Stremio
+      paths:
+        - "*"
+  dependencies:
+    runtime:
+      - nodejs
+      - stremio
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - nodejs
+      - wget
+
+pipeline:
+  - name: Download proprietary server.js
+    runs: |
+      # WARNING: This is PROPRIETARY SOFTWARE from Stremio
+      #
+      # License: Proprietary - All Rights Reserved by Stremio
+      # Source: Pre-compiled JavaScript binary
+      # Security: Downloaded from upstream, not built from source
+      #
+      # This component provides BitTorrent streaming functionality.
+      # It is distributed separately from the GPL-licensed Stremio client
+      # to comply with open source licensing requirements.
+      #
+      # For production deployments:
+      # - Vendor this file internally after legal review
+      # - Verify checksum: sha256sum server.js
+      # - Consider security implications of proprietary binary JS
+
+      mkdir -p "${{targets.destdir}}"/usr/share/stremio
+
+      # Download version-pinned server.js
+      # Note: Stremio does not publish versioned server.js URLs
+      # This always fetches the latest compatible version
+      wget --timeout=30 \
+        --user-agent="Wolfi-Package-Build/1.0" \
+        -O "${{targets.destdir}}"/usr/share/stremio/server.js \
+        https://dl.strem.io/server/v4.20.12/desktop/server.js
+
+      # Verify download succeeded
+      if [ ! -s "${{targets.destdir}}"/usr/share/stremio/server.js ]; then
+        echo "ERROR: server.js download failed or file is empty"
+        exit 1
+      fi
+
+      # Log checksum for reproducibility tracking
+      echo "server.js SHA256:"
+      sha256sum "${{targets.destdir}}"/usr/share/stremio/server.js
+
+      # Set restrictive permissions (not executable, read-only)
+      chmod 644 "${{targets.destdir}}"/usr/share/stremio/server.js
+
+  - name: Install minimal documentation
+    runs: |
+      mkdir -p "${{targets.destdir}}"/usr/share/doc/stremio-server
+
+      cat > "${{targets.destdir}}"/usr/share/doc/stremio-server/LICENSE << 'EOF'
+      PROPRIETARY SOFTWARE LICENSE
+
+      The server.js component is proprietary software owned by Smart Code Ltd (Stremio).
+      Copyright (c) Smart Code Ltd. All Rights Reserved.
+
+      This is pre-compiled JavaScript distributed without source code.
+      Use is subject to Stremio's terms of service.
+
+      Website: https://www.stremio.com/
+      EOF
+
+test:
+  environment:
+    contents:
+      packages:
+        - nodejs
+        - stremio
+  pipeline:
+    - name: Verify server.js exists
+      runs: |
+        if [ ! -f /usr/share/stremio/server.js ]; then
+          echo "ERROR: server.js not found"
+          exit 1
+        fi
+        echo "server.js present"
+
+    - name: Verify server.js is not empty
+      runs: |
+        if [ ! -s /usr/share/stremio/server.js ]; then
+          echo "ERROR: server.js is empty"
+          exit 1
+        fi
+        file_size=$(stat -c%s /usr/share/stremio/server.js)
+        echo "server.js size: $file_size bytes"
+
+        # Sanity check: server.js should be at least 100KB
+        if [ "$file_size" -lt 102400 ]; then
+          echo "WARNING: server.js seems unusually small"
+          exit 1
+        fi
+
+    - name: Verify Node.js dependency
+      runs: |
+        command -v node >/dev/null 2>&1
+        echo "Node.js available: $(node --version)"
+
+    - name: Verify server.js is valid JavaScript
+      runs: |
+        # Basic syntax check (doesn't execute, just parses)
+        node --check /usr/share/stremio/server.js
+        echo "JavaScript syntax valid"
+
+update:
+  enabled: false
+  manual: true
+  # Note: Stremio server.js has no versioned releases
+  # Manual updates required when Stremio client updates
