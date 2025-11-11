@@ -116,6 +116,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bubblewrap
 
+      - name: Enable unprivileged user namespaces
+        run: |
+          # Required for bubblewrap to work on GitHub Actions runners
+          # See: https://github.com/chainguard-dev/melange/issues/1508
+          sudo sysctl -w kernel.unprivileged_userns_clone=1
+
       - name: Generate Melange signing key
         run: |
           # Generate signing key using melange directly
