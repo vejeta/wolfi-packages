@@ -21,6 +21,10 @@ pipeline:
       repository: https://github.com/ArtifexSoftware/mujs.git
       tag: ${{package.version}}
       expected-commit: 05cd646bad083ed45e9e1c9846ea671d461ced30
+  - runs: |
+      # Pre-download Unicode data files needed by the build
+      curl -s -o UnicodeData.txt https://www.unicode.org/Public/16.0.0/ucd/UnicodeData.txt
+      curl -s -o SpecialCasing.txt https://www.unicode.org/Public/16.0.0/ucd/SpecialCasing.txt
   - uses: autoconf/make
     with:
       opts: |
