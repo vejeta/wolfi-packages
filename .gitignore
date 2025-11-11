@@ -42,3 +42,7 @@ id_rsa*
 # SSH config (contains sensitive data)
 ssh_config
 known_hosts
+
+# Session state files (NEVER commit these)
+CLAUDE.md
+**/CLAUDE.md
