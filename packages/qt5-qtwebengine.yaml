@@ -116,14 +116,15 @@ pipeline:
   - name: Configure QtWebEngine
     runs: |
       # Container-safe baseline CPU flags with -NDEBUG to disable asserts - MUST be BEFORE qmake
+      # -Wno-error=template-id-cdtor: GCC 15 treats C++20 template constructor syntax as error
       case "${{build.arch}}" in
         x86_64)
           export CFLAGS="-march=x86-64 -mtune=generic -O2 -DNDEBUG -g"
-          export CXXFLAGS="-march=x86-64 -mtune=generic -O2 -DNDEBUG -g"
+          export CXXFLAGS="-march=x86-64 -mtune=generic -O2 -DNDEBUG -g -Wno-error=template-id-cdtor"
           ;;
         aarch64)
-          export CFLAGS="-march=armv8-a -O2 -DNDEBUG -g "
-          export CXXFLAGS="-march=armv8-a -O2 -DNDEBUG -g"
+          export CFLAGS="-march=armv8-a -O2 -DNDEBUG -g"
+          export CXXFLAGS="-march=armv8-a -O2 -DNDEBUG -g -Wno-error=template-id-cdtor"
           ;;
       esac
 
