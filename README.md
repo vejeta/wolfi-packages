@@ -128,6 +128,37 @@ apk verify stremio mpv qt5-qtwebengine
 
 ## For Developers
 
+### Building with GitHub Actions (Recommended)
+
+This repository uses **GitHub Actions Cache** for fast, independent builds:
+
+- **Cache Duration**: 7 days
+- **Cache Size**: ~50 packages (~7 MB compressed)
+- **Benefit**: Build individual packages without rebuilding dependencies
+
+#### Quick Start
+
+```bash
+# Check if cache is populated (< 7 days old)
+gh cache list -R vejeta/wolfi-packages --key wolfi-packages-consolidated-x86_64
+
+# If cache exists: Build any package independently
+gh workflow run build-packages.yml -f package_filter="stremio" -R vejeta/wolfi-packages
+
+# If cache empty: Follow sequential build order
+# See build_order_summary.md for detailed instructions
+```
+
+**With populated cache:**
+- Build time: ~7-92 minutes (individual packages)
+- No dependency rebuilds required
+- Example: Update only `stremio` without rebuilding Qt5 stack
+
+**With empty cache (>7 days):**
+- Build time: ~2.5-4.5 hours (full sequential build)
+- Must follow dependency order (see `build_order_summary.md`)
+- SourceForge acts as fallback dependency source
+
 ### Building Locally
 
 ```bash
