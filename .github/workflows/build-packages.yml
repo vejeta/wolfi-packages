@@ -101,14 +101,25 @@ jobs:
           mkdir -p ./workspace
           mkdir -p ./consolidated-cache/${{ matrix.arch }}
 
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Install Melange
+        run: |
+          go install chainguard.dev/melange@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Install bubblewrap
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+
       - name: Generate Melange signing key
         run: |
-          # Generate signing key using Melange container
-          docker run --rm \
-            -v $PWD:/work \
-            -w /work \
-            cgr.dev/chainguard/melange:latest \
-            keygen
+          # Generate signing key using melange directly
+          $HOME/go/bin/melange keygen
 
           # Download official Wolfi signing key for repository verification
           curl -o wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
@@ -116,8 +127,6 @@ jobs:
           # Verify keys were created
           ls -lh melange.rsa melange.rsa.pub wolfi-signing.rsa.pub
 
-          # Fix permissions (files created by container are owned by root)
-          sudo chown $(id -u):$(id -g) melange.rsa melange.rsa.pub
           chmod 600 melange.rsa
           chmod 644 melange.rsa.pub wolfi-signing.rsa.pub
 
@@ -218,23 +227,20 @@ jobs:
           echo "Using configuration: $PACKAGE_YAML"
           echo "Target architecture: ${{ matrix.arch }}"
 
-          # Build using Melange container
+          # Build using melange directly with bubblewrap runner (same as local successful build)
           # Use package-cache as local repository (contains cached + SourceForge packages)
-          docker run --rm --privileged \
-            -v $PWD:/work \
-            -w /work \
-            cgr.dev/chainguard/melange:latest \
-            build \
-            --arch ${{ matrix.arch }} \
-            --signing-key melange.rsa \
+          $HOME/go/bin/melange build "$PACKAGE_YAML" \
+            --runner=bubblewrap \
             --keyring-append melange.rsa.pub \
             --keyring-append wolfi-signing.rsa.pub \
+            --signing-key melange.rsa \
+            --arch ${{ matrix.arch }} \
+            --namespace wolfi \
+            --pipeline-dir ./pipelines/ \
             --repository-append https://packages.wolfi.dev/os \
             --repository-append ./consolidated-cache \
-            --pipeline-dir pipelines \
             --generate-index \
-            --out-dir ./build-output \
-            "$PACKAGE_YAML"
+            --out-dir ./build-output
 
       - name: List built packages
         run: |
