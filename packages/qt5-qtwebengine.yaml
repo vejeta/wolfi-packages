@@ -137,7 +137,6 @@ pipeline:
         -- \
         -webengine-proprietary-codecs \
         -qt-webengine-ffmpeg \
-        -webengine-icu \
         -webengine-kerberos \
         -webengine-spellchecker \
         -webengine-webrtc \
