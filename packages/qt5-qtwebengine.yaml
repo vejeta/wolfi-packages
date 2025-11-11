@@ -144,6 +144,16 @@ pipeline:
         -webengine-printing-and-pdf
   - name: Build QtWebEngine
     runs: |
+      # Re-export CXXFLAGS to ensure GCC 15 workaround propagates through make → ninja
+      case "${{build.arch}}" in
+        x86_64)
+          export CXXFLAGS="-march=x86-64 -mtune=generic -O2 -DNDEBUG -g -Wno-error=template-id-cdtor"
+          ;;
+        aarch64)
+          export CXXFLAGS="-march=armv8-a -O2 -DNDEBUG -g -Wno-error=template-id-cdtor"
+          ;;
+      esac
+
       # Build (typically takes 1-2 hours on powerful machines)
       make -j$(nproc)
   - runs: |
