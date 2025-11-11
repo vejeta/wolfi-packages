@@ -21,17 +21,18 @@ Community APK repository for [Wolfi Linux](https://wolfi.dev) providing **Stremi
 ### Add Repository
 
 ```bash
-# NOTE: Repository signing key not yet uploaded to SourceForge
-# For now, use --allow-untrusted flag or wait for key to be published
+# Download and install repository signing key
+wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
+  https://sourceforge.net/projects/wolfi/files/keys/vejeta-wolfi.rsa.pub/download
 
 # Add repository to apk
 echo "https://downloads.sourceforge.net/project/wolfi/$(uname -m)" >> /etc/apk/repositories
 
 # Update package index
-apk update --allow-untrusted
+apk update
 
 # Install packages
-apk add --allow-untrusted stremio mpv qt5-qtwebengine
+apk add stremio mpv qt5-qtwebengine
 ```
 
 ### Manual Download
