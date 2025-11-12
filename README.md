@@ -1,9 +1,10 @@
 # Wolfi APK Repository - Stremio and Media Packages
 
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
+[![Build Status](https://api.cirrus-ci.com/github/vejeta/wolfi-packages.svg)](https://cirrus-ci.com/github/vejeta/wolfi-packages)
 [![Packages](https://img.shields.io/badge/packages-25-brightgreen)](https://sourceforge.net/projects/wolfi/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Architecture](https://img.shields.io/badge/architecture-x86__64-orange)](https://sourceforge.net/projects/wolfi/)
+[![Architecture](https://img.shields.io/badge/architecture-x86__64%20|%20aarch64-orange)](https://sourceforge.net/projects/wolfi/)
 [![SourceForge](https://img.shields.io/badge/Download-SourceForge-orange)](https://sourceforge.net/projects/wolfi/)
 
 Community APK repository for [Wolfi Linux](https://wolfi.dev) providing **Stremio**, **MPV**, and comprehensive media libraries including Qt5 WebEngine.
@@ -50,8 +51,8 @@ Built as part of [PR #69098](https://github.com/wolfi-dev/os/pull/69098) to the 
 wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
   https://sourceforge.net/projects/wolfi/files/keys/vejeta-wolfi.rsa.pub/download
 
-# Add repository to apk (x86_64 only)
-echo "https://downloads.sourceforge.net/project/wolfi/x86_64" >> /etc/apk/repositories
+# Add repository to apk (auto-detects architecture)
+echo "https://downloads.sourceforge.net/project/wolfi/$(uname -m)" >> /etc/apk/repositories
 
 # Update package index
 apk update
