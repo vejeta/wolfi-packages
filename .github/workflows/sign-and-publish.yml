@@ -99,9 +99,22 @@ jobs:
           echo "=== Repository structure ==="
           tree -h repo/ || find repo/ -type f -exec ls -lh {} \;
 
-      - name: Generate APKINDEX for each architecture
+      - name: Setup signing key for APKINDEX
         run: |
-          echo "=== Generating APKINDEX ==="
+          echo "=== Preparing signing key for APKINDEX ==="
+
+          # Extract and convert signing key from GitHub Secrets
+          echo "${{ secrets.APK_SIGNING_KEY }}" > /tmp/melange-pkcs8.rsa
+          openssl rsa -in /tmp/melange-pkcs8.rsa -out /tmp/melange.rsa -traditional
+          chmod 600 /tmp/melange.rsa
+          rm /tmp/melange-pkcs8.rsa
+
+          echo "Signing key ready for APKINDEX signing"
+          ls -lh /tmp/melange.rsa
+
+      - name: Generate and sign APKINDEX for each architecture
+        run: |
+          echo "=== Generating and signing APKINDEX ==="
 
           for arch in x86_64 aarch64; do
             echo "Checking $arch..."
@@ -110,23 +123,45 @@ jobs:
             if ls repo/$arch/*.apk 1> /dev/null 2>&1; then
               echo "Generating APKINDEX for $arch..."
 
+              # Copy signing key into arch directory for Docker access
+              cp /tmp/melange.rsa repo/$arch/
+
               cd repo/$arch
 
-              # Use Alpine container to generate APKINDEX (apk index is built-in)
+              # Use Alpine container to generate and SIGN APKINDEX
               docker run --rm \
                 -v $PWD:/packages \
                 -w /packages \
                 alpine:latest \
-                sh -c "apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && ls -lh APKINDEX.tar.gz"
+                sh -c "apk add --no-cache apk-tools abuild && \
+                  apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
+                  abuild-sign -k /packages/melange.rsa APKINDEX.tar.gz && \
+                  ls -lh APKINDEX.tar.gz"
+
+              # Remove signing key from repo directory (security)
+              rm melange.rsa
 
               cd ../..
+
+              echo "APKINDEX for $arch generated and signed successfully"
             else
               echo "No packages found for $arch, skipping APKINDEX generation"
             fi
           done
 
-          echo "=== APKINDEX files created ==="
+          echo ""
+          echo "=== APKINDEX files created and signed ==="
           ls -lh repo/*/APKINDEX.tar.gz 2>/dev/null || echo "No APKINDEX files generated"
+
+          # Verify signature files are present in APKINDEX archives
+          echo ""
+          echo "=== Verifying APKINDEX signatures ==="
+          for arch in x86_64 aarch64; do
+            if [ -f "repo/$arch/APKINDEX.tar.gz" ]; then
+              echo "Contents of $arch APKINDEX.tar.gz:"
+              tar -tzf "repo/$arch/APKINDEX.tar.gz"
+            fi
+          done
 
       - name: Verify repository structure
         run: |
