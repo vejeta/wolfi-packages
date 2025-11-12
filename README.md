@@ -153,6 +153,81 @@ apk verify stremio mpv qt5-qtwebengine
 
 ## For Developers
 
+### CI/CD Workflows
+
+This repository features a sophisticated two-stage CI/CD pipeline:
+
+#### 1. Build Workflow (`build-packages.yml`)
+
+Compiles APK packages using Melange with dependency caching:
+
+```bash
+# Build all packages (full rebuild)
+gh workflow run build-packages.yml -R vejeta/wolfi-packages
+
+# Build specific packages (incremental)
+gh workflow run build-packages.yml \
+  -f package_filter="mujs,stremio" \
+  -R vejeta/wolfi-packages
+
+# Build for specific architecture (default: x86_64)
+gh workflow run build-packages.yml \
+  -f architectures="x86_64,aarch64" \
+  -R vejeta/wolfi-packages
+```
+
+**Features:**
+- Package-level dependency caching (7-day retention)
+- Configurable architecture targets (x86_64, aarch64, or both)
+- Selective package filtering for faster incremental builds
+- Automatic artifact generation for downstream publishing
+
+#### 2. Sign & Publish Workflow (`sign-and-publish.yml`)
+
+Cryptographically signs packages and publishes to SourceForge:
+
+```bash
+# Full repository publish (replaces all packages)
+gh workflow run sign-and-publish.yml \
+  -f run_id=19294275595 \
+  -R vejeta/wolfi-packages
+
+# Incremental publish (merges with existing repository)
+gh workflow run sign-and-publish.yml \
+  -f run_id=19294275595 \
+  -f incremental=true \
+  -R vejeta/wolfi-packages
+```
+
+**Full vs Incremental Publishing:**
+
+| Mode | Behavior | Use Case | Time |
+|------|----------|----------|------|
+| **Full** (default) | Replaces entire repository | Initial publish, major updates | ~15 min |
+| **Incremental** | Merges with existing packages | Hotfixes, single package updates | ~25 min |
+
+**Incremental Mode Benefits:**
+- Avoids rebuilding unchanged packages (saves 4+ hours for qt5-qtwebengine)
+- Downloads existing packages from SourceForge (~10 min for ~1-2GB)
+- Merges new packages with existing ones (newer versions replace older)
+- Regenerates APKINDEX with complete package list
+- Perfect for updating 1-2 packages without full rebuild
+
+**Example Workflow - Quick Package Update:**
+```bash
+# 1. Build only the updated package (e.g., mujs)
+gh workflow run build-packages.yml -f package_filter="mujs"
+# Wait ~2 minutes for build completion
+
+# 2. Get the build run ID
+BUILD_RUN_ID=$(gh run list --workflow=build-packages.yml --limit=1 --json databaseId --jq '.[0].databaseId')
+
+# 3. Publish incrementally (merges with existing repository)
+gh workflow run sign-and-publish.yml -f run_id=$BUILD_RUN_ID -f incremental=true
+
+# Total time: ~17 minutes vs 4+ hours for full rebuild
+```
+
 ### Building with GitHub Actions (Recommended)
 
 This repository uses **GitHub Actions Cache** for efficient, independent builds:
