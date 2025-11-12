@@ -120,7 +120,7 @@ for pkg in "${PACKAGES[@]}"; do
     # Record start time for this package
     START_TIME=$(date +%s)
 
-    # Build with Melange natively (no Docker needed)
+    # Build with Melange using bubblewrap (installed in Cirrus CI)
     if melange build \
         --arch "$ARCH" \
         --signing-key melange.rsa \
