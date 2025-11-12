@@ -104,10 +104,15 @@ jobs:
       - name: Setup permanent APK signing key
         run: |
           # Load permanent signing key from GitHub Secrets
-          echo "${{ secrets.APK_SIGNING_KEY }}" > melange.rsa
-          chmod 600 melange.rsa
+          echo "${{ secrets.APK_SIGNING_KEY }}" > melange-pkcs8.rsa
+          chmod 600 melange-pkcs8.rsa
 
-          # Extract public key from private key using OpenSSL
+          # Convert PKCS#8 to PKCS#1 format (required by Melange)
+          openssl rsa -in melange-pkcs8.rsa -out melange.rsa -traditional
+          chmod 600 melange.rsa
+          rm melange-pkcs8.rsa
+
+          # Extract public key from private key
           openssl rsa -in melange.rsa -pubout > melange.rsa.pub
           chmod 644 melange.rsa.pub
 
@@ -117,7 +122,7 @@ jobs:
           # Verify keys were created
           ls -lh melange.rsa melange.rsa.pub wolfi-signing.rsa.pub
 
-          echo "Using permanent signing key from GitHub Secrets"
+          echo "Using permanent signing key from GitHub Secrets (converted to PKCS#1)"
 
       - name: Setup package cache as local repository
         run: |
