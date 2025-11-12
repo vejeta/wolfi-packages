@@ -1,0 +1,51 @@
+# Cirrus CI - Build ARM64 packages natively
+# Free for open source projects, no 6-hour limit
+# Uses AWS Graviton2 (ARM64 native)
+
+task:
+  name: Build Wolfi Packages (aarch64)
+  only_if: $CIRRUS_BRANCH == 'master' || $CIRRUS_BRANCH == 'main'
+
+  # ARM64 nativo en AWS Graviton2 - 8 CPUs, 24GB RAM
+  arm_container:
+    image: alpine:latest
+    cpu: 8
+    memory: 24G
+
+  env:
+    ARCH: aarch64
+    MELANGE_VERSION: v0.8.0
+
+  # Instalar dependencias del sistema
+  install_deps_script:
+    - apk add --no-cache curl git bash docker wget tar gzip jq
+
+  # Instalar Melange ARM64
+  install_melange_script:
+    - wget -q https://github.com/chainguard-dev/melange/releases/download/${MELANGE_VERSION}/melange_${MELANGE_VERSION#v}_linux_arm64.tar.gz
+    - tar -xzf melange_${MELANGE_VERSION#v}_linux_arm64.tar.gz
+    - mv melange /usr/local/bin/
+    - melange version
+    - rm melange_${MELANGE_VERSION#v}_linux_arm64.tar.gz
+
+  # Generar key de firma para Melange
+  setup_keys_script:
+    - melange keygen
+    - ls -lh melange.rsa*
+
+  # Ejecutar script de build para todos los packages aarch64
+  build_script:
+    - chmod +x scripts/build-cirrus-aarch64.sh
+    - ./scripts/build-cirrus-aarch64.sh
+
+  # Siempre subir artifacts (incluso si algunos packages fallan)
+  always:
+    # Upload individual APK packages
+    apk_packages_artifacts:
+      path: "build-output/aarch64/*.apk"
+      type: application/octet-stream
+
+    # Upload APKINDEX
+    apkindex_artifacts:
+      path: "build-output/aarch64/APKINDEX.tar.gz"
+      type: application/gzip

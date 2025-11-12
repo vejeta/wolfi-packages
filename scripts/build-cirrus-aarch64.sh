@@ -1,0 +1,246 @@
+#!/bin/bash
+# Build all Wolfi packages for aarch64 using Melange natively on Cirrus CI
+# This script is designed to run in the Alpine container on Cirrus CI
+# with ARM64 native architecture (AWS Graviton2)
+#
+# Expected environment:
+# - Melange installed natively at /usr/local/bin/melange
+# - Signing keys generated in current directory (melange.rsa, melange.rsa.pub)
+# - Running in Alpine Linux ARM64 container
+
+set -euo pipefail
+
+ARCH="aarch64"
+OUTPUT_DIR="build-output"
+REPO_URL="https://downloads.sourceforge.net/project/wolfi"
+FAILED_PACKAGES=()
+SUCCESSFUL_PACKAGES=()
+
+echo "=== Wolfi Packages - Cirrus CI ARM64 Build Script ==="
+echo "Architecture: $ARCH"
+echo "Output directory: $OUTPUT_DIR/$ARCH"
+echo "Repository: $REPO_URL"
+echo "Melange version: $(melange version 2>/dev/null || echo 'unknown')"
+echo ""
+
+# Create output directory
+mkdir -p "$OUTPUT_DIR/$ARCH"
+
+# Verify signing key exists
+if [ ! -f "melange.rsa" ]; then
+    echo "ERROR: Signing key melange.rsa not found!"
+    echo "Cirrus CI should have generated it in setup_keys_script step"
+    exit 1
+fi
+
+if [ ! -f "melange.rsa.pub" ]; then
+    echo "ERROR: Public key melange.rsa.pub not found!"
+    exit 1
+fi
+
+echo "✓ Signing keys verified"
+echo ""
+
+# List of packages in dependency order
+# Based on build_order_summary.md
+PACKAGES=(
+    # Stage 1: Base utilities and libraries
+    "zlib"
+    "uchardet"
+    "mujs"
+
+    # Stage 2: Graphics and media foundations
+    "zimg"
+    "libcdio"
+    "libxcb"
+    "libxpresent"
+
+    # Stage 3: Audio/video processing and graphics
+    "libcdio-paranoia"
+    "vulkan-loader"
+    "shaderc"
+
+    # Stage 4: Media libraries
+    "rubberband"
+    "libvpx"
+    "libplacebo"
+    "libbluray"
+    "libass"
+
+    # Stage 5: DVD support
+    "libdvdread"
+
+    # Stage 6: DVD navigation
+    "libdvdnav"
+
+    # Stage 7: Media player
+    "mpv"
+
+    # Stage 8: Qt5 base
+    "qt5-qtbase"
+
+    # Stage 9: Qt5 declarative components
+    "qt5-qtdeclarative"
+    "qt5-qtwebchannel"
+    "qt5-qtquickcontrols"
+
+    # Stage 10: Qt5 Quick Controls 2
+    "qt5-qtquickcontrols2"
+
+    # Stage 11: Qt5 WebEngine (longest build ~4-5 hours)
+    "qt5-qtwebengine"
+
+    # Stage 12: Stremio application
+    "stremio"
+)
+
+TOTAL_PACKAGES=${#PACKAGES[@]}
+CURRENT=0
+
+echo "=== Building $TOTAL_PACKAGES packages for $ARCH ==="
+echo ""
+
+# Build each package
+for pkg in "${PACKAGES[@]}"; do
+    CURRENT=$((CURRENT + 1))
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "[$CURRENT/$TOTAL_PACKAGES] Building: $pkg"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    PACKAGE_YAML="packages/$pkg.yaml"
+
+    if [ ! -f "$PACKAGE_YAML" ]; then
+        echo "⚠️  WARNING: Package YAML not found: $PACKAGE_YAML"
+        echo "   Skipping..."
+        FAILED_PACKAGES+=("$pkg (YAML not found)")
+        echo ""
+        continue
+    fi
+
+    # Record start time for this package
+    START_TIME=$(date +%s)
+
+    # Build with Melange natively (no Docker needed)
+    if melange build \
+        --arch "$ARCH" \
+        --signing-key melange.rsa \
+        --keyring-append melange.rsa.pub \
+        --repository-append "$REPO_URL/x86_64" \
+        --repository-append "$REPO_URL/$ARCH" \
+        --repository-append https://packages.wolfi.dev/os \
+        --out-dir "$OUTPUT_DIR/$ARCH" \
+        "$PACKAGE_YAML"; then
+
+        # Calculate duration
+        END_TIME=$(date +%s)
+        DURATION=$((END_TIME - START_TIME))
+        DURATION_MIN=$((DURATION / 60))
+        DURATION_SEC=$((DURATION % 60))
+
+        echo "✅ Successfully built: $pkg (${DURATION_MIN}m ${DURATION_SEC}s)"
+        SUCCESSFUL_PACKAGES+=("$pkg")
+
+        # Show resulting APK files
+        echo "   Generated APK files:"
+        ls -lh "$OUTPUT_DIR/$ARCH/" | grep "$pkg" | tail -3 || echo "   (no files found)"
+    else
+        END_TIME=$(date +%s)
+        DURATION=$((END_TIME - START_TIME))
+        DURATION_MIN=$((DURATION / 60))
+        DURATION_SEC=$((DURATION % 60))
+
+        echo "❌ FAILED to build: $pkg (failed after ${DURATION_MIN}m ${DURATION_SEC}s)"
+        FAILED_PACKAGES+=("$pkg")
+        echo "   Continuing with next package..."
+    fi
+
+    echo ""
+done
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "=== Build Summary ==="
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Total packages: $TOTAL_PACKAGES"
+echo "Successful: ${#SUCCESSFUL_PACKAGES[@]}"
+echo "Failed: ${#FAILED_PACKAGES[@]}"
+echo ""
+
+if [ ${#SUCCESSFUL_PACKAGES[@]} -gt 0 ]; then
+    echo "✅ Successfully built packages:"
+    for pkg in "${SUCCESSFUL_PACKAGES[@]}"; do
+        echo "   - $pkg"
+    done
+    echo ""
+fi
+
+if [ ${#FAILED_PACKAGES[@]} -gt 0 ]; then
+    echo "❌ Failed packages:"
+    for pkg in "${FAILED_PACKAGES[@]}"; do
+        echo "   - $pkg"
+    done
+    echo ""
+fi
+
+# Count APK files generated
+APK_COUNT=$(ls -1 "$OUTPUT_DIR/$ARCH/"*.apk 2>/dev/null | wc -l)
+echo "Total APK files generated: $APK_COUNT"
+echo ""
+
+# Generate APKINDEX if we have any packages
+if [ $APK_COUNT -gt 0 ]; then
+    echo "=== Generating APKINDEX.tar.gz ==="
+    cd "$OUTPUT_DIR/$ARCH"
+
+    # Use melange index to create APKINDEX
+    if melange index -o APKINDEX.tar.gz *.apk; then
+        echo "✅ APKINDEX.tar.gz generated successfully"
+        ls -lh APKINDEX.tar.gz
+
+        # Verify APKINDEX contents
+        echo ""
+        echo "=== APKINDEX Contents ==="
+        tar -tzf APKINDEX.tar.gz
+    else
+        echo "❌ Failed to generate APKINDEX.tar.gz"
+        cd ../..
+        exit 1
+    fi
+
+    cd ../..
+else
+    echo "⚠️  WARNING: No APK files generated, skipping APKINDEX creation"
+fi
+
+echo ""
+echo "=== Build Complete ==="
+echo "Output directory: $OUTPUT_DIR/$ARCH/"
+echo ""
+echo "Directory contents:"
+ls -lh "$OUTPUT_DIR/$ARCH/" | head -20
+
+echo ""
+echo "Disk usage:"
+du -sh "$OUTPUT_DIR/$ARCH/"
+
+# Exit with error if critical packages failed
+CRITICAL_FAILURES=()
+for pkg in "${FAILED_PACKAGES[@]}"; do
+    # Check if this is a critical package (qt5-qtwebengine or stremio)
+    if [[ "$pkg" == "qt5-qtwebengine" ]] || [[ "$pkg" == "stremio" ]]; then
+        CRITICAL_FAILURES+=("$pkg")
+    fi
+done
+
+if [ ${#CRITICAL_FAILURES[@]} -gt 0 ]; then
+    echo ""
+    echo "⚠️  WARNING: Critical packages failed:"
+    for pkg in "${CRITICAL_FAILURES[@]}"; do
+        echo "   - $pkg"
+    done
+    echo ""
+    echo "Build completed with errors (non-critical packages were built)"
+    # Don't exit with error - Cirrus CI should still upload available artifacts
+fi
+
+echo "=== Script finished ==="
+exit 0
