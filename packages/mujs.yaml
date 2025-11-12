@@ -22,9 +22,11 @@ pipeline:
       tag: ${{package.version}}
       expected-commit: 05cd646bad083ed45e9e1c9846ea671d461ced30
   - runs: |
-      # Pre-download Unicode data files needed by the build
-      curl -s -o UnicodeData.txt https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt
-      curl -s -o SpecialCasing.txt https://www.unicode.org/Public/17.0.0/ucd/SpecialCasing.txt
+      # Pre-download Unicode data files needed by the build (with retry and verbose errors)
+      curl --retry 3 --retry-delay 2 -f -o UnicodeData.txt https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt || \
+        wget -O UnicodeData.txt https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt
+      curl --retry 3 --retry-delay 2 -f -o SpecialCasing.txt https://www.unicode.org/Public/17.0.0/ucd/SpecialCasing.txt || \
+        wget -O SpecialCasing.txt https://www.unicode.org/Public/17.0.0/ucd/SpecialCasing.txt
   - uses: autoconf/make
     with:
       opts: |
