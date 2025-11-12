@@ -85,8 +85,14 @@ jobs:
             find build-artifacts -path "*${arch}*" -name "APKINDEX.tar.gz" -exec cp -v {} repo/$arch/ \;
           done
 
-          # Copy signing public key from build artifacts (uploaded by build workflow)
-          find build-artifacts -name "melange.rsa.pub" -exec cp -v {} repo/keys/vejeta-wolfi.rsa.pub \; || echo "Warning: Public key not found in artifacts"
+          # Copy permanent signing public key from local file
+          # Extract public key from GitHub Secrets
+          echo "${{ secrets.APK_SIGNING_KEY }}" > /tmp/melange.rsa
+          openssl rsa -in /tmp/melange.rsa -pubout > repo/keys/vejeta-wolfi.rsa.pub
+          rm /tmp/melange.rsa
+
+          echo "Using permanent signing key public key"
+          ls -lh repo/keys/vejeta-wolfi.rsa.pub
 
           echo ""
           echo "=== Repository structure ==="
