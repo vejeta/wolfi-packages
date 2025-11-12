@@ -124,7 +124,8 @@ jobs:
               echo "Generating APKINDEX for $arch..."
 
               # Copy signing key into arch directory for Docker access
-              cp /tmp/melange.rsa repo/$arch/
+              # Use vejeta-wolfi.rsa as filename so signature matches public key name
+              cp /tmp/melange.rsa repo/$arch/vejeta-wolfi.rsa
 
               cd repo/$arch
 
@@ -135,11 +136,11 @@ jobs:
                 alpine:latest \
                 sh -c "apk add --no-cache apk-tools abuild && \
                   apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
-                  abuild-sign -k /packages/melange.rsa APKINDEX.tar.gz && \
+                  abuild-sign -k /packages/vejeta-wolfi.rsa APKINDEX.tar.gz && \
                   ls -lh APKINDEX.tar.gz"
 
               # Remove signing key from repo directory (security)
-              rm melange.rsa
+              rm vejeta-wolfi.rsa
 
               cd ../..
 
