@@ -385,9 +385,9 @@ jobs:
       - name: Deployment Status
         run: |
           if [ "${{ needs.sign-and-publish.result }}" == "success" ]; then
-            echo "✅ Repository successfully deployed to SourceForge!"
+            echo "Repository successfully deployed to SourceForge!"
             echo "Users can now install packages from: https://sourceforge.net/projects/wolfi/files/"
           else
-            echo "❌ Deployment failed. Check logs above for details."
+            echo "Deployment failed. Check logs above for details."
             exit 1
           fi

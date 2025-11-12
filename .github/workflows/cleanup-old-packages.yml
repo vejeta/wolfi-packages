@@ -151,9 +151,9 @@ jobs:
       - name: Cleanup summary
         run: |
           if [ "${{ github.event.inputs.dry_run || 'true' }}" == "true" ]; then
-            echo "✅ Cleanup dry run completed successfully"
+            echo "Cleanup dry run completed successfully"
             echo "To actually delete files, run this workflow with dry_run=false"
           else
-            echo "✅ Cleanup completed successfully"
+            echo "Cleanup completed successfully"
             echo "Old package versions have been removed from SourceForge"
           fi
