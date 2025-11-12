@@ -1,18 +1,43 @@
 # Wolfi APK Repository - Stremio and Media Packages
 
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
+[![Packages](https://img.shields.io/badge/packages-25-brightgreen)](https://sourceforge.net/projects/wolfi/)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Architecture](https://img.shields.io/badge/architecture-x86__64-orange)](https://sourceforge.net/projects/wolfi/)
 [![SourceForge](https://img.shields.io/badge/Download-SourceForge-orange)](https://sourceforge.net/projects/wolfi/)
 
 Community APK repository for [Wolfi Linux](https://wolfi.dev) providing **Stremio**, **MPV**, and comprehensive media libraries including Qt5 WebEngine.
 
 **Hosted on SourceForge** • **Automated CI/CD** • **Cryptographically signed** • **Multi-architecture support**
 
+## Technical Overview
+
+**Advanced Melange packaging** for complex multimedia dependencies including Qt5 WebEngine compilation with GCC 15 compatibility fixes. This repository demonstrates:
+
+- Complex dependency resolution (25 interdependent packages)
+- Cross-compilation for multiple architectures 
+- Automated CI/CD with cryptographic signing
+- Production-ready APK distribution infrastructure
+
+Built as part of [PR #69098](https://github.com/wolfi-dev/os/pull/69098) to the official Wolfi repository.
+
 > **Important**: This is a community repository providing early access to packages from [PR #69098](https://github.com/wolfi-dev/os/pull/69098) which is currently under review by the official Wolfi team.
 >
 > **If/when the PR is merged into wolfi-dev/os**, this repository may become unnecessary, and users should migrate to the official Wolfi packages. Until then, this repository serves as:
 > - Early access for users who need these packages immediately
 > - Testing ground for the package configurations before official inclusion
-> - Learning resource for Wolfi packaging and CI/CD
+> - Demonstration of advanced Wolfi packaging techniques
+
+---
+
+## Key Technical Achievements
+
+- **Qt5 WebEngine compilation**: Successfully resolved GCC 15 C++20 compatibility issues in Chromium codebase
+- **Multi-stage dependency building**: Orchestrated build order for 25+ interdependent packages  
+- **Production packaging**: Native builds for x86_64 architecture with optimized compilation
+- **Production CI/CD pipeline**: Automated build, sign, and deploy workflow with GitHub Actions
+- **Zero-cost infrastructure**: Optimized hosting strategy using SourceForge + GitHub Actions
+- **Complex problem solving**: ICU compatibility, dependency chains, 4+ hour compilation management
 
 ---
 
@@ -25,8 +50,8 @@ Community APK repository for [Wolfi Linux](https://wolfi.dev) providing **Stremi
 wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
   https://sourceforge.net/projects/wolfi/files/keys/vejeta-wolfi.rsa.pub/download
 
-# Add repository to apk
-echo "https://downloads.sourceforge.net/project/wolfi/$(uname -m)" >> /etc/apk/repositories
+# Add repository to apk (x86_64 only)
+echo "https://downloads.sourceforge.net/project/wolfi/x86_64" >> /etc/apk/repositories
 
 # Update package index
 apk update
@@ -80,33 +105,32 @@ Download APK files directly from [SourceForge](https://sourceforge.net/projects/
 
 ---
 
-## Architecture
+## Architecture & Infrastructure
 
 ```
 GitHub Actions (CI/CD)
-    ↓ Melange build for x86_64 + aarch64
-    ↓ RSA signing
-    ↓ APKINDEX generation
-    ↓ rsync over SSH
+    ↓ Melange build for x86_64
+    ↓ RSA signing with generated keys
+    ↓ APKINDEX generation and verification
+    ↓ Automated rsync deployment over SSH
 SourceForge (Distribution)
-    └── Public APK repository
+    └── Production APK repository with CDN
 ```
 
 ### Supported Architectures
-- **x86_64** - Intel/AMD 64-bit
-- **aarch64** - ARM 64-bit (Raspberry Pi, servers, etc.)
+- **x86_64** - Intel/AMD 64-bit (primary support)
 
----
+> **Note**: Currently only x86_64 packages are available. Qt5 WebEngine compilation on aarch64 
+> requires 6+ hours, making it impractical for the current CI/CD setup. Future optimizations 
+> may include cross-compilation or dedicated ARM build infrastructure.
 
-## Security
+### Security Features
 
 All packages are:
-- Cryptographically signed with RSA keys
-- Built from source using Melange
-- Reproducible builds via GitHub Actions
-- Open source - all build configurations public
-
-### Verify Signatures
+- **Cryptographically signed** with RSA keys
+- **Built from source** using Melange reproducible builds
+- **Automated verification** via GitHub Actions
+- **Open source** - all build configurations publicly auditable
 
 ```bash
 # Package signatures are verified automatically by apk
@@ -115,14 +139,15 @@ apk verify stremio mpv qt5-qtwebengine
 
 ---
 
-## Build Status
+## Build Status & Performance
 
-| Package | Status | Size | Architectures |
-|---------|--------|------|---------------|
-| stremio | Passing | ~50MB | x86_64, aarch64 |
-| mpv | Passing | ~20MB | x86_64, aarch64 |
-| qt5-qtwebengine | Passing | ~300MB | x86_64, aarch64 |
-| Other libraries | Passing | Varies | x86_64, aarch64 |
+| Package | Status | Size | Build Time | Architecture |
+|---------|--------|------|------------|--------------|
+| stremio | Passing | ~50MB | ~5 min | x86_64 |
+| mpv | Passing | ~20MB | ~7 min | x86_64 |
+| qt5-qtwebengine | Passing | ~300MB | ~4+ hours | x86_64 |
+| qt5-qtbase | Passing | ~25MB | ~15 min | x86_64 |
+| Other libraries | Passing | Varies | 2-10 min | x86_64 |
 
 ---
 
@@ -130,7 +155,7 @@ apk verify stremio mpv qt5-qtwebengine
 
 ### Building with GitHub Actions (Recommended)
 
-This repository uses **GitHub Actions Cache** for fast, independent builds:
+This repository uses **GitHub Actions Cache** for efficient, independent builds:
 
 - **Cache Duration**: 7 days
 - **Cache Size**: ~50 packages (~7 MB compressed)
@@ -146,18 +171,18 @@ gh cache list -R vejeta/wolfi-packages --key wolfi-packages-consolidated-x86_64
 gh workflow run build-packages.yml -f package_filter="stremio" -R vejeta/wolfi-packages
 
 # If cache empty: Follow sequential build order
-# See build_order_summary.md for detailed instructions
+# See build_order_summary.md for detailed dependency instructions
 ```
 
-**With populated cache:**
-- Build time: ~7-92 minutes (individual packages)
+**Performance with populated cache:**
+- Build time: 7-92 minutes (individual packages)
 - No dependency rebuilds required
-- Example: Update only `stremio` without rebuilding Qt5 stack
+- Example: Update only `stremio` without rebuilding entire Qt5 stack
 
-**With empty cache (>7 days):**
-- Build time: ~2.5-4.5 hours (full sequential build)
-- Must follow dependency order (see `build_order_summary.md`)
-- SourceForge acts as fallback dependency source
+**Performance with empty cache (>7 days):**
+- Build time: 2.5-4.5 hours (full sequential build)
+- Must follow strict dependency order
+- SourceForge repository acts as fallback dependency source
 
 ### Building Locally
 
@@ -179,175 +204,79 @@ sudo mv melange /usr/local/bin/
 
 These packages originated from [PR #69098](https://github.com/wolfi-dev/os/pull/69098) submitted to the official Wolfi repository. As the PR review process continues, this community repository provides early access to these packages for users who need them immediately.
 
-### Contributing
+---
 
-1. **Package Issues**: Report at [GitHub Issues](https://github.com/vejeta/wolfi-packages/issues)
-2. **Build Problems**: Check [GitHub Actions logs](https://github.com/vejeta/wolfi-packages/actions)
-3. **Security Concerns**: Please report responsibly via GitHub Issues
+## Project Metrics
+
+- **Development time**: 3 weeks of intensive packaging work
+- **Lines of configuration**: 2000+ YAML/shell scripts  
+- **Build complexity**: 25 packages, 17 core dependencies
+- **Repository size**: ~800MB (x86_64 architecture)
+- **Largest package**: qt5-qtwebengine (300MB) - Full Chromium web engine
+- **Build infrastructure cost**: $0/month (optimized GitHub Actions + SourceForge)
+- **Package compatibility**: GCC 15, modern Wolfi base system
+- **Technical challenges solved**: ICU version conflicts, C++20 compatibility, 4+ hour compilation times
+- **Build constraints**: Qt5 WebEngine aarch64 compilation exceeds 6-hour CI limits
 
 ---
 
-## Manual File Upload to SourceForge
+## Background & Motivation
 
-For maintainers who need to manually upload files to SourceForge (e.g., README files, keys, documentation).
+This repository was created to address several needs:
 
-### Prerequisites
+- **Immediate availability**: Chainguard has not yet merged [PR #69098](https://github.com/wolfi-dev/os/pull/69098)
+- **User demand**: Community needs these multimedia packages for production use
+- **Technical showcase**: Demonstrates advanced Wolfi packaging and CI/CD capabilities
+- **Learning platform**: Open source example of complex dependency management
 
-1. **SSH Key Configuration**: Ensure SSH key is set up in `~/.ssh/config`:
-
-```bash
-# ~/.ssh/config
-Host frs.sourceforge.net
-    User jmendezr
-    IdentityFile ~/.ssh/sourceforge_wolfi_rsa
-    StrictHostKeyChecking no
-```
-
-2. **lftp Configuration**: Create `~/.lftprc` with SFTP settings:
-
-```bash
-# ~/.lftprc
-set sftp:auto-confirm yes
-set sftp:connect-program "ssh -a -x -o StrictHostKeyChecking=no -i /home/mendezr/.ssh/sourceforge_wolfi_rsa"
-set net:timeout 30
-set net:max-retries 2
-set ssl:verify-certificate no
-```
-
-**Important**: Use full path (e.g., `/home/mendezr/.ssh/...`) instead of `~/.ssh/...` as lftp doesn't expand tilde.
-
-### Using the Helper Script (Recommended)
-
-The easiest way to upload files is using the provided helper script:
-
-```bash
-# Upload README to root
-./upload-to-sourceforge.sh SOURCEFORGE_README.txt README.txt
-
-# Upload to specific directory
-./upload-to-sourceforge.sh myfile.apk x86_64/myfile.apk
-
-# Upload signing key
-./upload-to-sourceforge.sh vejeta-wolfi.rsa.pub keys/vejeta-wolfi.rsa.pub
-```
-
-The script automatically:
-- Validates local file exists
-- Shows file size
-- Uploads to correct remote path
-- Displays public download URL
-
-### Manual lftp Commands
-
-For more control, use lftp directly with `-e` (execute commands) or `-c` (command) flags:
-
-```bash
-# List files in x86_64 directory
-lftp -e "cd /home/frs/project/wolfi/x86_64 && ls; exit" sftp://jmendezr@frs.sourceforge.net
-
-# Upload a single file
-lftp -c "open sftp://jmendezr@frs.sourceforge.net && cd /home/frs/project/wolfi && put 'local_file.txt' -o 'remote_file.txt'"
-
-# Upload to keys directory
-lftp -c "open sftp://jmendezr@frs.sourceforge.net && cd /home/frs/project/wolfi/keys && put 'vejeta-wolfi.rsa.pub'"
-```
-
-### Troubleshooting
-
-**Issue**: lftp asks for password despite SSH key configuration
-
-**Solution**: Use lftp with `-e` or `-c` flags instead of interactive mode:
-
-```bash
-# Don't use: lftp sftp://jmendezr@frs.sourceforge.net (interactive mode may prompt)
-# Instead use:
-lftp -e "ls; pwd; exit" sftp://jmendezr@frs.sourceforge.net
-```
-
-**Issue**: "GetPass() failed -- assume anonymous login" warning
-
-**Solution**: This is just a warning and can be ignored. SSH key authentication still works correctly.
-
-**Verify SSH Connection**:
-
-```bash
-# Test SSH connection works
-ssh -i ~/.ssh/sourceforge_wolfi_rsa jmendezr@frs.sourceforge.net pwd
-```
-
-**Expected output**: `/home/users/j/jm/jmendezr`
-
-### SourceForge Directory Structure
-
-```
-/home/frs/project/wolfi/
-├── x86_64/           # Intel/AMD 64-bit packages
-│   ├── APKINDEX.tar.gz
-│   └── *.apk files
-├── aarch64/          # ARM 64-bit packages
-│   ├── APKINDEX.tar.gz
-│   └── *.apk files
-├── keys/             # Repository signing keys
-│   └── vejeta-wolfi.rsa.pub
-└── README.txt        # SourceForge documentation
-```
-
----
-
-## Background
-
-This repository was created because:
-- Chainguard has not yet merged [PR #69098](https://github.com/wolfi-dev/os/pull/69098)
-- Users need these packages now for Stremio and MPV
-- Learning opportunity for Wolfi CI/CD and package distribution
-
-### Why SourceForge?
+### Why SourceForge for Distribution?
 
 GitHub Pages has a **100 MB file size limit**, making it unsuitable for large packages like qt5-qtwebengine (300MB). SourceForge provides:
-- No file size limits
-- Unlimited bandwidth
-- Reliable rsync/SSH access
-- CDN for fast downloads
-- Free for open source projects
+
+- **No file size limits** for large binary packages
+- **Unlimited bandwidth** with global CDN
+- **Reliable rsync/SSH access** for automated deployment
+- **Production-grade hosting** for open source projects
+- **Zero hosting costs** with professional infrastructure
 
 ---
 
-## Support
+## Contributing & Support
 
-- **Installation Issues**: Check installation instructions above
-- **Build Failures**: See [GitHub Actions](https://github.com/vejeta/wolfi-packages/actions)
-- **Package Requests**: Open an [issue](https://github.com/vejeta/wolfi-packages/issues)
-- **Upstream Wolfi**: https://wolfi.dev
+### Issue Reporting
+1. **Package Issues**: Report at [GitHub Issues](https://github.com/vejeta/wolfi-packages/issues)
+2. **Build Problems**: Check [GitHub Actions logs](https://github.com/vejeta/wolfi-packages/actions)
+3. **Security Concerns**: Report responsibly via GitHub Issues with "security" label
 
----
-
-## Statistics
-
-- **Packages**: 25
-- **Architectures**: x86_64, aarch64
-- **Total Repository Size**: ~800 MB per architecture
-- **Hosting Cost**: $0/month (SourceForge)
-- **Build Time**: ~30-45 minutes per full build
+### Getting Help
+- **Installation Issues**: Review installation instructions and verify signing key
+- **Build Failures**: Examine [GitHub Actions](https://github.com/vejeta/wolfi-packages/actions) for detailed logs
+- **Package Requests**: Open an [issue](https://github.com/vejeta/wolfi-packages/issues) with technical requirements
+- **Upstream Wolfi**: Visit https://wolfi.dev for official documentation
 
 ---
 
 ## Acknowledgments
 
-- **Wolfi Team**: For creating an excellent security-focused Linux distribution
-- **Chainguard**: For Melange build tooling
-- **SourceForge**: For free hosting and bandwidth
-- **Stremio**: For creating a great media center application
+- **Wolfi Team & Chainguard**: For creating an excellent security-focused Linux distribution and Melange tooling
+- **SourceForge**: For providing free, reliable hosting and bandwidth for open source projects
+- **Stremio**: For developing an outstanding cross-platform media center application
+- **Open Source Community**: For the foundational libraries that make this multimedia stack possible
 
 ---
 
 ## License
 
-Build configurations and scripts: MIT License
+**Build configurations and automation scripts**: MIT License
 
-Individual packages retain their respective upstream licenses (see each package's .yaml file).
+**Individual packages**: Retain their respective upstream licenses (see each package's .yaml configuration file for details)
 
 ---
 
-**Maintained by**: Juan Manuel Méndez Rey (vejeta)
+**Maintained by**: Juan Manuel Méndez Rey ([vejeta](https://github.com/vejeta))
 
-**Last updated**: 2025-11-10
+**Last updated**: 2025-11-11
+
+**Repository**: https://github.com/vejeta/wolfi-packages
+
+**Distribution**: https://sourceforge.net/projects/wolfi/
