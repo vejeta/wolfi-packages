@@ -201,10 +201,12 @@ gh workflow run sign-and-publish.yml \
 
 **Full vs Incremental Publishing:**
 
-| Mode | Behavior | Use Case | Time |
+| Mode | Behavior | Use Case | Publish Time* |
 |------|----------|----------|------|
 | **Full** (default) | Replaces entire repository | Initial publish, major updates | ~15 min |
 | **Incremental** | Merges with existing packages | Hotfixes, single package updates | ~25 min |
+
+*Publish time only (sign + upload). Does NOT include build time (~4+ hours for full rebuild with qt5-qtwebengine).
 
 **Incremental Mode Benefits:**
 - Avoids rebuilding unchanged packages (saves 4+ hours for qt5-qtwebengine)
@@ -225,7 +227,15 @@ BUILD_RUN_ID=$(gh run list --workflow=build-packages.yml --limit=1 --json databa
 # 3. Publish incrementally (merges with existing repository)
 gh workflow run sign-and-publish.yml -f run_id=$BUILD_RUN_ID -f incremental=true
 
-# Total time: ~17 minutes vs 4+ hours for full rebuild
+# Total time breakdown:
+# - Build mujs: ~2 min
+# - Publish (incremental): ~25 min (download existing + sign + upload)
+# Total: ~27 minutes
+#
+# vs. Full rebuild approach:
+# - Build all packages: ~4+ hours (qt5-qtwebengine alone takes 4+ hours)
+# - Publish (full): ~15 min
+# Total: ~4+ hours
 ```
 
 ### Building with GitHub Actions (Recommended)
