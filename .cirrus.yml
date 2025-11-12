@@ -24,9 +24,10 @@ task:
   install_melange_script:
     - wget -q https://github.com/chainguard-dev/melange/releases/download/${MELANGE_VERSION}/melange_${MELANGE_VERSION#v}_linux_arm64.tar.gz
     - tar -xzf melange_${MELANGE_VERSION#v}_linux_arm64.tar.gz
-    - mv melange /usr/local/bin/
+    - find . -name "melange" -type f -exec mv {} /usr/local/bin/ \;
+    - chmod +x /usr/local/bin/melange
     - melange version
-    - rm melange_${MELANGE_VERSION#v}_linux_arm64.tar.gz
+    - rm -f melange_${MELANGE_VERSION#v}_linux_arm64.tar.gz
 
   # Generar key de firma para Melange
   setup_keys_script:
