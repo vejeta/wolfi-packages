@@ -187,6 +187,113 @@ These packages originated from [PR #69098](https://github.com/wolfi-dev/os/pull/
 
 ---
 
+## Manual File Upload to SourceForge
+
+For maintainers who need to manually upload files to SourceForge (e.g., README files, keys, documentation).
+
+### Prerequisites
+
+1. **SSH Key Configuration**: Ensure SSH key is set up in `~/.ssh/config`:
+
+```bash
+# ~/.ssh/config
+Host frs.sourceforge.net
+    User jmendezr
+    IdentityFile ~/.ssh/sourceforge_wolfi_rsa
+    StrictHostKeyChecking no
+```
+
+2. **lftp Configuration**: Create `~/.lftprc` with SFTP settings:
+
+```bash
+# ~/.lftprc
+set sftp:auto-confirm yes
+set sftp:connect-program "ssh -a -x -o StrictHostKeyChecking=no -i /home/mendezr/.ssh/sourceforge_wolfi_rsa"
+set net:timeout 30
+set net:max-retries 2
+set ssl:verify-certificate no
+```
+
+**Important**: Use full path (e.g., `/home/mendezr/.ssh/...`) instead of `~/.ssh/...` as lftp doesn't expand tilde.
+
+### Using the Helper Script (Recommended)
+
+The easiest way to upload files is using the provided helper script:
+
+```bash
+# Upload README to root
+./upload-to-sourceforge.sh SOURCEFORGE_README.txt README.txt
+
+# Upload to specific directory
+./upload-to-sourceforge.sh myfile.apk x86_64/myfile.apk
+
+# Upload signing key
+./upload-to-sourceforge.sh vejeta-wolfi.rsa.pub keys/vejeta-wolfi.rsa.pub
+```
+
+The script automatically:
+- Validates local file exists
+- Shows file size
+- Uploads to correct remote path
+- Displays public download URL
+
+### Manual lftp Commands
+
+For more control, use lftp directly with `-e` (execute commands) or `-c` (command) flags:
+
+```bash
+# List files in x86_64 directory
+lftp -e "cd /home/frs/project/wolfi/x86_64 && ls; exit" sftp://jmendezr@frs.sourceforge.net
+
+# Upload a single file
+lftp -c "open sftp://jmendezr@frs.sourceforge.net && cd /home/frs/project/wolfi && put 'local_file.txt' -o 'remote_file.txt'"
+
+# Upload to keys directory
+lftp -c "open sftp://jmendezr@frs.sourceforge.net && cd /home/frs/project/wolfi/keys && put 'vejeta-wolfi.rsa.pub'"
+```
+
+### Troubleshooting
+
+**Issue**: lftp asks for password despite SSH key configuration
+
+**Solution**: Use lftp with `-e` or `-c` flags instead of interactive mode:
+
+```bash
+# Don't use: lftp sftp://jmendezr@frs.sourceforge.net (interactive mode may prompt)
+# Instead use:
+lftp -e "ls; pwd; exit" sftp://jmendezr@frs.sourceforge.net
+```
+
+**Issue**: "GetPass() failed -- assume anonymous login" warning
+
+**Solution**: This is just a warning and can be ignored. SSH key authentication still works correctly.
+
+**Verify SSH Connection**:
+
+```bash
+# Test SSH connection works
+ssh -i ~/.ssh/sourceforge_wolfi_rsa jmendezr@frs.sourceforge.net pwd
+```
+
+**Expected output**: `/home/users/j/jm/jmendezr`
+
+### SourceForge Directory Structure
+
+```
+/home/frs/project/wolfi/
+├── x86_64/           # Intel/AMD 64-bit packages
+│   ├── APKINDEX.tar.gz
+│   └── *.apk files
+├── aarch64/          # ARM 64-bit packages
+│   ├── APKINDEX.tar.gz
+│   └── *.apk files
+├── keys/             # Repository signing keys
+│   └── vejeta-wolfi.rsa.pub
+└── README.txt        # SourceForge documentation
+```
+
+---
+
 ## Background
 
 This repository was created because:
