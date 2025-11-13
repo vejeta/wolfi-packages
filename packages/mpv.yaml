@@ -10,10 +10,6 @@ package:
       - libmpv2=${{package.full-version}}
 environment:
   contents:
-    keyring:
-      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-    repositories:
-      - https://packages.wolfi.dev/os
     packages:
       - build-base
       - busybox
@@ -136,11 +132,7 @@ update:
 test:
   environment:
     contents:
-      keyring:
-      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-    repositories:
-      - https://packages.wolfi.dev/os
-    packages:
+      packages:
         - ffmpeg
         - ldd-check
         - libxpresent

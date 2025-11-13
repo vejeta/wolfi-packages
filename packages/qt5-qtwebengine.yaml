@@ -19,10 +19,6 @@ package:
     memory: 32Gi
 environment:
   contents:
-    keyring:
-      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-    repositories:
-      - https://packages.wolfi.dev/os
     packages:
       - alsa-lib-dev
       - bison
@@ -191,11 +187,7 @@ update:
 test:
   environment:
     contents:
-      keyring:
-      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-    repositories:
-      - https://packages.wolfi.dev/os
-    packages:
+      packages:
         - libnss
         - libnspr
         - qt5-qtbase

@@ -24,10 +24,6 @@ package:
       - qt5-qtwebengine
 environment:
   contents:
-    keyring:
-      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-    repositories:
-      - https://packages.wolfi.dev/os
     packages:
       - build-base
       - busybox
@@ -143,11 +139,7 @@ subpackages:
     test:
       environment:
         contents:
-          keyring:
-      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-    repositories:
-      - https://packages.wolfi.dev/os
-    packages:
+          packages:
             - busybox
       pipeline:
         - uses: test/docs
@@ -160,11 +152,7 @@ update:
 test:
   environment:
     contents:
-      keyring:
-      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-    repositories:
-      - https://packages.wolfi.dev/os
-    packages:
+      packages:
         - nodejs
         - qt5-qtbase
         - qt5-qtdeclarative
