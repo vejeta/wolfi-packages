@@ -41,6 +41,19 @@ fi
 echo "✓ Signing keys verified"
 echo ""
 
+# Check if aarch64 SourceForge repository exists (for subsequent builds)
+AARCH64_REPO_EXISTS=false
+echo "=== Checking if aarch64 repository exists on SourceForge ==="
+if wget --spider -q "$REPO_URL/$ARCH/APKINDEX.tar.gz" 2>/dev/null; then
+    echo "✓ aarch64 repository found on SourceForge - will use it for dependencies"
+    AARCH64_REPO_EXISTS=true
+else
+    echo "✓ aarch64 repository not found (first build)"
+    echo "  Will use only official Wolfi repository for dependencies"
+    AARCH64_REPO_EXISTS=false
+fi
+echo ""
+
 # List of packages in dependency order
 # Based on build_order_summary.md
 PACKAGES=(
@@ -122,8 +135,12 @@ for pkg in "${PACKAGES[@]}"; do
 
     # Build repository arguments dynamically
     # Note: Melange automatically appends /{arch} to repository URLs
-    REPO_ARGS="--repository-append https://downloads.sourceforge.net/project/wolfi"
-    REPO_ARGS="$REPO_ARGS --repository-append https://packages.wolfi.dev/os"
+    REPO_ARGS="--repository-append https://packages.wolfi.dev/os"
+
+    # Only add SourceForge repository if it exists (skip on first build)
+    if [ "$AARCH64_REPO_EXISTS" = true ]; then
+        REPO_ARGS="$REPO_ARGS --repository-append https://downloads.sourceforge.net/project/wolfi"
+    fi
 
     # Build with Melange using bubblewrap (installed in Cirrus CI)
     if melange build \
