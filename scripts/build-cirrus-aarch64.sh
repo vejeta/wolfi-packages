@@ -157,11 +157,12 @@ for pkg in "${PACKAGES[@]}"; do
     fi
 
     # Build with Melange using bubblewrap (installed in Cirrus CI)
+    # Use absolute paths for keyring files so bubblewrap can access them
     if melange build \
         --arch "$ARCH" \
-        --signing-key melange.rsa \
-        --keyring-append melange.rsa.pub \
-        --keyring-append wolfi-signing.rsa.pub \
+        --signing-key "$PWD/melange.rsa" \
+        --keyring-append "$PWD/melange.rsa.pub" \
+        --keyring-append "$PWD/wolfi-signing.rsa.pub" \
         $REPO_ARGS \
         --out-dir "$OUTPUT_DIR/$ARCH" \
         "$PACKAGE_YAML"; then
