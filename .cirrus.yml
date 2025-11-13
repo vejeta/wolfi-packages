@@ -41,9 +41,13 @@ task:
       else
         echo "Using permanent signing key from Cirrus CI encrypted variable"
 
-        # Save PKCS#8 key from environment variable
-        echo "$APK_SIGNING_KEY" > melange-pkcs8.rsa
+        # Save PKCS#8 key from environment variable (using printf to preserve formatting)
+        printf '%s\n' "$APK_SIGNING_KEY" > melange-pkcs8.rsa
         chmod 600 melange-pkcs8.rsa
+
+        # Debug: Check if key file was created correctly
+        echo "Key file size: $(wc -c < melange-pkcs8.rsa) bytes"
+        echo "First line: $(head -1 melange-pkcs8.rsa)"
 
         # Convert PKCS#8 to PKCS#1 format (required by Melange)
         openssl rsa -in melange-pkcs8.rsa -out melange.rsa -traditional
