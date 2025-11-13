@@ -72,33 +72,7 @@ jobs:
           github-token: ${{ github.token }}
           pattern: 'apk-packages-*'
 
-      - name: Check for Cirrus CI aarch64 artifacts
-        id: check-cirrus
-        continue-on-error: true
-        run: |
-          echo "=== Checking for Cirrus CI aarch64 builds ==="
-
-          # Get the latest Cirrus CI build for this repository
-          # Cirrus CI artifacts are uploaded via GitHub Checks API
-          # We'll check if there are recent successful Cirrus CI builds
-
-          CIRRUS_BUILD=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs \
-            --jq '.check_runs[] | select(.app.slug == "cirrus-ci") | select(.conclusion == "success") | .id' \
-            | head -1 || echo "")
-
-          if [ -n "$CIRRUS_BUILD" ]; then
-            echo "cirrus_available=true" >> $GITHUB_OUTPUT
-            echo "Found Cirrus CI build: $CIRRUS_BUILD"
-          else
-            echo "cirrus_available=false" >> $GITHUB_OUTPUT
-            echo "No Cirrus CI aarch64 builds found for this commit"
-            echo "This is expected if Cirrus CI hasn't run yet or if building x86_64 only"
-          fi
-        env:
-          GH_TOKEN: ${{ github.token }}
-
       - name: Download Cirrus CI artifacts (aarch64)
-        if: steps.check-cirrus.outputs.cirrus_available == 'true'
         continue-on-error: true
         run: |
           echo "=== Downloading Cirrus CI aarch64 artifacts ==="
@@ -106,22 +80,88 @@ jobs:
           # Create directory for Cirrus CI artifacts
           mkdir -p build-artifacts/cirrus-aarch64/aarch64
 
-          # Cirrus CI uploads artifacts to GitHub via artifacts API
-          # Try to find and download apk-packages-aarch64 artifact
-          CIRRUS_ARTIFACT_ID=$(gh api repos/${{ github.repository }}/actions/artifacts \
-            --jq '.artifacts[] | select(.name == "apk-packages-aarch64") | select(.expired == false) | .id' \
-            | head -1 || echo "")
+          # Query Cirrus CI GraphQL API to get the latest successful build
+          # for the master/main branch
+          CIRRUS_REPO_OWNER=$(echo "${{ github.repository }}" | cut -d/ -f1)
+          CIRRUS_REPO_NAME=$(echo "${{ github.repository }}" | cut -d/ -f2)
 
-          if [ -n "$CIRRUS_ARTIFACT_ID" ]; then
-            echo "Found Cirrus CI aarch64 artifact ID: $CIRRUS_ARTIFACT_ID"
-            gh api repos/${{ github.repository }}/actions/artifacts/$CIRRUS_ARTIFACT_ID/zip > cirrus-aarch64.zip
-            unzip -q cirrus-aarch64.zip -d build-artifacts/cirrus-aarch64/
-            echo "Downloaded $(find build-artifacts/cirrus-aarch64 -name '*.apk' | wc -l) aarch64 packages from Cirrus CI"
-          else
-            echo "No Cirrus CI aarch64 artifacts found (may not have uploaded yet)"
+          echo "Querying Cirrus CI for latest successful build on branch: ${{ github.ref_name }}"
+
+          # GraphQL query to find the latest successful build with artifacts
+          QUERY=$(cat <<'EOF'
+          {
+            ownerRepository(platform: "github", owner: "REPO_OWNER", name: "REPO_NAME") {
+              builds(last: 10, branch: "BRANCH_NAME") {
+                edges {
+                  node {
+                    id
+                    status
+                    tasks {
+                      id
+                      name
+                      status
+                      artifacts {
+                        name
+                        files {
+                          path
+                          size
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          EOF
+          )
+
+          # Replace placeholders
+          QUERY=$(echo "$QUERY" | sed "s/REPO_OWNER/$CIRRUS_REPO_OWNER/g" | sed "s/REPO_NAME/$CIRRUS_REPO_NAME/g" | sed "s/BRANCH_NAME/${{ github.ref_name }}/g")
+
+          # Query Cirrus CI API
+          RESPONSE=$(curl -s -X POST https://api.cirrus-ci.com/graphql \
+            -H "Content-Type: application/json" \
+            -d "{\"query\": $(echo "$QUERY" | jq -Rs .)}")
+
+          echo "Cirrus CI API response received"
+
+          # Find the latest successful build with aarch64 artifacts
+          BUILD_ID=$(echo "$RESPONSE" | jq -r '.data.ownerRepository.builds.edges[] | select(.node.status == "COMPLETED") | .node.id' | head -1)
+
+          if [ -z "$BUILD_ID" ]; then
+            echo "No completed Cirrus CI builds found"
+            echo "This is expected if Cirrus CI hasn't run yet or builds are still in progress"
+            exit 0
           fi
-        env:
-          GH_TOKEN: ${{ github.token }}
+
+          echo "Found Cirrus CI build ID: $BUILD_ID"
+
+          # Get artifact URLs from the build
+          TASK_ID=$(echo "$RESPONSE" | jq -r ".data.ownerRepository.builds.edges[] | select(.node.id == \"$BUILD_ID\") | .node.tasks[0].id")
+
+          if [ -z "$TASK_ID" ]; then
+            echo "No tasks found in Cirrus CI build"
+            exit 0
+          fi
+
+          echo "Downloading artifacts from task: $TASK_ID"
+
+          # Download APK files directly from Cirrus CI
+          # Artifact URL format: https://api.cirrus-ci.com/v1/artifact/task/{taskId}/{artifactPath}
+          curl -f -L "https://api.cirrus-ci.com/v1/artifact/task/$TASK_ID/build-output/aarch64" -o cirrus-aarch64.tar.gz || {
+            echo "Failed to download Cirrus CI artifacts - may not be available yet"
+            exit 0
+          }
+
+          # Extract artifacts
+          tar -xzf cirrus-aarch64.tar.gz -C build-artifacts/cirrus-aarch64/ || {
+            echo "Warning: Failed to extract Cirrus CI artifacts"
+            exit 0
+          }
+
+          APK_COUNT=$(find build-artifacts/cirrus-aarch64 -name '*.apk' | wc -l)
+          echo "Downloaded $APK_COUNT aarch64 packages from Cirrus CI"
 
       - name: Download existing packages from SourceForge (incremental mode)
         if: ${{ github.event.inputs.incremental == 'true' }}
