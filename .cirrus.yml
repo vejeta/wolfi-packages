@@ -15,10 +15,11 @@ task:
   env:
     ARCH: aarch64
     MELANGE_VERSION: v0.8.0
+    # APK_SIGNING_KEY: ENCRYPTED[to_be_configured_in_cirrus_ci_web_ui]
 
   # Instalar dependencias del sistema
   install_deps_script:
-    - apk add --no-cache curl git bash bubblewrap wget tar gzip jq
+    - apk add --no-cache curl git bash bubblewrap wget tar gzip jq openssl
 
   # Instalar Melange ARM64
   install_melange_script:
@@ -29,11 +30,34 @@ task:
     - melange version
     - rm -f melange_${MELANGE_VERSION#v}_linux_arm64.tar.gz
 
-  # Generar key de firma para Melange y descargar key oficial de Wolfi
+  # Setup signing keys (permanent key from Cirrus CI encrypted variable + official Wolfi key)
   setup_keys_script:
-    - melange keygen
+    - |
+      # Check if APK_SIGNING_KEY is set (encrypted variable from Cirrus CI)
+      if [ -z "$APK_SIGNING_KEY" ]; then
+        echo "WARNING: APK_SIGNING_KEY not set - falling back to temporary key"
+        echo "For production builds, add APK_SIGNING_KEY as encrypted variable in Cirrus CI settings"
+        melange keygen
+      else
+        echo "Using permanent signing key from Cirrus CI encrypted variable"
+
+        # Save PKCS#8 key from environment variable
+        echo "$APK_SIGNING_KEY" > melange-pkcs8.rsa
+        chmod 600 melange-pkcs8.rsa
+
+        # Convert PKCS#8 to PKCS#1 format (required by Melange)
+        openssl rsa -in melange-pkcs8.rsa -out melange.rsa -traditional
+        chmod 600 melange.rsa
+        rm melange-pkcs8.rsa
+
+        # Extract public key from private key
+        openssl rsa -in melange.rsa -pubout > melange.rsa.pub
+        chmod 644 melange.rsa.pub
+
+        echo "Signing key converted and ready for use"
+      fi
     - wget -q -O wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-    - ls -lh melange.rsa* wolfi-signing.rsa.pub
+    - ls -lh melange.rsa melange.rsa.pub wolfi-signing.rsa.pub
 
   # Ejecutar script de build para todos los packages aarch64
   build_script:
