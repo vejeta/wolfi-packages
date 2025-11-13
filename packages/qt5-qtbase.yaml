@@ -14,6 +14,10 @@ package:
     memory: 16Gi
 environment:
   contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
     packages:
       - at-spi2-core-dev
       - bison

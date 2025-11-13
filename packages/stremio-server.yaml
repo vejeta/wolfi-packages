@@ -14,6 +14,10 @@ package:
 
 environment:
   contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
     packages:
       - busybox
       - ca-certificates-bundle
@@ -80,7 +84,11 @@ pipeline:
 test:
   environment:
     contents:
-      packages:
+      keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
         - nodejs
         - stremio
   pipeline:

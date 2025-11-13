@@ -11,6 +11,10 @@ package:
       - wolfi-baselayout
 environment:
   contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
     packages:
       - autoconf
       - automake
@@ -107,7 +111,11 @@ subpackages:
     test:
       environment:
         contents:
-          packages:
+          keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
             - gcc
             - glibc-dev
             - wget
@@ -151,7 +159,11 @@ subpackages:
 test:
   environment:
     contents:
-      packages:
+      keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
         - minizip
   pipeline:
     - uses: test/hardening-check

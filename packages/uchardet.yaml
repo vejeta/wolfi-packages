@@ -7,6 +7,10 @@ package:
     - license: MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later
 environment:
   contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
     packages:
       - build-base
       - busybox
