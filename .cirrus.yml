@@ -15,7 +15,8 @@ task:
   env:
     ARCH: aarch64
     MELANGE_VERSION: v0.8.0
-    APK_SIGNING_KEY: ENCRYPTED[!3b7a43e99d6f9d13a6d3e23fcb7d96c3b54a5ad44a760b038f90ca040be9d4a74a90d623aa4d85bd4d2cd74a09c9ad56!]
+    APK_SIGNING_KEY: ENCRYPTED[!1ef534804032cc4990b3feb5c4dbe292a23b5003dbfacd059aa9ca3ea63a950eb975838ae6e1305303df4217c8caf97c!]
+                         
 
   # Instalar dependencias del sistema
   install_deps_script:
