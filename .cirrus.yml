@@ -29,10 +29,11 @@ task:
     - melange version
     - rm -f melange_${MELANGE_VERSION#v}_linux_arm64.tar.gz
 
-  # Generar key de firma para Melange
+  # Generar key de firma para Melange y descargar key oficial de Wolfi
   setup_keys_script:
     - melange keygen
-    - ls -lh melange.rsa*
+    - wget -q -O wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    - ls -lh melange.rsa* wolfi-signing.rsa.pub
 
   # Ejecutar script de build para todos los packages aarch64
   build_script:

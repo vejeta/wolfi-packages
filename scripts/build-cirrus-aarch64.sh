@@ -38,6 +38,11 @@ if [ ! -f "melange.rsa.pub" ]; then
     exit 1
 fi
 
+if [ ! -f "wolfi-signing.rsa.pub" ]; then
+    echo "ERROR: Wolfi signing key wolfi-signing.rsa.pub not found!"
+    exit 1
+fi
+
 echo "✓ Signing keys verified"
 echo ""
 
@@ -156,6 +161,7 @@ for pkg in "${PACKAGES[@]}"; do
         --arch "$ARCH" \
         --signing-key melange.rsa \
         --keyring-append melange.rsa.pub \
+        --keyring-append wolfi-signing.rsa.pub \
         $REPO_ARGS \
         --out-dir "$OUTPUT_DIR/$ARCH" \
         "$PACKAGE_YAML"; then
