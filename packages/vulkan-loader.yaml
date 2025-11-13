@@ -1,59 +1,58 @@
 package:
   name: vulkan-loader
-  version: "1.4.330"
+  version: 1.4.330
   epoch: 1
   description: Vulkan Installable Client Driver (ICD) Loader
   copyright:
-    - license: Apache-2.0
+  - license: Apache-2.0
 environment:
   contents:
     packages:
-      - build-base
-      - busybox
-      - ca-certificates-bundle
-      - cmake
-      - libx11-dev
-      - libxrandr-dev
-      - libxrender-dev
-      - samurai
-      - vulkan-headers
-      - wayland-dev
+    - build-base
+    - busybox
+    - ca-certificates-bundle
+    - cmake
+    - libx11-dev
+    - libxrandr-dev
+    - libxrender-dev
+    - samurai
+    - vulkan-headers
+    - wayland-dev
+    keyring:
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+    - https://packages.wolfi.dev/os
 pipeline:
-  - uses: git-checkout
-    with:
-      repository: https://github.com/KhronosGroup/Vulkan-Loader
-      tag: v${{package.version}}
-      expected-commit: 466498bc64eb77955c3b782f0127520548224de0
-  - runs: |
-      cmake -B build -G Ninja \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX=/usr \
-        -DCMAKE_INSTALL_LIBDIR=lib \
-        -DCMAKE_INSTALL_SYSCONFDIR=/etc \
-        -DCMAKE_INSTALL_DATADIR=share \
-        -DCMAKE_SKIP_RPATH=True \
-        -DVULKAN_HEADERS_INSTALL_DIR=/usr
-      cmake --build build
-  - runs: |
-      DESTDIR="${{targets.destdir}}" cmake --install build
-  - uses: strip
+- uses: git-checkout
+  with:
+    repository: https://github.com/KhronosGroup/Vulkan-Loader
+    tag: v${{package.version}}
+    expected-commit: 466498bc64eb77955c3b782f0127520548224de0
+- runs: "cmake -B build -G Ninja \\\n  -DCMAKE_BUILD_TYPE=Release \\\n  -DCMAKE_INSTALL_PREFIX=/usr\
+    \ \\\n  -DCMAKE_INSTALL_LIBDIR=lib \\\n  -DCMAKE_INSTALL_SYSCONFDIR=/etc \\\n\
+    \  -DCMAKE_INSTALL_DATADIR=share \\\n  -DCMAKE_SKIP_RPATH=True \\\n  -DVULKAN_HEADERS_INSTALL_DIR=/usr\n\
+    cmake --build build\n"
+- runs: 'DESTDIR="${{targets.destdir}}" cmake --install build
+
+    '
+- uses: strip
 subpackages:
-  - name: vulkan-loader-dev
+- name: vulkan-loader-dev
+  pipeline:
+  - uses: split/dev
+  dependencies:
+    runtime:
+    - vulkan-loader
+    - vulkan-headers
+  description: vulkan-loader development files
+  test:
     pipeline:
-      - uses: split/dev
-    dependencies:
-      runtime:
-        - vulkan-loader
-        - vulkan-headers
-    description: vulkan-loader development files
-    test:
-      pipeline:
-        - uses: test/pkgconf
-        - uses: test/tw/ldd-check
+    - uses: test/pkgconf
+    - uses: test/tw/ldd-check
 update:
   enabled: true
   ignore-regex-patterns:
-    - ulkan-sdk
+  - ulkan-sdk
   github:
     identifier: KhronosGroup/Vulkan-Loader
     strip-prefix: v
@@ -63,38 +62,31 @@ test:
   environment:
     contents:
       packages:
-        - build-base
-        - gcc
-        - libx11
-        - libxrandr
-        - libxrender
-        - vulkan-headers
+      - build-base
+      - gcc
+      - libx11
+      - libxrandr
+      - libxrender
+      - vulkan-headers
   pipeline:
-    - uses: test/tw/ldd-check
-    - uses: test/pkgconf
-    - name: Verify Vulkan Loader Installation
-      runs: |
-        # Check if the Vulkan loader library files exist
-        ls /usr/lib/libvulkan.so || exit 1
-        ls /usr/lib/libvulkan.so.1 || exit 1
-    - name: Basic Vulkan loader test
-      runs: |
-        # Create a basic C program to verify Vulkan loader functionality
-        echo '#include <vulkan/vulkan.h>
-        int main() {
-          VkInstance instance;
-          VkApplicationInfo appInfo = {};
-          appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-          appInfo.pApplicationName = "Test";
-          VkInstanceCreateInfo createInfo = {};
-          createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-          createInfo.pApplicationInfo = &appInfo;
-          vkCreateInstance(&createInfo, NULL, &instance);
-          return 0;
-        }' > test_vulkan_loader.c
+  - uses: test/tw/ldd-check
+  - uses: test/pkgconf
+  - name: Verify Vulkan Loader Installation
+    runs: '# Check if the Vulkan loader library files exist
 
-        # Compile the test program to ensure it links to the Vulkan loader
-        gcc -o test_vulkan_loader test_vulkan_loader.c -lvulkan || exit 1
+      ls /usr/lib/libvulkan.so || exit 1
 
-        # Run the compiled program to verify the Vulkan loader is working
-        ./test_vulkan_loader || exit 1
+      ls /usr/lib/libvulkan.so.1 || exit 1
+
+      '
+  - name: Basic Vulkan loader test
+    runs: "# Create a basic C program to verify Vulkan loader functionality\necho\
+      \ '#include <vulkan/vulkan.h>\nint main() {\n  VkInstance instance;\n  VkApplicationInfo\
+      \ appInfo = {};\n  appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;\n  appInfo.pApplicationName\
+      \ = \"Test\";\n  VkInstanceCreateInfo createInfo = {};\n  createInfo.sType =\
+      \ VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;\n  createInfo.pApplicationInfo = &appInfo;\n\
+      \  vkCreateInstance(&createInfo, NULL, &instance);\n  return 0;\n}' > test_vulkan_loader.c\n\
+      \n# Compile the test program to ensure it links to the Vulkan loader\ngcc -o\
+      \ test_vulkan_loader test_vulkan_loader.c -lvulkan || exit 1\n\n# Run the compiled\
+      \ program to verify the Vulkan loader is working\n./test_vulkan_loader || exit\
+      \ 1\n"

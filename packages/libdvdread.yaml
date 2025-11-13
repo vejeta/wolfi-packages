@@ -4,60 +4,64 @@ package:
   epoch: 0
   description: Library for reading DVD video disks
   copyright:
-    - license: GPL-2.0-or-later
+  - license: GPL-2.0-or-later
 environment:
   contents:
     packages:
-      - autoconf
-      - automake
-      - bash
-      - build-base
-      - busybox
-      - ca-certificates-bundle
-      - libcdio-dev
-      - libtool
-      - pkgconf
-      - pkgconf-dev
-      - wolfi-base
+    - autoconf
+    - automake
+    - bash
+    - build-base
+    - busybox
+    - ca-certificates-bundle
+    - libcdio-dev
+    - libtool
+    - pkgconf
+    - pkgconf-dev
+    - wolfi-base
+    keyring:
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+    - https://packages.wolfi.dev/os
 pipeline:
-  - uses: git-checkout
-    with:
-      repository: https://code.videolan.org/videolan/libdvdread.git
-      tag: ${{package.version}}
-      expected-commit: 0e020921726ee812e633959d9ad6315ff58b902b
-  - runs: |
-      # Remove libtool directory if it exists (conflicts with libtool script generation)
-      [ -d libtool ] && rm -rf libtool || true
-      autoreconf -fi
-  - runs: |
-      # Configure requires bash due to autoconf 2.72 syntax (case e in pattern)
-      /bin/bash ./configure \
-        --prefix=/usr \
-        --disable-static \
-        --enable-shared
-  - uses: autoconf/make
-  - uses: autoconf/make-install
-  - uses: strip
+- uses: git-checkout
+  with:
+    repository: https://code.videolan.org/videolan/libdvdread.git
+    tag: ${{package.version}}
+    expected-commit: 0e020921726ee812e633959d9ad6315ff58b902b
+- runs: '# Remove libtool directory if it exists (conflicts with libtool script generation)
+
+    [ -d libtool ] && rm -rf libtool || true
+
+    autoreconf -fi
+
+    '
+- runs: "# Configure requires bash due to autoconf 2.72 syntax (case e in pattern)\n\
+    /bin/bash ./configure \\\n  --prefix=/usr \\\n  --disable-static \\\n  --enable-shared\n"
+- uses: autoconf/make
+- uses: autoconf/make-install
+- uses: strip
 subpackages:
-  - name: libdvdread-dev
+- name: libdvdread-dev
+  pipeline:
+  - uses: split/dev
+  dependencies:
+    runtime:
+    - libdvdread
+  description: libdvdread development files
+  test:
     pipeline:
-      - uses: split/dev
-    dependencies:
-      runtime:
-        - libdvdread
-    description: libdvdread development files
-    test:
-      pipeline:
-        - uses: test/pkgconf
-        - uses: test/tw/ldd-check
+    - uses: test/pkgconf
+    - uses: test/tw/ldd-check
 update:
   enabled: true
   release-monitor:
     identifier: 5614
 test:
   pipeline:
-    - name: Verify library exists
-      runs: |
-        test -f /usr/lib/libdvdread.so
-    - uses: test/pkgconf
-    - uses: test/tw/ldd-check
+  - name: Verify library exists
+    runs: 'test -f /usr/lib/libdvdread.so
+
+      '
+  - uses: test/pkgconf
+  - uses: test/tw/ldd-check

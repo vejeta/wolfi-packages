@@ -4,58 +4,66 @@ package:
   epoch: 0
   description: Lightweight JavaScript interpreter
   copyright:
-    - license: ISC
+  - license: ISC
 environment:
   contents:
     packages:
-      - build-base
-      - busybox
-      - ca-certificates-bundle
-      - curl
-      - python3
-      - readline-dev
-      - wget
-      - wolfi-base
+    - build-base
+    - busybox
+    - ca-certificates-bundle
+    - curl
+    - python3
+    - readline-dev
+    - wget
+    - wolfi-base
+    keyring:
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+    - https://packages.wolfi.dev/os
 pipeline:
-  - uses: git-checkout
-    with:
-      repository: https://github.com/ArtifexSoftware/mujs.git
-      tag: ${{package.version}}
-      expected-commit: 05cd646bad083ed45e9e1c9846ea671d461ced30
-  - runs: |
-      # Pre-download Unicode data files needed by the build (with retry and verbose errors)
-      curl --retry 3 --retry-delay 2 -f -o UnicodeData.txt https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt || \
-        wget -O UnicodeData.txt https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt
-      curl --retry 3 --retry-delay 2 -f -o SpecialCasing.txt https://www.unicode.org/Public/17.0.0/ucd/SpecialCasing.txt || \
-        wget -O SpecialCasing.txt https://www.unicode.org/Public/17.0.0/ucd/SpecialCasing.txt
-  - uses: autoconf/make
-    with:
-      opts: |
-        prefix=/usr \
-        CFLAGS="-fPIC" \
-        release
-  - runs: |
-      make prefix=/usr DESTDIR="${{targets.destdir}}" install-shared
-  - uses: strip
+- uses: git-checkout
+  with:
+    repository: https://github.com/ArtifexSoftware/mujs.git
+    tag: ${{package.version}}
+    expected-commit: 05cd646bad083ed45e9e1c9846ea671d461ced30
+- runs: "# Pre-download Unicode data files needed by the build (with retry and verbose\
+    \ errors)\ncurl --retry 3 --retry-delay 2 -f -o UnicodeData.txt https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt\
+    \ || \\\n  wget -O UnicodeData.txt https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt\n\
+    curl --retry 3 --retry-delay 2 -f -o SpecialCasing.txt https://www.unicode.org/Public/17.0.0/ucd/SpecialCasing.txt\
+    \ || \\\n  wget -O SpecialCasing.txt https://www.unicode.org/Public/17.0.0/ucd/SpecialCasing.txt\n"
+- uses: autoconf/make
+  with:
+    opts: 'prefix=/usr \
+
+      CFLAGS="-fPIC" \
+
+      release
+
+      '
+- runs: 'make prefix=/usr DESTDIR="${{targets.destdir}}" install-shared
+
+    '
+- uses: strip
 subpackages:
-  - name: mujs-dev
+- name: mujs-dev
+  pipeline:
+  - uses: split/dev
+  dependencies:
+    runtime:
+    - mujs
+  description: mujs development files
+  test:
     pipeline:
-      - uses: split/dev
-    dependencies:
-      runtime:
-        - mujs
-    description: mujs development files
-    test:
-      pipeline:
-        - uses: test/pkgconf
+    - uses: test/pkgconf
 update:
   enabled: true
   release-monitor:
     identifier: 269367
 test:
   pipeline:
-    - uses: test/tw/ldd-check
-    - name: Test mujs binary
-      runs: |
-        mujs -v
-    - uses: test/pkgconf
+  - uses: test/tw/ldd-check
+  - name: Test mujs binary
+    runs: 'mujs -v
+
+      '
+  - uses: test/pkgconf

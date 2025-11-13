@@ -1,48 +1,52 @@
 package:
   name: libass
-  version: "0.17.4"
+  version: 0.17.4
   epoch: 3
   description: Portable library for rendering ASS/SSA subtitles
   copyright:
-    - license: ISC
+  - license: ISC
 environment:
   contents:
     packages:
-      - build-base
-      - busybox
-      - cmake
-      - fontconfig-dev
-      - freetype-dev
-      - fribidi-dev
-      - gcc
-      - glibc-dev
-      - harfbuzz-dev
-      - meson
-      - pkgconf
+    - build-base
+    - busybox
+    - cmake
+    - fontconfig-dev
+    - freetype-dev
+    - fribidi-dev
+    - gcc
+    - glibc-dev
+    - harfbuzz-dev
+    - meson
+    - pkgconf
+    keyring:
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+    - https://packages.wolfi.dev/os
 pipeline:
-  - uses: git-checkout
-    with:
-      expected-commit: bbb3c7f1570a4a021e52683f3fbdf74fe492ae84
-      repository: https://github.com/libass/libass
-      tag: ${{package.version}}
-  - uses: meson/configure
-    with:
-      opts: -Ddefault_library=shared
-  - uses: meson/compile
-  - uses: meson/install
-  - uses: strip
+- uses: git-checkout
+  with:
+    expected-commit: bbb3c7f1570a4a021e52683f3fbdf74fe492ae84
+    repository: https://github.com/libass/libass
+    tag: ${{package.version}}
+- uses: meson/configure
+  with:
+    opts: -Ddefault_library=shared
+- uses: meson/compile
+- uses: meson/install
+- uses: strip
 subpackages:
-  - name: libass-dev
+- name: libass-dev
+  pipeline:
+  - uses: split/dev
+  dependencies:
+    runtime:
+    - libass
+  description: libass development files
+  test:
     pipeline:
-      - uses: split/dev
-    dependencies:
-      runtime:
-        - libass
-    description: libass development files
-    test:
-      pipeline:
-        - uses: test/pkgconf
-        - uses: test/tw/ldd-check
+    - uses: test/pkgconf
+    - uses: test/tw/ldd-check
 update:
   enabled: true
   github:
@@ -50,8 +54,9 @@ update:
     use-tag: true
 test:
   pipeline:
-    - name: Verify library exists
-      runs: |
-        test -f /usr/lib/libass.so.9
-    - uses: test/pkgconf
-    - uses: test/tw/ldd-check
+  - name: Verify library exists
+    runs: 'test -f /usr/lib/libass.so.9
+
+      '
+  - uses: test/pkgconf
+  - uses: test/tw/ldd-check
