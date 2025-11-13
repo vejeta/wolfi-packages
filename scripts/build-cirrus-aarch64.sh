@@ -38,10 +38,8 @@ if [ ! -f "melange.rsa.pub" ]; then
     exit 1
 fi
 
-if [ ! -f "wolfi-signing.rsa.pub" ]; then
-    echo "ERROR: Wolfi signing key wolfi-signing.rsa.pub not found!"
-    exit 1
-fi
+# Note: wolfi-signing.rsa.pub is NOT verified locally
+# Melange downloads it automatically from https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
 
 echo "✓ Signing keys verified"
 echo ""
@@ -157,12 +155,12 @@ for pkg in "${PACKAGES[@]}"; do
     fi
 
     # Build with Melange using bubblewrap (installed in Cirrus CI)
-    # Use absolute paths for keyring files so bubblewrap can access them
+    # Use absolute path for local keyring and URL for official Wolfi keyring
     if melange build \
         --arch "$ARCH" \
         --signing-key "$PWD/melange.rsa" \
         --keyring-append "$PWD/melange.rsa.pub" \
-        --keyring-append "$PWD/wolfi-signing.rsa.pub" \
+        --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
         $REPO_ARGS \
         --out-dir "$OUTPUT_DIR/$ARCH" \
         "$PACKAGE_YAML"; then

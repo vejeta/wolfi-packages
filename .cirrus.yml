@@ -61,8 +61,9 @@ task:
 
         echo "Signing key converted and ready for use"
       fi
-    - wget -q -O wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-    - ls -lh melange.rsa melange.rsa.pub wolfi-signing.rsa.pub
+    # Note: wolfi-signing.rsa.pub is downloaded by Melange via HTTPS URL
+    # No need to download it locally - Melange fetches it during build
+    - ls -lh melange.rsa melange.rsa.pub
 
   # Ejecutar script de build para todos los packages aarch64
   build_script:
