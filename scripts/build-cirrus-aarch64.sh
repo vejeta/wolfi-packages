@@ -44,13 +44,22 @@ echo ""
 # Check if aarch64 SourceForge repository exists (for subsequent builds)
 AARCH64_REPO_EXISTS=false
 echo "=== Checking if aarch64 repository exists on SourceForge ==="
-if wget --spider -q "$REPO_URL/$ARCH/APKINDEX.tar.gz" 2>/dev/null; then
-    echo "✓ aarch64 repository found on SourceForge - will use it for dependencies"
-    AARCH64_REPO_EXISTS=true
+
+# Download and check if APKINDEX is valid (SourceForge returns empty file for non-existent paths)
+if wget -q -O /tmp/test-apkindex.tar.gz "$REPO_URL/$ARCH/APKINDEX.tar.gz" 2>/dev/null; then
+    # Check if file is larger than 100 bytes (empty APKINDEX from SourceForge is ~89 bytes)
+    FILE_SIZE=$(stat -c%s "/tmp/test-apkindex.tar.gz" 2>/dev/null || echo "0")
+    if [ "$FILE_SIZE" -gt 100 ]; then
+        echo "✓ aarch64 repository found on SourceForge - will use it for dependencies"
+        AARCH64_REPO_EXISTS=true
+    else
+        echo "✓ aarch64 repository not found (empty APKINDEX from SourceForge)"
+        echo "  Will use only official Wolfi repository for dependencies"
+    fi
+    rm -f /tmp/test-apkindex.tar.gz
 else
     echo "✓ aarch64 repository not found (first build)"
     echo "  Will use only official Wolfi repository for dependencies"
-    AARCH64_REPO_EXISTS=false
 fi
 echo ""
 
