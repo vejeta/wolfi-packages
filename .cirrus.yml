@@ -20,7 +20,7 @@ task:
 
   # Instalar dependencias del sistema
   install_deps_script:
-    - apk add --no-cache curl git bash qemu-system-aarch64 wget tar gzip jq openssl
+    - apk add --no-cache curl git bash qemu-system-aarch64 linux-virt wget tar gzip jq openssl
 
   # Instalar Melange ARM64
   install_melange_script:
@@ -41,6 +41,19 @@ task:
       chmod +x /usr/local/bin/melange
       melange version
       rm -f melange_${ACTUAL_VERSION#v}_linux_arm64.tar.gz
+
+  # Setup kernel for QEMU runner (QEMU needs a kernel image to boot VM)
+  setup_kernel_script:
+    - |
+      # QEMU runner requires a kernel image - use the one from linux-virt package
+      KERNEL_PATH="/boot/vmlinuz-virt"
+      if [ ! -f "$KERNEL_PATH" ]; then
+        echo "ERROR: Kernel not found at $KERNEL_PATH"
+        ls -lh /boot/
+        exit 1
+      fi
+      echo "Kernel available at: $KERNEL_PATH"
+      echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
 
   # Setup signing keys (permanent key from Cirrus CI encrypted variable + official Wolfi key)
   setup_keys_script:
