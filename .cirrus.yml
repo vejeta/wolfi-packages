@@ -20,7 +20,7 @@ task:
 
   # Instalar dependencias del sistema
   install_deps_script:
-    - apk add --no-cache curl git bash bubblewrap wget tar gzip jq openssl
+    - apk add --no-cache curl git bash docker-cli wget tar gzip jq openssl
 
   # Instalar Melange ARM64
   install_melange_script:
