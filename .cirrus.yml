@@ -14,7 +14,7 @@ task:
 
   env:
     ARCH: aarch64
-    MELANGE_VERSION: v0.18.1
+    MELANGE_VERSION: latest
     APK_SIGNING_KEY: ENCRYPTED[!1ef534804032cc4990b3feb5c4dbe292a23b5003dbfacd059aa9ca3ea63a950eb975838ae6e1305303df4217c8caf97c!]
                          
 
@@ -24,12 +24,23 @@ task:
 
   # Instalar Melange ARM64
   install_melange_script:
-    - wget -q https://github.com/chainguard-dev/melange/releases/download/${MELANGE_VERSION}/melange_${MELANGE_VERSION#v}_linux_arm64.tar.gz
-    - tar -xzf melange_${MELANGE_VERSION#v}_linux_arm64.tar.gz
-    - find . -name "melange" -type f -exec mv {} /usr/local/bin/ \;
-    - chmod +x /usr/local/bin/melange
-    - melange version
-    - rm -f melange_${MELANGE_VERSION#v}_linux_arm64.tar.gz
+    - |
+      if [ "$MELANGE_VERSION" = "latest" ]; then
+        # Get latest release tag from GitHub API
+        ACTUAL_VERSION=$(curl -s https://api.github.com/repos/chainguard-dev/melange/releases/latest | jq -r '.tag_name')
+        echo "Using Melange latest version: $ACTUAL_VERSION"
+      else
+        ACTUAL_VERSION="$MELANGE_VERSION"
+        echo "Using Melange version: $ACTUAL_VERSION"
+      fi
+
+      # Download and install Melange
+      wget -q https://github.com/chainguard-dev/melange/releases/download/${ACTUAL_VERSION}/melange_${ACTUAL_VERSION#v}_linux_arm64.tar.gz
+      tar -xzf melange_${ACTUAL_VERSION#v}_linux_arm64.tar.gz
+      find . -name "melange" -type f -exec mv {} /usr/local/bin/ \;
+      chmod +x /usr/local/bin/melange
+      melange version
+      rm -f melange_${ACTUAL_VERSION#v}_linux_arm64.tar.gz
 
   # Setup signing keys (permanent key from Cirrus CI encrypted variable + official Wolfi key)
   setup_keys_script:
