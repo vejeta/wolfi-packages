@@ -32,19 +32,34 @@ task:
       cat > /usr/bin/qemu-system-aarch64 << 'EOF'
       #!/bin/sh
       # QEMU wrapper to force TCG acceleration instead of KVM
+      # Also adds machine type and memory limit to fix addressing issues
       # KVM is not available in Cirrus CI ARM containers
-
-      # Debug: Log all arguments to file for troubleshooting
-      echo "=== QEMU invocation at $(date) ===" >> /tmp/qemu-debug.log
-      echo "Arguments:" >> /tmp/qemu-debug.log
-      for arg in "$@"; do
-        echo "  - '$arg'" >> /tmp/qemu-debug.log
-      done
 
       # Build new argument list
       new_args=""
       prev_arg=""
+      has_machine=false
+      has_memory=false
 
+      # Check if machine and memory arguments are present
+      for arg in "$@"; do
+        case "$arg" in
+          -machine) has_machine=true ;;
+          -m) has_memory=true ;;
+        esac
+      done
+
+      # Add machine type if missing (fixes 32-bit addressing limitation)
+      if [ "$has_machine" = false ]; then
+        new_args="$new_args '-machine' 'virt'"
+      fi
+
+      # Add memory limit if missing (4GB should be enough for package builds)
+      if [ "$has_memory" = false ]; then
+        new_args="$new_args '-m' '4G'"
+      fi
+
+      # Process original arguments
       for arg in "$@"; do
         if [ "$prev_arg" = "-accel" ] && [ "$arg" = "kvm" ]; then
           # Replace kvm with tcg,thread=multi
