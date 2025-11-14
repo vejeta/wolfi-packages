@@ -35,13 +35,16 @@ task:
       # Also adds machine type and memory limit to fix addressing issues
       # KVM is not available in Cirrus CI ARM containers
 
-      # Build new argument list
-      new_args=""
-      prev_arg=""
-      has_machine=false
-      has_memory=false
+      # Debug logging
+      echo "=== QEMU wrapper invoked at $(date) ===" >> /tmp/qemu-debug.log
+      echo "Original arguments:" >> /tmp/qemu-debug.log
+      for arg in "$@"; do
+        echo "  '$arg'" >> /tmp/qemu-debug.log
+      done
 
       # Check if machine and memory arguments are present
+      has_machine=false
+      has_memory=false
       for arg in "$@"; do
         case "$arg" in
           -machine) has_machine=true ;;
@@ -49,29 +52,36 @@ task:
         esac
       done
 
-      # Add machine type if missing (fixes 32-bit addressing limitation)
+      echo "has_machine=$has_machine, has_memory=$has_memory" >> /tmp/qemu-debug.log
+
+      # Build new argument list - start with machine and memory if missing
       if [ "$has_machine" = false ]; then
-        new_args="$new_args '-machine' 'virt'"
+        echo "Adding -machine virt" >> /tmp/qemu-debug.log
+        set -- -machine virt "$@"
       fi
 
-      # Add memory limit if missing (4GB should be enough for package builds)
       if [ "$has_memory" = false ]; then
-        new_args="$new_args '-m' '4G'"
+        echo "Adding -m 4G" >> /tmp/qemu-debug.log
+        set -- -m 4G "$@"
       fi
 
-      # Process original arguments
+      # Process arguments to replace -accel kvm with -accel tcg
+      new_args=""
+      prev_arg=""
       for arg in "$@"; do
         if [ "$prev_arg" = "-accel" ] && [ "$arg" = "kvm" ]; then
           # Replace kvm with tcg,thread=multi
-          new_args="$new_args tcg,thread=multi"
+          escaped=$(printf '%s' "tcg,thread=multi" | sed "s/'/'\\\\''/g")
+          new_args="$new_args '$escaped'"
         else
           # Properly quote each argument
-          # Escape single quotes and wrap in single quotes
           escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
           new_args="$new_args '$escaped'"
         fi
         prev_arg="$arg"
       done
+
+      echo "Final command: /usr/bin/qemu-system-aarch64.real $new_args" >> /tmp/qemu-debug.log
 
       # Execute with eval to properly handle quoted arguments
       eval exec /usr/bin/qemu-system-aarch64.real $new_args
