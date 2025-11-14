@@ -61,8 +61,8 @@ task:
       fi
 
       if [ "$has_memory" = false ]; then
-        echo "Adding -m 4G" >> /tmp/qemu-debug.log
-        set -- -m 4G "$@"
+        echo "Adding -m 16G" >> /tmp/qemu-debug.log
+        set -- -m 16G "$@"
       fi
 
       # Process arguments to replace -accel kvm with -accel tcg
