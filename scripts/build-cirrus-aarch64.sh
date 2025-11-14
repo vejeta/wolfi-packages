@@ -156,6 +156,11 @@ for pkg in "${PACKAGES[@]}"; do
         REPO_ARGS="$REPO_ARGS --repository-append https://downloads.sourceforge.net/project/wolfi"
     fi
 
+    # Export kernel path for Melange QEMU runner
+    # Melange's QEMU runner needs QEMU_KERNEL_IMAGE environment variable to locate the kernel
+    # $CIRRUS_ENV only persists between Cirrus CI script blocks, not to subprocesses
+    export QEMU_KERNEL_IMAGE="/boot/vmlinuz-virt"
+
     # Build with Melange using QEMU runner (works in Alpine container without special privileges)
     # Use absolute paths for keyring files so the runner can access them
     if melange build \
