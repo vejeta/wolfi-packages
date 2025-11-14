@@ -11,7 +11,6 @@ task:
     image: alpine:latest
     cpu: 8
     memory: 24G
-    kvm: true  # Enable KVM access for QEMU acceleration
 
   env:
     ARCH: aarch64
@@ -22,6 +21,44 @@ task:
   # Instalar dependencias del sistema
   install_deps_script:
     - apk add --no-cache curl git bash qemu-system-aarch64 linux-virt wget tar gzip jq openssl
+
+  # Create QEMU wrapper to force TCG instead of KVM (KVM not available in container)
+  setup_qemu_wrapper_script:
+    - |
+      # Move real QEMU binary
+      mv /usr/bin/qemu-system-aarch64 /usr/bin/qemu-system-aarch64.real
+
+      # Create wrapper script that replaces -accel kvm with -accel tcg,thread=multi
+      cat > /usr/bin/qemu-system-aarch64 << 'EOF'
+      #!/bin/sh
+      # QEMU wrapper to force TCG acceleration instead of KVM
+      # KVM is not available in Cirrus CI ARM containers
+
+      args=""
+      skip_next=false
+
+      for arg in "$@"; do
+        if [ "$skip_next" = true ]; then
+          # Replace kvm with tcg,thread=multi
+          if [ "$arg" = "kvm" ]; then
+            args="$args tcg,thread=multi"
+          else
+            args="$args $arg"
+          fi
+          skip_next=false
+        elif [ "$arg" = "-accel" ]; then
+          args="$args $arg"
+          skip_next=true
+        else
+          args="$args $arg"
+        fi
+      done
+
+      exec /usr/bin/qemu-system-aarch64.real $args
+      EOF
+
+      chmod +x /usr/bin/qemu-system-aarch64
+      echo "QEMU wrapper installed - will use TCG instead of KVM"
 
   # Instalar Melange ARM64
   install_melange_script:
