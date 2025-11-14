@@ -194,6 +194,14 @@ for pkg in "${PACKAGES[@]}"; do
 
         echo "❌ FAILED to build: $pkg (failed after ${DURATION_MIN}m ${DURATION_SEC}s)"
         FAILED_PACKAGES+=("$pkg")
+
+        # Show QEMU debug log if available
+        if [ -f /tmp/qemu-debug.log ]; then
+            echo "   === QEMU Debug Log ==="
+            tail -50 /tmp/qemu-debug.log
+            echo "   ====================="
+        fi
+
         echo "   Continuing with next package..."
     fi
 

@@ -34,9 +34,12 @@ task:
       # QEMU wrapper to force TCG acceleration instead of KVM
       # KVM is not available in Cirrus CI ARM containers
 
-      # Use exec to replace -accel kvm with -accel tcg,thread=multi
-      # We need to preserve argument boundaries, so we use exec with "$@" directly
-      # and sed to do the replacement in the command line
+      # Debug: Log all arguments to file for troubleshooting
+      echo "=== QEMU invocation at $(date) ===" >> /tmp/qemu-debug.log
+      echo "Arguments:" >> /tmp/qemu-debug.log
+      for arg in "$@"; do
+        echo "  - '$arg'" >> /tmp/qemu-debug.log
+      done
 
       # Build new argument list
       new_args=""
