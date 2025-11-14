@@ -163,6 +163,7 @@ for pkg in "${PACKAGES[@]}"; do
         --signing-key "$PWD/melange.rsa" \
         --keyring-append "$PWD/melange.rsa.pub" \
         --keyring-append "$PWD/wolfi-signing.rsa.pub" \
+        --pipeline-dir "$PWD/pipelines" \
         $REPO_ARGS \
         --out-dir "$OUTPUT_DIR/$ARCH" \
         "$PACKAGE_YAML"; then
