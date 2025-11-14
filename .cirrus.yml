@@ -34,27 +34,29 @@ task:
       # QEMU wrapper to force TCG acceleration instead of KVM
       # KVM is not available in Cirrus CI ARM containers
 
-      args=""
-      skip_next=false
+      # Use exec to replace -accel kvm with -accel tcg,thread=multi
+      # We need to preserve argument boundaries, so we use exec with "$@" directly
+      # and sed to do the replacement in the command line
+
+      # Build new argument list
+      new_args=""
+      prev_arg=""
 
       for arg in "$@"; do
-        if [ "$skip_next" = true ]; then
+        if [ "$prev_arg" = "-accel" ] && [ "$arg" = "kvm" ]; then
           # Replace kvm with tcg,thread=multi
-          if [ "$arg" = "kvm" ]; then
-            args="$args tcg,thread=multi"
-          else
-            args="$args $arg"
-          fi
-          skip_next=false
-        elif [ "$arg" = "-accel" ]; then
-          args="$args $arg"
-          skip_next=true
+          new_args="$new_args tcg,thread=multi"
         else
-          args="$args $arg"
+          # Properly quote each argument
+          # Escape single quotes and wrap in single quotes
+          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
+          new_args="$new_args '$escaped'"
         fi
+        prev_arg="$arg"
       done
 
-      exec /usr/bin/qemu-system-aarch64.real $args
+      # Execute with eval to properly handle quoted arguments
+      eval exec /usr/bin/qemu-system-aarch64.real $new_args
       EOF
 
       chmod +x /usr/bin/qemu-system-aarch64
