@@ -11,6 +11,7 @@ task:
     image: alpine:latest
     cpu: 8
     memory: 24G
+    kvm: true  # Enable KVM access for QEMU acceleration
 
   env:
     ARCH: aarch64
