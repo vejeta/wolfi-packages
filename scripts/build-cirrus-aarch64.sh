@@ -156,10 +156,10 @@ for pkg in "${PACKAGES[@]}"; do
         REPO_ARGS="$REPO_ARGS --repository-append https://downloads.sourceforge.net/project/wolfi"
     fi
 
-    # Build with Melange using Docker runner (bubblewrap requires privileges not available in Alpine container)
+    # Build with Melange using QEMU runner (works in Alpine container without special privileges)
     # Use absolute paths for keyring files so the runner can access them
     if melange build \
-        --runner docker \
+        --runner qemu \
         --arch "$ARCH" \
         --signing-key "$PWD/melange.rsa" \
         --keyring-append "$PWD/melange.rsa.pub" \
