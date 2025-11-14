@@ -42,44 +42,57 @@ task:
         echo "  '$arg'" >> /tmp/qemu-debug.log
       done
 
-      # Check if machine and memory arguments are present
-      has_machine=false
-      has_memory=false
-      for arg in "$@"; do
-        case "$arg" in
-          -machine) has_machine=true ;;
-          -m) has_memory=true ;;
-        esac
-      done
-
-      echo "has_machine=$has_machine, has_memory=$has_memory" >> /tmp/qemu-debug.log
-
-      # Build new argument list - start with machine and memory if missing
-      if [ "$has_machine" = false ]; then
-        echo "Adding -machine virt" >> /tmp/qemu-debug.log
-        set -- -machine virt "$@"
-      fi
-
-      if [ "$has_memory" = false ]; then
-        echo "Adding -m 16G" >> /tmp/qemu-debug.log
-        set -- -m 16G "$@"
-      fi
-
-      # Process arguments to replace -accel kvm with -accel tcg
+      # Process arguments to replace problematic values
+      # - Replace -accel kvm with -accel tcg,thread=multi (KVM not available)
+      # - Replace -m <value> with -m 16G (cap memory, Melange calculates wrong value)
+      # - Add -machine virt if missing
       new_args=""
       prev_arg=""
+      skip_next=false
+      has_machine=false
+
       for arg in "$@"; do
+        # Skip this iteration if previous arg was -m (we already added our replacement)
+        if [ "$skip_next" = true ]; then
+          skip_next=false
+          echo "Replaced memory value '$arg' with '16G'" >> /tmp/qemu-debug.log
+          # Add the replacement value
+          new_args="$new_args '16G'"
+          # Reset prev_arg so next iteration doesn't think previous was -m
+          prev_arg=""
+          continue
+        fi
+
+        # Check if this is -machine argument
+        if [ "$arg" = "-machine" ]; then
+          has_machine=true
+        fi
+
+        # Replace -accel kvm with -accel tcg,thread=multi
         if [ "$prev_arg" = "-accel" ] && [ "$arg" = "kvm" ]; then
-          # Replace kvm with tcg,thread=multi
+          echo "Replaced -accel kvm with -accel tcg,thread=multi" >> /tmp/qemu-debug.log
           escaped=$(printf '%s' "tcg,thread=multi" | sed "s/'/'\\\\''/g")
           new_args="$new_args '$escaped'"
+        # If current arg is -m, add it and mark to skip next value
+        elif [ "$arg" = "-m" ]; then
+          echo "Found -m argument, will replace value in next iteration" >> /tmp/qemu-debug.log
+          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
+          new_args="$new_args '$escaped'"
+          skip_next=true
         else
-          # Properly quote each argument
+          # Properly quote and add all other arguments
           escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
           new_args="$new_args '$escaped'"
         fi
+
         prev_arg="$arg"
       done
+
+      # Add -machine virt at the beginning if not present
+      if [ "$has_machine" = false ]; then
+        echo "Adding -machine virt (not provided by Melange)" >> /tmp/qemu-debug.log
+        new_args="'-machine' 'virt' $new_args"
+      fi
 
       echo "Final command: /usr/bin/qemu-system-aarch64.real $new_args" >> /tmp/qemu-debug.log
 
