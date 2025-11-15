@@ -70,7 +70,9 @@ jobs:
   build-packages:
     name: Build ${{ matrix.package }} - ${{ matrix.arch }}
     needs: prepare-build-matrix
-    runs-on: ubuntu-latest
+    # Use native ARM64 runner for aarch64 builds (fast, no QEMU emulation needed)
+    # Use standard x86_64 runner for x86_64 builds
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -81,7 +83,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up QEMU for multi-architecture builds
+      - name: Set up QEMU for cross-architecture builds
+        # Only needed when building non-native architectures
+        # Native ARM64 runner doesn't need QEMU for aarch64 builds
+        if: matrix.arch != 'aarch64'
         uses: docker/setup-qemu-action@v3
         with:
           platforms: linux/amd64,linux/arm64

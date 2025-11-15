@@ -1,125 +1,36 @@
-# Cirrus CI - Build ARM64 packages natively
-# Free for open source projects, no 6-hour limit
-# Uses AWS Graviton2 (ARM64 native)
+# Cirrus CI - Showcase: Build stremio-server on ARM64
+#
+# This is a simplified example showing Cirrus CI ARM64 native builds.
+# stremio-server is a pure Node.js application (no compilation needed)
+# so it builds quickly without QEMU complexity.
+#
+# For production builds of all packages, see GitHub Actions which uses
+# native ARM64 runners (ubuntu-24.04-arm) with bubblewrap for fast builds.
 
 task:
-  name: Build Wolfi Packages (aarch64)
+  name: Build stremio-server (ARM64 showcase)
   only_if: $CIRRUS_BRANCH == 'master' || $CIRRUS_BRANCH == 'main'
 
-  # ARM64 nativo en AWS Graviton2 - 8 CPUs, 24GB RAM
+  # ARM64 native on AWS Graviton2 - lightweight resources for simple builds
   arm_container:
     image: alpine:latest
-    cpu: 8
-    memory: 24G
+    cpu: 2
+    memory: 4G
 
   env:
     ARCH: aarch64
     MELANGE_VERSION: latest
     APK_SIGNING_KEY: ENCRYPTED[!1ef534804032cc4990b3feb5c4dbe292a23b5003dbfacd059aa9ca3ea63a950eb975838ae6e1305303df4217c8caf97c!]
-                         
 
-  # Instalar dependencias del sistema
+  # Install dependencies
   install_deps_script:
-    - apk add --no-cache curl git bash qemu-system-aarch64 linux-virt wget tar gzip jq openssl
+    - apk add --no-cache curl git bash wget tar gzip jq openssl
 
-  # Create QEMU wrapper to force TCG instead of KVM (KVM not available in container)
-  setup_qemu_wrapper_script:
-    - |
-      # Move real QEMU binary
-      mv /usr/bin/qemu-system-aarch64 /usr/bin/qemu-system-aarch64.real
-
-      # Create wrapper script that replaces -accel kvm with -accel tcg,thread=multi
-      cat > /usr/bin/qemu-system-aarch64 << 'EOF'
-      #!/bin/sh
-      # QEMU wrapper to force TCG acceleration instead of KVM
-      # Also adds machine type and memory limit to fix addressing issues
-      # KVM is not available in Cirrus CI ARM containers
-
-      # Debug logging
-      echo "=== QEMU wrapper invoked at $(date) ===" >> /tmp/qemu-debug.log
-      echo "Original arguments:" >> /tmp/qemu-debug.log
-      for arg in "$@"; do
-        echo "  '$arg'" >> /tmp/qemu-debug.log
-      done
-
-      # Process arguments to replace problematic values
-      # - Replace -accel kvm with -accel tcg,thread=multi (KVM not available)
-      # - Replace -m <value> with -m 16G (cap memory, Melange calculates wrong value)
-      # - Replace -machine <value> with -machine virt (ensure 64-bit addressing)
-      # - Replace -cpu host with -cpu max (TCG needs explicit CPU, not host)
-      new_args=""
-      prev_arg=""
-      skip_next=false
-      skip_reason=""
-
-      for arg in "$@"; do
-        # Skip this iteration if previous arg was -m, -machine, or -cpu (we already added our replacement)
-        if [ "$skip_next" = true ]; then
-          skip_next=false
-          echo "Replaced $skip_reason value '$arg' with replacement" >> /tmp/qemu-debug.log
-          # Reset prev_arg so next iteration doesn't use this value
-          prev_arg=""
-          skip_reason=""
-          continue
-        fi
-
-        # Replace -accel kvm with -accel tcg,thread=multi
-        if [ "$prev_arg" = "-accel" ] && [ "$arg" = "kvm" ]; then
-          echo "Replaced -accel kvm with -accel tcg,thread=multi" >> /tmp/qemu-debug.log
-          escaped=$(printf '%s' "tcg,thread=multi" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped'"
-        # If current arg is -m, add it and mark to skip next value (replace with 16G)
-        elif [ "$arg" = "-m" ]; then
-          echo "Found -m argument, will replace value with 16G" >> /tmp/qemu-debug.log
-          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped' '16G'"
-          skip_next=true
-          skip_reason="-m"
-        # If current arg is -machine, add it and mark to skip next value (replace with virt)
-        elif [ "$arg" = "-machine" ]; then
-          echo "Found -machine argument, will replace value with virt" >> /tmp/qemu-debug.log
-          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped' 'virt'"
-          skip_next=true
-          skip_reason="-machine"
-        # If current arg is -cpu, add it and mark to skip next value (replace with max)
-        elif [ "$arg" = "-cpu" ]; then
-          echo "Found -cpu argument, will replace value with max (TCG needs explicit CPU)" >> /tmp/qemu-debug.log
-          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped' 'max'"
-          skip_next=true
-          skip_reason="-cpu"
-        else
-          # Properly quote and add all other arguments
-          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped'"
-        fi
-
-        prev_arg="$arg"
-      done
-
-      echo "Final command: /usr/bin/qemu-system-aarch64.real $new_args" >> /tmp/qemu-debug.log
-
-      # Execute with eval to properly handle quoted arguments
-      eval exec /usr/bin/qemu-system-aarch64.real $new_args
-      EOF
-
-      chmod +x /usr/bin/qemu-system-aarch64
-      echo "QEMU wrapper installed - will use TCG instead of KVM"
-
-  # Instalar Melange ARM64
+  # Install Melange
   install_melange_script:
     - |
-      if [ "$MELANGE_VERSION" = "latest" ]; then
-        # Get latest release tag from GitHub API
-        ACTUAL_VERSION=$(curl -s https://api.github.com/repos/chainguard-dev/melange/releases/latest | jq -r '.tag_name')
-        echo "Using Melange latest version: $ACTUAL_VERSION"
-      else
-        ACTUAL_VERSION="$MELANGE_VERSION"
-        echo "Using Melange version: $ACTUAL_VERSION"
-      fi
-
-      # Download and install Melange
+      ACTUAL_VERSION=$(curl -s https://api.github.com/repos/chainguard-dev/melange/releases/latest | jq -r '.tag_name')
+      echo "Installing Melange $ACTUAL_VERSION for ARM64"
       wget -q https://github.com/chainguard-dev/melange/releases/download/${ACTUAL_VERSION}/melange_${ACTUAL_VERSION#v}_linux_arm64.tar.gz
       tar -xzf melange_${ACTUAL_VERSION#v}_linux_arm64.tar.gz
       find . -name "melange" -type f -exec mv {} /usr/local/bin/ \;
@@ -127,70 +38,31 @@ task:
       melange version
       rm -f melange_${ACTUAL_VERSION#v}_linux_arm64.tar.gz
 
-  # Setup kernel for QEMU runner (QEMU needs a kernel image to boot VM)
-  setup_kernel_script:
-    - |
-      # QEMU runner requires a kernel image - use the one from linux-virt package
-      KERNEL_PATH="/boot/vmlinuz-virt"
-      if [ ! -f "$KERNEL_PATH" ]; then
-        echo "ERROR: Kernel not found at $KERNEL_PATH"
-        ls -lh /boot/
-        exit 1
-      fi
-      echo "Kernel available at: $KERNEL_PATH"
-      echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
-
-  # Setup signing keys (permanent key from Cirrus CI encrypted variable + official Wolfi key)
+  # Setup signing keys
   setup_keys_script:
     - |
-      # Check if APK_SIGNING_KEY is set (encrypted variable from Cirrus CI)
-      if [ -z "$APK_SIGNING_KEY" ]; then
-        echo "WARNING: APK_SIGNING_KEY not set - falling back to temporary key"
-        echo "For production builds, add APK_SIGNING_KEY as encrypted variable in Cirrus CI settings"
-        melange keygen
-      else
-        echo "Using permanent signing key from Cirrus CI encrypted variable"
+      printf '%s\n' "$APK_SIGNING_KEY" > melange-pkcs8.rsa
+      openssl rsa -in melange-pkcs8.rsa -out melange.rsa -traditional
+      openssl rsa -in melange.rsa -pubout > melange.rsa.pub
+      rm melange-pkcs8.rsa
+      wget -q -O wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
 
-        # Save PKCS#8 key from environment variable (using printf to preserve formatting)
-        printf '%s\n' "$APK_SIGNING_KEY" > melange-pkcs8.rsa
-        chmod 600 melange-pkcs8.rsa
-
-        # Debug: Check if key file was created correctly
-        echo "Key file size: $(wc -c < melange-pkcs8.rsa) bytes"
-        echo "First line: $(head -1 melange-pkcs8.rsa)"
-
-        # Convert PKCS#8 to PKCS#1 format (required by Melange)
-        openssl rsa -in melange-pkcs8.rsa -out melange.rsa -traditional
-        chmod 600 melange.rsa
-        rm melange-pkcs8.rsa
-
-        # Extract public key from private key
-        openssl rsa -in melange.rsa -pubout > melange.rsa.pub
-        chmod 644 melange.rsa.pub
-
-        echo "Signing key converted and ready for use"
-      fi
-    - wget -q -O wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-    - ls -lh melange.rsa melange.rsa.pub wolfi-signing.rsa.pub
-
-  # Ejecutar script de build para todos los packages aarch64
+  # Build stremio-server (Node.js package, no compilation needed)
   build_script:
-    - chmod +x scripts/build-cirrus-aarch64.sh
-    - ./scripts/build-cirrus-aarch64.sh
+    - mkdir -p build-output/aarch64
+    - |
+      melange build \
+        --arch aarch64 \
+        --signing-key melange.rsa \
+        --keyring-append melange.rsa.pub \
+        --keyring-append wolfi-signing.rsa.pub \
+        --repository-append https://packages.wolfi.dev/os \
+        --pipeline-dir pipelines \
+        --out-dir build-output/aarch64 \
+        packages/stremio-server.yaml
+    - ls -lh build-output/aarch64/
 
-  # Siempre subir artifacts (incluso si algunos packages fallan)
+  # Upload artifacts
   always:
-    # Upload individual APK packages
     apk_packages_artifacts:
       path: "build-output/aarch64/*.apk"
-      type: application/octet-stream
-
-    # Upload APKINDEX
-    apkindex_artifacts:
-      path: "build-output/aarch64/APKINDEX.tar.gz"
-      type: application/gzip
-
-    # Upload debug logs for troubleshooting
-    logs_artifacts:
-      path: "build-output/aarch64/logs/*"
-      type: text/plain
