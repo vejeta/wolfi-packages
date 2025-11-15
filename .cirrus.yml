@@ -160,7 +160,10 @@ task:
       
       # Extract modules from cpio archive
       cd "$MODULES_DIR"
-      cpio -idm < /tmp/alpine-initramfs.cpio 2>/dev/null || true
+      if ! cpio -idm < /tmp/alpine-initramfs.cpio 2>/dev/null; then
+        echo "ERROR: Failed to extract modules from cpio archive"
+        exit 1
+      fi
       
       # Find kernel version
       KERNEL_VERSION=$(ls lib/modules/ 2>/dev/null | head -1)
