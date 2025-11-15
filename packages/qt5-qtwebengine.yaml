@@ -54,7 +54,6 @@ environment:
     - libxslt-dev
     - libxtst-dev
     - mesa-dev
-    - minizip-dev
     - ninja
     - nodejs-20
     - openssl-dev
