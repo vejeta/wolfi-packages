@@ -24,7 +24,7 @@ task:
 
   # Install dependencies (including QEMU for emulation)
   install_deps_script:
-    - apk add --no-cache curl git bash qemu-system-aarch64 linux-virt wget tar gzip jq openssl
+    - apk add --no-cache curl git bash qemu-system-aarch64 linux-virt wget tar gzip jq openssl cpio
 
   # Install Melange
   install_melange_script:
@@ -141,23 +141,82 @@ task:
           escaped=$(printf '%s' "$melange_initrd" | sed "s/'/'\\\\''/g")
           new_args="$new_args '-initrd' '$escaped'"
         else
-          # Concatenate: Alpine's initrd first (base virtio modules), then melange's (build environment)
-          if cat /boot/initramfs-virt "$melange_initrd" > /tmp/combined-initramfs 2>> /tmp/qemu-debug.log; then
-            if [ -f /tmp/combined-initramfs ] && [ -s /tmp/combined-initramfs ]; then
-              COMBINED_SIZE=$(stat -c%s /tmp/combined-initramfs 2>/dev/null || echo "unknown")
-              echo "Combined initramfs created at /tmp/combined-initramfs ($COMBINED_SIZE bytes)" >> /tmp/qemu-debug.log
-              new_args="$new_args '-initrd' '/tmp/combined-initramfs'"
-            else
-              echo "ERROR: Combined initramfs file is empty or missing" >> /tmp/qemu-debug.log
-              echo "ERROR: Using melange's initrd only" >> /tmp/qemu-debug.log
-              escaped=$(printf '%s' "$melange_initrd" | sed "s/'/'\\\\''/g")
-              new_args="$new_args '-initrd' '$escaped'"
+          # Combine initramfs files properly:
+          # 1. Extract both cpio archives (they may be gzip compressed)
+          # 2. Concatenate the extracted cpio files
+          # 3. Compress the result with gzip
+          echo "Extracting and combining initramfs files..." >> /tmp/qemu-debug.log
+          
+          COMBINE_FAILED=false
+          
+          # Extract Alpine's initramfs (handle both compressed and uncompressed)
+          if file /boot/initramfs-virt | grep -q gzip; then
+            echo "  Alpine initramfs is gzip compressed, extracting..." >> /tmp/qemu-debug.log
+            if ! gunzip -c /boot/initramfs-virt > /tmp/alpine-initramfs.cpio 2>> /tmp/qemu-debug.log; then
+              echo "ERROR: Failed to extract Alpine initramfs" >> /tmp/qemu-debug.log
+              COMBINE_FAILED=true
             fi
           else
-            echo "ERROR: Failed to concatenate initramfs files" >> /tmp/qemu-debug.log
-            echo "ERROR: Using melange's initrd only" >> /tmp/qemu-debug.log
+            echo "  Alpine initramfs is uncompressed, copying..." >> /tmp/qemu-debug.log
+            if ! cp /boot/initramfs-virt /tmp/alpine-initramfs.cpio 2>> /tmp/qemu-debug.log; then
+              echo "ERROR: Failed to copy Alpine initramfs" >> /tmp/qemu-debug.log
+              COMBINE_FAILED=true
+            fi
+          fi
+          
+          # Extract melange's initramfs (handle both compressed and uncompressed)
+          if [ "$COMBINE_FAILED" = false ]; then
+            if file "$melange_initrd" | grep -q gzip; then
+              echo "  Melange initramfs is gzip compressed, extracting..." >> /tmp/qemu-debug.log
+              if ! gunzip -c "$melange_initrd" > /tmp/melange-initramfs.cpio 2>> /tmp/qemu-debug.log; then
+                echo "ERROR: Failed to extract melange initramfs" >> /tmp/qemu-debug.log
+                COMBINE_FAILED=true
+              fi
+            else
+              echo "  Melange initramfs is uncompressed, copying..." >> /tmp/qemu-debug.log
+              if ! cp "$melange_initrd" /tmp/melange-initramfs.cpio 2>> /tmp/qemu-debug.log; then
+                echo "ERROR: Failed to copy melange initramfs" >> /tmp/qemu-debug.log
+                COMBINE_FAILED=true
+              fi
+            fi
+          fi
+          
+          # Concatenate the cpio files (Linux kernel supports multiple cpio archives)
+          if [ "$COMBINE_FAILED" = false ]; then
+            if cat /tmp/alpine-initramfs.cpio /tmp/melange-initramfs.cpio > /tmp/combined-initramfs.cpio 2>> /tmp/qemu-debug.log; then
+              # Compress the combined cpio with gzip
+              if gzip -c /tmp/combined-initramfs.cpio > /tmp/combined-initramfs 2>> /tmp/qemu-debug.log; then
+                if [ -f /tmp/combined-initramfs ] && [ -s /tmp/combined-initramfs ]; then
+                  COMBINED_SIZE=$(stat -c%s /tmp/combined-initramfs 2>/dev/null || echo "unknown")
+                  ALPINE_SIZE=$(stat -c%s /tmp/alpine-initramfs.cpio 2>/dev/null || echo "unknown")
+                  MELANGE_SIZE=$(stat -c%s /tmp/melange-initramfs.cpio 2>/dev/null || echo "unknown")
+                  echo "Combined initramfs created successfully:" >> /tmp/qemu-debug.log
+                  echo "  Alpine cpio: $ALPINE_SIZE bytes" >> /tmp/qemu-debug.log
+                  echo "  Melange cpio: $MELANGE_SIZE bytes" >> /tmp/qemu-debug.log
+                  echo "  Combined (gzipped): $COMBINED_SIZE bytes" >> /tmp/qemu-debug.log
+                  new_args="$new_args '-initrd' '/tmp/combined-initramfs'"
+                else
+                  echo "ERROR: Combined initramfs file is empty after compression" >> /tmp/qemu-debug.log
+                  COMBINE_FAILED=true
+                fi
+              else
+                echo "ERROR: Failed to compress combined initramfs" >> /tmp/qemu-debug.log
+                COMBINE_FAILED=true
+              fi
+              # Cleanup temporary files
+              rm -f /tmp/alpine-initramfs.cpio /tmp/melange-initramfs.cpio /tmp/combined-initramfs.cpio
+            else
+              echo "ERROR: Failed to concatenate cpio files" >> /tmp/qemu-debug.log
+              COMBINE_FAILED=true
+            fi
+          fi
+          
+          # Fallback to melange's initrd only if combination failed
+          if [ "$COMBINE_FAILED" = true ]; then
+            echo "Falling back to melange's initrd only" >> /tmp/qemu-debug.log
             escaped=$(printf '%s' "$melange_initrd" | sed "s/'/'\\\\''/g")
             new_args="$new_args '-initrd' '$escaped'"
+            rm -f /tmp/alpine-initramfs.cpio /tmp/melange-initramfs.cpio /tmp/combined-initramfs.cpio /tmp/combined-initramfs
           fi
         fi
       elif [ -n "$melange_initrd" ]; then
