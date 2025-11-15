@@ -282,7 +282,8 @@ task:
           # Verify that virtio modules are listed in modules.dep
           if grep -q "virtio" "lib/modules/$KERNEL_VERSION/modules.dep" 2>/dev/null; then
             echo "  ✓ virtio modules found in modules.dep"
-            grep "virtio" "lib/modules/$KERNEL_VERSION/modules.dep" | head -5
+            # Use grep with head but ignore SIGPIPE (exit code 141)
+            { grep "virtio" "lib/modules/$KERNEL_VERSION/modules.dep" 2>/dev/null | head -5 || [ $? -eq 141 ]; } || true
           else
             echo "  ⚠ WARNING: virtio modules not found in modules.dep"
             echo "  This might cause modprobe to fail when looking for virtio modules"
@@ -303,7 +304,8 @@ task:
           echo "  ✓ modules.alias found"
           if grep -q "virtio" "lib/modules/$KERNEL_VERSION/modules.alias" 2>/dev/null; then
             echo "  ✓ virtio aliases found in modules.alias"
-            grep "virtio" "lib/modules/$KERNEL_VERSION/modules.alias" | head -5
+            # Use grep with head but ignore SIGPIPE (exit code 141)
+            { grep "virtio" "lib/modules/$KERNEL_VERSION/modules.alias" 2>/dev/null | head -5 || [ $? -eq 141 ]; } || true
           else
             echo "  ⚠ WARNING: virtio aliases not found in modules.alias"
           fi
