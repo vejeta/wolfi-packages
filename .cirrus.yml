@@ -160,10 +160,14 @@ task:
       
       # Extract modules from cpio archive
       cd "$MODULES_DIR"
-      if ! cpio -idm < /tmp/alpine-initramfs.cpio 2>/dev/null; then
+      echo "  Extracting cpio archive..."
+      if ! cpio -idm < /tmp/alpine-initramfs.cpio 2>&1 | head -20; then
         echo "ERROR: Failed to extract modules from cpio archive"
+        echo "Debug: Checking if cpio archive is valid..."
+        file /tmp/alpine-initramfs.cpio
         exit 1
       fi
+      echo "  Extraction complete. Checking what was extracted..."
       
       # Find kernel version
       KERNEL_VERSION=$(ls lib/modules/ 2>/dev/null | head -1)
@@ -204,6 +208,17 @@ task:
         echo "export QEMU_KERNEL_MODULES=$MODULES_PATH_FOR_MELANGE" >> $CIRRUS_ENV
         echo "QEMU_KERNEL_MODULES set to: $MODULES_PATH_FOR_MELANGE (contains $KERNEL_VERSION subdirectory)"
         echo "  Full path structure: $MODULES_PATH_FOR_MELANGE/$KERNEL_VERSION/kernel/drivers/virtio/"
+        
+        # Verify the path exists and is accessible
+        if [ ! -d "$MODULES_PATH_FOR_MELANGE" ]; then
+          echo "ERROR: MODULES_PATH_FOR_MELANGE directory does not exist: $MODULES_PATH_FOR_MELANGE"
+          exit 1
+        fi
+        echo "  ✓ MODULES_PATH_FOR_MELANGE directory exists and is accessible"
+        
+        # Show what melange will see
+        echo "  Melange will process modules from: $MODULES_PATH_FOR_MELANGE"
+        echo "  Example module path melange will create: /lib/modules/$KERNEL_VERSION/kernel/drivers/virtio/virtio_blk.ko"
       else
         echo "WARNING: Could not determine kernel version from initramfs"
         echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
