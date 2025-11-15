@@ -418,12 +418,22 @@ task:
             if [ "$MODULE_COUNT" -gt 0 ]; then
               echo "  ✓ Sample modules:"
               find "$VIRTIO_DIR" -name "*.ko" -type f 2>/dev/null | head -3
+              echo "  ✓ Verifying modules.dep includes virtio modules:"
+              if [ -f "$QEMU_KERNEL_MODULES/$KERNEL_VER/modules.dep" ]; then
+                VIRTIO_DEPS=$(grep -c "virtio" "$QEMU_KERNEL_MODULES/$KERNEL_VER/modules.dep" 2>/dev/null || echo "0")
+                echo "    Found $VIRTIO_DEPS virtio references in modules.dep"
+              fi
             else
               echo "  ✗ ERROR: No modules found in $VIRTIO_DIR"
             fi
           fi
         fi
       fi
+      echo ""
+      
+      # Enable debug logging for melange to see if it's using QEMU_KERNEL_MODULES
+      export MELANGE_LOG_LEVEL=debug
+      echo "MELANGE_LOG_LEVEL set to: $MELANGE_LOG_LEVEL"
       echo ""
       
       melange build \
