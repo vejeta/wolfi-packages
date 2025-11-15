@@ -279,8 +279,36 @@ task:
         # Check for modules.dep and other module metadata files
         if [ -f "lib/modules/$KERNEL_VERSION/modules.dep" ]; then
           echo "  ✓ modules.dep found"
+          # Verify that virtio modules are listed in modules.dep
+          if grep -q "virtio" "lib/modules/$KERNEL_VERSION/modules.dep" 2>/dev/null; then
+            echo "  ✓ virtio modules found in modules.dep"
+            grep "virtio" "lib/modules/$KERNEL_VERSION/modules.dep" | head -5
+          else
+            echo "  ⚠ WARNING: virtio modules not found in modules.dep"
+            echo "  This might cause modprobe to fail when looking for virtio modules"
+          fi
         else
           echo "  ⚠ WARNING: modules.dep not found (modprobe may have issues)"
+          echo "  Attempting to regenerate modules.dep..."
+          # Try to regenerate modules.dep using depmod (if available) or manually
+          if command -v depmod >/dev/null 2>&1; then
+            depmod -b "$MODULES_DIR" "$KERNEL_VERSION" 2>/dev/null || echo "    depmod failed"
+          else
+            echo "    depmod not available, cannot regenerate modules.dep"
+          fi
+        fi
+        
+        # Also check for modules.alias which modprobe uses for modalias matching
+        if [ -f "lib/modules/$KERNEL_VERSION/modules.alias" ]; then
+          echo "  ✓ modules.alias found"
+          if grep -q "virtio" "lib/modules/$KERNEL_VERSION/modules.alias" 2>/dev/null; then
+            echo "  ✓ virtio aliases found in modules.alias"
+            grep "virtio" "lib/modules/$KERNEL_VERSION/modules.alias" | head -5
+          else
+            echo "  ⚠ WARNING: virtio aliases not found in modules.alias"
+          fi
+        else
+          echo "  ⚠ WARNING: modules.alias not found"
         fi
         
         # Melange constructs paths as: "/lib/modules/" + path[len(modulesPath):]
