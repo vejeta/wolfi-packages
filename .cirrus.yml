@@ -438,6 +438,23 @@ task:
       echo "MELANGE_LOG_LEVEL set to: $MELANGE_LOG_LEVEL"
       echo ""
       
+      # Verify QEMU_KERNEL_MODULES is exported and accessible
+      echo "Final verification before melange build:"
+      echo "  QEMU_KERNEL_IMAGE=$QEMU_KERNEL_IMAGE"
+      echo "  QEMU_KERNEL_MODULES=$QEMU_KERNEL_MODULES"
+      if [ -n "$QEMU_KERNEL_MODULES" ] && [ -d "$QEMU_KERNEL_MODULES" ]; then
+        echo "  ✓ QEMU_KERNEL_MODULES directory exists and is accessible"
+        KERNEL_VER=$(ls "$QEMU_KERNEL_MODULES" 2>/dev/null | head -1)
+        if [ -n "$KERNEL_VER" ]; then
+          VIRTIO_DIR="$QEMU_KERNEL_MODULES/$KERNEL_VER/kernel/drivers/virtio"
+          MODULE_COUNT=$(find "$VIRTIO_DIR" -name "*.ko" -type f 2>/dev/null | wc -l)
+          echo "  ✓ Found $MODULE_COUNT virtio modules ready for injection"
+        fi
+      else
+        echo "  ✗ ERROR: QEMU_KERNEL_MODULES not accessible!"
+      fi
+      echo ""
+      
       melange build \
         --runner qemu \
         --arch aarch64 \
@@ -447,7 +464,18 @@ task:
         --repository-append https://packages.wolfi.dev/os \
         --pipeline-dir pipelines \
         --out-dir build-output/aarch64 \
-        packages/stremio-server.yaml || true
+        packages/stremio-server.yaml 2>&1 | tee /tmp/melange-build.log || true
+      
+      # Check melange logs for module injection messages
+      echo ""
+      echo "=== Checking melange logs for module injection ==="
+      if grep -q "appending modules\|injecting modules\|QEMU_KERNEL_MODULES" /tmp/melange-build.log 2>/dev/null; then
+        echo "✓ Found module injection messages in melange logs:"
+        grep -i "appending modules\|injecting modules\|QEMU_KERNEL_MODULES" /tmp/melange-build.log | head -5
+      else
+        echo "✗ WARNING: No module injection messages found in melange logs"
+        echo "  This suggests melange may not be using QEMU_KERNEL_MODULES"
+      fi
     - ls -lh build-output/aarch64/ || true
     - cp /tmp/qemu-debug.log build-output/logs/ || echo "No QEMU debug log found"
 
