@@ -46,13 +46,14 @@ task:
       # - Replace -accel kvm with -accel tcg,thread=multi (KVM not available)
       # - Replace -m <value> with -m 16G (cap memory, Melange calculates wrong value)
       # - Replace -machine <value> with -machine virt (ensure 64-bit addressing)
+      # - Replace -cpu host with -cpu max (TCG needs explicit CPU, not host)
       new_args=""
       prev_arg=""
       skip_next=false
       skip_reason=""
 
       for arg in "$@"; do
-        # Skip this iteration if previous arg was -m or -machine (we already added our replacement)
+        # Skip this iteration if previous arg was -m, -machine, or -cpu (we already added our replacement)
         if [ "$skip_next" = true ]; then
           skip_next=false
           echo "Replaced $skip_reason value '$arg' with replacement" >> /tmp/qemu-debug.log
@@ -69,18 +70,25 @@ task:
           new_args="$new_args '$escaped'"
         # If current arg is -m, add it and mark to skip next value (replace with 16G)
         elif [ "$arg" = "-m" ]; then
-          echo "Found -m argument, will replace value with 16G in next iteration" >> /tmp/qemu-debug.log
+          echo "Found -m argument, will replace value with 16G" >> /tmp/qemu-debug.log
           escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
           new_args="$new_args '$escaped' '16G'"
           skip_next=true
           skip_reason="-m"
         # If current arg is -machine, add it and mark to skip next value (replace with virt)
         elif [ "$arg" = "-machine" ]; then
-          echo "Found -machine argument, will replace value with virt in next iteration" >> /tmp/qemu-debug.log
+          echo "Found -machine argument, will replace value with virt" >> /tmp/qemu-debug.log
           escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
           new_args="$new_args '$escaped' 'virt'"
           skip_next=true
           skip_reason="-machine"
+        # If current arg is -cpu, add it and mark to skip next value (replace with max)
+        elif [ "$arg" = "-cpu" ]; then
+          echo "Found -cpu argument, will replace value with max (TCG needs explicit CPU)" >> /tmp/qemu-debug.log
+          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
+          new_args="$new_args '$escaped' 'max'"
+          skip_next=true
+          skip_reason="-cpu"
         else
           # Properly quote and add all other arguments
           escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
@@ -182,7 +190,7 @@ task:
       path: "build-output/aarch64/APKINDEX.tar.gz"
       type: application/gzip
 
-    # Upload QEMU debug log for troubleshooting
-    qemu_debug_log_artifacts:
-      path: "/tmp/qemu-debug.log"
+    # Upload debug logs for troubleshooting
+    logs_artifacts:
+      path: "build-output/aarch64/logs/*"
       type: text/plain

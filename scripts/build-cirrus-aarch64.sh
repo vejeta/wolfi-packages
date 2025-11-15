@@ -263,6 +263,16 @@ else
 fi
 
 echo ""
+echo "=== Copying debug logs to artifacts ===\"
+mkdir -p "$OUTPUT_DIR/$ARCH/logs"
+if [ -f /tmp/qemu-debug.log ]; then
+    cp /tmp/qemu-debug.log "$OUTPUT_DIR/$ARCH/logs/qemu-debug.log"
+    echo "✓ QEMU debug log copied to $OUTPUT_DIR/$ARCH/logs/"
+else
+    echo "⚠️  No QEMU debug log found at /tmp/qemu-debug.log"
+fi
+
+echo ""
 echo "=== Build Complete ==="
 echo "Output directory: $OUTPUT_DIR/$ARCH/"
 echo ""
