@@ -114,6 +114,10 @@ task:
         prev_arg="$arg"
       done
 
+      # Add initramfs with virtio modules
+      echo "Adding -initrd /boot/initramfs-virt (contains virtio modules)" >> /tmp/qemu-debug.log
+      new_args="$new_args '-initrd' '/boot/initramfs-virt'"
+
       echo "Final command: /usr/bin/qemu-system-aarch64.real $new_args" >> /tmp/qemu-debug.log
 
       # Execute with eval to properly handle quoted arguments
