@@ -25,6 +25,19 @@ task:
   # Install dependencies (including QEMU for emulation)
   install_deps_script:
     - apk add --no-cache curl git bash qemu-system-aarch64 linux-virt wget tar gzip jq openssl cpio file
+    - |
+      # Check if virtio modules are available in the installed system
+      echo "Checking for virtio modules in installed system..."
+      if [ -d "/lib/modules" ]; then
+        echo "  System modules directory exists:"
+        ls -la /lib/modules/ 2>/dev/null | head -5
+        KERNEL_VER=$(ls /lib/modules/ 2>/dev/null | head -1)
+        if [ -n "$KERNEL_VER" ]; then
+          echo "  Found kernel version: $KERNEL_VER"
+          echo "  Searching for virtio modules:"
+          find /lib/modules/$KERNEL_VER -name "*virtio*" -type f 2>/dev/null | head -10 || echo "    No virtio modules found in system"
+        fi
+      fi
 
   # Install Melange
   install_melange_script:
