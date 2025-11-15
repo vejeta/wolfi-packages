@@ -125,9 +125,15 @@ task:
   # Setup kernel and extract virtio modules for melange
   setup_kernel_script:
     - |
+      echo "=========================================="
+      echo "SETUP KERNEL SCRIPT STARTING"
+      echo "=========================================="
+      
       # QEMU runner requires kernel and initramfs from linux-virt package
       KERNEL_PATH="/boot/vmlinuz-virt"
       INITRAMFS_PATH="/boot/initramfs-virt"
+      
+      echo "Checking for kernel and initramfs..."
       
       if [ ! -f "$KERNEL_PATH" ]; then
         echo "ERROR: Kernel not found at $KERNEL_PATH"
