@@ -172,25 +172,38 @@ task:
         MODULES_BASE_PATH="$MODULES_DIR/lib/modules/$KERNEL_VERSION"
         echo "  Modules extracted to: $MODULES_BASE_PATH"
         
+        # Verify extraction worked
+        echo "  Verifying module structure:"
+        ls -la lib/modules/ 2>/dev/null | head -5 || echo "    ERROR: lib/modules/ not found"
+        
         # List virtio modules found
         if [ -d "lib/modules/$KERNEL_VERSION/kernel/drivers/virtio" ]; then
           echo "  Virtio modules found:"
           find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" | head -10
+          VIRTIO_COUNT=$(find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" | wc -l)
+          echo "  Total virtio modules: $VIRTIO_COUNT"
+        else
+          echo "  ERROR: Virtio modules directory not found!"
+          echo "  Available directories in lib/modules/$KERNEL_VERSION:"
+          find lib/modules/$KERNEL_VERSION -type d | head -20
+        fi
+        
+        # Check for modules.dep and other module metadata files
+        if [ -f "lib/modules/$KERNEL_VERSION/modules.dep" ]; then
+          echo "  ✓ modules.dep found"
+        else
+          echo "  ⚠ WARNING: modules.dep not found (modprobe may have issues)"
         fi
         
         # Melange constructs paths as: "/lib/modules/" + path[len(modulesPath):]
-        # So if modulesPath is /tmp/virtio-modules/lib/modules/6.12.58-0-virt,
-        # and path is /tmp/virtio-modules/lib/modules/6.12.58-0-virt/kernel/drivers/virtio/virtio_blk.ko,
-        # then path[len(modulesPath):] = /kernel/drivers/virtio/virtio_blk.ko
-        # and header.Name = /lib/modules/kernel/drivers/virtio/virtio_blk.ko (WRONG - missing kernel version)
-        #
-        # Solution: Pass modulesPath as /tmp/virtio-modules/lib/modules (without kernel version)
+        # Pass modulesPath as /tmp/virtio-modules/lib/modules (without kernel version)
         # Then path[len(modulesPath):] = /6.12.58-0-virt/kernel/drivers/virtio/virtio_blk.ko
         # and header.Name = /lib/modules/6.12.58-0-virt/kernel/drivers/virtio/virtio_blk.ko (CORRECT)
         MODULES_PATH_FOR_MELANGE="$MODULES_DIR/lib/modules"
         echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
         echo "export QEMU_KERNEL_MODULES=$MODULES_PATH_FOR_MELANGE" >> $CIRRUS_ENV
         echo "QEMU_KERNEL_MODULES set to: $MODULES_PATH_FOR_MELANGE (contains $KERNEL_VERSION subdirectory)"
+        echo "  Full path structure: $MODULES_PATH_FOR_MELANGE/$KERNEL_VERSION/kernel/drivers/virtio/"
       else
         echo "WARNING: Could not determine kernel version from initramfs"
         echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
