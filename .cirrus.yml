@@ -371,6 +371,33 @@ task:
       else
         echo "WARNING: QEMU_KERNEL_MODULES not set - virtio modules may not be available"
       fi
+      echo ""
+      echo "=== Starting melange build ==="
+      echo "QEMU_KERNEL_IMAGE=$QEMU_KERNEL_IMAGE"
+      echo "QEMU_KERNEL_MODULES=$QEMU_KERNEL_MODULES"
+      echo ""
+      
+      # Verify modules are still accessible before build
+      if [ -n "$QEMU_KERNEL_MODULES" ] && [ -d "$QEMU_KERNEL_MODULES" ]; then
+        echo "Pre-build verification:"
+        KERNEL_VER=$(ls "$QEMU_KERNEL_MODULES" 2>/dev/null | head -1)
+        if [ -n "$KERNEL_VER" ]; then
+          VIRTIO_DIR="$QEMU_KERNEL_MODULES/$KERNEL_VER/kernel/drivers/virtio"
+          if [ -d "$VIRTIO_DIR" ]; then
+            MODULE_COUNT=$(find "$VIRTIO_DIR" -name "*.ko" -type f 2>/dev/null | wc -l)
+            echo "  ✓ Modules directory accessible: $VIRTIO_DIR"
+            echo "  ✓ Module count: $MODULE_COUNT"
+            if [ "$MODULE_COUNT" -gt 0 ]; then
+              echo "  ✓ Sample modules:"
+              find "$VIRTIO_DIR" -name "*.ko" -type f 2>/dev/null | head -3
+            else
+              echo "  ✗ ERROR: No modules found in $VIRTIO_DIR"
+            fi
+          fi
+        fi
+      fi
+      echo ""
+      
       melange build \
         --runner qemu \
         --arch aarch64 \
