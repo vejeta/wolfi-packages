@@ -45,10 +45,10 @@ task:
       mv /usr/bin/qemu-system-aarch64 /usr/bin/qemu-system-aarch64.real
 
       # Create wrapper script that replaces -accel kvm with -accel tcg,thread=multi
+      # Also fixes memory and CPU settings for TCG
       cat > /usr/bin/qemu-system-aarch64 << 'EOF'
       #!/bin/sh
       # QEMU wrapper to force TCG acceleration instead of KVM
-      # Also adds machine type and memory limit to fix addressing issues
       # KVM is not available in Cirrus CI ARM containers
 
       # Debug logging
@@ -63,24 +63,16 @@ task:
       # - Replace -m <value> with -m 16G (cap memory, Melange calculates wrong value)
       # - Replace -machine <value> with -machine virt (ensure 64-bit addressing)
       # - Replace -cpu host with -cpu max (TCG needs explicit CPU, not host)
-      # - Combine -initrd <melange-initrd> with /boot/initramfs-virt (for virtio modules)
       new_args=""
       prev_arg=""
       skip_next=false
       skip_reason=""
-      melange_initrd=""
 
       for arg in "$@"; do
-        # Skip this iteration if previous arg was -m, -machine, -cpu, or -initrd (we already added our replacement)
+        # Skip this iteration if previous arg was -m, -machine, or -cpu (we already added our replacement)
         if [ "$skip_next" = true ]; then
-          # If we're skipping because of -initrd, save this arg as the melange initrd path
-          if [ "$skip_reason" = "-initrd" ]; then
-            melange_initrd="$arg"
-            echo "Melange initrd path: $melange_initrd" >> /tmp/qemu-debug.log
-          fi
           skip_next=false
           echo "Replaced $skip_reason value '$arg' with replacement" >> /tmp/qemu-debug.log
-          # Reset prev_arg so next iteration doesn't use this value
           prev_arg=""
           skip_reason=""
           continue
@@ -112,133 +104,14 @@ task:
           new_args="$new_args '$escaped' 'max'"
           skip_next=true
           skip_reason="-cpu"
-        # If current arg is -initrd, mark to skip next value (we'll save it as melange_initrd)
-        elif [ "$arg" = "-initrd" ]; then
-          echo "Found -initrd argument from melange" >> /tmp/qemu-debug.log
-          # Don't add -initrd yet, we'll add the combined version later
-          skip_next=true
-          skip_reason="-initrd"
         else
-          # Properly quote and add all other arguments
+          # Properly quote and add all other arguments (including -initrd, which melange handles)
           escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
           new_args="$new_args '$escaped'"
         fi
 
         prev_arg="$arg"
       done
-
-      # Combine melange's initramfs with Alpine's initramfs (which has virtio modules)
-      # Linux kernel supports multiple initramfs cpio archives concatenated together
-      if [ -n "$melange_initrd" ] && [ -f "$melange_initrd" ]; then
-        echo "Combining initramfs files..." >> /tmp/qemu-debug.log
-        echo "  Melange initrd: $melange_initrd" >> /tmp/qemu-debug.log
-        echo "  Alpine initrd: /boot/initramfs-virt (contains virtio modules)" >> /tmp/qemu-debug.log
-
-        # Verify Alpine's initramfs exists
-        if [ ! -f "/boot/initramfs-virt" ]; then
-          echo "ERROR: Alpine initramfs not found at /boot/initramfs-virt" >> /tmp/qemu-debug.log
-          echo "ERROR: Using melange's initrd only (virtio modules may be missing)" >> /tmp/qemu-debug.log
-          escaped=$(printf '%s' "$melange_initrd" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '-initrd' '$escaped'"
-        else
-          # Combine initramfs files properly:
-          # 1. Extract both cpio archives (they may be gzip compressed)
-          # 2. Concatenate the extracted cpio files
-          # 3. Compress the result with gzip
-          echo "Extracting and combining initramfs files..." >> /tmp/qemu-debug.log
-          
-          COMBINE_FAILED=false
-          
-          # Extract Alpine's initramfs (handle both compressed and uncompressed)
-          if file /boot/initramfs-virt | grep -q gzip; then
-            echo "  Alpine initramfs is gzip compressed, extracting..." >> /tmp/qemu-debug.log
-            if ! gunzip -c /boot/initramfs-virt > /tmp/alpine-initramfs.cpio 2>> /tmp/qemu-debug.log; then
-              echo "ERROR: Failed to extract Alpine initramfs" >> /tmp/qemu-debug.log
-              COMBINE_FAILED=true
-            fi
-          else
-            echo "  Alpine initramfs is uncompressed, copying..." >> /tmp/qemu-debug.log
-            if ! cp /boot/initramfs-virt /tmp/alpine-initramfs.cpio 2>> /tmp/qemu-debug.log; then
-              echo "ERROR: Failed to copy Alpine initramfs" >> /tmp/qemu-debug.log
-              COMBINE_FAILED=true
-            fi
-          fi
-          
-          # Extract melange's initramfs (handle both compressed and uncompressed)
-          if [ "$COMBINE_FAILED" = false ]; then
-            if file "$melange_initrd" | grep -q gzip; then
-              echo "  Melange initramfs is gzip compressed, extracting..." >> /tmp/qemu-debug.log
-              if ! gunzip -c "$melange_initrd" > /tmp/melange-initramfs.cpio 2>> /tmp/qemu-debug.log; then
-                echo "ERROR: Failed to extract melange initramfs" >> /tmp/qemu-debug.log
-                COMBINE_FAILED=true
-              fi
-            else
-              echo "  Melange initramfs is uncompressed, copying..." >> /tmp/qemu-debug.log
-              if ! cp "$melange_initrd" /tmp/melange-initramfs.cpio 2>> /tmp/qemu-debug.log; then
-                echo "ERROR: Failed to copy melange initramfs" >> /tmp/qemu-debug.log
-                COMBINE_FAILED=true
-              fi
-            fi
-          fi
-          
-          # Concatenate the cpio files (Linux kernel supports multiple cpio archives)
-          # Order matters: files from later archives override files from earlier ones
-          # Put melange first (init scripts + build environment), then Alpine (binaries + virtio modules override)
-          # This ensures melange's init scripts run, and Alpine's essential binaries (mount, etc.) are available
-          if [ "$COMBINE_FAILED" = false ]; then
-            if cat /tmp/melange-initramfs.cpio /tmp/alpine-initramfs.cpio > /tmp/combined-initramfs.cpio 2>> /tmp/qemu-debug.log; then
-              # Compress the combined cpio with gzip
-              if gzip -c /tmp/combined-initramfs.cpio > /tmp/combined-initramfs 2>> /tmp/qemu-debug.log; then
-                if [ -f /tmp/combined-initramfs ] && [ -s /tmp/combined-initramfs ]; then
-                  COMBINED_SIZE=$(stat -c%s /tmp/combined-initramfs 2>/dev/null || echo "unknown")
-                  ALPINE_SIZE=$(stat -c%s /tmp/alpine-initramfs.cpio 2>/dev/null || echo "unknown")
-                  MELANGE_SIZE=$(stat -c%s /tmp/melange-initramfs.cpio 2>/dev/null || echo "unknown")
-                  echo "Combined initramfs created successfully:" >> /tmp/qemu-debug.log
-                  echo "  Alpine cpio: $ALPINE_SIZE bytes (first - virtio modules)" >> /tmp/qemu-debug.log
-                  echo "  Melange cpio: $MELANGE_SIZE bytes (second - init scripts override Alpine's)" >> /tmp/qemu-debug.log
-                  echo "  Combined (gzipped): $COMBINED_SIZE bytes" >> /tmp/qemu-debug.log
-                  echo "  Order: Alpine first, then melange (melange init scripts override Alpine's)" >> /tmp/qemu-debug.log
-                  new_args="$new_args '-initrd' '/tmp/combined-initramfs'"
-                else
-                  echo "ERROR: Combined initramfs file is empty after compression" >> /tmp/qemu-debug.log
-                  COMBINE_FAILED=true
-                fi
-              else
-                echo "ERROR: Failed to compress combined initramfs" >> /tmp/qemu-debug.log
-                COMBINE_FAILED=true
-              fi
-              # Cleanup temporary files
-              rm -f /tmp/alpine-initramfs.cpio /tmp/melange-initramfs.cpio /tmp/combined-initramfs.cpio
-            else
-              echo "ERROR: Failed to concatenate cpio files" >> /tmp/qemu-debug.log
-              COMBINE_FAILED=true
-            fi
-          fi
-          
-          # Fallback to melange's initrd only if combination failed
-          if [ "$COMBINE_FAILED" = true ]; then
-            echo "Falling back to melange's initrd only" >> /tmp/qemu-debug.log
-            escaped=$(printf '%s' "$melange_initrd" | sed "s/'/'\\\\''/g")
-            new_args="$new_args '-initrd' '$escaped'"
-            rm -f /tmp/alpine-initramfs.cpio /tmp/melange-initramfs.cpio /tmp/combined-initramfs.cpio /tmp/combined-initramfs
-          fi
-        fi
-      elif [ -n "$melange_initrd" ]; then
-        echo "WARNING: Melange initrd path specified but file not found: $melange_initrd" >> /tmp/qemu-debug.log
-        echo "WARNING: Using Alpine's initramfs only" >> /tmp/qemu-debug.log
-        if [ -f "/boot/initramfs-virt" ]; then
-          new_args="$new_args '-initrd' '/boot/initramfs-virt'"
-        else
-          echo "ERROR: Alpine initramfs also not found, QEMU may fail to boot" >> /tmp/qemu-debug.log
-        fi
-      else
-        echo "No melange initrd found, using only Alpine's initramfs" >> /tmp/qemu-debug.log
-        if [ -f "/boot/initramfs-virt" ]; then
-          new_args="$new_args '-initrd' '/boot/initramfs-virt'"
-        else
-          echo "ERROR: Alpine initramfs not found at /boot/initramfs-virt" >> /tmp/qemu-debug.log
-        fi
-      fi
 
       echo "Final command: /usr/bin/qemu-system-aarch64.real $new_args" >> /tmp/qemu-debug.log
 
@@ -249,13 +122,13 @@ task:
       chmod +x /usr/bin/qemu-system-aarch64
       echo "QEMU wrapper installed - will use TCG instead of KVM"
 
-  # Setup kernel for QEMU runner (QEMU needs kernel and initramfs to boot VM)
+  # Setup kernel and extract virtio modules for melange
   setup_kernel_script:
     - |
       # QEMU runner requires kernel and initramfs from linux-virt package
-      # Initramfs contains virtio modules needed for QEMU storage/network
       KERNEL_PATH="/boot/vmlinuz-virt"
       INITRAMFS_PATH="/boot/initramfs-virt"
+      
       if [ ! -f "$KERNEL_PATH" ]; then
         echo "ERROR: Kernel not found at $KERNEL_PATH"
         ls -lh /boot/
@@ -266,10 +139,52 @@ task:
         ls -lh /boot/
         exit 1
       fi
+      
       echo "Kernel available at: $KERNEL_PATH"
       echo "Initramfs available at: $INITRAMFS_PATH"
-      echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
-      echo "export QEMU_INITRAMFS=$INITRAMFS_PATH" >> $CIRRUS_ENV
+      
+      # Extract virtio modules from Alpine's initramfs
+      # Melange will inject these into its own initramfs using QEMU_KERNEL_MODULES
+      echo "Extracting virtio modules from Alpine initramfs..."
+      MODULES_DIR="/tmp/virtio-modules"
+      mkdir -p "$MODULES_DIR"
+      
+      # Extract initramfs (handle both compressed and uncompressed)
+      if file "$INITRAMFS_PATH" | grep -q gzip; then
+        echo "  Initramfs is gzip compressed, extracting..."
+        gunzip -c "$INITRAMFS_PATH" > /tmp/alpine-initramfs.cpio
+      else
+        echo "  Initramfs is uncompressed, copying..."
+        cp "$INITRAMFS_PATH" /tmp/alpine-initramfs.cpio
+      fi
+      
+      # Extract modules from cpio archive
+      cd "$MODULES_DIR"
+      cpio -idm < /tmp/alpine-initramfs.cpio 2>/dev/null || true
+      
+      # Find kernel version
+      KERNEL_VERSION=$(ls lib/modules/ 2>/dev/null | head -1)
+      if [ -n "$KERNEL_VERSION" ]; then
+        echo "  Found kernel version: $KERNEL_VERSION"
+        echo "  Modules extracted to: $MODULES_DIR/lib/modules/$KERNEL_VERSION"
+        
+        # List virtio modules found
+        if [ -d "lib/modules/$KERNEL_VERSION/kernel/drivers/virtio" ]; then
+          echo "  Virtio modules found:"
+          find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" | head -10
+        fi
+        
+        # Set environment variable for melange to inject modules
+        echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
+        echo "export QEMU_KERNEL_MODULES=$MODULES_DIR/lib/modules/$KERNEL_VERSION" >> $CIRRUS_ENV
+        echo "QEMU_KERNEL_MODULES set to: $MODULES_DIR/lib/modules/$KERNEL_VERSION"
+      else
+        echo "WARNING: Could not determine kernel version from initramfs"
+        echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
+      fi
+      
+      # Cleanup temporary files
+      rm -f /tmp/alpine-initramfs.cpio
 
   # Setup signing keys
   setup_keys_script:
@@ -285,7 +200,10 @@ task:
     - mkdir -p build-output/aarch64 build-output/logs
     - |
       export QEMU_KERNEL_IMAGE=/boot/vmlinuz-virt
-      export QEMU_INITRAMFS=/boot/initramfs-virt
+      if [ -n "$QEMU_KERNEL_MODULES" ]; then
+        export QEMU_KERNEL_MODULES
+        echo "Using QEMU_KERNEL_MODULES=$QEMU_KERNEL_MODULES"
+      fi
       melange build \
         --runner qemu \
         --arch aarch64 \
