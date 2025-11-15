@@ -345,7 +345,26 @@ task:
         echo "Using QEMU_KERNEL_MODULES=$QEMU_KERNEL_MODULES"
         if [ -d "$QEMU_KERNEL_MODULES" ]; then
           echo "  ✓ QEMU_KERNEL_MODULES directory exists"
+          echo "  Directory contents:"
           ls -la "$QEMU_KERNEL_MODULES" | head -5
+          
+          # Check for kernel version subdirectory
+          KERNEL_VER=$(ls "$QEMU_KERNEL_MODULES" 2>/dev/null | head -1)
+          if [ -n "$KERNEL_VER" ]; then
+            echo "  Found kernel version: $KERNEL_VER"
+            VIRTIO_DIR="$QEMU_KERNEL_MODULES/$KERNEL_VER/kernel/drivers/virtio"
+            if [ -d "$VIRTIO_DIR" ]; then
+              echo "  ✓ Virtio modules directory exists: $VIRTIO_DIR"
+              echo "  Virtio modules available:"
+              find "$VIRTIO_DIR" -name "*.ko" -type f 2>/dev/null | head -10
+              VIRTIO_COUNT=$(find "$VIRTIO_DIR" -name "*.ko" -type f 2>/dev/null | wc -l)
+              echo "  Total virtio modules: $VIRTIO_COUNT"
+            else
+              echo "  ✗ ERROR: Virtio modules directory not found: $VIRTIO_DIR"
+            fi
+          else
+            echo "  ✗ ERROR: Could not find kernel version subdirectory"
+          fi
         else
           echo "  ✗ ERROR: QEMU_KERNEL_MODULES directory does not exist: $QEMU_KERNEL_MODULES"
         fi
