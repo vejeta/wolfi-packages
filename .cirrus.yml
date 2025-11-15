@@ -149,6 +149,7 @@ task:
   build_script:
     - mkdir -p build-output/aarch64
     - |
+      export QEMU_KERNEL_IMAGE=/boot/vmlinuz-virt
       melange build \
         --runner qemu \
         --arch aarch64 \
