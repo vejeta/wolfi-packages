@@ -169,7 +169,8 @@ task:
       KERNEL_VERSION=$(ls lib/modules/ 2>/dev/null | head -1)
       if [ -n "$KERNEL_VERSION" ]; then
         echo "  Found kernel version: $KERNEL_VERSION"
-        echo "  Modules extracted to: $MODULES_DIR/lib/modules/$KERNEL_VERSION"
+        MODULES_BASE_PATH="$MODULES_DIR/lib/modules/$KERNEL_VERSION"
+        echo "  Modules extracted to: $MODULES_BASE_PATH"
         
         # List virtio modules found
         if [ -d "lib/modules/$KERNEL_VERSION/kernel/drivers/virtio" ]; then
@@ -177,10 +178,19 @@ task:
           find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" | head -10
         fi
         
-        # Set environment variable for melange to inject modules
+        # Melange constructs paths as: "/lib/modules/" + path[len(modulesPath):]
+        # So if modulesPath is /tmp/virtio-modules/lib/modules/6.12.58-0-virt,
+        # and path is /tmp/virtio-modules/lib/modules/6.12.58-0-virt/kernel/drivers/virtio/virtio_blk.ko,
+        # then path[len(modulesPath):] = /kernel/drivers/virtio/virtio_blk.ko
+        # and header.Name = /lib/modules/kernel/drivers/virtio/virtio_blk.ko (WRONG - missing kernel version)
+        #
+        # Solution: Pass modulesPath as /tmp/virtio-modules/lib/modules (without kernel version)
+        # Then path[len(modulesPath):] = /6.12.58-0-virt/kernel/drivers/virtio/virtio_blk.ko
+        # and header.Name = /lib/modules/6.12.58-0-virt/kernel/drivers/virtio/virtio_blk.ko (CORRECT)
+        MODULES_PATH_FOR_MELANGE="$MODULES_DIR/lib/modules"
         echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
-        echo "export QEMU_KERNEL_MODULES=$MODULES_DIR/lib/modules/$KERNEL_VERSION" >> $CIRRUS_ENV
-        echo "QEMU_KERNEL_MODULES set to: $MODULES_DIR/lib/modules/$KERNEL_VERSION"
+        echo "export QEMU_KERNEL_MODULES=$MODULES_PATH_FOR_MELANGE" >> $CIRRUS_ENV
+        echo "QEMU_KERNEL_MODULES set to: $MODULES_PATH_FOR_MELANGE (contains $KERNEL_VERSION subdirectory)"
       else
         echo "WARNING: Could not determine kernel version from initramfs"
         echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
