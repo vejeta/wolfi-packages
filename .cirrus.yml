@@ -183,10 +183,10 @@ task:
           
           # Concatenate the cpio files (Linux kernel supports multiple cpio archives)
           # Order matters: files from later archives override files from earlier ones
-          # Put Alpine first (virtio modules), then melange (init scripts override Alpine's)
-          # This ensures Alpine's virtio modules are loaded, and melange's init scripts run
+          # Put melange first (init scripts + build environment), then Alpine (binaries + virtio modules override)
+          # This ensures melange's init scripts run, and Alpine's essential binaries (mount, etc.) are available
           if [ "$COMBINE_FAILED" = false ]; then
-            if cat /tmp/alpine-initramfs.cpio /tmp/melange-initramfs.cpio > /tmp/combined-initramfs.cpio 2>> /tmp/qemu-debug.log; then
+            if cat /tmp/melange-initramfs.cpio /tmp/alpine-initramfs.cpio > /tmp/combined-initramfs.cpio 2>> /tmp/qemu-debug.log; then
               # Compress the combined cpio with gzip
               if gzip -c /tmp/combined-initramfs.cpio > /tmp/combined-initramfs 2>> /tmp/qemu-debug.log; then
                 if [ -f /tmp/combined-initramfs ] && [ -s /tmp/combined-initramfs ]; then
