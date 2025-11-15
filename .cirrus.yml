@@ -202,44 +202,56 @@ task:
         # List virtio modules found
         echo "  Searching for virtio modules..."
         echo "  Full directory structure in lib/modules/$KERNEL_VERSION:"
-        find lib/modules/$KERNEL_VERSION -type d | head -30
+        find lib/modules/$KERNEL_VERSION -type d 2>/dev/null | head -30 || true
         
         echo "  All .ko files found:"
-        find lib/modules/$KERNEL_VERSION -name "*.ko" | head -20
+        find lib/modules/$KERNEL_VERSION -name "*.ko" 2>/dev/null | head -20 || true
         
+        # Check if virtio directory exists in initramfs
+        VIRTIO_COUNT=0
         if [ -d "lib/modules/$KERNEL_VERSION/kernel/drivers/virtio" ]; then
-          echo "  Virtio modules directory exists, checking contents:"
-          ls -la lib/modules/$KERNEL_VERSION/kernel/drivers/virtio/ || echo "    Directory is empty or inaccessible"
-          find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" | head -10
-          VIRTIO_COUNT=$(find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" | wc -l)
-          echo "  Total virtio modules: $VIRTIO_COUNT"
+          echo "  Virtio modules directory exists in initramfs, checking contents:"
+          ls -la lib/modules/$KERNEL_VERSION/kernel/drivers/virtio/ 2>/dev/null || echo "    Directory is empty or inaccessible"
+          find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" 2>/dev/null | head -10
+          VIRTIO_COUNT=$(find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" 2>/dev/null | wc -l)
+          echo "  Total virtio modules in initramfs: $VIRTIO_COUNT"
+        else
+          echo "  ⚠ Virtio modules directory not found in initramfs!"
+          echo "  Available directories in lib/modules/$KERNEL_VERSION:"
+          find lib/modules/$KERNEL_VERSION -type d 2>/dev/null | head -20 || true
+        fi
+        
+        # If no virtio modules found in initramfs, check installed system
+        if [ "$VIRTIO_COUNT" -eq 0 ]; then
+          echo "  ⚠ WARNING: No virtio modules found in initramfs!"
+          echo "  Searching for virtio modules in entire initramfs modules directory:"
+          find lib/modules/$KERNEL_VERSION -name "*virtio*" -type f 2>/dev/null || echo "    None found"
           
-          if [ "$VIRTIO_COUNT" -eq 0 ]; then
-            echo "  ⚠ WARNING: No virtio modules found in initramfs!"
-            echo "  Searching for virtio modules in entire modules directory:"
-            find lib/modules/$KERNEL_VERSION -name "*virtio*" -type f
-            
-            echo "  Checking if virtio modules are available in installed system..."
-            if [ -d "/lib/modules/$KERNEL_VERSION" ]; then
-              echo "  System modules directory exists, searching:"
-              find /lib/modules/$KERNEL_VERSION -name "*virtio*" -type f 2>/dev/null | head -10
-              if [ $? -eq 0 ] && [ -n "$(find /lib/modules/$KERNEL_VERSION -name '*virtio*.ko' -type f 2>/dev/null | head -1)" ]; then
-                echo "  ✓ Found virtio modules in system! Copying them..."
-                mkdir -p lib/modules/$KERNEL_VERSION/kernel/drivers/virtio
+          echo "  Checking if virtio modules are available in installed system..."
+          if [ -d "/lib/modules/$KERNEL_VERSION" ]; then
+            echo "  System modules directory exists, searching:"
+            SYSTEM_VIRTIO=$(find /lib/modules/$KERNEL_VERSION -name '*virtio*.ko' -type f 2>/dev/null | head -5)
+            if [ -n "$SYSTEM_VIRTIO" ]; then
+              echo "  ✓ Found virtio modules in system:"
+              echo "$SYSTEM_VIRTIO"
+              echo "  Copying virtio modules from system..."
+              mkdir -p lib/modules/$KERNEL_VERSION/kernel/drivers/virtio
+              if [ -d "/lib/modules/$KERNEL_VERSION/kernel/drivers/virtio" ]; then
                 cp -r /lib/modules/$KERNEL_VERSION/kernel/drivers/virtio/* lib/modules/$KERNEL_VERSION/kernel/drivers/virtio/ 2>/dev/null || true
                 echo "  Copied virtio modules. Verifying:"
-                find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" | head -5
-                VIRTIO_COUNT=$(find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" | wc -l)
+                find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" 2>/dev/null | head -5
+                VIRTIO_COUNT=$(find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" 2>/dev/null | wc -l)
                 echo "  Total virtio modules after copy: $VIRTIO_COUNT"
               else
-                echo "  ✗ No virtio modules found in system either"
+                echo "  ✗ System virtio directory structure doesn't match expected layout"
               fi
+            else
+              echo "  ✗ No virtio modules found in system either"
+              echo "  This is a problem - virtio modules are required for QEMU to work!"
             fi
+          else
+            echo "  ✗ System modules directory /lib/modules/$KERNEL_VERSION does not exist"
           fi
-        else
-          echo "  ERROR: Virtio modules directory not found!"
-          echo "  Available directories in lib/modules/$KERNEL_VERSION:"
-          find lib/modules/$KERNEL_VERSION -type d | head -20
         fi
         
         # Check for modules.dep and other module metadata files
