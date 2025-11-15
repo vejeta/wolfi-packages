@@ -21,14 +21,17 @@ else
     ERRORS=$((ERRORS + 1))
 fi
 
-# Check 2: Verify initramfs combination order (Alpine first, then melange)
+# Check 2: Verify initramfs combination order (melange first, then Alpine)
 echo ""
 echo "2. Checking initramfs combination order..."
-if grep -q "cat /tmp/alpine-initramfs.cpio /tmp/melange-initramfs.cpio" "$REPO_ROOT/.cirrus.yml"; then
-    echo "   ✓ Correct order: Alpine first, then melange"
+if grep -q "cat /tmp/melange-initramfs.cpio /tmp/alpine-initramfs.cpio" "$REPO_ROOT/.cirrus.yml"; then
+    echo "   ✓ Correct order: melange first, then Alpine"
+elif grep -q "cat /tmp/alpine-initramfs.cpio /tmp/melange-initramfs.cpio" "$REPO_ROOT/.cirrus.yml"; then
+    echo "   ✗ WARNING: Old order detected (Alpine first, then melange)"
+    echo "   Current order may cause 'mount: not found' errors"
+    echo "   Expected: cat /tmp/melange-initramfs.cpio /tmp/alpine-initramfs.cpio"
 else
-    echo "   ✗ WARNING: Initramfs order may be incorrect"
-    echo "   Expected: cat /tmp/alpine-initramfs.cpio /tmp/melange-initramfs.cpio"
+    echo "   ✗ WARNING: Initramfs combination order not found"
 fi
 
 # Check 3: Verify file command is used for compression detection
