@@ -1,8 +1,8 @@
 # Cirrus CI - Showcase: Build stremio-server on ARM64
 #
-# This is a simplified example showing Cirrus CI ARM64 native builds.
-# stremio-server is a pure Node.js application (no compilation needed)
-# so it builds quickly without QEMU complexity.
+# Native ARM64 builds on AWS Graviton2 using bubblewrap runner.
+# stremio-server is a pure Node.js application (no compilation needed).
+# No QEMU needed - builds directly on native ARM64 hardware.
 #
 # For production builds of all packages, see GitHub Actions which uses
 # native ARM64 runners (ubuntu-24.04-arm) with bubblewrap for fast builds.
@@ -22,9 +22,9 @@ task:
     MELANGE_VERSION: latest
     APK_SIGNING_KEY: ENCRYPTED[!1ef534804032cc4990b3feb5c4dbe292a23b5003dbfacd059aa9ca3ea63a950eb975838ae6e1305303df4217c8caf97c!]
 
-  # Install dependencies (including QEMU for emulation)
+  # Install dependencies
   install_deps_script:
-    - apk add --no-cache curl git bash qemu-system-aarch64 linux-virt wget tar gzip jq openssl
+    - apk add --no-cache curl git bash wget tar gzip jq openssl
 
   # Install Melange
   install_melange_script:
@@ -38,117 +38,6 @@ task:
       melange version
       rm -f melange_${ACTUAL_VERSION#v}_linux_arm64.tar.gz
 
-  # Create QEMU wrapper to force TCG instead of KVM (KVM not available in container)
-  setup_qemu_wrapper_script:
-    - |
-      # Move real QEMU binary
-      mv /usr/bin/qemu-system-aarch64 /usr/bin/qemu-system-aarch64.real
-
-      # Create wrapper script that replaces -accel kvm with -accel tcg,thread=multi
-      cat > /usr/bin/qemu-system-aarch64 << 'EOF'
-      #!/bin/sh
-      # QEMU wrapper to force TCG acceleration instead of KVM
-      # Also adds machine type and memory limit to fix addressing issues
-      # KVM is not available in Cirrus CI ARM containers
-
-      # Debug logging
-      echo "=== QEMU wrapper invoked at $(date) ===" >> /tmp/qemu-debug.log
-      echo "Original arguments:" >> /tmp/qemu-debug.log
-      for arg in "$@"; do
-        echo "  '$arg'" >> /tmp/qemu-debug.log
-      done
-
-      # Process arguments to replace problematic values
-      # - Replace -accel kvm with -accel tcg,thread=multi (KVM not available)
-      # - Replace -m <value> with -m 16G (cap memory, Melange calculates wrong value)
-      # - Replace -machine <value> with -machine virt (ensure 64-bit addressing)
-      # - Replace -cpu host with -cpu max (TCG needs explicit CPU, not host)
-      new_args=""
-      prev_arg=""
-      skip_next=false
-      skip_reason=""
-
-      for arg in "$@"; do
-        # Skip this iteration if previous arg was -m, -machine, or -cpu (we already added our replacement)
-        if [ "$skip_next" = true ]; then
-          skip_next=false
-          echo "Replaced $skip_reason value '$arg' with replacement" >> /tmp/qemu-debug.log
-          # Reset prev_arg so next iteration doesn't use this value
-          prev_arg=""
-          skip_reason=""
-          continue
-        fi
-
-        # Replace -accel kvm with -accel tcg,thread=multi
-        if [ "$prev_arg" = "-accel" ] && [ "$arg" = "kvm" ]; then
-          echo "Replaced -accel kvm with -accel tcg,thread=multi" >> /tmp/qemu-debug.log
-          escaped=$(printf '%s' "tcg,thread=multi" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped'"
-        # If current arg is -m, add it and mark to skip next value (replace with 16G)
-        elif [ "$arg" = "-m" ]; then
-          echo "Found -m argument, will replace value with 16G" >> /tmp/qemu-debug.log
-          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped' '16G'"
-          skip_next=true
-          skip_reason="-m"
-        # If current arg is -machine, add it and mark to skip next value (replace with virt)
-        elif [ "$arg" = "-machine" ]; then
-          echo "Found -machine argument, will replace value with virt" >> /tmp/qemu-debug.log
-          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped' 'virt'"
-          skip_next=true
-          skip_reason="-machine"
-        # If current arg is -cpu, add it and mark to skip next value (replace with max)
-        elif [ "$arg" = "-cpu" ]; then
-          echo "Found -cpu argument, will replace value with max (TCG needs explicit CPU)" >> /tmp/qemu-debug.log
-          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped' 'max'"
-          skip_next=true
-          skip_reason="-cpu"
-        else
-          # Properly quote and add all other arguments
-          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped'"
-        fi
-
-        prev_arg="$arg"
-      done
-
-      # Add initramfs with virtio modules
-      echo "Adding -initrd /boot/initramfs-virt (contains virtio modules)" >> /tmp/qemu-debug.log
-      new_args="$new_args '-initrd' '/boot/initramfs-virt'"
-
-      echo "Final command: /usr/bin/qemu-system-aarch64.real $new_args" >> /tmp/qemu-debug.log
-
-      # Execute with eval to properly handle quoted arguments
-      eval exec /usr/bin/qemu-system-aarch64.real $new_args
-      EOF
-
-      chmod +x /usr/bin/qemu-system-aarch64
-      echo "QEMU wrapper installed - will use TCG instead of KVM"
-
-  # Setup kernel for QEMU runner (QEMU needs kernel and initramfs to boot VM)
-  setup_kernel_script:
-    - |
-      # QEMU runner requires kernel and initramfs from linux-virt package
-      # Initramfs contains virtio modules needed for QEMU storage/network
-      KERNEL_PATH="/boot/vmlinuz-virt"
-      INITRAMFS_PATH="/boot/initramfs-virt"
-      if [ ! -f "$KERNEL_PATH" ]; then
-        echo "ERROR: Kernel not found at $KERNEL_PATH"
-        ls -lh /boot/
-        exit 1
-      fi
-      if [ ! -f "$INITRAMFS_PATH" ]; then
-        echo "ERROR: Initramfs not found at $INITRAMFS_PATH"
-        ls -lh /boot/
-        exit 1
-      fi
-      echo "Kernel available at: $KERNEL_PATH"
-      echo "Initramfs available at: $INITRAMFS_PATH"
-      echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
-      echo "export QEMU_INITRAMFS=$INITRAMFS_PATH" >> $CIRRUS_ENV
-
   # Setup signing keys
   setup_keys_script:
     - |
@@ -160,12 +49,9 @@ task:
 
   # Build stremio-server (Node.js package, no compilation needed)
   build_script:
-    - mkdir -p build-output/aarch64 build-output/logs
+    - mkdir -p build-output/aarch64
     - |
-      export QEMU_KERNEL_IMAGE=/boot/vmlinuz-virt
-      export QEMU_INITRAMFS=/boot/initramfs-virt
       melange build \
-        --runner qemu \
         --arch aarch64 \
         --signing-key melange.rsa \
         --keyring-append melange.rsa.pub \
@@ -173,13 +59,10 @@ task:
         --repository-append https://packages.wolfi.dev/os \
         --pipeline-dir pipelines \
         --out-dir build-output/aarch64 \
-        packages/stremio-server.yaml || true
-    - ls -lh build-output/aarch64/ || true
-    - cp /tmp/qemu-debug.log build-output/logs/ || echo "No QEMU debug log found"
+        packages/stremio-server.yaml
+    - ls -lh build-output/aarch64/
 
   # Upload artifacts
   always:
     apk_packages_artifacts:
       path: "build-output/aarch64/*.apk"
-    qemu_logs_artifacts:
-      path: "build-output/logs/qemu-debug.log"
