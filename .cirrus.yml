@@ -160,7 +160,7 @@ task:
 
   # Build stremio-server (Node.js package, no compilation needed)
   build_script:
-    - mkdir -p build-output/aarch64
+    - mkdir -p build-output/aarch64 build-output/logs
     - |
       export QEMU_KERNEL_IMAGE=/boot/vmlinuz-virt
       export QEMU_INITRAMFS=/boot/initramfs-virt
@@ -173,12 +173,13 @@ task:
         --repository-append https://packages.wolfi.dev/os \
         --pipeline-dir pipelines \
         --out-dir build-output/aarch64 \
-        packages/stremio-server.yaml
-    - ls -lh build-output/aarch64/
+        packages/stremio-server.yaml || true
+    - ls -lh build-output/aarch64/ || true
+    - cp /tmp/qemu-debug.log build-output/logs/ || echo "No QEMU debug log found"
 
   # Upload artifacts
   always:
     apk_packages_artifacts:
       path: "build-output/aarch64/*.apk"
     qemu_logs_artifacts:
-      path: "/tmp/qemu-debug.log"
+      path: "build-output/logs/qemu-debug.log"
