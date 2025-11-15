@@ -94,14 +94,14 @@ pipeline:
     \n# Make configure think we are running in a git directory\n# This makes it symlink\
     \ the include files to the right directory\nmkdir -p .git\n\n# Use OpenGL ES2\
     \ on aarch64\nif [[ \"${{build.arch}}\" == \"aarch64\" ]]; then\n  _opengl=\"\
-    -opengl es2\"\nelse\n  _opengl=\"-opengl desktop\"\nfi\n\n./configure \\\n  -confirm-license\
+    -opengl es2\"\n  _xcb_glx=\"\"  # GLX plugin requires desktop OpenGL, not available on ARM64\nelse\n  _opengl=\"-opengl desktop\"\n  _xcb_glx=\"-feature-xcb-glx-plugin\"\nfi\n\n./configure \\\n  -confirm-license\
     \ \\\n  -opensource \\\n  -prefix /usr \\\n  -archdatadir \"$QT5_PREFIX\" \\\n\
     \  -bindir \"$QT5_PREFIX\"/bin \\\n  -datadir \"$QT5_DATADIR\" \\\n  -libdir /usr/lib\
     \ \\\n  -dbus-linked \\\n  -docdir /usr/share/doc/qt5 \\\n  -examplesdir /usr/share/doc/qt5/examples\
     \ \\\n  -glib \\\n  -headerdir /usr/include/qt5 \\\n  -icu \\\n  -importdir \"\
     $QT5_PREFIX\"/imports \\\n  -libexecdir \"$QT5_PREFIX\"/libexec \\\n  -no-rpath\
     \ \\\n  -no-separate-debug-info \\\n  -no-pch \\\n  -nomake examples \\\n  $_opengl\
-    \ \\\n  -xcb \\\n  -xcb-xlib \\\n  -egl \\\n  -feature-xcb-glx-plugin \\\n  -openssl-linked\
+    \ \\\n  -xcb \\\n  -xcb-xlib \\\n  -egl \\\n  $_xcb_glx \\\n  -openssl-linked\
     \ \\\n  -optimized-qmake \\\n  -plugin-sql-mysql \\\n  -plugin-sql-odbc \\\n \
     \ -plugin-sql-psql \\\n  -plugin-sql-sqlite \\\n  -plugin-sql-tds \\\n  -plugindir\
     \ \"$QT5_PREFIX\"/plugins \\\n  -system-libjpeg \\\n  -system-libpng \\\n  -system-pcre\
