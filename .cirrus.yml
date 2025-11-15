@@ -134,7 +134,7 @@ task:
         exit 1
       fi
       echo "Kernel available at: $KERNEL_PATH"
-      echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
+      echo "QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
 
   # Setup signing keys
   setup_keys_script:
