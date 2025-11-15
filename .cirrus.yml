@@ -73,6 +73,11 @@ task:
       for arg in "$@"; do
         # Skip this iteration if previous arg was -m, -machine, -cpu, or -initrd (we already added our replacement)
         if [ "$skip_next" = true ]; then
+          # If we're skipping because of -initrd, save this arg as the melange initrd path
+          if [ "$skip_reason" = "-initrd" ]; then
+            melange_initrd="$arg"
+            echo "Melange initrd path: $melange_initrd" >> /tmp/qemu-debug.log
+          fi
           skip_next=false
           echo "Replaced $skip_reason value '$arg' with replacement" >> /tmp/qemu-debug.log
           # Reset prev_arg so next iteration doesn't use this value
@@ -107,10 +112,9 @@ task:
           new_args="$new_args '$escaped' 'max'"
           skip_next=true
           skip_reason="-cpu"
-        # If current arg is -initrd, save the path and mark to skip next value
+        # If current arg is -initrd, mark to skip next value (we'll save it as melange_initrd)
         elif [ "$arg" = "-initrd" ]; then
           echo "Found -initrd argument from melange" >> /tmp/qemu-debug.log
-          melange_initrd_next=true
           # Don't add -initrd yet, we'll add the combined version later
           skip_next=true
           skip_reason="-initrd"
@@ -118,12 +122,6 @@ task:
           # Properly quote and add all other arguments
           escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
           new_args="$new_args '$escaped'"
-        fi
-
-        # If previous arg was -initrd, save this arg as the melange initrd path
-        if [ "$prev_arg" = "-initrd" ]; then
-          melange_initrd="$arg"
-          echo "Melange initrd path: $melange_initrd" >> /tmp/qemu-debug.log
         fi
 
         prev_arg="$arg"
@@ -136,24 +134,47 @@ task:
         echo "  Melange initrd: $melange_initrd" >> /tmp/qemu-debug.log
         echo "  Alpine initrd: /boot/initramfs-virt (contains virtio modules)" >> /tmp/qemu-debug.log
 
-        # Concatenate: Alpine's initrd first (base virtio modules), then melange's (build environment)
-        cat /boot/initramfs-virt "$melange_initrd" > /tmp/combined-initramfs 2>> /tmp/qemu-debug.log
-
-        if [ -f /tmp/combined-initramfs ]; then
-          echo "Combined initramfs created at /tmp/combined-initramfs ($(stat -c%s /tmp/combined-initramfs) bytes)" >> /tmp/qemu-debug.log
-          new_args="$new_args '-initrd' '/tmp/combined-initramfs'"
-        else
-          echo "ERROR: Failed to create combined initramfs, using melange's only" >> /tmp/qemu-debug.log
+        # Verify Alpine's initramfs exists
+        if [ ! -f "/boot/initramfs-virt" ]; then
+          echo "ERROR: Alpine initramfs not found at /boot/initramfs-virt" >> /tmp/qemu-debug.log
+          echo "ERROR: Using melange's initrd only (virtio modules may be missing)" >> /tmp/qemu-debug.log
           escaped=$(printf '%s' "$melange_initrd" | sed "s/'/'\\\\''/g")
           new_args="$new_args '-initrd' '$escaped'"
+        else
+          # Concatenate: Alpine's initrd first (base virtio modules), then melange's (build environment)
+          if cat /boot/initramfs-virt "$melange_initrd" > /tmp/combined-initramfs 2>> /tmp/qemu-debug.log; then
+            if [ -f /tmp/combined-initramfs ] && [ -s /tmp/combined-initramfs ]; then
+              COMBINED_SIZE=$(stat -c%s /tmp/combined-initramfs 2>/dev/null || echo "unknown")
+              echo "Combined initramfs created at /tmp/combined-initramfs ($COMBINED_SIZE bytes)" >> /tmp/qemu-debug.log
+              new_args="$new_args '-initrd' '/tmp/combined-initramfs'"
+            else
+              echo "ERROR: Combined initramfs file is empty or missing" >> /tmp/qemu-debug.log
+              echo "ERROR: Using melange's initrd only" >> /tmp/qemu-debug.log
+              escaped=$(printf '%s' "$melange_initrd" | sed "s/'/'\\\\''/g")
+              new_args="$new_args '-initrd' '$escaped'"
+            fi
+          else
+            echo "ERROR: Failed to concatenate initramfs files" >> /tmp/qemu-debug.log
+            echo "ERROR: Using melange's initrd only" >> /tmp/qemu-debug.log
+            escaped=$(printf '%s' "$melange_initrd" | sed "s/'/'\\\\''/g")
+            new_args="$new_args '-initrd' '$escaped'"
+          fi
         fi
       elif [ -n "$melange_initrd" ]; then
         echo "WARNING: Melange initrd path specified but file not found: $melange_initrd" >> /tmp/qemu-debug.log
-        escaped=$(printf '%s' "$melange_initrd" | sed "s/'/'\\\\''/g")
-        new_args="$new_args '-initrd' '$escaped'"
+        echo "WARNING: Using Alpine's initramfs only" >> /tmp/qemu-debug.log
+        if [ -f "/boot/initramfs-virt" ]; then
+          new_args="$new_args '-initrd' '/boot/initramfs-virt'"
+        else
+          echo "ERROR: Alpine initramfs also not found, QEMU may fail to boot" >> /tmp/qemu-debug.log
+        fi
       else
         echo "No melange initrd found, using only Alpine's initramfs" >> /tmp/qemu-debug.log
-        new_args="$new_args '-initrd' '/boot/initramfs-virt'"
+        if [ -f "/boot/initramfs-virt" ]; then
+          new_args="$new_args '-initrd' '/boot/initramfs-virt'"
+        else
+          echo "ERROR: Alpine initramfs not found at /boot/initramfs-virt" >> /tmp/qemu-debug.log
+        fi
       fi
 
       echo "Final command: /usr/bin/qemu-system-aarch64.real $new_args" >> /tmp/qemu-debug.log
