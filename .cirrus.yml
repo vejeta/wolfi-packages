@@ -123,18 +123,27 @@ task:
       chmod +x /usr/bin/qemu-system-aarch64
       echo "QEMU wrapper installed - will use TCG instead of KVM"
 
-  # Setup kernel for QEMU runner (QEMU needs a kernel image to boot VM)
+  # Setup kernel for QEMU runner (QEMU needs kernel and initramfs to boot VM)
   setup_kernel_script:
     - |
-      # QEMU runner requires a kernel image - use the one from linux-virt package
+      # QEMU runner requires kernel and initramfs from linux-virt package
+      # Initramfs contains virtio modules needed for QEMU storage/network
       KERNEL_PATH="/boot/vmlinuz-virt"
+      INITRAMFS_PATH="/boot/initramfs-virt"
       if [ ! -f "$KERNEL_PATH" ]; then
         echo "ERROR: Kernel not found at $KERNEL_PATH"
         ls -lh /boot/
         exit 1
       fi
+      if [ ! -f "$INITRAMFS_PATH" ]; then
+        echo "ERROR: Initramfs not found at $INITRAMFS_PATH"
+        ls -lh /boot/
+        exit 1
+      fi
       echo "Kernel available at: $KERNEL_PATH"
+      echo "Initramfs available at: $INITRAMFS_PATH"
       echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
+      echo "export QEMU_INITRAMFS=$INITRAMFS_PATH" >> $CIRRUS_ENV
 
   # Setup signing keys
   setup_keys_script:
