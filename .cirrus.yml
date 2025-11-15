@@ -159,6 +159,7 @@ task:
     - mkdir -p build-output/aarch64
     - |
       export QEMU_KERNEL_IMAGE=/boot/vmlinuz-virt
+      export QEMU_INITRAMFS=/boot/initramfs-virt
       melange build \
         --runner qemu \
         --arch aarch64 \
@@ -175,3 +176,5 @@ task:
   always:
     apk_packages_artifacts:
       path: "build-output/aarch64/*.apk"
+    qemu_logs_artifacts:
+      path: "/tmp/qemu-debug.log"
