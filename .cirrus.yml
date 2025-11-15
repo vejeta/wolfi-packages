@@ -240,10 +240,33 @@ task:
   build_script:
     - mkdir -p build-output/aarch64 build-output/logs
     - |
-      export QEMU_KERNEL_IMAGE=/boot/vmlinuz-virt
+      # Source environment variables from CIRRUS_ENV if it exists
+      if [ -f "$CIRRUS_ENV" ]; then
+        echo "Loading environment variables from $CIRRUS_ENV:"
+        cat "$CIRRUS_ENV"
+        set -a
+        source "$CIRRUS_ENV"
+        set +a
+      fi
+      
+      # Set default kernel image if not already set
+      export QEMU_KERNEL_IMAGE=${QEMU_KERNEL_IMAGE:-/boot/vmlinuz-virt}
+      
+      echo "Build environment:"
+      echo "  QEMU_KERNEL_IMAGE=$QEMU_KERNEL_IMAGE"
+      echo "  QEMU_KERNEL_MODULES=${QEMU_KERNEL_MODULES:-NOT SET}"
+      
       if [ -n "$QEMU_KERNEL_MODULES" ]; then
         export QEMU_KERNEL_MODULES
         echo "Using QEMU_KERNEL_MODULES=$QEMU_KERNEL_MODULES"
+        if [ -d "$QEMU_KERNEL_MODULES" ]; then
+          echo "  ✓ QEMU_KERNEL_MODULES directory exists"
+          ls -la "$QEMU_KERNEL_MODULES" | head -5
+        else
+          echo "  ✗ ERROR: QEMU_KERNEL_MODULES directory does not exist: $QEMU_KERNEL_MODULES"
+        fi
+      else
+        echo "WARNING: QEMU_KERNEL_MODULES not set - virtio modules may not be available"
       fi
       melange build \
         --runner qemu \
