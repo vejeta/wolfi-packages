@@ -78,11 +78,12 @@ set net:max-retries 5
 set net:reconnect-interval-base 10
 
 cd ${REMOTE_DIR}
-mirror -R --verbose \
-    --include-glob 'APKINDEX.tar.gz' \
-    --include-glob '*/APKINDEX.tar.gz' \
-    --exclude-glob '*' \
-    ${LOCAL_DIR} .
+
+# Upload x86_64 APKINDEX
+put -O x86_64 ${LOCAL_DIR}/x86_64/APKINDEX.tar.gz
+
+# Upload aarch64 APKINDEX
+put -O aarch64 ${LOCAL_DIR}/aarch64/APKINDEX.tar.gz
 
 quit
 EOF
