@@ -251,11 +251,29 @@ task:
 
             # Verify the repackaged initramfs
             echo "  Verifying repackaged initramfs..." >> /tmp/qemu-wrapper.log
+
+            # Test if the file is valid gzip
+            if ! gunzip -t "$COMBINED_INITRD" 2>> /tmp/qemu-wrapper.log; then
+              echo "    ERROR: Initramfs is not valid gzip!" >> /tmp/qemu-wrapper.log
+              cd "$ORIGINAL_DIR"
+              continue
+            fi
+            echo "    ✓ Gzip format is valid" >> /tmp/qemu-wrapper.log
+
+            # Test if the content is valid cpio
+            if ! gunzip -c "$COMBINED_INITRD" | cpio -t > /dev/null 2>> /tmp/qemu-wrapper.log; then
+              echo "    ERROR: Initramfs cpio content is invalid!" >> /tmp/qemu-wrapper.log
+              cd "$ORIGINAL_DIR"
+              continue
+            fi
+            echo "    ✓ CPIO format is valid" >> /tmp/qemu-wrapper.log
+
             FILE_COUNT=$(gunzip -c "$COMBINED_INITRD" | cpio -t 2>/dev/null | wc -l)
-            echo "  Initramfs contains $FILE_COUNT files" >> /tmp/qemu-wrapper.log
+            echo "    ✓ Initramfs contains $FILE_COUNT files" >> /tmp/qemu-wrapper.log
 
             # Check for critical files
-            gunzip -c "$COMBINED_INITRD" | cpio -t 2>/dev/null | grep -E "^init$|^bin/busybox$|^bin/sh$|^usr/bin/busybox$|^lib/ld-musl" >> /tmp/qemu-wrapper.log || echo "    WARNING: Critical files not found!" >> /tmp/qemu-wrapper.log
+            echo "    Critical files check:" >> /tmp/qemu-wrapper.log
+            gunzip -c "$COMBINED_INITRD" | cpio -t 2>/dev/null | grep -E "^init$|^bin/busybox$|^bin/sh$|^usr/bin/busybox$|^lib/ld-musl" >> /tmp/qemu-wrapper.log || echo "      WARNING: Some critical files not found!" >> /tmp/qemu-wrapper.log
 
             cd "$ORIGINAL_DIR"
 
