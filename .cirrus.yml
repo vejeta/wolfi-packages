@@ -71,6 +71,20 @@
 # Last tested: 2025-11-16
 # ============================================================================
 
+# Dummy task to prevent Cirrus CI from running builds
+# This task will NEVER execute unless commit message contains [trigger-cirrus]
+task:
+  name: Disabled - See comments above
+  only_if: $CIRRUS_CHANGE_MESSAGE =~ '.*\[trigger-cirrus\].*'
+  container:
+    image: alpine:latest
+  script:
+    - echo "Cirrus CI is disabled for this repository"
+    - echo "All builds run on GitHub Actions with native ARM64 runners"
+
+# ============================================================================
+# ARCHIVED CONFIGURATION BELOW - FOR REFERENCE ONLY
+# ============================================================================
 # All tasks below are COMMENTED OUT - they will not run
 
 # task:
