@@ -203,14 +203,14 @@ task:
           new_args="$new_args '$escaped' 'max'"
           skip_next=true
           skip_reason="-cpu"
-        # Replace -chardev stdio with file to capture console output
-        elif [ "$prev_arg" = "-chardev" ] && echo "$arg" | grep -q "^stdio,"; then
-          # Extract the ID from stdio,id=xxx
-          CHARDEV_ID=$(echo "$arg" | sed 's/^stdio,//')
-          CHARDEV_FILE="file,path=/tmp/qemu-console.log,$CHARDEV_ID"
-          echo "  ✓ Replaced -chardev stdio with file output: $CHARDEV_FILE" >> /tmp/qemu-wrapper.log
-          escaped_chardev=$(printf '%s' "$CHARDEV_FILE" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped_chardev'"
+        # NOTE: Removed -chardev stdio replacement - let console output go to stdio
+        # This allows us to see kernel messages and debug initramfs loading
+        # elif [ "$prev_arg" = "-chardev" ] && echo "$arg" | grep -q "^stdio,"; then
+        #   CHARDEV_ID=$(echo "$arg" | sed 's/^stdio,//')
+        #   CHARDEV_FILE="file,path=/tmp/qemu-console.log,$CHARDEV_ID"
+        #   echo "  ✓ Replaced -chardev stdio with file output: $CHARDEV_FILE" >> /tmp/qemu-wrapper.log
+        #   escaped_chardev=$(printf '%s' "$CHARDEV_FILE" | sed "s/'/'\\\\''/g")
+        #   new_args="$new_args '$escaped_chardev'"
         # CRITICAL: If current arg is -initrd, mark that next arg is the initrd path
         elif [ "$arg" = "-initrd" ]; then
           echo "  ✓ Found -initrd argument, will concatenate with Alpine initramfs" >> /tmp/qemu-wrapper.log
