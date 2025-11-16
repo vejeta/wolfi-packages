@@ -89,203 +89,47 @@ task:
         if [ "$melange_initrd" = "PENDING" ]; then
           echo "  Melange's initrd path: '$arg'" >> /tmp/qemu-wrapper.log
 
-          # Enhance melange's initramfs with Alpine's tools and modules
-          COMBINED_INITRD="/tmp/enhanced-initramfs-$$.cpio.gz"
-          echo "  Creating enhanced initramfs: $COMBINED_INITRD" >> /tmp/qemu-wrapper.log
+          # Create combined initramfs (Alpine's initramfs + melange's initramfs)
+          # Linux kernel supports concatenated cpio archives natively
+          COMBINED_INITRD="/tmp/combined-initramfs-$$.cpio.gz"
+          echo "  Creating combined initramfs: $COMBINED_INITRD" >> /tmp/qemu-wrapper.log
 
           if [ -f "/boot/initramfs-lts" ]; then
-            # Save current directory to restore later
-            ORIGINAL_DIR=$(pwd)
-
-            # Extract both initramfs to merge them properly
-            mkdir -p /tmp/alpine-extract-$$ /tmp/melange-extract-$$ 2>> /tmp/qemu-wrapper.log
-
-            # Extract Alpine's initramfs
-            echo "  Extracting Alpine's initramfs..." >> /tmp/qemu-wrapper.log
-            cd /tmp/alpine-extract-$$
+            # Step 1: Decompress Alpine's initramfs to uncompressed cpio
+            echo "  Step 1: Checking Alpine's initramfs format..." >> /tmp/qemu-wrapper.log
             if file /boot/initramfs-lts | grep -q gzip; then
-              gunzip -c /boot/initramfs-lts | cpio -idm 2>> /tmp/qemu-wrapper.log
+              echo "    Alpine's initramfs is gzip compressed, decompressing..." >> /tmp/qemu-wrapper.log
+              gunzip -c /boot/initramfs-lts > /tmp/alpine-$$.cpio 2>> /tmp/qemu-wrapper.log
             else
-              cpio -idm < /boot/initramfs-lts 2>> /tmp/qemu-wrapper.log
+              echo "    Alpine's initramfs is uncompressed, copying..." >> /tmp/qemu-wrapper.log
+              cp /boot/initramfs-lts /tmp/alpine-$$.cpio 2>> /tmp/qemu-wrapper.log
             fi
 
-            # Extract melange's initramfs
-            echo "  Extracting melange's initramfs..." >> /tmp/qemu-wrapper.log
-            cd /tmp/melange-extract-$$
+            # Step 2: Decompress melange's initramfs to uncompressed cpio
+            echo "  Step 2: Checking melange's initramfs format..." >> /tmp/qemu-wrapper.log
             if file "$arg" | grep -q gzip; then
-              gunzip -c "$arg" | cpio -idm 2>> /tmp/qemu-wrapper.log
+              echo "    Melange's initramfs is gzip compressed, decompressing..." >> /tmp/qemu-wrapper.log
+              gunzip -c "$arg" > /tmp/melange-$$.cpio 2>> /tmp/qemu-wrapper.log
             else
-              cpio -idm < "$arg" 2>> /tmp/qemu-wrapper.log
+              echo "    Melange's initramfs is uncompressed, copying..." >> /tmp/qemu-wrapper.log
+              cp "$arg" /tmp/melange-$$.cpio 2>> /tmp/qemu-wrapper.log
             fi
 
-            # Log what was extracted
-            echo "  Contents of melange's initramfs:" >> /tmp/qemu-wrapper.log
-            ls -la /tmp/melange-extract-$$/ >> /tmp/qemu-wrapper.log 2>&1
-            if [ -f /tmp/melange-extract-$$/init ]; then
-              echo "  /init file permissions:" >> /tmp/qemu-wrapper.log
-              ls -la /tmp/melange-extract-$$/init >> /tmp/qemu-wrapper.log 2>&1
-            fi
+            # Step 3: Concatenate both uncompressed cpio archives
+            # The Linux kernel will merge them automatically (files in later archives override earlier ones)
+            echo "  Step 3: Concatenate uncompressed cpio archives" >> /tmp/qemu-wrapper.log
+            cat /tmp/alpine-$$.cpio /tmp/melange-$$.cpio > /tmp/combined-$$.cpio 2>> /tmp/qemu-wrapper.log
 
-            # Copy essential tools from Alpine to melange's initramfs
-            echo "  Copying essential tools from Alpine to melange's initramfs..." >> /tmp/qemu-wrapper.log
+            # Step 4: Compress the combined cpio
+            echo "  Step 4: Compress combined initramfs" >> /tmp/qemu-wrapper.log
+            gzip -9 -c /tmp/combined-$$.cpio > "$COMBINED_INITRD" 2>> /tmp/qemu-wrapper.log
 
-            # Copy busybox and ALL its symlinks
-            if [ -f /tmp/alpine-extract-$$/bin/busybox ]; then
-              # Check if busybox is static or dynamic
-              echo "    Checking busybox binary type:" >> /tmp/qemu-wrapper.log
-              file /tmp/alpine-extract-$$/bin/busybox >> /tmp/qemu-wrapper.log 2>&1
-              ldd /tmp/alpine-extract-$$/bin/busybox >> /tmp/qemu-wrapper.log 2>&1 || echo "    (static binary or ldd failed)" >> /tmp/qemu-wrapper.log
-
-              # Ensure /usr/bin exists (bin is a symlink to usr/bin)
-              mkdir -p /tmp/melange-extract-$$/usr/bin 2>> /tmp/qemu-wrapper.log
-
-              # Copy busybox binary to /usr/bin (the real location)
-              cp -a /tmp/alpine-extract-$$/bin/busybox /tmp/melange-extract-$$/usr/bin/ 2>> /tmp/qemu-wrapper.log
-              echo "    ✓ Copied busybox binary to /usr/bin" >> /tmp/qemu-wrapper.log
-
-              # Also copy to /bin for direct access (in case symlink breaks)
-              cp -a /tmp/alpine-extract-$$/bin/busybox /tmp/melange-extract-$$/bin/ 2>> /tmp/qemu-wrapper.log || true
-              echo "    ✓ Copied busybox binary to /bin" >> /tmp/qemu-wrapper.log
-
-              # Copy all busybox symlinks from Alpine's /bin
-              for link in /tmp/alpine-extract-$$/bin/*; do
-                if [ -L "$link" ]; then
-                  TARGET=$(readlink "$link")
-                  if echo "$TARGET" | grep -q busybox; then
-                    LINKNAME=$(basename "$link")
-                    ln -sf busybox /tmp/melange-extract-$$/bin/"$LINKNAME" 2>> /tmp/qemu-wrapper.log
-                  fi
-                fi
-              done
-              echo "    ✓ Created busybox symlinks (sh, mount, etc.)" >> /tmp/qemu-wrapper.log
-            fi
-
-            # Copy musl dynamic linker and libc (busybox is dynamically linked!)
-            if [ -f /tmp/alpine-extract-$$/lib/ld-musl-aarch64.so.1 ]; then
-              mkdir -p /tmp/melange-extract-$$/lib 2>> /tmp/qemu-wrapper.log
-              cp -a /tmp/alpine-extract-$$/lib/ld-musl-aarch64.so.1 /tmp/melange-extract-$$/lib/ 2>> /tmp/qemu-wrapper.log
-              echo "    ✓ Copied musl dynamic linker" >> /tmp/qemu-wrapper.log
-            fi
-
-            # Copy all lib files (libc, etc.)
-            if [ -d /tmp/alpine-extract-$$/lib ]; then
-              mkdir -p /tmp/melange-extract-$$/lib 2>> /tmp/qemu-wrapper.log
-              cp -a /tmp/alpine-extract-$$/lib/*.so* /tmp/melange-extract-$$/lib/ 2>> /tmp/qemu-wrapper.log || true
-              echo "    ✓ Copied lib files" >> /tmp/qemu-wrapper.log
-            fi
-
-            # Copy all kernel modules (including virtio)
-            if [ -d /tmp/alpine-extract-$$/lib/modules ]; then
-              echo "    Kernel modules available in Alpine:" >> /tmp/qemu-wrapper.log
-              ls -la /tmp/alpine-extract-$$/lib/modules/ >> /tmp/qemu-wrapper.log 2>&1
-              find /tmp/alpine-extract-$$/lib/modules/ -name "*virtio*" >> /tmp/qemu-wrapper.log 2>&1 || true
-
-              mkdir -p /tmp/melange-extract-$$/lib 2>> /tmp/qemu-wrapper.log
-              cp -a /tmp/alpine-extract-$$/lib/modules /tmp/melange-extract-$$/lib/ 2>> /tmp/qemu-wrapper.log
-
-              echo "    Kernel modules after copy:" >> /tmp/qemu-wrapper.log
-              ls -la /tmp/melange-extract-$$/lib/modules/ >> /tmp/qemu-wrapper.log 2>&1 || true
-
-              echo "    ✓ Copied kernel modules" >> /tmp/qemu-wrapper.log
-            fi
-
-            # Copy modprobe
-            if [ -f /tmp/alpine-extract-$$/sbin/modprobe ]; then
-              mkdir -p /tmp/melange-extract-$$/sbin
-              cp -a /tmp/alpine-extract-$$/sbin/modprobe /tmp/melange-extract-$$/sbin/ 2>> /tmp/qemu-wrapper.log
-              echo "    ✓ Copied modprobe" >> /tmp/qemu-wrapper.log
-            fi
-
-            # CRITICAL: Patch /init to be tolerant of missing kernel modules
-            # The script has 'set -e' which causes it to exit if modprobe fails
-            # We need to add '|| true' to all modprobe calls
-            if [ -f /tmp/melange-extract-$$/init ]; then
-              echo "    Patching /init to tolerate modprobe failures..." >> /tmp/qemu-wrapper.log
-              # Replace 'modprobe ...' with 'modprobe ... || true'
-              # But only if it doesn't already have || true
-              sed -i 's/modprobe \(.*\)$/modprobe \1 || true/g' /tmp/melange-extract-$$/init 2>> /tmp/qemu-wrapper.log
-              # Remove duplicate '|| true || true' if it happened
-              sed -i 's/ || true || true/ || true/g' /tmp/melange-extract-$$/init 2>> /tmp/qemu-wrapper.log
-              echo "    ✓ Patched /init to tolerate modprobe failures" >> /tmp/qemu-wrapper.log
-            fi
-
-            # Verify /init exists and check its shebang
-            if [ -f /tmp/melange-extract-$$/init ]; then
-              chmod +x /tmp/melange-extract-$$/init
-              SHEBANG=$(head -1 /tmp/melange-extract-$$/init)
-              echo "    ✓ /init exists and is executable" >> /tmp/qemu-wrapper.log
-              echo "    /init shebang: $SHEBANG" >> /tmp/qemu-wrapper.log
-
-              # Check if shebang interpreter exists
-              if echo "$SHEBANG" | grep -q '^#!'; then
-                INTERP=$(echo "$SHEBANG" | sed 's/^#!//' | awk '{print $1}')
-                if [ -f "/tmp/melange-extract-$$/$INTERP" ] || [ -L "/tmp/melange-extract-$$/$INTERP" ]; then
-                  echo "    ✓ Interpreter exists: $INTERP" >> /tmp/qemu-wrapper.log
-                  ls -la "/tmp/melange-extract-$$/$INTERP" >> /tmp/qemu-wrapper.log 2>&1
-                else
-                  echo "    ✗ WARNING: Interpreter not found: $INTERP" >> /tmp/qemu-wrapper.log
-                  echo "    Creating symlink /bin/sh -> /usr/bin/busybox" >> /tmp/qemu-wrapper.log
-                  ln -sf /usr/bin/busybox /tmp/melange-extract-$$/bin/sh
-                fi
-              fi
-            else
-              echo "    ✗ WARNING: /init not found in melange's initramfs!" >> /tmp/qemu-wrapper.log
-            fi
-
-            # Verify critical files before repackaging
-            echo "  Verifying critical files before repackaging:" >> /tmp/qemu-wrapper.log
-            ls -la /tmp/melange-extract-$$/init >> /tmp/qemu-wrapper.log 2>&1
-            ls -la /tmp/melange-extract-$$/bin/busybox >> /tmp/qemu-wrapper.log 2>&1 || echo "    /bin/busybox not found" >> /tmp/qemu-wrapper.log
-            ls -la /tmp/melange-extract-$$/usr/bin/busybox >> /tmp/qemu-wrapper.log 2>&1 || echo "    /usr/bin/busybox not found" >> /tmp/qemu-wrapper.log
-            ls -la /tmp/melange-extract-$$/bin/sh >> /tmp/qemu-wrapper.log 2>&1 || echo "    /bin/sh not found" >> /tmp/qemu-wrapper.log
-
-            # Show first 20 lines of /init to understand what it does
-            echo "  First 20 lines of /init:" >> /tmp/qemu-wrapper.log
-            head -20 /tmp/melange-extract-$$/init >> /tmp/qemu-wrapper.log 2>&1
-
-            # Create combined initramfs by repacking with correct cpio options
-            echo "  Repackaging enhanced initramfs..." >> /tmp/qemu-wrapper.log
-            cd /tmp/melange-extract-$$
-            # Use find with -depth to process files in correct order and preserve everything
-            find . -depth -print0 | cpio --null -o -H newc 2>> /tmp/qemu-wrapper.log | gzip -9 > "$COMBINED_INITRD" 2>> /tmp/qemu-wrapper.log
-
-            # Verify the repackaged initramfs
-            echo "  Verifying repackaged initramfs..." >> /tmp/qemu-wrapper.log
-
-            # Test if the file is valid gzip
-            if ! gunzip -t "$COMBINED_INITRD" 2>> /tmp/qemu-wrapper.log; then
-              echo "    ERROR: Initramfs is not valid gzip!" >> /tmp/qemu-wrapper.log
-              cd "$ORIGINAL_DIR"
-              continue
-            fi
-            echo "    ✓ Gzip format is valid" >> /tmp/qemu-wrapper.log
-
-            # Test if the content is valid cpio
-            if ! gunzip -c "$COMBINED_INITRD" | cpio -t > /dev/null 2>> /tmp/qemu-wrapper.log; then
-              echo "    ERROR: Initramfs cpio content is invalid!" >> /tmp/qemu-wrapper.log
-              cd "$ORIGINAL_DIR"
-              continue
-            fi
-            echo "    ✓ CPIO format is valid" >> /tmp/qemu-wrapper.log
-
-            FILE_COUNT=$(gunzip -c "$COMBINED_INITRD" | cpio -t 2>/dev/null | wc -l)
-            echo "    ✓ Initramfs contains $FILE_COUNT files" >> /tmp/qemu-wrapper.log
-
-            # Check for critical files
-            echo "    Critical files check:" >> /tmp/qemu-wrapper.log
-            gunzip -c "$COMBINED_INITRD" | cpio -t 2>/dev/null | grep -E "^init$|^bin/busybox$|^bin/sh$|^usr/bin/busybox$|^lib/ld-musl" >> /tmp/qemu-wrapper.log || echo "      WARNING: Some critical files not found!" >> /tmp/qemu-wrapper.log
-
-            cd "$ORIGINAL_DIR"
-
-            # Restore original directory
-            echo "  Restored working directory: $ORIGINAL_DIR" >> /tmp/qemu-wrapper.log
+            # Cleanup temp files
+            rm -f /tmp/alpine-$$.cpio /tmp/melange-$$.cpio /tmp/combined-$$.cpio
 
             if [ -f "$COMBINED_INITRD" ]; then
               COMBINED_SIZE=$(stat -c%s "$COMBINED_INITRD" 2>/dev/null || echo "0")
-              echo "  ✓ Enhanced initramfs created: $COMBINED_SIZE bytes" >> /tmp/qemu-wrapper.log
-
-              # Cleanup temp files and directories
-              rm -rf /tmp/alpine-extract-$$ /tmp/melange-extract-$$
+              echo "  ✓ Combined initramfs created: $COMBINED_SIZE bytes" >> /tmp/qemu-wrapper.log
 
               # Add the -initrd argument with combined path
               escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
@@ -293,8 +137,9 @@ task:
               new_args="$new_args '$escaped_arg' '$escaped_path'"
               melange_initrd="$COMBINED_INITRD"
             else
-              echo "  ✗ ERROR: Failed to create enhanced initramfs, using original" >> /tmp/qemu-wrapper.log
-              rm -rf /tmp/alpine-extract-$$ /tmp/melange-extract-$$
+              echo "  ✗ ERROR: Failed to create combined initramfs, using original" >> /tmp/qemu-wrapper.log
+              # Cleanup temp files
+              rm -f /tmp/alpine-$$.cpio /tmp/melange-$$.cpio /tmp/combined-$$.cpio
               escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
               escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
               new_args="$new_args '$escaped_arg' '$escaped_path'"
