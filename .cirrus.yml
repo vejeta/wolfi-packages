@@ -51,41 +51,236 @@ task:
       melange version
       rm -f melange_${ACTUAL_VERSION#v}_linux_arm64.tar.gz
 
-  # Force QEMU to use TCG instead of KVM
+  # Force QEMU to use TCG instead of KVM and combine initramfs
   setup_qemu_tcg_script:
     - |
       echo "=========================================="
-      echo "FORCE QEMU TO USE TCG"
+      echo "FORCE QEMU TO USE TCG + INITRAMFS FIX"
       echo "=========================================="
 
       # Rename the real QEMU binary
       mv /usr/bin/qemu-system-aarch64 /usr/bin/qemu-system-aarch64.real
 
-      # Create wrapper that forces TCG and fixes memory/machine settings
+      # Create wrapper that forces TCG and enhances melange's initramfs
       cat > /usr/bin/qemu-system-aarch64 << 'EOFQEMU'
       #!/bin/sh
-      # Force TCG acceleration and fix memory settings for containers
+      # Force TCG acceleration, fix memory/machine settings, and enhance initramfs
+      # Strategy: Extract melange's initramfs, add Alpine's tools, repackage
 
-      # Save all arguments to process them
-      args=""
+      # Debug: log all arguments
+      echo "=== QEMU wrapper called ===" > /tmp/qemu-wrapper.log
+      echo "Arguments received:" >> /tmp/qemu-wrapper.log
+      i=1
       for arg in "$@"; do
-        # Quote each argument to preserve spaces
-        quoted=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-        args="$args '$quoted'"
+        echo "  [$i] = '$arg'" >> /tmp/qemu-wrapper.log
+        i=$((i+1))
+      done
+      echo "" >> /tmp/qemu-wrapper.log
+
+      # Build new arguments, replacing values as needed
+      new_args=""
+      prev_arg=""
+      skip_next=false
+      skip_reason=""
+      melange_initrd=""
+
+      for arg in "$@"; do
+        # If we're processing the -initrd value (melange_initrd is PENDING)
+        if [ "$melange_initrd" = "PENDING" ]; then
+          echo "  Melange's initrd path: '$arg'" >> /tmp/qemu-wrapper.log
+
+          # Enhance melange's initramfs with Alpine's tools and modules
+          COMBINED_INITRD="/tmp/enhanced-initramfs-$$.cpio.gz"
+          echo "  Creating enhanced initramfs: $COMBINED_INITRD" >> /tmp/qemu-wrapper.log
+
+          if [ -f "/boot/initramfs-virt" ]; then
+            # Save current directory to restore later
+            ORIGINAL_DIR=$(pwd)
+
+            # Extract both initramfs to merge them properly
+            mkdir -p /tmp/alpine-extract-$$ /tmp/melange-extract-$$ 2>> /tmp/qemu-wrapper.log
+
+            # Extract Alpine's initramfs
+            echo "  Extracting Alpine's initramfs..." >> /tmp/qemu-wrapper.log
+            cd /tmp/alpine-extract-$$
+            if file /boot/initramfs-virt | grep -q gzip; then
+              gunzip -c /boot/initramfs-virt | cpio -idm 2>> /tmp/qemu-wrapper.log
+            else
+              cpio -idm < /boot/initramfs-virt 2>> /tmp/qemu-wrapper.log
+            fi
+
+            # Extract melange's initramfs
+            echo "  Extracting melange's initramfs..." >> /tmp/qemu-wrapper.log
+            cd /tmp/melange-extract-$$
+            if file "$arg" | grep -q gzip; then
+              gunzip -c "$arg" | cpio -idm 2>> /tmp/qemu-wrapper.log
+            else
+              cpio -idm < "$arg" 2>> /tmp/qemu-wrapper.log
+            fi
+
+            # Log what was extracted
+            echo "  Contents of melange's initramfs:" >> /tmp/qemu-wrapper.log
+            ls -la /tmp/melange-extract-$$/ >> /tmp/qemu-wrapper.log 2>&1
+            if [ -f /tmp/melange-extract-$$/init ]; then
+              echo "  /init file permissions:" >> /tmp/qemu-wrapper.log
+              ls -la /tmp/melange-extract-$$/init >> /tmp/qemu-wrapper.log 2>&1
+            fi
+
+            # Copy essential tools from Alpine to melange's initramfs
+            echo "  Copying essential tools from Alpine to melange's initramfs..." >> /tmp/qemu-wrapper.log
+
+            # Copy busybox and ALL its symlinks
+            if [ -f /tmp/alpine-extract-$$/bin/busybox ]; then
+              # Copy busybox binary
+              cp -a /tmp/alpine-extract-$$/bin/busybox /tmp/melange-extract-$$/bin/ 2>> /tmp/qemu-wrapper.log
+              echo "    ✓ Copied busybox binary" >> /tmp/qemu-wrapper.log
+
+              # Copy all busybox symlinks from Alpine's /bin
+              for link in /tmp/alpine-extract-$$/bin/*; do
+                if [ -L "$link" ]; then
+                  TARGET=$(readlink "$link")
+                  if echo "$TARGET" | grep -q busybox; then
+                    LINKNAME=$(basename "$link")
+                    ln -sf busybox /tmp/melange-extract-$$/bin/"$LINKNAME" 2>> /tmp/qemu-wrapper.log
+                  fi
+                fi
+              done
+              echo "    ✓ Created busybox symlinks (sh, mount, etc.)" >> /tmp/qemu-wrapper.log
+            fi
+
+            # Copy all kernel modules (including virtio)
+            if [ -d /tmp/alpine-extract-$$/lib/modules ]; then
+              mkdir -p /tmp/melange-extract-$$/lib
+              cp -a /tmp/alpine-extract-$$/lib/modules /tmp/melange-extract-$$/lib/ 2>> /tmp/qemu-wrapper.log
+              echo "    ✓ Copied kernel modules" >> /tmp/qemu-wrapper.log
+            fi
+
+            # Copy modprobe
+            if [ -f /tmp/alpine-extract-$$/sbin/modprobe ]; then
+              mkdir -p /tmp/melange-extract-$$/sbin
+              cp -a /tmp/alpine-extract-$$/sbin/modprobe /tmp/melange-extract-$$/sbin/ 2>> /tmp/qemu-wrapper.log
+              echo "    ✓ Copied modprobe" >> /tmp/qemu-wrapper.log
+            fi
+
+            # Verify /init exists and check its shebang
+            if [ -f /tmp/melange-extract-$$/init ]; then
+              chmod +x /tmp/melange-extract-$$/init
+              SHEBANG=$(head -1 /tmp/melange-extract-$$/init)
+              echo "    ✓ /init exists and is executable" >> /tmp/qemu-wrapper.log
+              echo "    /init shebang: $SHEBANG" >> /tmp/qemu-wrapper.log
+
+              # Check if shebang interpreter exists
+              if echo "$SHEBANG" | grep -q '^#!'; then
+                INTERP=$(echo "$SHEBANG" | sed 's/^#!//' | awk '{print $1}')
+                if [ -f "/tmp/melange-extract-$$/$INTERP" ] || [ -L "/tmp/melange-extract-$$/$INTERP" ]; then
+                  echo "    ✓ Interpreter exists: $INTERP" >> /tmp/qemu-wrapper.log
+                  ls -la "/tmp/melange-extract-$$/$INTERP" >> /tmp/qemu-wrapper.log 2>&1
+                else
+                  echo "    ✗ WARNING: Interpreter not found: $INTERP" >> /tmp/qemu-wrapper.log
+                  echo "    Creating symlink /bin/sh -> /usr/bin/busybox" >> /tmp/qemu-wrapper.log
+                  ln -sf /usr/bin/busybox /tmp/melange-extract-$$/bin/sh
+                fi
+              fi
+            else
+              echo "    ✗ WARNING: /init not found in melange's initramfs!" >> /tmp/qemu-wrapper.log
+            fi
+
+            # Repackage melange's initramfs with added tools
+            echo "  Repackaging enhanced initramfs..." >> /tmp/qemu-wrapper.log
+            cd /tmp/melange-extract-$$
+            find . | cpio -o -H newc 2>> /tmp/qemu-wrapper.log | gzip > "$COMBINED_INITRD" 2>> /tmp/qemu-wrapper.log
+
+            # Restore original directory
+            cd "$ORIGINAL_DIR"
+            echo "  Restored working directory: $ORIGINAL_DIR" >> /tmp/qemu-wrapper.log
+
+            if [ -f "$COMBINED_INITRD" ]; then
+              COMBINED_SIZE=$(stat -c%s "$COMBINED_INITRD" 2>/dev/null || echo "0")
+              echo "  ✓ Enhanced initramfs created: $COMBINED_SIZE bytes" >> /tmp/qemu-wrapper.log
+
+              # Cleanup temp files and directories
+              rm -rf /tmp/alpine-extract-$$ /tmp/melange-extract-$$
+
+              # Add the -initrd argument with combined path
+              escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
+              escaped_path=$(printf '%s' "$COMBINED_INITRD" | sed "s/'/'\\\\''/g")
+              new_args="$new_args '$escaped_arg' '$escaped_path'"
+              melange_initrd="$COMBINED_INITRD"
+            else
+              echo "  ✗ ERROR: Failed to create enhanced initramfs, using original" >> /tmp/qemu-wrapper.log
+              rm -rf /tmp/alpine-extract-$$ /tmp/melange-extract-$$
+              escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
+              escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
+              new_args="$new_args '$escaped_arg' '$escaped_path'"
+              melange_initrd=""
+            fi
+          else
+            echo "  ✗ WARNING: /boot/initramfs-virt not found, using melange's initramfs only" >> /tmp/qemu-wrapper.log
+            escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
+            escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
+            new_args="$new_args '$escaped_arg' '$escaped_path'"
+            melange_initrd=""
+          fi
+
+          # Continue to next argument
+          prev_arg="$arg"
+          continue
+        fi
+
+        # Skip this iteration if previous arg was -m, -machine, or -cpu
+        if [ "$skip_next" = true ]; then
+          skip_next=false
+          echo "  Replaced $skip_reason value '$arg'" >> /tmp/qemu-wrapper.log
+          prev_arg=""
+          skip_reason=""
+          continue
+        fi
+
+        # Escape single quotes for eval
+        escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
+
+        # Check what to do with this argument
+        # Replace -accel kvm with -accel tcg,thread=multi
+        if [ "$prev_arg" = "-accel" ] && [ "$arg" = "kvm" ]; then
+          echo "  ✓ Replaced -accel kvm with -accel tcg,thread=multi" >> /tmp/qemu-wrapper.log
+          escaped_tcg=$(printf '%s' "tcg,thread=multi" | sed "s/'/'\\\\''/g")
+          new_args="$new_args '$escaped_tcg'"
+        # If current arg is -m, replace value with 16G
+        elif [ "$arg" = "-m" ]; then
+          echo "  ✓ Found -m argument, will replace value with 16G" >> /tmp/qemu-wrapper.log
+          new_args="$new_args '$escaped' '16G'"
+          skip_next=true
+          skip_reason="-m"
+        # If current arg is -machine, replace value with virt
+        elif [ "$arg" = "-machine" ]; then
+          echo "  ✓ Found -machine argument, will replace value with virt" >> /tmp/qemu-wrapper.log
+          new_args="$new_args '$escaped' 'virt'"
+          skip_next=true
+          skip_reason="-machine"
+        # If current arg is -cpu, replace value with max
+        elif [ "$arg" = "-cpu" ]; then
+          echo "  ✓ Found -cpu argument, will replace value with max" >> /tmp/qemu-wrapper.log
+          new_args="$new_args '$escaped' 'max'"
+          skip_next=true
+          skip_reason="-cpu"
+        # CRITICAL: If current arg is -initrd, mark that next arg is the initrd path
+        elif [ "$arg" = "-initrd" ]; then
+          echo "  ✓ Found -initrd argument, will concatenate with Alpine initramfs" >> /tmp/qemu-wrapper.log
+          # Mark that next argument is the initrd path to process
+          melange_initrd="PENDING"
+        else
+          # Regular argument - pass through unchanged
+          new_args="$new_args '$escaped'"
+        fi
+
+        prev_arg="$arg"
       done
 
-      # Replace problematic values using sed
-      # 1. Replace -accel kvm with -accel tcg
-      args=$(echo "$args" | sed "s/'-accel' 'kvm'/'-accel' 'tcg'/g")
-
-      # 2. Replace -m <any-value> with -m 16G
-      args=$(echo "$args" | sed "s/'-m' '[^']*'/'-m' '16G'/g")
-
-      # 3. Replace -machine <any-value> with -machine virt
-      args=$(echo "$args" | sed "s/'-machine' '[^']*'/'-machine' 'virt'/g")
+      echo "" >> /tmp/qemu-wrapper.log
+      echo "Final command: /usr/bin/qemu-system-aarch64.real $new_args" >> /tmp/qemu-wrapper.log
 
       # Execute real QEMU with modified arguments
-      eval exec /usr/bin/qemu-system-aarch64.real $args
+      eval exec /usr/bin/qemu-system-aarch64.real $new_args
       EOFQEMU
 
       chmod +x /usr/bin/qemu-system-aarch64
@@ -95,7 +290,7 @@ task:
       /usr/bin/qemu-system-aarch64 --version
       echo "✓ QEMU wrapper installed"
 
-  # Setup kernel and initramfs for melange QEMU runner
+  # Setup kernel for melange QEMU runner (initramfs handled by wrapper)
   setup_kernel_script:
     - |
       echo "=========================================="
@@ -125,10 +320,10 @@ task:
       echo "✓ Initramfs: $INITRAMFS_PATH ($INITRAMFS_SIZE bytes)"
       echo ""
 
-      # Export paths for melange
+      # Export kernel path for melange (initramfs handled by QEMU wrapper)
       echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
-      echo "export QEMU_KERNEL_INITRD=$INITRAMFS_PATH" >> $CIRRUS_ENV
-      echo "✓ QEMU_KERNEL_IMAGE and QEMU_KERNEL_INITRD exported for melange"
+      echo "✓ QEMU_KERNEL_IMAGE exported for melange"
+      echo "  (initramfs will be combined by QEMU wrapper)"
 
   # Setup signing keys
   setup_keys_script:
@@ -152,23 +347,25 @@ task:
         set +a
       fi
 
-      # Export kernel and initramfs paths for melange
+      # Export kernel path for melange (initramfs handled by wrapper)
       export QEMU_KERNEL_IMAGE=${QEMU_KERNEL_IMAGE:-/boot/vmlinuz-virt}
-      export QEMU_KERNEL_INITRD=${QEMU_KERNEL_INITRD:-/boot/initramfs-virt}
 
       echo "=========================================="
       echo "BUILD ENVIRONMENT"
       echo "=========================================="
       echo "QEMU_KERNEL_IMAGE: $QEMU_KERNEL_IMAGE"
-      echo "QEMU_KERNEL_INITRD: $QEMU_KERNEL_INITRD"
       echo "Architecture: aarch64"
       echo "Package: stremio-server"
       echo ""
-      echo "Using Alpine's initramfs (has virtio modules and mount command)"
+      echo "QEMU wrapper will enhance melange's initramfs with Alpine's tools"
+      echo "  - Extracts melange's initramfs"
+      echo "  - Adds Alpine's busybox, mount, modprobe, and virtio modules"
+      echo "  - Repackages enhanced initramfs"
+      echo "  - Keeps melange's /init script intact"
       echo ""
 
-      # Build stremio-server
-      melange build \
+      # Build stremio-server with QEMU runner
+      timeout 300 melange build \
         --runner qemu \
         --arch aarch64 \
         --signing-key melange.rsa \
@@ -177,10 +374,22 @@ task:
         --repository-append https://packages.wolfi.dev/os \
         --pipeline-dir pipelines \
         --out-dir build-output/aarch64 \
-        packages/stremio-server.yaml 2>&1 | tee /tmp/melange-build.log
+        packages/stremio-server.yaml 2>&1 | tee /tmp/melange-build.log || true
 
+    - echo ""
     - echo "=== Build output ==="
     - ls -lh build-output/aarch64/ || true
+    - echo ""
+    - echo "=== QEMU Wrapper Log ==="
+    - cat /tmp/qemu-wrapper.log 2>/dev/null || echo "No wrapper log found (wrapper never executed?)"
+    - echo ""
+    - echo "=== Check if enhanced initramfs was created ==="
+    - ls -lh /tmp/enhanced-initramfs-*.cpio.gz 2>/dev/null || echo "No enhanced initramfs found"
+    - echo ""
+    - echo "=== Check Alpine initramfs format ==="
+    - file /boot/initramfs-virt
+    - echo "First bytes (hex):"
+    - hexdump -C /boot/initramfs-virt | head -3
 
   # Upload artifacts
   always:
