@@ -308,8 +308,17 @@ task:
         escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
 
         # Check what to do with this argument
+        # Replace kernel append arguments to add verbosity and explicit rdinit
+        if [ "$prev_arg" = "-append" ]; then
+          # Remove 'quiet' and add 'rdinit=/init' to kernel command line
+          NEW_APPEND=$(echo "$arg" | sed 's/quiet//' | sed 's/$/& rdinit=\/init/')
+          echo "  ✓ Modified kernel command line:" >> /tmp/qemu-wrapper.log
+          echo "    Original: $arg" >> /tmp/qemu-wrapper.log
+          echo "    Modified: $NEW_APPEND" >> /tmp/qemu-wrapper.log
+          escaped_append=$(printf '%s' "$NEW_APPEND" | sed "s/'/'\\\\''/g")
+          new_args="$new_args '$escaped_append'"
         # Replace -accel kvm with -accel tcg,thread=multi
-        if [ "$prev_arg" = "-accel" ] && [ "$arg" = "kvm" ]; then
+        elif [ "$prev_arg" = "-accel" ] && [ "$arg" = "kvm" ]; then
           echo "  ✓ Replaced -accel kvm with -accel tcg,thread=multi" >> /tmp/qemu-wrapper.log
           escaped_tcg=$(printf '%s' "tcg,thread=multi" | sed "s/'/'\\\\''/g")
           new_args="$new_args '$escaped_tcg'"
