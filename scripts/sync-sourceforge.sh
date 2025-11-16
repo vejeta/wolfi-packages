@@ -40,9 +40,10 @@ echo ""
 #   -R: Reverse mirror (upload from local to remote)
 #   --verbose: Show detailed progress
 #   --exclude-glob: Exclude patterns
-#   --parallel=3: Upload 3 files in parallel for speed
+#   --parallel=3: Upload 3 files in parallel for speed (APK files only)
 # NOTE: NO --delete flags - we want to accumulate packages from multiple builds
 
+# First sync: Upload all .apk files and keys with parallel transfers (fast)
 lftp sftp://${REMOTE_HOST} <<EOF
 set sftp:auto-confirm yes
 set net:timeout 30
@@ -55,6 +56,31 @@ mirror -R --verbose --parallel=3 \
     --exclude-glob .git \
     --exclude-glob '*.tmp' \
     --exclude-glob '*.log' \
+    --exclude-glob 'APKINDEX.tar.gz' \
+    ${LOCAL_DIR} .
+
+quit
+EOF
+
+if [ $? -ne 0 ]; then
+    echo "✗ Initial sync failed"
+    exit 1
+fi
+
+# Second sync: Upload APKINDEX files WITHOUT parallel transfers (reliable)
+# These are critical files that must upload completely
+echo "Uploading APKINDEX files (critical, no parallel transfers)..."
+lftp sftp://${REMOTE_HOST} <<EOF
+set sftp:auto-confirm yes
+set net:timeout 60
+set net:max-retries 5
+set net:reconnect-interval-base 10
+
+cd ${REMOTE_DIR}
+mirror -R --verbose --no-parallel \
+    --include-glob 'APKINDEX.tar.gz' \
+    --include-glob '*/APKINDEX.tar.gz' \
+    --exclude-glob '*' \
     ${LOCAL_DIR} .
 
 quit
