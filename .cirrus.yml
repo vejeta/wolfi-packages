@@ -176,8 +176,16 @@ task:
 
             # Copy all kernel modules (including virtio)
             if [ -d /tmp/alpine-extract-$$/lib/modules ]; then
-              mkdir -p /tmp/melange-extract-$$/lib
+              echo "    Kernel modules available in Alpine:" >> /tmp/qemu-wrapper.log
+              ls -la /tmp/alpine-extract-$$/lib/modules/ >> /tmp/qemu-wrapper.log 2>&1
+              find /tmp/alpine-extract-$$/lib/modules/ -name "*virtio*" >> /tmp/qemu-wrapper.log 2>&1 || true
+
+              mkdir -p /tmp/melange-extract-$$/lib 2>> /tmp/qemu-wrapper.log
               cp -a /tmp/alpine-extract-$$/lib/modules /tmp/melange-extract-$$/lib/ 2>> /tmp/qemu-wrapper.log
+
+              echo "    Kernel modules after copy:" >> /tmp/qemu-wrapper.log
+              ls -la /tmp/melange-extract-$$/lib/modules/ >> /tmp/qemu-wrapper.log 2>&1 || true
+
               echo "    ✓ Copied kernel modules" >> /tmp/qemu-wrapper.log
             fi
 
@@ -186,6 +194,19 @@ task:
               mkdir -p /tmp/melange-extract-$$/sbin
               cp -a /tmp/alpine-extract-$$/sbin/modprobe /tmp/melange-extract-$$/sbin/ 2>> /tmp/qemu-wrapper.log
               echo "    ✓ Copied modprobe" >> /tmp/qemu-wrapper.log
+            fi
+
+            # CRITICAL: Patch /init to be tolerant of missing kernel modules
+            # The script has 'set -e' which causes it to exit if modprobe fails
+            # We need to add '|| true' to all modprobe calls
+            if [ -f /tmp/melange-extract-$$/init ]; then
+              echo "    Patching /init to tolerate modprobe failures..." >> /tmp/qemu-wrapper.log
+              # Replace 'modprobe ...' with 'modprobe ... || true'
+              # But only if it doesn't already have || true
+              sed -i 's/modprobe \(.*\)$/modprobe \1 || true/g' /tmp/melange-extract-$$/init 2>> /tmp/qemu-wrapper.log
+              # Remove duplicate '|| true || true' if it happened
+              sed -i 's/ || true || true/ || true/g' /tmp/melange-extract-$$/init 2>> /tmp/qemu-wrapper.log
+              echo "    ✓ Patched /init to tolerate modprobe failures" >> /tmp/qemu-wrapper.log
             fi
 
             # Verify /init exists and check its shebang
