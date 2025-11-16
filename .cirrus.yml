@@ -346,7 +346,8 @@ task:
 
       # Execute real QEMU with modified arguments
       # Redirect stdout/stderr to capture boot messages
-      eval exec /usr/bin/qemu-system-aarch64.real $new_args 2>&1 | tee -a /tmp/qemu-boot.log
+      # Note: Don't use 'exec' because it breaks the pipe to tee
+      eval /usr/bin/qemu-system-aarch64.real $new_args 2>&1 | tee -a /tmp/qemu-boot.log
       EOFQEMU
 
       chmod +x /usr/bin/qemu-system-aarch64
