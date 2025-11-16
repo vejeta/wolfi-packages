@@ -69,7 +69,8 @@ fi
 
 # Second sync: Upload APKINDEX files WITHOUT parallel transfers (reliable)
 # These are critical files that must upload completely
-echo "Uploading APKINDEX files (critical, no parallel transfers)..."
+# Note: Not using --parallel means sequential uploads (default behavior)
+echo "Uploading APKINDEX files (critical, sequential uploads)..."
 lftp sftp://${REMOTE_HOST} <<EOF
 set sftp:auto-confirm yes
 set net:timeout 60
@@ -77,7 +78,7 @@ set net:max-retries 5
 set net:reconnect-interval-base 10
 
 cd ${REMOTE_DIR}
-mirror -R --verbose --no-parallel \
+mirror -R --verbose \
     --include-glob 'APKINDEX.tar.gz' \
     --include-glob '*/APKINDEX.tar.gz' \
     --exclude-glob '*' \
