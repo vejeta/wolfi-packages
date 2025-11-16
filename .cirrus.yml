@@ -66,41 +66,26 @@ task:
       #!/bin/sh
       # Force TCG acceleration and fix memory settings for containers
 
-      # Process arguments
-      new_args=""
-      skip_next=false
-      prev_arg=""
-
+      # Save all arguments to process them
+      args=""
       for arg in "$@"; do
-        # Skip the value after -m or -machine (we'll provide our own)
-        if [ "$skip_next" = "true" ]; then
-          skip_next=false
-          prev_arg=""
-          continue
-        fi
-
-        # Replace kvm with tcg
-        if [ "$arg" = "kvm" ]; then
-          new_args="$new_args tcg"
-        # Replace -m value with 16G (melange calculates too much)
-        elif [ "$arg" = "-m" ]; then
-          new_args="$new_args '-m' '16G'"
-          skip_next=true
-        # Replace -machine value with virt (for 64-bit addressing)
-        elif [ "$arg" = "-machine" ]; then
-          new_args="$new_args '-machine' 'virt'"
-          skip_next=true
-        else
-          # Properly escape single quotes in arguments
-          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped'"
-        fi
-
-        prev_arg="$arg"
+        # Quote each argument to preserve spaces
+        quoted=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
+        args="$args '$quoted'"
       done
 
-      # Execute real QEMU with eval to handle quoting
-      eval exec /usr/bin/qemu-system-aarch64.real $new_args
+      # Replace problematic values using sed
+      # 1. Replace -accel kvm with -accel tcg
+      args=$(echo "$args" | sed "s/'-accel' 'kvm'/'-accel' 'tcg'/g")
+
+      # 2. Replace -m <any-value> with -m 16G
+      args=$(echo "$args" | sed "s/'-m' '[^']*'/'-m' '16G'/g")
+
+      # 3. Replace -machine <any-value> with -machine virt
+      args=$(echo "$args" | sed "s/'-machine' '[^']*'/'-machine' 'virt'/g")
+
+      # Execute real QEMU with modified arguments
+      eval exec /usr/bin/qemu-system-aarch64.real $args
       EOFQEMU
 
       chmod +x /usr/bin/qemu-system-aarch64
