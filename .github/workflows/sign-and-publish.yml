@@ -163,11 +163,10 @@ jobs:
           APK_COUNT=$(find build-artifacts/cirrus-aarch64 -name '*.apk' | wc -l)
           echo "Downloaded $APK_COUNT aarch64 packages from Cirrus CI"
 
-      - name: Download existing packages from SourceForge (incremental mode)
-        if: ${{ github.event.inputs.incremental == 'true' }}
+      - name: Download existing packages from SourceForge
         run: |
           echo "=== Downloading existing packages from SourceForge ==="
-          echo "Incremental mode enabled - will merge with existing repository"
+          echo "Ensuring APKINDEX includes all packages (new + existing)"
 
           # Create temp directory for existing packages
           mkdir -p existing-repo
@@ -207,16 +206,14 @@ jobs:
           # Create repository structure
           mkdir -p repo/x86_64 repo/aarch64 repo/keys
 
-          # Copy existing packages first (if incremental mode)
-          if [ "${{ github.event.inputs.incremental }}" == "true" ]; then
-            echo "Incremental mode: copying existing packages first..."
-            for arch in x86_64 aarch64; do
-              if [ -d "existing-repo/$arch" ]; then
-                echo "Copying existing $arch packages..."
-                cp -v existing-repo/$arch/*.apk repo/$arch/ 2>/dev/null || echo "No existing $arch packages"
-              fi
-            done
-          fi
+          # Copy existing packages first (always, to ensure APKINDEX completeness)
+          echo "Copying existing packages to merge with new build..."
+          for arch in x86_64 aarch64; do
+            if [ -d "existing-repo/$arch" ]; then
+              echo "Copying existing $arch packages..."
+              cp -v existing-repo/$arch/*.apk repo/$arch/ 2>/dev/null || echo "No existing $arch packages"
+            fi
+          done
 
           # Copy new APK packages (will overwrite older versions of same package)
           for arch in x86_64 aarch64; do
