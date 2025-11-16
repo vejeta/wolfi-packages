@@ -451,26 +451,26 @@ task:
         --out-dir build-output/aarch64 \
         packages/stremio-server.yaml 2>&1 | tee /tmp/melange-build.log || true
 
-    - echo ""
-    - echo "=== Build output ==="
-    - ls -lh build-output/aarch64/ || true
-    - echo ""
-    - echo "=== QEMU Wrapper Log ==="
-    - cat /tmp/qemu-wrapper.log 2>/dev/null || echo "No wrapper log found (wrapper never executed?)"
-    - echo ""
-    - echo "=== QEMU Boot Log (last 100 lines) ==="
-    - tail -100 /tmp/qemu-boot.log 2>/dev/null || echo "No QEMU boot log found"
-    - echo ""
-    - echo "=== QEMU Console Log (VM serial output) ==="
-    - tail -200 /tmp/qemu-console.log 2>/dev/null || echo "No console log found"
-    - echo ""
-    - echo "=== Check if enhanced initramfs was created ==="
-    - ls -lh /tmp/enhanced-initramfs-*.cpio.gz 2>/dev/null || echo "No enhanced initramfs found"
-    - echo ""
-    - echo "=== Check Alpine initramfs format ==="
-    - file /boot/initramfs-lts
-    - echo "First bytes (hex):"
-    - hexdump -C /boot/initramfs-lts | head -3
+      echo ""
+      echo "=== Build output ==="
+      ls -lh build-output/aarch64/ || true
+      echo ""
+      echo "=== QEMU Wrapper Log ==="
+      cat /tmp/qemu-wrapper.log 2>/dev/null || echo "No wrapper log found (wrapper never executed?)"
+      echo ""
+      echo "=== QEMU Boot Log (last 100 lines) ==="
+      tail -100 /tmp/qemu-boot.log 2>/dev/null || echo "No QEMU boot log found"
+      echo ""
+      echo "=== QEMU Console Log (VM serial output) ==="
+      tail -200 /tmp/qemu-console.log 2>/dev/null || echo "No console log found"
+      echo ""
+      echo "=== Check if enhanced initramfs was created ==="
+      ls -lh /tmp/enhanced-initramfs-*.cpio.gz 2>/dev/null || echo "No enhanced initramfs found"
+      echo ""
+      echo "=== Check Alpine initramfs format ==="
+      file /boot/initramfs-lts
+      echo "First bytes (hex):"
+      hexdump -C /boot/initramfs-lts | head -3
 
   # Upload artifacts
   always:
