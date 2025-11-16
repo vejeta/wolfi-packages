@@ -51,194 +51,10 @@ task:
       melange version
       rm -f melange_${ACTUAL_VERSION#v}_linux_arm64.tar.gz
 
-  # Create QEMU wrapper to force TCG instead of KVM (KVM not available in container)
-  setup_qemu_wrapper_script:
-    - |
-      # Move real QEMU binary
-      mv /usr/bin/qemu-system-aarch64 /usr/bin/qemu-system-aarch64.real
+  # Note: QEMU wrapper approach doesn't work - melange calls QEMU directly
+  # Instead, we rely on Alpine's initramfs-virt which already has virtio modules
 
-      # Create wrapper script that:
-      # 1. Replaces -accel kvm with -accel tcg,thread=multi
-      # 2. Fixes memory, machine, and CPU settings for TCG
-      # 3. COMBINES initramfs files (Alpine's virtio modules + melange's initramfs)
-      cat > /usr/bin/qemu-system-aarch64 << 'EOF'
-      #!/bin/sh
-      # QEMU wrapper to force TCG acceleration and inject virtio modules
-      # KVM is not available in Cirrus CI ARM containers
-
-      # Initialize debug log
-      echo "=== QEMU wrapper invoked at $(date) ===" > /tmp/qemu-debug.log
-      echo "Working directory: $(pwd)" >> /tmp/qemu-debug.log
-      echo "User: $(whoami)" >> /tmp/qemu-debug.log
-      echo "PID: $$" >> /tmp/qemu-debug.log
-      echo "" >> /tmp/qemu-debug.log
-
-      # Log all original arguments
-      echo "Original arguments (count: $#):" >> /tmp/qemu-debug.log
-      for arg in "$@"; do
-        echo "  '$arg'" >> /tmp/qemu-debug.log
-      done
-      echo "" >> /tmp/qemu-debug.log
-
-      # Process arguments to replace problematic values
-      # - Replace -accel kvm with -accel tcg,thread=multi (KVM not available)
-      # - Replace -m <value> with -m 16G (cap memory)
-      # - Replace -machine <value> with -machine virt (ensure 64-bit addressing)
-      # - Replace -cpu host with -cpu max (TCG needs explicit CPU)
-      # - INTERCEPT -initrd and concatenate with Alpine's initramfs (for virtio modules)
-      new_args=""
-      prev_arg=""
-      skip_next=false
-      skip_reason=""
-      melange_initrd=""
-
-      for arg in "$@"; do
-        # If we're processing the -initrd value (melange_initrd is PENDING)
-        if [ "$melange_initrd" = "PENDING" ]; then
-          echo "  Melange's initrd path: '$arg'" >> /tmp/qemu-debug.log
-
-          # Create combined initramfs: Alpine's (virtio modules) + melange's (build env)
-          # Linux kernel merges concatenated UNCOMPRESSED cpio archives
-          COMBINED_INITRD="/tmp/combined-initramfs-$$.cpio.gz"
-          echo "  Creating combined initramfs: $COMBINED_INITRD" >> /tmp/qemu-debug.log
-
-          if [ -f "/boot/initramfs-virt" ]; then
-            echo "  Step 1: Decompress Alpine's initramfs" >> /tmp/qemu-debug.log
-            if ! gunzip -c /boot/initramfs-virt > /tmp/alpine-$$.cpio 2>> /tmp/qemu-debug.log; then
-              echo "  ✗ ERROR: Failed to decompress Alpine's initramfs" >> /tmp/qemu-debug.log
-              escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
-              escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-              new_args="$new_args '$escaped_arg' '$escaped_path'"
-              melange_initrd=""
-              prev_arg="$arg"
-              continue
-            fi
-            ALPINE_SIZE=$(stat -c%s /tmp/alpine-$$.cpio 2>/dev/null || echo "0")
-            echo "    Alpine initramfs decompressed: $ALPINE_SIZE bytes" >> /tmp/qemu-debug.log
-
-            echo "  Step 2: Decompress melange's initramfs from: $arg" >> /tmp/qemu-debug.log
-            if ! gunzip -c "$arg" > /tmp/melange-$$.cpio 2>> /tmp/qemu-debug.log; then
-              echo "  ✗ ERROR: Failed to decompress melange's initramfs" >> /tmp/qemu-debug.log
-              echo "  Trying to use melange's initramfs as-is (may be uncompressed)" >> /tmp/qemu-debug.log
-              cp "$arg" /tmp/melange-$$.cpio 2>> /tmp/qemu-debug.log
-            fi
-            MELANGE_SIZE=$(stat -c%s /tmp/melange-$$.cpio 2>/dev/null || echo "0")
-            echo "    Melange initramfs decompressed: $MELANGE_SIZE bytes" >> /tmp/qemu-debug.log
-
-            echo "  Step 3: Concatenate uncompressed cpio archives" >> /tmp/qemu-debug.log
-            cat /tmp/alpine-$$.cpio /tmp/melange-$$.cpio > /tmp/combined-$$.cpio 2>> /tmp/qemu-debug.log
-            COMBINED_UNCOMPRESSED_SIZE=$(stat -c%s /tmp/combined-$$.cpio 2>/dev/null || echo "0")
-            echo "    Combined (uncompressed): $COMBINED_UNCOMPRESSED_SIZE bytes" >> /tmp/qemu-debug.log
-
-            echo "  Step 4: Re-compress combined initramfs" >> /tmp/qemu-debug.log
-            gzip -c /tmp/combined-$$.cpio > "$COMBINED_INITRD" 2>> /tmp/qemu-debug.log
-
-            if [ -f "$COMBINED_INITRD" ] && [ -s "$COMBINED_INITRD" ]; then
-              COMBINED_SIZE=$(stat -c%s "$COMBINED_INITRD")
-              echo "  ✓ Combined initramfs created: $COMBINED_SIZE bytes" >> /tmp/qemu-debug.log
-
-              # Cleanup temp files
-              rm -f /tmp/alpine-$$.cpio /tmp/melange-$$.cpio /tmp/combined-$$.cpio
-
-              # Add the -initrd argument with combined path
-              escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
-              escaped_path=$(printf '%s' "$COMBINED_INITRD" | sed "s/'/'\\\\''/g")
-              new_args="$new_args '$escaped_arg' '$escaped_path'"
-              melange_initrd="$COMBINED_INITRD"
-            else
-              echo "  ✗ ERROR: Failed to create combined initramfs, using melange's only" >> /tmp/qemu-debug.log
-              rm -f /tmp/alpine-$$.cpio /tmp/melange-$$.cpio /tmp/combined-$$.cpio
-              escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
-              escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-              new_args="$new_args '$escaped_arg' '$escaped_path'"
-              melange_initrd=""
-            fi
-          else
-            echo "  ✗ WARNING: /boot/initramfs-virt not found, using melange's initrd only" >> /tmp/qemu-debug.log
-            escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
-            escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-            new_args="$new_args '$escaped_arg' '$escaped_path'"
-            melange_initrd=""
-          fi
-          # Continue to next argument
-          prev_arg="$arg"
-          continue
-        fi
-
-        # Skip this iteration if previous arg was -m, -machine, or -cpu (we already added replacement)
-        if [ "$skip_next" = true ]; then
-          skip_next=false
-          echo "Replaced $skip_reason value '$arg' with replacement" >> /tmp/qemu-debug.log
-          prev_arg=""
-          skip_reason=""
-          continue
-        fi
-
-        # Replace -accel kvm with -accel tcg,thread=multi
-        if [ "$prev_arg" = "-accel" ] && [ "$arg" = "kvm" ]; then
-          echo "Replaced -accel kvm with -accel tcg,thread=multi" >> /tmp/qemu-debug.log
-          escaped=$(printf '%s' "tcg,thread=multi" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped'"
-        # If current arg is -m, add it and mark to skip next value (replace with 16G)
-        elif [ "$arg" = "-m" ]; then
-          echo "Found -m argument, will replace value with 16G" >> /tmp/qemu-debug.log
-          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped' '16G'"
-          skip_next=true
-          skip_reason="-m"
-        # If current arg is -machine, add it and mark to skip next value (replace with virt)
-        elif [ "$arg" = "-machine" ]; then
-          echo "Found -machine argument, will replace value with virt" >> /tmp/qemu-debug.log
-          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped' 'virt'"
-          skip_next=true
-          skip_reason="-machine"
-        # If current arg is -cpu, add it and mark to skip next value (replace with max)
-        elif [ "$arg" = "-cpu" ]; then
-          echo "Found -cpu argument, will replace value with max (TCG needs explicit CPU)" >> /tmp/qemu-debug.log
-          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped' 'max'"
-          skip_next=true
-          skip_reason="-cpu"
-        # CRITICAL: If current arg is -initrd, mark that next arg is the initrd path
-        elif [ "$arg" = "-initrd" ]; then
-          echo "Found -initrd argument, will concatenate with Alpine initramfs" >> /tmp/qemu-debug.log
-          # Mark that next argument is the initrd path to process
-          melange_initrd="PENDING"
-        else
-          # Regular argument - properly quote and add
-          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-          new_args="$new_args '$escaped'"
-        fi
-
-        prev_arg="$arg"
-      done
-
-      echo "" >> /tmp/qemu-debug.log
-      echo "=== Final QEMU command ===" >> /tmp/qemu-debug.log
-      echo "/usr/bin/qemu-system-aarch64.real $new_args" >> /tmp/qemu-debug.log
-      echo "" >> /tmp/qemu-debug.log
-      echo "Executing QEMU..." >> /tmp/qemu-debug.log
-
-      # Execute with eval to properly handle quoted arguments
-      eval exec /usr/bin/qemu-system-aarch64.real $new_args 2>> /tmp/qemu-debug.log
-      EOF
-
-      chmod +x /usr/bin/qemu-system-aarch64
-      echo "QEMU wrapper installed - will use TCG instead of KVM"
-
-      # Test that wrapper works
-      echo "Testing QEMU wrapper..."
-      if /usr/bin/qemu-system-aarch64 --version >/dev/null 2>&1; then
-        echo "✓ QEMU wrapper test passed"
-      else
-        echo "✗ QEMU wrapper test failed!"
-        echo "Checking real QEMU binary:"
-        /usr/bin/qemu-system-aarch64.real --version
-        exit 1
-      fi
-
-  # Setup kernel path for melange
+  # Setup kernel and initramfs for melange QEMU runner
   setup_kernel_script:
     - |
       echo "=========================================="
@@ -250,7 +66,6 @@ task:
       INITRAMFS_PATH="/boot/initramfs-virt"
 
       echo "Verifying kernel and initramfs..."
-
       if [ ! -f "$KERNEL_PATH" ]; then
         echo "ERROR: Kernel not found at $KERNEL_PATH"
         ls -lh /boot/
@@ -268,14 +83,11 @@ task:
       echo "✓ Kernel: $KERNEL_PATH ($KERNEL_SIZE bytes)"
       echo "✓ Initramfs: $INITRAMFS_PATH ($INITRAMFS_SIZE bytes)"
       echo ""
-      echo "The QEMU wrapper will automatically combine:"
-      echo "  1. Alpine's initramfs (virtio modules + base system)"
-      echo "  2. Melange's initramfs (build environment)"
-      echo ""
 
-      # Set kernel path for melange
+      # Export paths for melange
       echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
-      echo "✓ QEMU_KERNEL_IMAGE exported for melange"
+      echo "export QEMU_KERNEL_INITRD=$INITRAMFS_PATH" >> $CIRRUS_ENV
+      echo "✓ QEMU_KERNEL_IMAGE and QEMU_KERNEL_INITRD exported for melange"
 
   # Setup signing keys
   setup_keys_script:
@@ -299,18 +111,19 @@ task:
         set +a
       fi
 
-      # Set default kernel image if not already set
+      # Export kernel and initramfs paths for melange
       export QEMU_KERNEL_IMAGE=${QEMU_KERNEL_IMAGE:-/boot/vmlinuz-virt}
+      export QEMU_KERNEL_INITRD=${QEMU_KERNEL_INITRD:-/boot/initramfs-virt}
 
       echo "=========================================="
       echo "BUILD ENVIRONMENT"
       echo "=========================================="
       echo "QEMU_KERNEL_IMAGE: $QEMU_KERNEL_IMAGE"
+      echo "QEMU_KERNEL_INITRD: $QEMU_KERNEL_INITRD"
       echo "Architecture: aarch64"
       echo "Package: stremio-server"
       echo ""
-      echo "Note: QEMU wrapper will automatically combine initramfs files"
-      echo "      to inject virtio modules from Alpine into melange's VM"
+      echo "Using Alpine's initramfs (has virtio modules and mount command)"
       echo ""
 
       # Build stremio-server
@@ -327,23 +140,8 @@ task:
 
     - echo "=== Build output ==="
     - ls -lh build-output/aarch64/ || true
-    - echo ""
-    - echo "=== Copying QEMU debug log to artifacts ==="
-    - |
-      if [ -f /tmp/qemu-debug.log ]; then
-        cp /tmp/qemu-debug.log build-output/logs/
-        echo "✓ QEMU debug log copied ($(stat -c%s /tmp/qemu-debug.log) bytes)"
-        echo ""
-        echo "=== QEMU debug log content (last 50 lines) ==="
-        tail -50 /tmp/qemu-debug.log
-      else
-        echo "✗ WARNING: No QEMU debug log found at /tmp/qemu-debug.log"
-        echo "This means the QEMU wrapper was never executed!"
-      fi
 
   # Upload artifacts
   always:
     apk_packages_artifacts:
       path: "build-output/aarch64/*.apk"
-    qemu_logs_artifacts:
-      path: "build-output/logs/qemu-debug.log"
