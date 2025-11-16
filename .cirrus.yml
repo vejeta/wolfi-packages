@@ -66,21 +66,20 @@ task:
       #!/bin/sh
       # Force TCG acceleration (KVM not available in containers)
 
-      # Replace all instances of "kvm" with "tcg" in arguments
+      # Build properly quoted arguments, replacing kvm with tcg
       new_args=""
       for arg in "$@"; do
-        case "$arg" in
-          kvm)
-            new_args="$new_args tcg"
-            ;;
-          *)
-            new_args="$new_args $arg"
-            ;;
-        esac
+        if [ "$arg" = "kvm" ]; then
+          new_args="$new_args tcg"
+        else
+          # Properly escape single quotes in arguments
+          escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
+          new_args="$new_args '$escaped'"
+        fi
       done
 
-      # Execute real QEMU with modified arguments
-      exec /usr/bin/qemu-system-aarch64.real $new_args
+      # Execute real QEMU with eval to handle quoting
+      eval exec /usr/bin/qemu-system-aarch64.real $new_args
       EOFQEMU
 
       chmod +x /usr/bin/qemu-system-aarch64
