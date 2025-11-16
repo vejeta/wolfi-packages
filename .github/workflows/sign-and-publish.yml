@@ -178,6 +178,15 @@ jobs:
           chmod 600 ~/.ssh/sourceforge_wolfi_rsa
           ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts
 
+          # Create SSH config for lftp to use the correct identity file
+          cat >> ~/.ssh/config << 'EOF'
+          Host frs.sourceforge.net
+              User jmendezr
+              IdentityFile ~/.ssh/sourceforge_wolfi_rsa
+              StrictHostKeyChecking no
+          EOF
+          chmod 600 ~/.ssh/config
+
           # Download existing packages using lftp (excludes APKINDEX - will regenerate)
           for arch in x86_64 aarch64; do
             echo "Downloading existing $arch packages..."
