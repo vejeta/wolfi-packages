@@ -57,11 +57,13 @@ task:
       # Move real QEMU binary
       mv /usr/bin/qemu-system-aarch64 /usr/bin/qemu-system-aarch64.real
 
-      # Create wrapper script that replaces -accel kvm with -accel tcg,thread=multi
-      # Also fixes memory and CPU settings for TCG
+      # Create wrapper script that:
+      # 1. Replaces -accel kvm with -accel tcg,thread=multi
+      # 2. Fixes memory, machine, and CPU settings for TCG
+      # 3. COMBINES initramfs files (Alpine's virtio modules + melange's initramfs)
       cat > /usr/bin/qemu-system-aarch64 << 'EOF'
       #!/bin/sh
-      # QEMU wrapper to force TCG acceleration instead of KVM
+      # QEMU wrapper to force TCG acceleration and inject virtio modules
       # KVM is not available in Cirrus CI ARM containers
 
       # Debug logging
@@ -73,16 +75,60 @@ task:
 
       # Process arguments to replace problematic values
       # - Replace -accel kvm with -accel tcg,thread=multi (KVM not available)
-      # - Replace -m <value> with -m 16G (cap memory, Melange calculates wrong value)
+      # - Replace -m <value> with -m 16G (cap memory)
       # - Replace -machine <value> with -machine virt (ensure 64-bit addressing)
-      # - Replace -cpu host with -cpu max (TCG needs explicit CPU, not host)
+      # - Replace -cpu host with -cpu max (TCG needs explicit CPU)
+      # - INTERCEPT -initrd and concatenate with Alpine's initramfs (for virtio modules)
       new_args=""
       prev_arg=""
       skip_next=false
       skip_reason=""
+      melange_initrd=""
 
       for arg in "$@"; do
-        # Skip this iteration if previous arg was -m, -machine, or -cpu (we already added our replacement)
+        # If we're processing the -initrd value (melange_initrd is PENDING)
+        if [ "$melange_initrd" = "PENDING" ]; then
+          echo "  Melange's initrd path: '$arg'" >> /tmp/qemu-debug.log
+
+          # Create combined initramfs: Alpine's (virtio modules) + melange's (build env)
+          # Linux kernel merges concatenated cpio archives automatically
+          COMBINED_INITRD="/tmp/combined-initramfs-$$.cpio"
+          echo "  Creating combined initramfs: $COMBINED_INITRD" >> /tmp/qemu-debug.log
+
+          # Concatenate: Alpine's initramfs first (base modules), then melange's (overrides)
+          if [ -f "/boot/initramfs-virt" ]; then
+            echo "  Concatenating /boot/initramfs-virt + $arg" >> /tmp/qemu-debug.log
+            cat /boot/initramfs-virt "$arg" > "$COMBINED_INITRD" 2>> /tmp/qemu-debug.log
+
+            if [ -f "$COMBINED_INITRD" ]; then
+              COMBINED_SIZE=$(stat -c%s "$COMBINED_INITRD")
+              echo "  ✓ Combined initramfs created: $COMBINED_SIZE bytes" >> /tmp/qemu-debug.log
+
+              # Now add the -initrd argument with combined path
+              escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
+              escaped_path=$(printf '%s' "$COMBINED_INITRD" | sed "s/'/'\\\\''/g")
+              new_args="$new_args '$escaped_arg' '$escaped_path'"
+              melange_initrd="$COMBINED_INITRD"
+            else
+              echo "  ✗ ERROR: Failed to create combined initramfs, using melange's only" >> /tmp/qemu-debug.log
+              escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
+              escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
+              new_args="$new_args '$escaped_arg' '$escaped_path'"
+              melange_initrd=""
+            fi
+          else
+            echo "  ✗ WARNING: /boot/initramfs-virt not found, using melange's initrd only" >> /tmp/qemu-debug.log
+            escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
+            escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
+            new_args="$new_args '$escaped_arg' '$escaped_path'"
+            melange_initrd=""
+          fi
+          # Continue to next argument
+          prev_arg="$arg"
+          continue
+        fi
+
+        # Skip this iteration if previous arg was -m, -machine, or -cpu (we already added replacement)
         if [ "$skip_next" = true ]; then
           skip_next=false
           echo "Replaced $skip_reason value '$arg' with replacement" >> /tmp/qemu-debug.log
@@ -117,8 +163,13 @@ task:
           new_args="$new_args '$escaped' 'max'"
           skip_next=true
           skip_reason="-cpu"
+        # CRITICAL: If current arg is -initrd, mark that next arg is the initrd path
+        elif [ "$arg" = "-initrd" ]; then
+          echo "Found -initrd argument, will concatenate with Alpine initramfs" >> /tmp/qemu-debug.log
+          # Mark that next argument is the initrd path to process
+          melange_initrd="PENDING"
         else
-          # Properly quote and add all other arguments (including -initrd, which melange handles)
+          # Regular argument - properly quote and add
           escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
           new_args="$new_args '$escaped'"
         fi
@@ -135,211 +186,42 @@ task:
       chmod +x /usr/bin/qemu-system-aarch64
       echo "QEMU wrapper installed - will use TCG instead of KVM"
 
-  # Setup kernel and extract virtio modules for melange
+  # Setup kernel path for melange
   setup_kernel_script:
     - |
       echo "=========================================="
-      echo "SETUP KERNEL SCRIPT STARTING"
+      echo "SETUP KERNEL SCRIPT"
       echo "=========================================="
-      
+
       # QEMU runner requires kernel and initramfs from linux-virt package
       KERNEL_PATH="/boot/vmlinuz-virt"
       INITRAMFS_PATH="/boot/initramfs-virt"
-      
-      echo "Checking for kernel and initramfs..."
-      
+
+      echo "Verifying kernel and initramfs..."
+
       if [ ! -f "$KERNEL_PATH" ]; then
         echo "ERROR: Kernel not found at $KERNEL_PATH"
         ls -lh /boot/
         exit 1
       fi
+
       if [ ! -f "$INITRAMFS_PATH" ]; then
         echo "ERROR: Initramfs not found at $INITRAMFS_PATH"
         ls -lh /boot/
         exit 1
       fi
-      
-      echo "Kernel available at: $KERNEL_PATH"
-      echo "Initramfs available at: $INITRAMFS_PATH"
-      
-      # Extract virtio modules from Alpine's initramfs
-      # Melange will inject these into its own initramfs using QEMU_KERNEL_MODULES
-      echo "Extracting virtio modules from Alpine initramfs..."
-      MODULES_DIR="/tmp/virtio-modules"
-      mkdir -p "$MODULES_DIR"
-      
-      # Extract initramfs (handle both compressed and uncompressed)
-      if file "$INITRAMFS_PATH" | grep -q gzip; then
-        echo "  Initramfs is gzip compressed, extracting..."
-        gunzip -c "$INITRAMFS_PATH" > /tmp/alpine-initramfs.cpio
-      else
-        echo "  Initramfs is uncompressed, copying..."
-        cp "$INITRAMFS_PATH" /tmp/alpine-initramfs.cpio
-      fi
-      
-      # Extract modules from cpio archive
-      cd "$MODULES_DIR"
-      echo "  Extracting cpio archive..."
-      if ! cpio -idm < /tmp/alpine-initramfs.cpio 2>&1 | head -20; then
-        echo "ERROR: Failed to extract modules from cpio archive"
-        echo "Debug: Checking if cpio archive is valid..."
-        file /tmp/alpine-initramfs.cpio
-        exit 1
-      fi
-      echo "  Extraction complete. Checking what was extracted..."
-      
-      # Find kernel version
-      KERNEL_VERSION=$(ls lib/modules/ 2>/dev/null | head -1)
-      if [ -n "$KERNEL_VERSION" ]; then
-        echo "  Found kernel version: $KERNEL_VERSION"
-        MODULES_BASE_PATH="$MODULES_DIR/lib/modules/$KERNEL_VERSION"
-        echo "  Modules extracted to: $MODULES_BASE_PATH"
-        
-        # Verify extraction worked
-        echo "  Verifying module structure:"
-        ls -la lib/modules/ 2>/dev/null | head -5 || echo "    ERROR: lib/modules/ not found"
-        
-        # List virtio modules found
-        echo "  Searching for virtio modules..."
-        echo "  Full directory structure in lib/modules/$KERNEL_VERSION:"
-        find lib/modules/$KERNEL_VERSION -type d 2>/dev/null | head -30 || true
-        
-        echo "  All .ko files found:"
-        find lib/modules/$KERNEL_VERSION -name "*.ko" 2>/dev/null | head -20 || true
-        
-        # Find all virtio modules (they may be compressed as .ko.gz)
-        echo "  Searching for virtio modules (including compressed .ko.gz files)..."
-        VIRTIO_MODULES=$(find lib/modules/$KERNEL_VERSION -name "*virtio*.ko*" -type f 2>/dev/null)
-        VIRTIO_COUNT=$(echo "$VIRTIO_MODULES" | grep -c . || echo "0")
-        
-        if [ "$VIRTIO_COUNT" -gt 0 ]; then
-          echo "  ✓ Found $VIRTIO_COUNT virtio module(s) in initramfs:"
-          echo "$VIRTIO_MODULES" | head -15
-          
-          # Create virtio directory and copy/decompress all virtio modules
-          echo "  Preparing virtio modules directory..."
-          mkdir -p lib/modules/$KERNEL_VERSION/kernel/drivers/virtio
-          
-          # Copy and decompress all virtio modules to the virtio directory
-          echo "$VIRTIO_MODULES" | while read -r module_path; do
-            if [ -n "$module_path" ]; then
-              module_name=$(basename "$module_path")
-              # Remove .gz extension if present
-              target_name="${module_name%.gz}"
-              target_path="lib/modules/$KERNEL_VERSION/kernel/drivers/virtio/$target_name"
-              
-              if echo "$module_name" | grep -q "\.gz$"; then
-                echo "    Decompressing $module_name -> $target_name"
-                gunzip -c "$module_path" > "$target_path" 2>/dev/null || cp "$module_path" "$target_path"
-              else
-                echo "    Copying $module_name"
-                cp "$module_path" "$target_path" 2>/dev/null || true
-              fi
-            fi
-          done
-          
-          # Verify decompressed modules
-          echo "  Verifying decompressed virtio modules:"
-          find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" -type f 2>/dev/null | head -10
-          VIRTIO_COUNT=$(find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" -type f 2>/dev/null | wc -l)
-          echo "  Total decompressed virtio modules: $VIRTIO_COUNT"
-        else
-          echo "  ⚠ WARNING: No virtio modules found in initramfs!"
-          echo "  Checking if virtio modules are available in installed system..."
-          if [ -d "/lib/modules/$KERNEL_VERSION" ]; then
-            echo "  System modules directory exists, searching:"
-            SYSTEM_VIRTIO=$(find /lib/modules/$KERNEL_VERSION -name '*virtio*.ko*' -type f 2>/dev/null | head -5)
-            if [ -n "$SYSTEM_VIRTIO" ]; then
-              echo "  ✓ Found virtio modules in system:"
-              echo "$SYSTEM_VIRTIO"
-              echo "  Copying virtio modules from system..."
-              mkdir -p lib/modules/$KERNEL_VERSION/kernel/drivers/virtio
-              echo "$SYSTEM_VIRTIO" | while read -r module_path; do
-                if [ -n "$module_path" ]; then
-                  module_name=$(basename "$module_path")
-                  target_name="${module_name%.gz}"
-                  if echo "$module_name" | grep -q "\.gz$"; then
-                    gunzip -c "$module_path" > "lib/modules/$KERNEL_VERSION/kernel/drivers/virtio/$target_name" 2>/dev/null
-                  else
-                    cp "$module_path" "lib/modules/$KERNEL_VERSION/kernel/drivers/virtio/" 2>/dev/null
-                  fi
-                fi
-              done
-              VIRTIO_COUNT=$(find lib/modules/$KERNEL_VERSION/kernel/drivers/virtio -name "*.ko" -type f 2>/dev/null | wc -l)
-              echo "  Total virtio modules after copy: $VIRTIO_COUNT"
-            else
-              echo "  ✗ No virtio modules found in system either"
-              echo "  This is a problem - virtio modules are required for QEMU to work!"
-            fi
-          else
-            echo "  ✗ System modules directory /lib/modules/$KERNEL_VERSION does not exist"
-          fi
-        fi
-        
-        # Check for modules.dep and other module metadata files
-        if [ -f "lib/modules/$KERNEL_VERSION/modules.dep" ]; then
-          echo "  ✓ modules.dep found"
-          # Verify that virtio modules are listed in modules.dep
-          if grep -q "virtio" "lib/modules/$KERNEL_VERSION/modules.dep" 2>/dev/null; then
-            echo "  ✓ virtio modules found in modules.dep"
-            # Use grep with head but ignore SIGPIPE (exit code 141)
-            { grep "virtio" "lib/modules/$KERNEL_VERSION/modules.dep" 2>/dev/null | head -5 || [ $? -eq 141 ]; } || true
-          else
-            echo "  ⚠ WARNING: virtio modules not found in modules.dep"
-            echo "  This might cause modprobe to fail when looking for virtio modules"
-          fi
-        else
-          echo "  ⚠ WARNING: modules.dep not found (modprobe may have issues)"
-          echo "  Attempting to regenerate modules.dep..."
-          # Try to regenerate modules.dep using depmod (if available) or manually
-          if command -v depmod >/dev/null 2>&1; then
-            depmod -b "$MODULES_DIR" "$KERNEL_VERSION" 2>/dev/null || echo "    depmod failed"
-          else
-            echo "    depmod not available, cannot regenerate modules.dep"
-          fi
-        fi
-        
-        # Also check for modules.alias which modprobe uses for modalias matching
-        if [ -f "lib/modules/$KERNEL_VERSION/modules.alias" ]; then
-          echo "  ✓ modules.alias found"
-          if grep -q "virtio" "lib/modules/$KERNEL_VERSION/modules.alias" 2>/dev/null; then
-            echo "  ✓ virtio aliases found in modules.alias"
-            # Use grep with head but ignore SIGPIPE (exit code 141)
-            { grep "virtio" "lib/modules/$KERNEL_VERSION/modules.alias" 2>/dev/null | head -5 || [ $? -eq 141 ]; } || true
-          else
-            echo "  ⚠ WARNING: virtio aliases not found in modules.alias"
-          fi
-        else
-          echo "  ⚠ WARNING: modules.alias not found"
-        fi
-        
-        # Melange constructs paths as: "/lib/modules/" + path[len(modulesPath):]
-        # Pass modulesPath as /tmp/virtio-modules/lib/modules (without kernel version)
-        # Then path[len(modulesPath):] = /6.12.58-0-virt/kernel/drivers/virtio/virtio_blk.ko
-        # and header.Name = /lib/modules/6.12.58-0-virt/kernel/drivers/virtio/virtio_blk.ko (CORRECT)
-        MODULES_PATH_FOR_MELANGE="$MODULES_DIR/lib/modules"
-        echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
-        echo "export QEMU_KERNEL_MODULES=$MODULES_PATH_FOR_MELANGE" >> $CIRRUS_ENV
-        echo "QEMU_KERNEL_MODULES set to: $MODULES_PATH_FOR_MELANGE (contains $KERNEL_VERSION subdirectory)"
-        echo "  Full path structure: $MODULES_PATH_FOR_MELANGE/$KERNEL_VERSION/kernel/drivers/virtio/"
-        
-        # Verify the path exists and is accessible
-        if [ ! -d "$MODULES_PATH_FOR_MELANGE" ]; then
-          echo "ERROR: MODULES_PATH_FOR_MELANGE directory does not exist: $MODULES_PATH_FOR_MELANGE"
-          exit 1
-        fi
-        echo "  ✓ MODULES_PATH_FOR_MELANGE directory exists and is accessible"
-        
-        # Show what melange will see
-        echo "  Melange will process modules from: $MODULES_PATH_FOR_MELANGE"
-        echo "  Example module path melange will create: /lib/modules/$KERNEL_VERSION/kernel/drivers/virtio/virtio_blk.ko"
-      else
-        echo "WARNING: Could not determine kernel version from initramfs"
-        echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
-      fi
-      
-      # Cleanup temporary files
-      rm -f /tmp/alpine-initramfs.cpio
+
+      echo "✓ Kernel: $KERNEL_PATH ($(stat -c%s $KERNEL_PATH | numfmt --to=iec-i --suffix=B))"
+      echo "✓ Initramfs: $INITRAMFS_PATH ($(stat -c%s $INITRAMFS_PATH | numfmt --to=iec-i --suffix=B))"
+      echo ""
+      echo "The QEMU wrapper will automatically combine:"
+      echo "  1. Alpine's initramfs (virtio modules + base system)"
+      echo "  2. Melange's initramfs (build environment)"
+      echo ""
+
+      # Set kernel path for melange
+      echo "export QEMU_KERNEL_IMAGE=$KERNEL_PATH" >> $CIRRUS_ENV
+      echo "✓ QEMU_KERNEL_IMAGE exported for melange"
 
   # Setup signing keys
   setup_keys_script:
@@ -350,11 +232,11 @@ task:
       rm melange-pkcs8.rsa
       wget -q -O wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
 
-  # Build stremio-server (Node.js package, no compilation needed)
+  # Build stremio-server (Node.js package, simple showcase build)
   build_script:
     - mkdir -p build-output/aarch64 build-output/logs
     - |
-      # Source environment variables from CIRRUS_ENV if it exists
+      # Source environment variables from CIRRUS_ENV
       if [ -f "$CIRRUS_ENV" ]; then
         echo "Loading environment variables from $CIRRUS_ENV:"
         cat "$CIRRUS_ENV"
@@ -362,99 +244,22 @@ task:
         source "$CIRRUS_ENV"
         set +a
       fi
-      
+
       # Set default kernel image if not already set
       export QEMU_KERNEL_IMAGE=${QEMU_KERNEL_IMAGE:-/boot/vmlinuz-virt}
-      
-      echo "Build environment:"
-      echo "  QEMU_KERNEL_IMAGE=$QEMU_KERNEL_IMAGE"
-      echo "  QEMU_KERNEL_MODULES=${QEMU_KERNEL_MODULES:-NOT SET}"
-      
-      if [ -n "$QEMU_KERNEL_MODULES" ]; then
-        export QEMU_KERNEL_MODULES
-        echo "Using QEMU_KERNEL_MODULES=$QEMU_KERNEL_MODULES"
-        if [ -d "$QEMU_KERNEL_MODULES" ]; then
-          echo "  ✓ QEMU_KERNEL_MODULES directory exists"
-          echo "  Directory contents:"
-          ls -la "$QEMU_KERNEL_MODULES" | head -5
-          
-          # Check for kernel version subdirectory
-          KERNEL_VER=$(ls "$QEMU_KERNEL_MODULES" 2>/dev/null | head -1)
-          if [ -n "$KERNEL_VER" ]; then
-            echo "  Found kernel version: $KERNEL_VER"
-            VIRTIO_DIR="$QEMU_KERNEL_MODULES/$KERNEL_VER/kernel/drivers/virtio"
-            if [ -d "$VIRTIO_DIR" ]; then
-              echo "  ✓ Virtio modules directory exists: $VIRTIO_DIR"
-              echo "  Virtio modules available:"
-              find "$VIRTIO_DIR" -name "*.ko" -type f 2>/dev/null | head -10
-              VIRTIO_COUNT=$(find "$VIRTIO_DIR" -name "*.ko" -type f 2>/dev/null | wc -l)
-              echo "  Total virtio modules: $VIRTIO_COUNT"
-            else
-              echo "  ✗ ERROR: Virtio modules directory not found: $VIRTIO_DIR"
-            fi
-          else
-            echo "  ✗ ERROR: Could not find kernel version subdirectory"
-          fi
-        else
-          echo "  ✗ ERROR: QEMU_KERNEL_MODULES directory does not exist: $QEMU_KERNEL_MODULES"
-        fi
-      else
-        echo "WARNING: QEMU_KERNEL_MODULES not set - virtio modules may not be available"
-      fi
+
+      echo "=========================================="
+      echo "BUILD ENVIRONMENT"
+      echo "=========================================="
+      echo "QEMU_KERNEL_IMAGE: $QEMU_KERNEL_IMAGE"
+      echo "Architecture: aarch64"
+      echo "Package: stremio-server"
       echo ""
-      echo "=== Starting melange build ==="
-      echo "QEMU_KERNEL_IMAGE=$QEMU_KERNEL_IMAGE"
-      echo "QEMU_KERNEL_MODULES=$QEMU_KERNEL_MODULES"
+      echo "Note: QEMU wrapper will automatically combine initramfs files"
+      echo "      to inject virtio modules from Alpine into melange's VM"
       echo ""
-      
-      # Verify modules are still accessible before build
-      if [ -n "$QEMU_KERNEL_MODULES" ] && [ -d "$QEMU_KERNEL_MODULES" ]; then
-        echo "Pre-build verification:"
-        KERNEL_VER=$(ls "$QEMU_KERNEL_MODULES" 2>/dev/null | head -1)
-        if [ -n "$KERNEL_VER" ]; then
-          VIRTIO_DIR="$QEMU_KERNEL_MODULES/$KERNEL_VER/kernel/drivers/virtio"
-          if [ -d "$VIRTIO_DIR" ]; then
-            MODULE_COUNT=$(find "$VIRTIO_DIR" -name "*.ko" -type f 2>/dev/null | wc -l)
-            echo "  ✓ Modules directory accessible: $VIRTIO_DIR"
-            echo "  ✓ Module count: $MODULE_COUNT"
-            if [ "$MODULE_COUNT" -gt 0 ]; then
-              echo "  ✓ Sample modules:"
-              find "$VIRTIO_DIR" -name "*.ko" -type f 2>/dev/null | head -3
-              echo "  ✓ Verifying modules.dep includes virtio modules:"
-              if [ -f "$QEMU_KERNEL_MODULES/$KERNEL_VER/modules.dep" ]; then
-                VIRTIO_DEPS=$(grep -c "virtio" "$QEMU_KERNEL_MODULES/$KERNEL_VER/modules.dep" 2>/dev/null || echo "0")
-                echo "    Found $VIRTIO_DEPS virtio references in modules.dep"
-              fi
-            else
-              echo "  ✗ ERROR: No modules found in $VIRTIO_DIR"
-            fi
-          fi
-        fi
-      fi
-      echo ""
-      
-      # Enable debug logging for melange to see if it's using QEMU_KERNEL_MODULES
-      export MELANGE_LOG_LEVEL=debug
-      echo "MELANGE_LOG_LEVEL set to: $MELANGE_LOG_LEVEL"
-      echo ""
-      
-      # Verify QEMU_KERNEL_MODULES is exported and accessible
-      echo "Final verification before melange build:"
-      echo "  QEMU_KERNEL_IMAGE=$QEMU_KERNEL_IMAGE"
-      echo "  QEMU_KERNEL_MODULES=$QEMU_KERNEL_MODULES"
-      if [ -n "$QEMU_KERNEL_MODULES" ] && [ -d "$QEMU_KERNEL_MODULES" ]; then
-        echo "  ✓ QEMU_KERNEL_MODULES directory exists and is accessible"
-        KERNEL_VER=$(ls "$QEMU_KERNEL_MODULES" 2>/dev/null | head -1)
-        if [ -n "$KERNEL_VER" ]; then
-          VIRTIO_DIR="$QEMU_KERNEL_MODULES/$KERNEL_VER/kernel/drivers/virtio"
-          MODULE_COUNT=$(find "$VIRTIO_DIR" -name "*.ko" -type f 2>/dev/null | wc -l)
-          echo "  ✓ Found $MODULE_COUNT virtio modules ready for injection"
-        fi
-      else
-        echo "  ✗ ERROR: QEMU_KERNEL_MODULES not accessible!"
-      fi
-      echo ""
-      
+
+      # Build stremio-server
       melange build \
         --runner qemu \
         --arch aarch64 \
@@ -464,20 +269,13 @@ task:
         --repository-append https://packages.wolfi.dev/os \
         --pipeline-dir pipelines \
         --out-dir build-output/aarch64 \
-        packages/stremio-server.yaml 2>&1 | tee /tmp/melange-build.log || true
-      
-      # Check melange logs for module injection messages
-      echo ""
-      echo "=== Checking melange logs for module injection ==="
-      if grep -q "appending modules\|injecting modules\|QEMU_KERNEL_MODULES" /tmp/melange-build.log 2>/dev/null; then
-        echo "✓ Found module injection messages in melange logs:"
-        grep -i "appending modules\|injecting modules\|QEMU_KERNEL_MODULES" /tmp/melange-build.log | head -5
-      else
-        echo "✗ WARNING: No module injection messages found in melange logs"
-        echo "  This suggests melange may not be using QEMU_KERNEL_MODULES"
-      fi
+        packages/stremio-server.yaml 2>&1 | tee /tmp/melange-build.log
+
+    - echo "=== Build output ==="
     - ls -lh build-output/aarch64/ || true
-    - cp /tmp/qemu-debug.log build-output/logs/ || echo "No QEMU debug log found"
+    - echo ""
+    - echo "=== Copying QEMU debug log to artifacts ==="
+    - cp /tmp/qemu-debug.log build-output/logs/ 2>/dev/null || echo "No QEMU debug log found"
 
   # Upload artifacts
   always:
