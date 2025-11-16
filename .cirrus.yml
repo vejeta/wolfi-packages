@@ -328,6 +328,14 @@ task:
           new_args="$new_args '$escaped' 'max'"
           skip_next=true
           skip_reason="-cpu"
+        # Replace -chardev stdio with file to capture console output
+        elif [ "$prev_arg" = "-chardev" ] && echo "$arg" | grep -q "^stdio,"; then
+          # Extract the ID from stdio,id=xxx
+          CHARDEV_ID=$(echo "$arg" | sed 's/^stdio,//')
+          CHARDEV_FILE="file,path=/tmp/qemu-console.log,$CHARDEV_ID"
+          echo "  ✓ Replaced -chardev stdio with file output: $CHARDEV_FILE" >> /tmp/qemu-wrapper.log
+          escaped_chardev=$(printf '%s' "$CHARDEV_FILE" | sed "s/'/'\\\\''/g")
+          new_args="$new_args '$escaped_chardev'"
         # CRITICAL: If current arg is -initrd, mark that next arg is the initrd path
         elif [ "$arg" = "-initrd" ]; then
           echo "  ✓ Found -initrd argument, will concatenate with Alpine initramfs" >> /tmp/qemu-wrapper.log
@@ -345,9 +353,9 @@ task:
       echo "Final command: /usr/bin/qemu-system-aarch64.real $new_args" >> /tmp/qemu-wrapper.log
 
       # Execute real QEMU with modified arguments
-      # Redirect stdout/stderr to capture boot messages
-      # Note: Don't use 'exec' because it breaks the pipe to tee
-      eval /usr/bin/qemu-system-aarch64.real $new_args 2>&1 | tee -a /tmp/qemu-boot.log
+      # Console output goes to /tmp/qemu-console.log (via -chardev file replacement above)
+      # QEMU's own output goes to /tmp/qemu-boot.log
+      eval exec /usr/bin/qemu-system-aarch64.real $new_args >> /tmp/qemu-boot.log 2>&1
       EOFQEMU
 
       chmod +x /usr/bin/qemu-system-aarch64
@@ -452,6 +460,9 @@ task:
     - echo ""
     - echo "=== QEMU Boot Log (last 100 lines) ==="
     - tail -100 /tmp/qemu-boot.log 2>/dev/null || echo "No QEMU boot log found"
+    - echo ""
+    - echo "=== QEMU Console Log (VM serial output) ==="
+    - tail -200 /tmp/qemu-console.log 2>/dev/null || echo "No console log found"
     - echo ""
     - echo "=== Check if enhanced initramfs was created ==="
     - ls -lh /tmp/enhanced-initramfs-*.cpio.gz 2>/dev/null || echo "No enhanced initramfs found"
