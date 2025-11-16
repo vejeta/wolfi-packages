@@ -439,6 +439,21 @@ task:
       echo "  - Keeps melange's /init script intact"
       echo ""
 
+      # Quick test: verify QEMU can start with basic parameters
+      echo "=== Testing QEMU basic execution ==="
+      timeout 5 /usr/bin/qemu-system-aarch64 --version || echo "QEMU version command failed"
+      echo ""
+
+      # Test if QEMU can run with our wrapper
+      echo "=== Testing QEMU wrapper (will timeout after 5s) ==="
+      timeout 5 /usr/bin/qemu-system-aarch64 \
+        -machine virt \
+        -m 1G \
+        -cpu max \
+        -nographic \
+        -kernel /boot/vmlinuz-lts 2>&1 | head -20 || echo "QEMU test completed or timed out"
+      echo ""
+
       # Build stremio-server with QEMU runner
       timeout 300 melange build \
         --runner qemu \
@@ -462,7 +477,22 @@ task:
       tail -100 /tmp/qemu-boot.log 2>/dev/null || echo "No QEMU boot log found"
       echo ""
       echo "=== QEMU Console Log (VM serial output) ==="
-      tail -200 /tmp/qemu-console.log 2>/dev/null || echo "No console log found"
+      if [ -f /tmp/qemu-console.log ]; then
+        CONSOLE_SIZE=$(stat -c%s /tmp/qemu-console.log 2>/dev/null || echo "0")
+        echo "Console log size: $CONSOLE_SIZE bytes"
+        if [ "$CONSOLE_SIZE" -gt 0 ]; then
+          tail -200 /tmp/qemu-console.log
+        else
+          echo "Console log exists but is EMPTY - VM never booted or no output was produced"
+          echo "This suggests QEMU failed to start or kernel didn't boot"
+        fi
+      else
+        echo "No console log found - file was never created"
+      fi
+      echo ""
+      echo "=== QEMU process info ==="
+      echo "Checking if QEMU is still running..."
+      ps aux | grep qemu | grep -v grep || echo "No QEMU processes found"
       echo ""
       echo "=== Check if enhanced initramfs was created ==="
       ls -lh /tmp/enhanced-initramfs-*.cpio.gz 2>/dev/null || echo "No enhanced initramfs found"
