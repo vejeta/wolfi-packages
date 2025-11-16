@@ -91,41 +91,38 @@ task:
 
           # Create combined initramfs (Alpine's initramfs + melange's initramfs)
           # Linux kernel supports concatenated cpio archives natively
-          COMBINED_INITRD="/tmp/combined-initramfs-$$.cpio.gz"
+          # Using UNCOMPRESSED cpio to eliminate potential gzip issues
+          COMBINED_INITRD="/tmp/combined-initramfs-$$.cpio"
           echo "  Creating combined initramfs: $COMBINED_INITRD" >> /tmp/qemu-wrapper.log
 
           if [ -f "/boot/initramfs-lts" ]; then
             # Step 1: Decompress Alpine's initramfs to uncompressed cpio
-            echo "  Step 1: Checking Alpine's initramfs format..." >> /tmp/qemu-wrapper.log
+            echo "  Step 1: Decompressing Alpine's initramfs..." >> /tmp/qemu-wrapper.log
             if file /boot/initramfs-lts | grep -q gzip; then
-              echo "    Alpine's initramfs is gzip compressed, decompressing..." >> /tmp/qemu-wrapper.log
               gunzip -c /boot/initramfs-lts > /tmp/alpine-$$.cpio 2>> /tmp/qemu-wrapper.log
             else
-              echo "    Alpine's initramfs is uncompressed, copying..." >> /tmp/qemu-wrapper.log
               cp /boot/initramfs-lts /tmp/alpine-$$.cpio 2>> /tmp/qemu-wrapper.log
             fi
+            ALPINE_SIZE=$(stat -c%s /tmp/alpine-$$.cpio 2>/dev/null || echo "0")
+            echo "    Alpine initramfs: $ALPINE_SIZE bytes (uncompressed)" >> /tmp/qemu-wrapper.log
 
             # Step 2: Decompress melange's initramfs to uncompressed cpio
-            echo "  Step 2: Checking melange's initramfs format..." >> /tmp/qemu-wrapper.log
+            echo "  Step 2: Decompressing melange's initramfs..." >> /tmp/qemu-wrapper.log
             if file "$arg" | grep -q gzip; then
-              echo "    Melange's initramfs is gzip compressed, decompressing..." >> /tmp/qemu-wrapper.log
               gunzip -c "$arg" > /tmp/melange-$$.cpio 2>> /tmp/qemu-wrapper.log
             else
-              echo "    Melange's initramfs is uncompressed, copying..." >> /tmp/qemu-wrapper.log
               cp "$arg" /tmp/melange-$$.cpio 2>> /tmp/qemu-wrapper.log
             fi
+            MELANGE_SIZE=$(stat -c%s /tmp/melange-$$.cpio 2>/dev/null || echo "0")
+            echo "    Melange initramfs: $MELANGE_SIZE bytes (uncompressed)" >> /tmp/qemu-wrapper.log
 
             # Step 3: Concatenate both uncompressed cpio archives
-            # The Linux kernel will merge them automatically (files in later archives override earlier ones)
-            echo "  Step 3: Concatenate uncompressed cpio archives" >> /tmp/qemu-wrapper.log
-            cat /tmp/alpine-$$.cpio /tmp/melange-$$.cpio > /tmp/combined-$$.cpio 2>> /tmp/qemu-wrapper.log
-
-            # Step 4: Compress the combined cpio
-            echo "  Step 4: Compress combined initramfs" >> /tmp/qemu-wrapper.log
-            gzip -9 -c /tmp/combined-$$.cpio > "$COMBINED_INITRD" 2>> /tmp/qemu-wrapper.log
+            # Pass UNCOMPRESSED to kernel to avoid any gzip decompression issues
+            echo "  Step 3: Concatenating cpio archives (will pass UNCOMPRESSED to kernel)..." >> /tmp/qemu-wrapper.log
+            cat /tmp/alpine-$$.cpio /tmp/melange-$$.cpio > "$COMBINED_INITRD" 2>> /tmp/qemu-wrapper.log
 
             # Cleanup temp files
-            rm -f /tmp/alpine-$$.cpio /tmp/melange-$$.cpio /tmp/combined-$$.cpio
+            rm -f /tmp/alpine-$$.cpio /tmp/melange-$$.cpio
 
             if [ -f "$COMBINED_INITRD" ]; then
               COMBINED_SIZE=$(stat -c%s "$COMBINED_INITRD" 2>/dev/null || echo "0")
