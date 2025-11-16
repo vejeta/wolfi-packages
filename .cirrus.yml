@@ -131,6 +131,11 @@ task:
 
             # Copy busybox and ALL its symlinks
             if [ -f /tmp/alpine-extract-$$/bin/busybox ]; then
+              # Check if busybox is static or dynamic
+              echo "    Checking busybox binary type:" >> /tmp/qemu-wrapper.log
+              file /tmp/alpine-extract-$$/bin/busybox >> /tmp/qemu-wrapper.log 2>&1
+              ldd /tmp/alpine-extract-$$/bin/busybox >> /tmp/qemu-wrapper.log 2>&1 || echo "    (static binary or ldd failed)" >> /tmp/qemu-wrapper.log
+
               # Ensure /usr/bin exists (bin is a symlink to usr/bin)
               mkdir -p /tmp/melange-extract-$$/usr/bin 2>> /tmp/qemu-wrapper.log
 
@@ -199,13 +204,24 @@ task:
             ls -la /tmp/melange-extract-$$/usr/bin/busybox >> /tmp/qemu-wrapper.log 2>&1 || echo "    /usr/bin/busybox not found" >> /tmp/qemu-wrapper.log
             ls -la /tmp/melange-extract-$$/bin/sh >> /tmp/qemu-wrapper.log 2>&1 || echo "    /bin/sh not found" >> /tmp/qemu-wrapper.log
 
+            # Show first 20 lines of /init to understand what it does
+            echo "  First 20 lines of /init:" >> /tmp/qemu-wrapper.log
+            head -20 /tmp/melange-extract-$$/init >> /tmp/qemu-wrapper.log 2>&1
+
             # Repackage melange's initramfs with added tools
             echo "  Repackaging enhanced initramfs..." >> /tmp/qemu-wrapper.log
             cd /tmp/melange-extract-$$
             find . | cpio -o -H newc 2>> /tmp/qemu-wrapper.log | gzip > "$COMBINED_INITRD" 2>> /tmp/qemu-wrapper.log
 
-            # Restore original directory
+            # Verify the repackaged initramfs
+            echo "  Verifying repackaged initramfs..." >> /tmp/qemu-wrapper.log
+            mkdir -p /tmp/verify-initramfs-$$ 2>> /tmp/qemu-wrapper.log
+            cd /tmp/verify-initramfs-$$
+            gunzip -c "$COMBINED_INITRD" | cpio -t 2>> /tmp/qemu-wrapper.log | grep -E "^init$|^bin/busybox$|^bin/sh$|^usr/bin/busybox$" >> /tmp/qemu-wrapper.log || echo "    WARNING: Critical files not found in final initramfs!" >> /tmp/qemu-wrapper.log
             cd "$ORIGINAL_DIR"
+            rm -rf /tmp/verify-initramfs-$$
+
+            # Restore original directory
             echo "  Restored working directory: $ORIGINAL_DIR" >> /tmp/qemu-wrapper.log
 
             if [ -f "$COMBINED_INITRD" ]; then
