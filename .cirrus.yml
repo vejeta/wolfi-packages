@@ -243,18 +243,21 @@ task:
             echo "  First 20 lines of /init:" >> /tmp/qemu-wrapper.log
             head -20 /tmp/melange-extract-$$/init >> /tmp/qemu-wrapper.log 2>&1
 
-            # Repackage melange's initramfs with added tools
+            # Create combined initramfs by repacking with correct cpio options
             echo "  Repackaging enhanced initramfs..." >> /tmp/qemu-wrapper.log
             cd /tmp/melange-extract-$$
-            find . | cpio -o -H newc 2>> /tmp/qemu-wrapper.log | gzip > "$COMBINED_INITRD" 2>> /tmp/qemu-wrapper.log
+            # Use find with -depth to process files in correct order and preserve everything
+            find . -depth -print0 | cpio --null -o -H newc 2>> /tmp/qemu-wrapper.log | gzip -9 > "$COMBINED_INITRD" 2>> /tmp/qemu-wrapper.log
 
             # Verify the repackaged initramfs
             echo "  Verifying repackaged initramfs..." >> /tmp/qemu-wrapper.log
-            mkdir -p /tmp/verify-initramfs-$$ 2>> /tmp/qemu-wrapper.log
-            cd /tmp/verify-initramfs-$$
-            gunzip -c "$COMBINED_INITRD" | cpio -t 2>> /tmp/qemu-wrapper.log | grep -E "^init$|^bin/busybox$|^bin/sh$|^usr/bin/busybox$" >> /tmp/qemu-wrapper.log || echo "    WARNING: Critical files not found in final initramfs!" >> /tmp/qemu-wrapper.log
+            FILE_COUNT=$(gunzip -c "$COMBINED_INITRD" | cpio -t 2>/dev/null | wc -l)
+            echo "  Initramfs contains $FILE_COUNT files" >> /tmp/qemu-wrapper.log
+
+            # Check for critical files
+            gunzip -c "$COMBINED_INITRD" | cpio -t 2>/dev/null | grep -E "^init$|^bin/busybox$|^bin/sh$|^usr/bin/busybox$|^lib/ld-musl" >> /tmp/qemu-wrapper.log || echo "    WARNING: Critical files not found!" >> /tmp/qemu-wrapper.log
+
             cd "$ORIGINAL_DIR"
-            rm -rf /tmp/verify-initramfs-$$
 
             # Restore original directory
             echo "  Restored working directory: $ORIGINAL_DIR" >> /tmp/qemu-wrapper.log
