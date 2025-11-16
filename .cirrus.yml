@@ -93,7 +93,7 @@ task:
           COMBINED_INITRD="/tmp/enhanced-initramfs-$$.cpio.gz"
           echo "  Creating enhanced initramfs: $COMBINED_INITRD" >> /tmp/qemu-wrapper.log
 
-          if [ -f "/boot/initramfs-virt" ]; then
+          if [ -f "/boot/initramfs-lts" ]; then
             # Save current directory to restore later
             ORIGINAL_DIR=$(pwd)
 
@@ -103,10 +103,10 @@ task:
             # Extract Alpine's initramfs
             echo "  Extracting Alpine's initramfs..." >> /tmp/qemu-wrapper.log
             cd /tmp/alpine-extract-$$
-            if file /boot/initramfs-virt | grep -q gzip; then
-              gunzip -c /boot/initramfs-virt | cpio -idm 2>> /tmp/qemu-wrapper.log
+            if file /boot/initramfs-lts | grep -q gzip; then
+              gunzip -c /boot/initramfs-lts | cpio -idm 2>> /tmp/qemu-wrapper.log
             else
-              cpio -idm < /boot/initramfs-virt 2>> /tmp/qemu-wrapper.log
+              cpio -idm < /boot/initramfs-lts 2>> /tmp/qemu-wrapper.log
             fi
 
             # Extract melange's initramfs
@@ -280,7 +280,7 @@ task:
               melange_initrd=""
             fi
           else
-            echo "  ✗ WARNING: /boot/initramfs-virt not found, using melange's initramfs only" >> /tmp/qemu-wrapper.log
+            echo "  ✗ WARNING: /boot/initramfs-lts not found, using melange's initramfs only" >> /tmp/qemu-wrapper.log
             escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
             escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
             new_args="$new_args '$escaped_arg' '$escaped_path'"
@@ -452,9 +452,9 @@ task:
     - ls -lh /tmp/enhanced-initramfs-*.cpio.gz 2>/dev/null || echo "No enhanced initramfs found"
     - echo ""
     - echo "=== Check Alpine initramfs format ==="
-    - file /boot/initramfs-virt
+    - file /boot/initramfs-lts
     - echo "First bytes (hex):"
-    - hexdump -C /boot/initramfs-virt | head -3
+    - hexdump -C /boot/initramfs-lts | head -3
 
   # Upload artifacts
   always:
