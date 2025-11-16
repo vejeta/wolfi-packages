@@ -345,7 +345,8 @@ task:
       echo "Final command: /usr/bin/qemu-system-aarch64.real $new_args" >> /tmp/qemu-wrapper.log
 
       # Execute real QEMU with modified arguments
-      eval exec /usr/bin/qemu-system-aarch64.real $new_args
+      # Redirect stdout/stderr to capture boot messages
+      eval exec /usr/bin/qemu-system-aarch64.real $new_args 2>&1 | tee -a /tmp/qemu-boot.log
       EOFQEMU
 
       chmod +x /usr/bin/qemu-system-aarch64
@@ -447,6 +448,9 @@ task:
     - echo ""
     - echo "=== QEMU Wrapper Log ==="
     - cat /tmp/qemu-wrapper.log 2>/dev/null || echo "No wrapper log found (wrapper never executed?)"
+    - echo ""
+    - echo "=== QEMU Boot Log (last 100 lines) ==="
+    - tail -100 /tmp/qemu-boot.log 2>/dev/null || echo "No QEMU boot log found"
     - echo ""
     - echo "=== Check if enhanced initramfs was created ==="
     - ls -lh /tmp/enhanced-initramfs-*.cpio.gz 2>/dev/null || echo "No enhanced initramfs found"
