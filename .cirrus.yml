@@ -89,66 +89,16 @@ task:
         if [ "$melange_initrd" = "PENDING" ]; then
           echo "  Melange's initrd path: '$arg'" >> /tmp/qemu-wrapper.log
 
-          # Create combined initramfs (Alpine's initramfs + melange's initramfs)
-          # Linux kernel supports concatenated cpio archives natively
-          # Using UNCOMPRESSED cpio to eliminate potential gzip issues
-          COMBINED_INITRD="/tmp/combined-initramfs-$$.cpio"
-          echo "  Creating combined initramfs: $COMBINED_INITRD" >> /tmp/qemu-wrapper.log
+          # CRITICAL TEST: Use melange's initramfs UNMODIFIED to test if the problem
+          # is the concatenation or something more fundamental with initramfs loading
+          echo "  ⚠️  TESTING: Using melange's original initramfs WITHOUT modification" >> /tmp/qemu-wrapper.log
+          echo "  This is to diagnose if kernel can load ANY initramfs at all" >> /tmp/qemu-wrapper.log
 
-          if [ -f "/boot/initramfs-lts" ]; then
-            # Step 1: Decompress Alpine's initramfs to uncompressed cpio
-            echo "  Step 1: Decompressing Alpine's initramfs..." >> /tmp/qemu-wrapper.log
-            if file /boot/initramfs-lts | grep -q gzip; then
-              gunzip -c /boot/initramfs-lts > /tmp/alpine-$$.cpio 2>> /tmp/qemu-wrapper.log
-            else
-              cp /boot/initramfs-lts /tmp/alpine-$$.cpio 2>> /tmp/qemu-wrapper.log
-            fi
-            ALPINE_SIZE=$(stat -c%s /tmp/alpine-$$.cpio 2>/dev/null || echo "0")
-            echo "    Alpine initramfs: $ALPINE_SIZE bytes (uncompressed)" >> /tmp/qemu-wrapper.log
-
-            # Step 2: Decompress melange's initramfs to uncompressed cpio
-            echo "  Step 2: Decompressing melange's initramfs..." >> /tmp/qemu-wrapper.log
-            if file "$arg" | grep -q gzip; then
-              gunzip -c "$arg" > /tmp/melange-$$.cpio 2>> /tmp/qemu-wrapper.log
-            else
-              cp "$arg" /tmp/melange-$$.cpio 2>> /tmp/qemu-wrapper.log
-            fi
-            MELANGE_SIZE=$(stat -c%s /tmp/melange-$$.cpio 2>/dev/null || echo "0")
-            echo "    Melange initramfs: $MELANGE_SIZE bytes (uncompressed)" >> /tmp/qemu-wrapper.log
-
-            # Step 3: Concatenate both uncompressed cpio archives
-            # Pass UNCOMPRESSED to kernel to avoid any gzip decompression issues
-            echo "  Step 3: Concatenating cpio archives (will pass UNCOMPRESSED to kernel)..." >> /tmp/qemu-wrapper.log
-            cat /tmp/alpine-$$.cpio /tmp/melange-$$.cpio > "$COMBINED_INITRD" 2>> /tmp/qemu-wrapper.log
-
-            # Cleanup temp files
-            rm -f /tmp/alpine-$$.cpio /tmp/melange-$$.cpio
-
-            if [ -f "$COMBINED_INITRD" ]; then
-              COMBINED_SIZE=$(stat -c%s "$COMBINED_INITRD" 2>/dev/null || echo "0")
-              echo "  ✓ Combined initramfs created: $COMBINED_SIZE bytes" >> /tmp/qemu-wrapper.log
-
-              # Add the -initrd argument with combined path
-              escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
-              escaped_path=$(printf '%s' "$COMBINED_INITRD" | sed "s/'/'\\\\''/g")
-              new_args="$new_args '$escaped_arg' '$escaped_path'"
-              melange_initrd="$COMBINED_INITRD"
-            else
-              echo "  ✗ ERROR: Failed to create combined initramfs, using original" >> /tmp/qemu-wrapper.log
-              # Cleanup temp files
-              rm -f /tmp/alpine-$$.cpio /tmp/melange-$$.cpio /tmp/combined-$$.cpio
-              escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
-              escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-              new_args="$new_args '$escaped_arg' '$escaped_path'"
-              melange_initrd=""
-            fi
-          else
-            echo "  ✗ WARNING: /boot/initramfs-lts not found, using melange's initramfs only" >> /tmp/qemu-wrapper.log
-            escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
-            escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-            new_args="$new_args '$escaped_arg' '$escaped_path'"
-            melange_initrd=""
-          fi
+          # Just pass through melange's original initramfs
+          escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
+          escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
+          new_args="$new_args '$escaped_arg' '$escaped_path'"
+          melange_initrd="$arg"
 
           # Continue to next argument
           prev_arg="$arg"
