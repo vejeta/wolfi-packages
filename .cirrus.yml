@@ -131,9 +131,16 @@ task:
 
             # Copy busybox and ALL its symlinks
             if [ -f /tmp/alpine-extract-$$/bin/busybox ]; then
-              # Copy busybox binary
-              cp -a /tmp/alpine-extract-$$/bin/busybox /tmp/melange-extract-$$/bin/ 2>> /tmp/qemu-wrapper.log
-              echo "    ✓ Copied busybox binary" >> /tmp/qemu-wrapper.log
+              # Ensure /usr/bin exists (bin is a symlink to usr/bin)
+              mkdir -p /tmp/melange-extract-$$/usr/bin 2>> /tmp/qemu-wrapper.log
+
+              # Copy busybox binary to /usr/bin (the real location)
+              cp -a /tmp/alpine-extract-$$/bin/busybox /tmp/melange-extract-$$/usr/bin/ 2>> /tmp/qemu-wrapper.log
+              echo "    ✓ Copied busybox binary to /usr/bin" >> /tmp/qemu-wrapper.log
+
+              # Also copy to /bin for direct access (in case symlink breaks)
+              cp -a /tmp/alpine-extract-$$/bin/busybox /tmp/melange-extract-$$/bin/ 2>> /tmp/qemu-wrapper.log || true
+              echo "    ✓ Copied busybox binary to /bin" >> /tmp/qemu-wrapper.log
 
               # Copy all busybox symlinks from Alpine's /bin
               for link in /tmp/alpine-extract-$$/bin/*; do
@@ -184,6 +191,13 @@ task:
             else
               echo "    ✗ WARNING: /init not found in melange's initramfs!" >> /tmp/qemu-wrapper.log
             fi
+
+            # Verify critical files before repackaging
+            echo "  Verifying critical files before repackaging:" >> /tmp/qemu-wrapper.log
+            ls -la /tmp/melange-extract-$$/init >> /tmp/qemu-wrapper.log 2>&1
+            ls -la /tmp/melange-extract-$$/bin/busybox >> /tmp/qemu-wrapper.log 2>&1 || echo "    /bin/busybox not found" >> /tmp/qemu-wrapper.log
+            ls -la /tmp/melange-extract-$$/usr/bin/busybox >> /tmp/qemu-wrapper.log 2>&1 || echo "    /usr/bin/busybox not found" >> /tmp/qemu-wrapper.log
+            ls -la /tmp/melange-extract-$$/bin/sh >> /tmp/qemu-wrapper.log 2>&1 || echo "    /bin/sh not found" >> /tmp/qemu-wrapper.log
 
             # Repackage melange's initramfs with added tools
             echo "  Repackaging enhanced initramfs..." >> /tmp/qemu-wrapper.log
