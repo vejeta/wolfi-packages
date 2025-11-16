@@ -61,21 +61,42 @@ task:
       # Rename the real QEMU binary
       mv /usr/bin/qemu-system-aarch64 /usr/bin/qemu-system-aarch64.real
 
-      # Create wrapper that forces TCG
+      # Create wrapper that forces TCG and fixes memory/machine settings
       cat > /usr/bin/qemu-system-aarch64 << 'EOFQEMU'
       #!/bin/sh
-      # Force TCG acceleration (KVM not available in containers)
+      # Force TCG acceleration and fix memory settings for containers
 
-      # Build properly quoted arguments, replacing kvm with tcg
+      # Process arguments
       new_args=""
+      skip_next=false
+      prev_arg=""
+
       for arg in "$@"; do
+        # Skip the value after -m or -machine (we'll provide our own)
+        if [ "$skip_next" = "true" ]; then
+          skip_next=false
+          prev_arg=""
+          continue
+        fi
+
+        # Replace kvm with tcg
         if [ "$arg" = "kvm" ]; then
           new_args="$new_args tcg"
+        # Replace -m value with 16G (melange calculates too much)
+        elif [ "$arg" = "-m" ]; then
+          new_args="$new_args '-m' '16G'"
+          skip_next=true
+        # Replace -machine value with virt (for 64-bit addressing)
+        elif [ "$arg" = "-machine" ]; then
+          new_args="$new_args '-machine' 'virt'"
+          skip_next=true
         else
           # Properly escape single quotes in arguments
           escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
           new_args="$new_args '$escaped'"
         fi
+
+        prev_arg="$arg"
       done
 
       # Execute real QEMU with eval to handle quoting
