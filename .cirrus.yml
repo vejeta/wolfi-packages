@@ -160,6 +160,20 @@ task:
               echo "    ✓ Created busybox symlinks (sh, mount, etc.)" >> /tmp/qemu-wrapper.log
             fi
 
+            # Copy musl dynamic linker and libc (busybox is dynamically linked!)
+            if [ -f /tmp/alpine-extract-$$/lib/ld-musl-aarch64.so.1 ]; then
+              mkdir -p /tmp/melange-extract-$$/lib 2>> /tmp/qemu-wrapper.log
+              cp -a /tmp/alpine-extract-$$/lib/ld-musl-aarch64.so.1 /tmp/melange-extract-$$/lib/ 2>> /tmp/qemu-wrapper.log
+              echo "    ✓ Copied musl dynamic linker" >> /tmp/qemu-wrapper.log
+            fi
+
+            # Copy all lib files (libc, etc.)
+            if [ -d /tmp/alpine-extract-$$/lib ]; then
+              mkdir -p /tmp/melange-extract-$$/lib 2>> /tmp/qemu-wrapper.log
+              cp -a /tmp/alpine-extract-$$/lib/*.so* /tmp/melange-extract-$$/lib/ 2>> /tmp/qemu-wrapper.log || true
+              echo "    ✓ Copied lib files" >> /tmp/qemu-wrapper.log
+            fi
+
             # Copy all kernel modules (including virtio)
             if [ -d /tmp/alpine-extract-$$/lib/modules ]; then
               mkdir -p /tmp/melange-extract-$$/lib
