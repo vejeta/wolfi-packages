@@ -91,26 +91,38 @@ task:
           echo "  Melange's initrd path: '$arg'" >> /tmp/qemu-debug.log
 
           # Create combined initramfs: Alpine's (virtio modules) + melange's (build env)
-          # Linux kernel merges concatenated cpio archives automatically
-          COMBINED_INITRD="/tmp/combined-initramfs-$$.cpio"
+          # Linux kernel merges concatenated UNCOMPRESSED cpio archives
+          COMBINED_INITRD="/tmp/combined-initramfs-$$.cpio.gz"
           echo "  Creating combined initramfs: $COMBINED_INITRD" >> /tmp/qemu-debug.log
 
-          # Concatenate: Alpine's initramfs first (base modules), then melange's (overrides)
           if [ -f "/boot/initramfs-virt" ]; then
-            echo "  Concatenating /boot/initramfs-virt + $arg" >> /tmp/qemu-debug.log
-            cat /boot/initramfs-virt "$arg" > "$COMBINED_INITRD" 2>> /tmp/qemu-debug.log
+            echo "  Step 1: Decompress Alpine's initramfs" >> /tmp/qemu-debug.log
+            gunzip -c /boot/initramfs-virt > /tmp/alpine-$$.cpio 2>> /tmp/qemu-debug.log
+
+            echo "  Step 2: Decompress melange's initramfs" >> /tmp/qemu-debug.log
+            gunzip -c "$arg" > /tmp/melange-$$.cpio 2>> /tmp/qemu-debug.log
+
+            echo "  Step 3: Concatenate uncompressed cpio archives" >> /tmp/qemu-debug.log
+            cat /tmp/alpine-$$.cpio /tmp/melange-$$.cpio > /tmp/combined-$$.cpio 2>> /tmp/qemu-debug.log
+
+            echo "  Step 4: Re-compress combined initramfs" >> /tmp/qemu-debug.log
+            gzip -c /tmp/combined-$$.cpio > "$COMBINED_INITRD" 2>> /tmp/qemu-debug.log
 
             if [ -f "$COMBINED_INITRD" ]; then
               COMBINED_SIZE=$(stat -c%s "$COMBINED_INITRD")
               echo "  ✓ Combined initramfs created: $COMBINED_SIZE bytes" >> /tmp/qemu-debug.log
 
-              # Now add the -initrd argument with combined path
+              # Cleanup temp files
+              rm -f /tmp/alpine-$$.cpio /tmp/melange-$$.cpio /tmp/combined-$$.cpio
+
+              # Add the -initrd argument with combined path
               escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
               escaped_path=$(printf '%s' "$COMBINED_INITRD" | sed "s/'/'\\\\''/g")
               new_args="$new_args '$escaped_arg' '$escaped_path'"
               melange_initrd="$COMBINED_INITRD"
             else
               echo "  ✗ ERROR: Failed to create combined initramfs, using melange's only" >> /tmp/qemu-debug.log
+              rm -f /tmp/alpine-$$.cpio /tmp/melange-$$.cpio /tmp/combined-$$.cpio
               escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
               escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
               new_args="$new_args '$escaped_arg' '$escaped_path'"
@@ -211,8 +223,10 @@ task:
         exit 1
       fi
 
-      echo "✓ Kernel: $KERNEL_PATH ($(stat -c%s $KERNEL_PATH | numfmt --to=iec-i --suffix=B))"
-      echo "✓ Initramfs: $INITRAMFS_PATH ($(stat -c%s $INITRAMFS_PATH | numfmt --to=iec-i --suffix=B))"
+      KERNEL_SIZE=$(stat -c%s $KERNEL_PATH)
+      INITRAMFS_SIZE=$(stat -c%s $INITRAMFS_PATH)
+      echo "✓ Kernel: $KERNEL_PATH ($KERNEL_SIZE bytes)"
+      echo "✓ Initramfs: $INITRAMFS_PATH ($INITRAMFS_SIZE bytes)"
       echo ""
       echo "The QEMU wrapper will automatically combine:"
       echo "  1. Alpine's initramfs (virtio modules + base system)"
