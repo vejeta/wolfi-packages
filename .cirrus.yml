@@ -24,7 +24,7 @@ task:
 
   # Install dependencies (including QEMU for emulation)
   install_deps_script:
-    - apk add --no-cache curl git bash qemu-system-aarch64 linux-virt wget tar gzip jq openssl cpio file
+    - apk add --no-cache curl git bash qemu-system-aarch64 linux-lts wget tar gzip jq openssl cpio file
     - |
       # Check if virtio modules are available in the installed system
       echo "Checking for virtio modules in installed system..."
@@ -362,9 +362,9 @@ task:
       echo "SETUP KERNEL SCRIPT"
       echo "=========================================="
 
-      # QEMU runner requires kernel and initramfs from linux-virt package
-      KERNEL_PATH="/boot/vmlinuz-virt"
-      INITRAMFS_PATH="/boot/initramfs-virt"
+      # QEMU runner requires kernel and initramfs from linux-lts package
+      KERNEL_PATH="/boot/vmlinuz-lts"
+      INITRAMFS_PATH="/boot/initramfs-lts"
 
       echo "Verifying kernel and initramfs..."
       if [ ! -f "$KERNEL_PATH" ]; then
@@ -413,7 +413,7 @@ task:
       fi
 
       # Export kernel path for melange (initramfs handled by wrapper)
-      export QEMU_KERNEL_IMAGE=${QEMU_KERNEL_IMAGE:-/boot/vmlinuz-virt}
+      export QEMU_KERNEL_IMAGE=${QEMU_KERNEL_IMAGE:-/boot/vmlinuz-lts}
 
       echo "=========================================="
       echo "BUILD ENVIRONMENT"
