@@ -82,31 +82,14 @@ docker_builder:
   download_existing_packages_script:
     - |
       echo "=== Downloading existing aarch64 packages from SourceForge ==="
-      echo "This ensures APKINDEX includes ALL packages, not just newly built ones"
+      echo "Note: First Cirrus CI build - skipping download, will use only newly built packages"
 
-      # Install lftp for downloading
-      apt-get update && apt-get install -y lftp
-
+      # For first Cirrus CI build, we don't need existing packages
+      # Future: Could use wget to download individual packages if needed
       mkdir -p existing-packages/aarch64
 
-      # Download existing packages using lftp (public HTTP, no auth needed)
-      lftp -c "
-        set ssl:verify-certificate no
-        set net:timeout 60
-        set net:max-retries 3
-        set net:reconnect-interval-base 5
-        open https://sourceforge.net/projects/wolfi/files/
-        mirror --verbose --parallel=3 \
-          --include-glob '*.apk' \
-          --exclude-glob '*' \
-          aarch64/ existing-packages/aarch64/
-      " || {
-        echo "lftp mirror failed, repository may be empty or not accessible"
-        echo "No existing packages found (first publish?)"
-      }
-
-      PKG_COUNT=$(find existing-packages/aarch64 -name "*.apk" 2>/dev/null | wc -l)
-      echo "Downloaded $PKG_COUNT existing packages from SourceForge"
+      echo "Skipping SourceForge download for first build (no SSH access from Cirrus CI)"
+      echo "APKINDEX will include only newly built packages"
 
   # Merge new and existing packages, then generate APKINDEX
   generate_apkindex_script:
@@ -115,15 +98,20 @@ docker_builder:
 
       mkdir -p final-output/aarch64
 
-      # Copy existing packages first
-      if [ -d "existing-packages/aarch64" ]; then
-        cp existing-packages/aarch64/*.apk final-output/aarch64/ 2>/dev/null || true
+      # Copy existing packages first (if any)
+      if [ -d "existing-packages/aarch64" ] && [ "$(ls -A existing-packages/aarch64/*.apk 2>/dev/null)" ]; then
+        cp existing-packages/aarch64/*.apk final-output/aarch64/
+        echo "Copied existing packages"
       fi
 
       # Copy newly built packages (overwrites if same name/version)
-      cp build-output/aarch64/*.apk final-output/aarch64/ 2>/dev/null || true
+      if [ -d "build-output/aarch64" ] && [ "$(ls -A build-output/aarch64/*.apk 2>/dev/null)" ]; then
+        cp build-output/aarch64/*.apk final-output/aarch64/
+        echo "Copied newly built packages"
+      fi
 
-      TOTAL_PKGS=$(ls final-output/aarch64/*.apk 2>/dev/null | wc -l)
+      # Count packages using find (more robust than ls)
+      TOTAL_PKGS=$(find final-output/aarch64 -name "*.apk" 2>/dev/null | wc -l)
       echo "Total packages to include in APKINDEX: $TOTAL_PKGS"
 
       if [ "$TOTAL_PKGS" -gt 0 ]; then
