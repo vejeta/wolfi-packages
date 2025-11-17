@@ -30,12 +30,19 @@ docker_builder:
       # Use encrypted production key if building on master/main
       if [ "$CIRRUS_BRANCH" = "master" ] || [ "$CIRRUS_BRANCH" = "main" ]; then
         echo "Using encrypted APK signing key for production builds"
-        # Cirrus CI auto-decrypts ENCRYPTED[] vars - no base64 decode needed
-        echo "$APK_SIGNING_KEY" > melange.rsa
+
+        # Cirrus CI auto-decrypts ENCRYPTED[] vars - write to temp file
+        echo "$APK_SIGNING_KEY" > melange-pkcs8.rsa
+        chmod 600 melange-pkcs8.rsa
+
+        # Convert PKCS#8 to PKCS#1 format (required by melange)
+        openssl rsa -in melange-pkcs8.rsa -out melange.rsa -traditional
         chmod 600 melange.rsa
+        rm melange-pkcs8.rsa
 
         # Generate public key from private key
-        openssl rsa -in melange.rsa -pubout > melange.rsa.pub 2>/dev/null
+        openssl rsa -in melange.rsa -pubout > melange.rsa.pub
+        chmod 644 melange.rsa.pub
       else
         echo "Generating ephemeral signing keys for branch builds"
         docker run --rm -v "$PWD:/work" cgr.dev/chainguard/melange:latest keygen /work/melange.rsa
@@ -44,7 +51,7 @@ docker_builder:
       # Download official Wolfi signing key for dependency resolution
       wget -q https://packages.wolfi.dev/os/wolfi-signing.rsa.pub -O wolfi-signing.rsa.pub
 
-      echo "✓ Signing keys ready"
+      echo "✓ Signing keys ready (PKCS#1 format)"
       ls -lh melange.rsa* wolfi-signing.rsa.pub
 
   # Build stremio-server with privileged melange container
