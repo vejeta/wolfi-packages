@@ -262,16 +262,17 @@ jobs:
           echo "Signing key ready for APKINDEX signing"
           ls -lh /tmp/melange.rsa
 
-      - name: Generate and sign APKINDEX for each architecture
+      - name: Re-sign all packages and generate APKINDEX for each architecture
         run: |
-          echo "=== Generating and signing APKINDEX ==="
+          echo "=== Re-signing packages and generating APKINDEX ==="
+          echo "This ensures all packages are signed with vejeta-wolfi.rsa for end-to-end verification"
 
           for arch in x86_64 aarch64; do
             echo "Checking $arch..."
 
-            # Only generate APKINDEX if there are APK packages
+            # Only process if there are APK packages
             if ls repo/$arch/*.apk 1> /dev/null 2>&1; then
-              echo "Generating APKINDEX for $arch..."
+              echo "Re-signing and indexing $arch packages..."
 
               # Copy signing key into arch directory for Docker access
               # Use vejeta-wolfi.rsa as filename so signature matches public key name
@@ -279,13 +280,23 @@ jobs:
 
               cd repo/$arch
 
-              # Use Alpine container to generate and SIGN APKINDEX
+              # Use Alpine container to:
+              # 1. Re-sign ALL .apk files with vejeta-wolfi.rsa
+              # 2. Generate APKINDEX with all packages
+              # 3. Sign APKINDEX with vejeta-wolfi.rsa
               docker run --rm \
                 -v $PWD:/packages \
                 -w /packages \
                 alpine:latest \
                 sh -c "apk add --no-cache apk-tools abuild && \
+                  echo '=== Re-signing all packages ===' && \
+                  for apk in *.apk; do \
+                    echo \"Re-signing \$apk...\" && \
+                    abuild-sign -k /packages/vejeta-wolfi.rsa \"\$apk\"; \
+                  done && \
+                  echo '=== Generating APKINDEX ===' && \
                   apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
+                  echo '=== Signing APKINDEX ===' && \
                   abuild-sign -k /packages/vejeta-wolfi.rsa APKINDEX.tar.gz && \
                   ls -lh APKINDEX.tar.gz"
 
@@ -294,9 +305,9 @@ jobs:
 
               cd ../..
 
-              echo "APKINDEX for $arch generated and signed successfully"
+              echo "Packages re-signed and APKINDEX generated for $arch"
             else
-              echo "No packages found for $arch, skipping APKINDEX generation"
+              echo "No packages found for $arch, skipping"
             fi
           done
 
