@@ -23,6 +23,8 @@ docker_builder:
     ARCH: aarch64
     MELANGE_VERSION: latest
     APK_SIGNING_KEY: ENCRYPTED[!1ef534804032cc4990b3feb5c4dbe292a23b5003dbfacd059aa9ca3ea63a950eb975838ae6e1305303df4217c8caf97c!]
+    # TODO: Add SOURCEFORGE_SSH_KEY encrypted variable here for SFTP downloads
+    # SOURCEFORGE_SSH_KEY: ENCRYPTED[!your_encrypted_key_here!]
 
   # Generate signing keys
   setup_keys_script:
@@ -82,14 +84,43 @@ docker_builder:
   download_existing_packages_script:
     - |
       echo "=== Downloading existing aarch64 packages from SourceForge ==="
-      echo "Note: First Cirrus CI build - skipping download, will use only newly built packages"
 
-      # For first Cirrus CI build, we don't need existing packages
-      # Future: Could use wget to download individual packages if needed
       mkdir -p existing-packages/aarch64
 
-      echo "Skipping SourceForge download for first build (no SSH access from Cirrus CI)"
-      echo "APKINDEX will include only newly built packages"
+      # Check if SOURCEFORGE_SSH_KEY is available
+      if [ -n "$SOURCEFORGE_SSH_KEY" ]; then
+        echo "Downloading existing packages via SFTP..."
+
+        # Setup SSH
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        echo "$SOURCEFORGE_SSH_KEY" > ~/.ssh/sourceforge_wolfi_rsa
+        chmod 600 ~/.ssh/sourceforge_wolfi_rsa
+        ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts
+
+        # Install lftp
+        apt-get update && apt-get install -y lftp
+
+        # Download using SFTP (same as GitHub Actions)
+        lftp -c "
+          set ssl:verify-certificate no
+          set net:timeout 60
+          set net:max-retries 3
+          open sftp://jmendezr@frs.sourceforge.net
+          mirror --verbose --exclude-glob 'APKINDEX*' \
+            /home/frs/project/wolfi/aarch64/ existing-packages/aarch64/
+        " || echo "No existing packages for aarch64 (first publish?)"
+
+        # Cleanup SSH key
+        rm ~/.ssh/sourceforge_wolfi_rsa
+
+        PKG_COUNT=$(find existing-packages/aarch64 -name "*.apk" 2>/dev/null | wc -l)
+        echo "Downloaded $PKG_COUNT existing packages from SourceForge"
+      else
+        echo "WARNING: SOURCEFORGE_SSH_KEY not set - skipping download"
+        echo "APKINDEX will only include newly built packages"
+        echo "To fix: Add SOURCEFORGE_SSH_KEY as encrypted variable in Cirrus CI"
+      fi
 
   # Merge new and existing packages, then generate APKINDEX
   generate_apkindex_script:
@@ -98,21 +129,28 @@ docker_builder:
 
       mkdir -p final-output/aarch64
 
-      # Copy existing packages first (if any)
-      if [ -d "existing-packages/aarch64" ] && [ "$(ls -A existing-packages/aarch64/*.apk 2>/dev/null)" ]; then
-        cp existing-packages/aarch64/*.apk final-output/aarch64/
+      # Copy existing packages first (if any exist)
+      if ls existing-packages/aarch64/*.apk 1>/dev/null 2>&1; then
+        cp -v existing-packages/aarch64/*.apk final-output/aarch64/
         echo "Copied existing packages"
+      else
+        echo "No existing packages to copy"
       fi
 
       # Copy newly built packages (overwrites if same name/version)
-      if [ -d "build-output/aarch64" ] && [ "$(ls -A build-output/aarch64/*.apk 2>/dev/null)" ]; then
-        cp build-output/aarch64/*.apk final-output/aarch64/
+      if ls build-output/aarch64/*.apk 1>/dev/null 2>&1; then
+        cp -v build-output/aarch64/*.apk final-output/aarch64/
         echo "Copied newly built packages"
+      else
+        echo "No newly built packages to copy"
       fi
 
-      # Count packages using find (more robust than ls)
+      # Count packages
       TOTAL_PKGS=$(find final-output/aarch64 -name "*.apk" 2>/dev/null | wc -l)
       echo "Total packages to include in APKINDEX: $TOTAL_PKGS"
+
+      # List what we have
+      ls -lh final-output/aarch64/ || true
 
       if [ "$TOTAL_PKGS" -gt 0 ]; then
         # Copy signing key into directory for Docker access
