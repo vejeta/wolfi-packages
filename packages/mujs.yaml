@@ -26,11 +26,18 @@ pipeline:
     repository: https://github.com/ArtifexSoftware/mujs.git
     tag: ${{package.version}}
     expected-commit: 05cd646bad083ed45e9e1c9846ea671d461ced30
-- runs: "# Pre-download Unicode data files needed by the build (with retry and verbose\
-    \ errors)\ncurl --retry 3 --retry-delay 2 -f -o UnicodeData.txt https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt\
-    \ || \\\n  wget -O UnicodeData.txt https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt\n\
-    curl --retry 3 --retry-delay 2 -f -o SpecialCasing.txt https://www.unicode.org/Public/17.0.0/ucd/SpecialCasing.txt\
-    \ || \\\n  wget -O SpecialCasing.txt https://www.unicode.org/Public/17.0.0/ucd/SpecialCasing.txt\n"
+- uses: fetch
+  with:
+    uri: https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt
+    expected-sha256: 2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c
+- uses: fetch
+  with:
+    uri: https://www.unicode.org/Public/17.0.0/ucd/SpecialCasing.txt
+    expected-sha256: efc25faf19de21b92c1194c111c932e03d2a5eaf18194e33f1156e96de4c9588
+- runs: |
+    # Copy fetched Unicode data files to build directory
+    cp ${{targets.contextdir}}/UnicodeData.txt .
+    cp ${{targets.contextdir}}/SpecialCasing.txt .
 - uses: autoconf/make
   with:
     opts: 'prefix=/usr \
