@@ -1,356 +1,151 @@
 # ============================================================================
-# CIRRUS CI CONFIGURATION - DISABLED
+# CIRRUS CI CONFIGURATION - Docker Builder with ARM64
 # ============================================================================
 #
-# This configuration attempted to build ARM64 packages using melange's QEMU
-# runner on Cirrus CI's native ARM64 infrastructure (AWS Graviton2).
+# Uses Cirrus CI's Docker Builder on Google Compute Engine ARM64 VMs
+# This provides PRIVILEGED container support, allowing melange to work properly
 #
-# WHY IT DOESN'T WORK:
-# -------------------
-# melange's QEMU runner requires --privileged container mode to function.
-# Cirrus CI does not provide privileged containers for security reasons.
+# Key differences from previous approach:
+# - Uses docker_builder instead of arm_container
+# - Runs melange in privileged Docker container (no QEMU wrapper needed)
+# - Can use bubblewrap runner (native, fast)
+# - No initramfs combination hacks required
 #
-# WHAT WE TRIED:
-# --------------
-# 1. QEMU wrapper to modify arguments (machine type, memory, CPU, acceleration)
-#    - Changed KVM to TCG (software emulation)
-#    - Adjusted memory, machine type (virt), CPU (max)
-#    - Result: Kernel boots but never loads initramfs
-#
-# 2. Initramfs combination approaches:
-#    a) Extract Alpine + melange initramfs → copy files → repackage
-#       Result: Only 2 files in final initramfs, kernel didn't detect it
-#
-#    b) Fix cpio extraction with correct options (find -depth -print0)
-#       Result: 2751 files but kernel still didn't load initramfs
-#
-#    c) Concatenate uncompressed cpio archives (Linux kernel native support)
-#       Result: 200MB combined initramfs, kernel didn't detect it
-#
-#    d) Pass melange's original initramfs unmodified
-#       Result: Same failure - kernel never shows "Unpacking initramfs..."
-#
-# 3. Console output capture modifications
-#    - Tried redirecting to file
-#    - Tried keeping stdio
-#    - Result: Console output was always empty or showed kernel panic
-#
-# ROOT CAUSE:
-# -----------
-# melange QEMU runner documentation shows it requires privileged mode:
-#   docker run --privileged cgr.dev/chainguard/melange build ...
-#
-# Without --privileged:
-#   - Cannot access /dev/kvm
-#   - Cannot create virtual devices
-#   - Cannot mount filesystems properly
-#   - QEMU runner fails to initialize VM correctly
-#
-# SYMPTOMS OBSERVED:
-# ------------------
-# - Kernel boots successfully (PCI devices detected, drivers loaded)
-# - NO "Unpacking initramfs..." messages in boot log
-# - Kernel panic: "VFS: Unable to mount root fs"
-# - SSH connection timeouts (VM never reaches init)
-#
-# ALTERNATIVE SOLUTIONS:
-# ----------------------
-# 1. Use GitHub Actions with native ARM64 runners (ubuntu-24.04-arm)
-#    - Supports melange with --runner bubblewrap (no privileges needed)
-#    - Already implemented and working in this repository
-#
-# 2. Use Cirrus CI only for non-QEMU tasks (testing, linting, etc.)
-#
-# 3. Request Cirrus CI to add privileged container support (unlikely)
-#
-# CONCLUSION:
-# -----------
-# Cirrus CI + melange QEMU runner = INCOMPATIBLE
-# Keeping this file for reference but disabling all tasks.
-#
-# Last tested: 2025-11-16
+# Resources: 4 CPUs, 16GB RAM (Google Compute Engine ARM64 VM)
 # ============================================================================
 
-# Dummy task to prevent Cirrus CI from running builds
-# This task will NEVER execute unless commit message contains [trigger-cirrus]
 task:
-  name: Disabled - See comments above
-  only_if: $CIRRUS_CHANGE_MESSAGE =~ '.*\[trigger-cirrus\].*'
-  container:
-    image: alpine:latest
-  script:
-    - echo "Cirrus CI is disabled for this repository"
-    - echo "All builds run on GitHub Actions with native ARM64 runners"
+  name: Build stremio-server (ARM64 with privileged Docker)
+  only_if: $CIRRUS_BRANCH == 'master' || $CIRRUS_BRANCH == 'main'
 
-# ============================================================================
-# ARCHIVED CONFIGURATION BELOW - FOR REFERENCE ONLY
-# ============================================================================
-# All tasks below are COMMENTED OUT - they will not run
+  # Use Docker Builder with ARM64 (runs on GCE ARM64 VMs)
+  docker_builder:
+    env:
+      CIRRUS_ARCH: arm64
 
-# task:
-#   name: Build stremio-server (ARM64 showcase)
-#   only_if: $CIRRUS_BRANCH == 'master' || $CIRRUS_BRANCH == 'main'
-#
-#   # ARM64 native on AWS Graviton2 - lightweight resources for simple builds
-#   arm_container:
-#     image: alpine:latest
-#     cpu: 2
-#     memory: 4G
-#
-#   env:
-#     ARCH: aarch64
-#     MELANGE_VERSION: latest
-#     APK_SIGNING_KEY: ENCRYPTED[!1ef534804032cc4990b3feb5c4dbe292a23b5003dbfacd059aa9ca3ea63a950eb975838ae6e1305303df4217c8caf97c!]
-#
-#   # Install dependencies (including QEMU for emulation)
-#   install_deps_script:
-#     - apk add --no-cache curl git bash qemu-system-aarch64 linux-lts wget tar gzip jq openssl cpio file
-#     - |
-#       # Check if virtio modules are available in the installed system
-#       echo "Checking for virtio modules in installed system..."
-#       if [ -d "/lib/modules" ]; then
-#         echo "  System modules directory exists:"
-#         ls -la /lib/modules/ 2>/dev/null | head -5
-#         KERNEL_VER=$(ls /lib/modules/ 2>/dev/null | head -1)
-#         if [ -n "$KERNEL_VER" ]; then
-#           echo "  Found kernel version: $KERNEL_VER"
-#           echo "  Searching for virtio modules:"
-#           find /lib/modules/$KERNEL_VER -name "*virtio*" -type f 2>/dev/null | head -10 || echo "    No virtio modules found in system"
-#         fi
-#       fi
-#
-#   # Install Melange
-#   install_melange_script:
-#     - |
-#       ACTUAL_VERSION=$(curl -s https://api.github.com/repos/chainguard-dev/melange/releases/latest | jq -r '.tag_name')
-#       echo "Installing Melange $ACTUAL_VERSION for ARM64"
-#       wget -q https://github.com/chainguard-dev/melange/releases/download/${ACTUAL_VERSION}/melange_${ACTUAL_VERSION#v}_linux_arm64.tar.gz
-#       tar -xzf melange_${ACTUAL_VERSION#v}_linux_arm64.tar.gz
-#       find . -name "melange" -type f -exec mv {} /usr/local/bin/ \;
-#       chmod +x /usr/local/bin/melange
-#       melange version
-#
-#   # Generate signing keys for packages
-#   setup_keys_script:
-#     - |
-#       # Use encrypted production key if building on master/main
-#       if [ "$CIRRUS_BRANCH" = "master" ] || [ "$CIRRUS_BRANCH" = "main" ]; then
-#         echo "Using encrypted APK signing key for production builds"
-#         echo "$APK_SIGNING_KEY" | base64 -d > melange.rsa
-#         chmod 600 melange.rsa
-#
-#         # Generate public key from private key
-#         openssl rsa -in melange.rsa -pubout > melange.rsa.pub 2>/dev/null
-#       else
-#         echo "Generating ephemeral signing keys for branch builds"
-#         melange keygen melange.rsa
-#       fi
-#
-#       # Download official Wolfi signing key for dependency resolution
-#       wget -q https://packages.wolfi.dev/os/wolfi-signing.rsa.pub -O wolfi-signing.rsa.pub
-#
-#       echo "✓ Signing keys ready"
-#       ls -lh melange.rsa* wolfi-signing.rsa.pub
-#
-#   # CRITICAL: Setup QEMU wrapper to fix incompatibilities
-#   # This wrapper intercepts QEMU calls and modifies arguments to work in Cirrus CI
-#   setup_qemu_wrapper_script:
-#     - |
-#       # Rename real QEMU binary
-#       mv /usr/bin/qemu-system-aarch64 /usr/bin/qemu-system-aarch64.real
-#
-#       # Create wrapper script
-#       cat > /usr/bin/qemu-system-aarch64 << 'EOF'
-#       #!/bin/sh
-#       # QEMU wrapper for Cirrus CI compatibility
-#       # Fixes: KVM → TCG, memory limits, machine type, CPU model
-#       # Logs: /tmp/qemu-wrapper.log, /tmp/qemu-boot.log
-#
-#       set -e
-#
-#       echo "=== QEMU wrapper called ===" >> /tmp/qemu-wrapper.log
-#       echo "Arguments received:" >> /tmp/qemu-wrapper.log
-#       for i in $(seq 1 $#); do
-#         eval "arg=\${$i}"
-#         echo "  [$i] = '$arg'" >> /tmp/qemu-wrapper.log
-#       done
-#
-#       # Build new argument list with modifications
-#       new_args=""
-#       prev_arg=""
-#       skip_next=false
-#       skip_reason=""
-#       melange_initrd=""
-#
-#       for arg in "$@"; do
-#         # If we're processing the -initrd value (melange_initrd is PENDING)
-#         if [ "$melange_initrd" = "PENDING" ]; then
-#           echo "  Melange's initrd path: '$arg'" >> /tmp/qemu-wrapper.log
-#
-#           # CRITICAL TEST: Use melange's initramfs UNMODIFIED to test if the problem
-#           # is the concatenation or something more fundamental with initramfs loading
-#           echo "  ⚠️  TESTING: Using melange's original initramfs WITHOUT modification" >> /tmp/qemu-wrapper.log
-#           echo "  This is to diagnose if kernel can load ANY initramfs at all" >> /tmp/qemu-wrapper.log
-#
-#           # Just pass through melange's original initramfs
-#           escaped_arg=$(printf '%s' "-initrd" | sed "s/'/'\\\\''/g")
-#           escaped_path=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-#           new_args="$new_args '$escaped_arg' '$escaped_path'"
-#           melange_initrd="$arg"
-#
-#           # Continue to next argument
-#           prev_arg="$arg"
-#           continue
-#         fi
-#
-#         # Skip this iteration if previous arg was -m, -machine, or -cpu
-#         if [ "$skip_next" = true ]; then
-#           skip_next=false
-#           echo "  Replaced $skip_reason value '$arg'" >> /tmp/qemu-wrapper.log
-#           prev_arg=""
-#           skip_reason=""
-#           continue
-#         fi
-#
-#         # Escape single quotes for eval
-#         escaped=$(printf '%s' "$arg" | sed "s/'/'\\\\''/g")
-#
-#         # Check what to do with this argument
-#         # Replace kernel append arguments to add verbosity and explicit rdinit
-#         if [ "$prev_arg" = "-append" ]; then
-#           # Remove 'quiet' and add 'rdinit=/init' to kernel command line
-#           NEW_APPEND=$(echo "$arg" | sed 's/quiet//' | sed 's/$/& rdinit=\/init/')
-#           echo "  ✓ Modified kernel command line:" >> /tmp/qemu-wrapper.log
-#           echo "    Original: $arg" >> /tmp/qemu-wrapper.log
-#           echo "    Modified: $NEW_APPEND" >> /tmp/qemu-wrapper.log
-#           escaped_append=$(printf '%s' "$NEW_APPEND" | sed "s/'/'\\\\''/g")
-#           new_args="$new_args '$escaped_append'"
-#         # Replace -accel kvm with -accel tcg,thread=multi
-#         elif [ "$prev_arg" = "-accel" ] && [ "$arg" = "kvm" ]; then
-#           echo "  ✓ Replaced -accel kvm with -accel tcg,thread=multi" >> /tmp/qemu-wrapper.log
-#           escaped_tcg=$(printf '%s' "tcg,thread=multi" | sed "s/'/'\\\\''/g")
-#           new_args="$new_args '$escaped_tcg'"
-#         # If current arg is -m, replace value with 16G
-#         elif [ "$arg" = "-m" ]; then
-#           echo "  ✓ Found -m argument, will replace value with 16G" >> /tmp/qemu-wrapper.log
-#           new_args="$new_args '$escaped' '16G'"
-#           skip_next=true
-#           skip_reason="-m"
-#         # If current arg is -machine, replace value with virt
-#         elif [ "$arg" = "-machine" ]; then
-#           echo "  ✓ Found -machine argument, will replace value with virt" >> /tmp/qemu-wrapper.log
-#           new_args="$new_args '$escaped' 'virt'"
-#           skip_next=true
-#           skip_reason="-machine"
-#         # If current arg is -cpu, replace value with max
-#         elif [ "$arg" = "-cpu" ]; then
-#           echo "  ✓ Found -cpu argument, will replace value with max" >> /tmp/qemu-wrapper.log
-#           new_args="$new_args '$escaped' 'max'"
-#           skip_next=true
-#           skip_reason="-cpu"
-#         # NOTE: Removed -chardev stdio replacement - let console output go to stdio
-#         # This allows us to see kernel messages and debug initramfs loading
-#         # elif [ "$prev_arg" = "-chardev" ] && echo "$arg" | grep -q "^stdio,"; then
-#         #   CHARDEV_ID=$(echo "$arg" | sed 's/^stdio,//')
-#         #   CHARDEV_FILE="file,path=/tmp/qemu-console.log,$CHARDEV_ID"
-#         #   echo "  ✓ Replaced -chardev stdio with file output: $CHARDEV_FILE" >> /tmp/qemu-wrapper.log
-#         #   escaped_chardev=$(printf '%s' "$CHARDEV_FILE" | sed "s/'/'\\\\''/g")
-#         #   new_args="$new_args '$escaped_chardev'"
-#         # CRITICAL: If current arg is -initrd, mark that next arg is the initrd path
-#         elif [ "$arg" = "-initrd" ]; then
-#           echo "  ✓ Found -initrd argument, will concatenate with Alpine initramfs" >> /tmp/qemu-wrapper.log
-#           # Mark that next argument is the initrd path to process
-#           melange_initrd="PENDING"
-#         else
-#           # Regular argument - pass through unchanged
-#           new_args="$new_args '$escaped'"
-#         fi
-#
-#         prev_arg="$arg"
-#       done
-#
-#       # Log final command
-#       echo "" >> /tmp/qemu-wrapper.log
-#       echo "Final command: /usr/bin/qemu-system-aarch64.real $new_args" >> /tmp/qemu-wrapper.log
-#
-#       # Execute QEMU with modified arguments and capture output
-#       # Redirect stderr to boot log for debugging
-#       eval /usr/bin/qemu-system-aarch64.real $new_args 2>> /tmp/qemu-boot.log
-#       EOF
-#
-#       chmod +x /usr/bin/qemu-system-aarch64
-#       echo "✓ QEMU wrapper installed"
-#
-#   # Export kernel path for melange QEMU runner
-#   export_kernel_script:
-#     - |
-#       # Tell melange where to find the kernel for QEMU
-#       export QEMU_KERNEL_IMAGE="/boot/vmlinuz-lts"
-#       echo "QEMU_KERNEL_IMAGE=$QEMU_KERNEL_IMAGE" >> $CIRRUS_ENV
-#       echo "✓ Kernel path exported: $QEMU_KERNEL_IMAGE"
-#
-#   # Build stremio-server with QEMU runner
-#   build_script:
-#     - |
-#       timeout 300 melange build \
-#         --runner qemu \
-#         --arch aarch64 \
-#         --signing-key melange.rsa \
-#         --keyring-append melange.rsa.pub \
-#         --keyring-append wolfi-signing.rsa.pub \
-#         --repository-append https://packages.wolfi.dev/os \
-#         --pipeline-dir pipelines \
-#         --out-dir build-output/aarch64 \
-#         packages/stremio-server.yaml 2>&1 | tee /tmp/melange-build.log || true
-#
-#       echo ""
-#       echo "=== Build output ==="
-#       ls -lh build-output/aarch64/ || true
-#
-#       echo ""
-#       echo "=== QEMU Wrapper Log ==="
-#       cat /tmp/qemu-wrapper.log 2>/dev/null || echo "No wrapper log found (wrapper never executed?)"
-#
-#       echo ""
-#       echo "=== QEMU Boot Log (last 100 lines) ==="
-#       tail -100 /tmp/qemu-boot.log 2>/dev/null || echo "No QEMU boot log found"
-#
-#       echo ""
-#       echo "=== QEMU Console Log (VM serial output) ==="
-#       if [ -f /tmp/qemu-console.log ]; then
-#         CONSOLE_SIZE=$(stat -c%s /tmp/qemu-console.log 2>/dev/null || echo "0")
-#         echo "Console log size: $CONSOLE_SIZE bytes"
-#         if [ "$CONSOLE_SIZE" -gt 0 ]; then
-#           tail -200 /tmp/qemu-console.log
-#         else
-#           echo "Console log exists but is EMPTY - VM never booted or no output was produced"
-#           echo "This suggests QEMU failed to start or kernel didn't boot"
-#         fi
-#       else
-#         echo "No console log found - file was never created"
-#       fi
-#
-#       echo ""
-#       echo "=== QEMU process info ==="
-#       echo "Checking if QEMU is still running..."
-#       ps aux | grep qemu | grep -v grep || echo "No QEMU processes found"
-#
-#       echo ""
-#       echo "=== Check if enhanced initramfs was created ==="
-#       ls -lh /tmp/enhanced-initramfs-*.cpio.gz 2>/dev/null || echo "No enhanced initramfs found"
-#
-#       echo ""
-#       echo "=== Check Alpine initramfs format ==="
-#       file /boot/initramfs-lts
-#       echo "First bytes (hex):"
-#       hexdump -C /boot/initramfs-lts | head -3
-#
-#   # Upload build artifacts (if any were created)
-#   apk_packages_artifacts:
-#     path: "build-output/aarch64/*.apk"
-#
-#   apkindex_artifacts:
-#     path: "build-output/aarch64/APKINDEX.tar.gz"
-#
-#   logs_artifacts:
-#     path: "/tmp/*.log"
+  env:
+    ARCH: aarch64
+    MELANGE_VERSION: latest
+    APK_SIGNING_KEY: ENCRYPTED[!1ef534804032cc4990b3feb5c4dbe292a23b5003dbfacd059aa9ca3ea63a950eb975838ae6e1305303df4217c8caf97c!]
+
+  # Generate signing keys
+  setup_keys_script:
+    - |
+      # Use encrypted production key if building on master/main
+      if [ "$CIRRUS_BRANCH" = "master" ] || [ "$CIRRUS_BRANCH" = "main" ]; then
+        echo "Using encrypted APK signing key for production builds"
+        echo "$APK_SIGNING_KEY" | base64 -d > melange.rsa
+        chmod 600 melange.rsa
+
+        # Generate public key from private key
+        openssl rsa -in melange.rsa -pubout > melange.rsa.pub 2>/dev/null
+      else
+        echo "Generating ephemeral signing keys for branch builds"
+        docker run --rm -v "$PWD:/work" cgr.dev/chainguard/melange:latest keygen /work/melange.rsa
+      fi
+
+      # Download official Wolfi signing key for dependency resolution
+      wget -q https://packages.wolfi.dev/os/wolfi-signing.rsa.pub -O wolfi-signing.rsa.pub
+
+      echo "✓ Signing keys ready"
+      ls -lh melange.rsa* wolfi-signing.rsa.pub
+
+  # Build stremio-server with privileged melange container
+  build_script:
+    - |
+      mkdir -p build-output/aarch64
+
+      echo "Building stremio-server for ARM64 using privileged Docker container..."
+      docker run --rm --privileged \
+        -v "$PWD:/work" \
+        -w /work \
+        cgr.dev/chainguard/melange:latest \
+        build \
+        --arch aarch64 \
+        --signing-key melange.rsa \
+        --keyring-append melange.rsa.pub \
+        --keyring-append wolfi-signing.rsa.pub \
+        --repository-append https://packages.wolfi.dev/os \
+        --pipeline-dir pipelines \
+        --out-dir build-output/aarch64 \
+        packages/stremio-server.yaml
+
+      echo ""
+      echo "=== Build output ==="
+      ls -lh build-output/aarch64/
+
+  # Download existing packages from SourceForge to include in APKINDEX
+  download_existing_packages_script:
+    - |
+      echo "=== Downloading existing aarch64 packages from SourceForge ==="
+      echo "This ensures APKINDEX includes ALL packages, not just newly built ones"
+
+      # Install lftp for downloading
+      apt-get update && apt-get install -y lftp
+
+      mkdir -p existing-packages/aarch64
+
+      # Download existing packages using lftp (public HTTP, no auth needed)
+      lftp -c "
+        set ssl:verify-certificate no
+        set net:timeout 60
+        set net:max-retries 3
+        open https://downloads.sourceforge.net/project/wolfi/
+        mirror --verbose --exclude-glob 'APKINDEX*' aarch64/ existing-packages/aarch64/
+      " || echo "No existing packages found (first publish?)"
+
+      PKG_COUNT=$(find existing-packages/aarch64 -name "*.apk" 2>/dev/null | wc -l)
+      echo "Downloaded $PKG_COUNT existing packages from SourceForge"
+
+  # Merge new and existing packages, then generate APKINDEX
+  generate_apkindex_script:
+    - |
+      echo "=== Merging packages and generating APKINDEX ==="
+
+      mkdir -p final-output/aarch64
+
+      # Copy existing packages first
+      if [ -d "existing-packages/aarch64" ]; then
+        cp existing-packages/aarch64/*.apk final-output/aarch64/ 2>/dev/null || true
+      fi
+
+      # Copy newly built packages (overwrites if same name/version)
+      cp build-output/aarch64/*.apk final-output/aarch64/ 2>/dev/null || true
+
+      TOTAL_PKGS=$(ls final-output/aarch64/*.apk 2>/dev/null | wc -l)
+      echo "Total packages to include in APKINDEX: $TOTAL_PKGS"
+
+      if [ "$TOTAL_PKGS" -gt 0 ]; then
+        # Copy signing key into directory for Docker access
+        cp melange.rsa final-output/aarch64/
+
+        cd final-output/aarch64
+
+        # Generate and sign APKINDEX using Alpine container
+        docker run --rm \
+          -v $PWD:/work \
+          -w /work \
+          alpine:latest \
+          sh -c "apk add --no-cache apk-tools abuild && \
+            apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
+            abuild-sign -k /work/melange.rsa APKINDEX.tar.gz && \
+            ls -lh APKINDEX.tar.gz"
+
+        # Remove signing key from output directory (security)
+        rm melange.rsa
+
+        cd ../..
+
+        echo "APKINDEX generated and signed successfully"
+        ls -lh final-output/aarch64/APKINDEX.tar.gz
+      else
+        echo "ERROR: No packages found to index!"
+        exit 1
+      fi
+
+  # Upload build artifacts
+  apk_packages_artifacts:
+    path: "final-output/aarch64/*.apk"
+
+  apkindex_artifacts:
+    path: "final-output/aarch64/APKINDEX.tar.gz"
