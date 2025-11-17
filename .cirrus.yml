@@ -192,9 +192,9 @@ docker_builder:
         exit 1
       fi
 
-  # Upload build artifacts
-  apk_packages_artifacts:
-    path: "final-output/aarch64/*.apk"
+  # Upload build artifacts (only newly built packages, not all downloaded ones)
+  newly_built_packages_artifacts:
+    path: "build-output/aarch64/aarch64/*.apk"
 
   apkindex_artifacts:
     path: "final-output/aarch64/APKINDEX.tar.gz"
