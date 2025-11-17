@@ -111,7 +111,8 @@ docker_builder:
         ls -lh ~/.ssh/sourceforge_wolfi_rsa
         file ~/.ssh/sourceforge_wolfi_rsa
         echo "=== Testing SSH connection ==="
-        ssh -v jmendezr@frs.sourceforge.net exit 2>&1 | grep -E "debug1|Authenticated|Permission"
+        ssh -v jmendezr@frs.sourceforge.net exit 2>&1 | grep -E "debug1|Authenticated|Permission" || true
+        echo "=== SSH test complete, proceeding with download ==="
 
         # Install lftp
         apt-get update && apt-get install -y lftp
