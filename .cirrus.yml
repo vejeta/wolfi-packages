@@ -97,10 +97,19 @@ docker_builder:
         chmod 600 ~/.ssh/sourceforge_wolfi_rsa
         ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts
 
+        # Configure SSH to use the key
+        cat > ~/.ssh/config << 'EOF'
+Host frs.sourceforge.net
+  IdentityFile ~/.ssh/sourceforge_wolfi_rsa
+  StrictHostKeyChecking no
+  UserKnownHostsFile ~/.ssh/known_hosts
+EOF
+        chmod 600 ~/.ssh/config
+
         # Install lftp
         apt-get update && apt-get install -y lftp
 
-        # Download using SFTP (same as GitHub Actions)
+        # Download using SFTP (lftp will use SSH config)
         lftp -c "
           set ssl:verify-certificate no
           set net:timeout 60
@@ -110,8 +119,8 @@ docker_builder:
             /home/frs/project/wolfi/aarch64/ existing-packages/aarch64/
         " || echo "No existing packages for aarch64 (first publish?)"
 
-        # Cleanup SSH key
-        rm ~/.ssh/sourceforge_wolfi_rsa
+        # Cleanup SSH key and config
+        rm ~/.ssh/sourceforge_wolfi_rsa ~/.ssh/config
 
         PKG_COUNT=$(find existing-packages/aarch64 -name "*.apk" 2>/dev/null | wc -l)
         echo "Downloaded $PKG_COUNT existing packages from SourceForge"
