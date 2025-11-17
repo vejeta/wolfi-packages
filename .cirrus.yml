@@ -104,18 +104,23 @@ docker_builder:
         echo "    StrictHostKeyChecking no" >> ~/.ssh/config
         chmod 600 ~/.ssh/config
 
+        # Debug: check SSH config and key
+        echo "=== SSH Config ==="
+        cat ~/.ssh/config
+        echo "=== SSH Key Info ==="
+        ls -lh ~/.ssh/sourceforge_wolfi_rsa
+        file ~/.ssh/sourceforge_wolfi_rsa
+        echo "=== Testing SSH connection ==="
+        ssh -v jmendezr@frs.sourceforge.net exit 2>&1 | grep -E "debug1|Authenticated|Permission"
+
         # Install lftp
         apt-get update && apt-get install -y lftp
 
+        # Set SFTP_CONNECT_PROGRAM to use verbose SSH
+        export LFTP_PASSWORD=""
+
         # Download using SFTP (SSH config provides authentication)
-        lftp -c "
-          set ssl:verify-certificate no
-          set net:timeout 60
-          set net:max-retries 3
-          open sftp://jmendezr@frs.sourceforge.net
-          mirror --verbose --exclude-glob 'APKINDEX*' \
-            /home/frs/project/wolfi/aarch64/ existing-packages/aarch64/
-        " || echo "No existing packages for aarch64 (first publish?)"
+        lftp -e "set sftp:auto-confirm yes; set sftp:connect-program 'ssh -a -x -vvv'; open sftp://jmendezr@frs.sourceforge.net; mirror --verbose --exclude-glob 'APKINDEX*' /home/frs/project/wolfi/aarch64/ existing-packages/aarch64/; quit" || echo "No existing packages for aarch64 (first publish?)"
 
         # Cleanup SSH key
         rm ~/.ssh/sourceforge_wolfi_rsa ~/.ssh/config
