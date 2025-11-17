@@ -30,7 +30,8 @@ docker_builder:
       # Use encrypted production key if building on master/main
       if [ "$CIRRUS_BRANCH" = "master" ] || [ "$CIRRUS_BRANCH" = "main" ]; then
         echo "Using encrypted APK signing key for production builds"
-        echo "$APK_SIGNING_KEY" | base64 -d > melange.rsa
+        # Cirrus CI auto-decrypts ENCRYPTED[] vars - no base64 decode needed
+        echo "$APK_SIGNING_KEY" > melange.rsa
         chmod 600 melange.rsa
 
         # Generate public key from private key
