@@ -94,9 +94,16 @@ docker_builder:
         set ssl:verify-certificate no
         set net:timeout 60
         set net:max-retries 3
-        open https://downloads.sourceforge.net/project/wolfi/
-        mirror --verbose --exclude-glob 'APKINDEX*' aarch64/ existing-packages/aarch64/
-      " || echo "No existing packages found (first publish?)"
+        set net:reconnect-interval-base 5
+        open https://sourceforge.net/projects/wolfi/files/
+        mirror --verbose --parallel=3 \
+          --include-glob '*.apk' \
+          --exclude-glob '*' \
+          aarch64/ existing-packages/aarch64/
+      " || {
+        echo "lftp mirror failed, repository may be empty or not accessible"
+        echo "No existing packages found (first publish?)"
+      }
 
       PKG_COUNT=$(find existing-packages/aarch64 -name "*.apk" 2>/dev/null | wc -l)
       echo "Downloaded $PKG_COUNT existing packages from SourceForge"
