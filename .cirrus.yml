@@ -98,12 +98,10 @@ docker_builder:
         ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts
 
         # Configure SSH to use the key
-        cat > ~/.ssh/config <<'SSHCONFIG'
-Host frs.sourceforge.net
-  IdentityFile ~/.ssh/sourceforge_wolfi_rsa
-  StrictHostKeyChecking no
-  UserKnownHostsFile ~/.ssh/known_hosts
-SSHCONFIG
+        echo "Host frs.sourceforge.net" > ~/.ssh/config
+        echo "  IdentityFile ~/.ssh/sourceforge_wolfi_rsa" >> ~/.ssh/config
+        echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+        echo "  UserKnownHostsFile ~/.ssh/known_hosts" >> ~/.ssh/config
         chmod 600 ~/.ssh/config
 
         # Install lftp
