@@ -11,6 +11,7 @@ Community APK repository for [Wolfi Linux](https://wolfi.dev) providing **Stremi
 
 **Hosted on SourceForge** • **Automated CI/CD** • **Cryptographically signed** • **Multi-architecture support**
 
+<a href="https://sourceforge.net/projects/wolfi/"><img src="https://sourceforge.net/cdn/syndication/badge_img/3927420/oss-rising-star-white" width="125" alt="SourceForge Rising Star"></a>
 ## Technical Overview
 
 **Advanced Melange packaging** for complex multimedia dependencies including Qt5 WebEngine compilation with GCC 15 compatibility fixes. This repository demonstrates:
