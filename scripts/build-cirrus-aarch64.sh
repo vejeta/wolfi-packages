@@ -92,7 +92,6 @@ PACKAGES=(
     "libvpx"
     "libplacebo"
     "libbluray"
-    "libass"
 
     # Stage 5: DVD support
     "libdvdread"

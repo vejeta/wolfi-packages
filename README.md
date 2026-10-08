@@ -2,10 +2,9 @@
 
 **Community-maintained packages for Wolfi OS**
 
-[![Packages](https://img.shields.io/badge/packages-26-brightgreen)](#available-packages)
+[![Packages](https://img.shields.io/badge/packages-24-brightgreen)](#available-packages)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
-[![Build Status](https://api.cirrus-ci.com/github/vejeta/wolfi-packages.svg)](https://cirrus-ci.com/github/vejeta/wolfi-packages)
 [![SourceForge](https://img.shields.io/badge/Download-SourceForge-orange)](https://sourceforge.net/projects/wolfi/)
 
 <a href="https://sourceforge.net/projects/wolfi/"><img src="https://sourceforge.net/cdn/syndication/badge_img/3927420/oss-rising-star-white" width="125" alt="SourceForge Rising Star"></a>
@@ -30,7 +29,6 @@ SourceForge.
 
 | Package | Version | Description | License |
 |---------|---------|-------------|---------|
-| libass | 0.17.4 | Portable library for rendering ASS/SSA subtitles | ISC |
 | libbluray | 1.4.0 | Library to access Blu-Ray disks for video playback | LGPL-2.1-or-later |
 | libcdio | 2.2.0 | GNU Compact Disc Input and Control Library | GPL-3.0-or-later |
 | libcdio-paranoia | 10.2.2.0.2 | CD paranoia library from libcdio | GPL-3.0-or-later AND LGPL-2.1-or-later |
@@ -51,15 +49,14 @@ SourceForge.
 | rubberband | 4.0.0 | Audio time-stretching and pitch-shifting library | GPL-2.0-or-later |
 | shaderc | 2025.4 | Tools and libraries for Vulkan shader compilation | Apache-2.0 |
 | stremio | 4.4.169 | Modern media center for online video content | GPL-3.0-or-later |
-| stremio-server | 4.20.12 | Streaming server component for Stremio | Proprietary (redistributable) |
 | uchardet | 0.0.8 | Universal charset detection library | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later |
 | vulkan-loader | 1.4.330 | Vulkan Installable Client Driver (ICD) Loader | Apache-2.0 |
 | zimg | 3.0.6 | Scaling, colorspace conversion, and dithering library | WTFPL |
 | zlib | 1.3.1 | Library implementing the zlib compression algorithms | MPL-2.0 AND MIT |
 
 Versions reflect the recipes in [`packages/`](packages/); the YAML file is
-always the source of truth. Primary architecture: **x86_64** (aarch64 builds
-via Cirrus CI where build times allow).
+always the source of truth. Architectures: **x86_64** and **aarch64** (GitHub Actions ARM runners;
+qt5-qtwebengine is x86_64 only due to build time).
 
 ## Using these packages
 
@@ -144,6 +141,18 @@ RUN wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
  && apk add --no-cache mpv
 ```
 
+## Retired packages
+
+Packages are retired when an official or better-suited alternative exists.
+
+| Package | Retired | Reason / replacement |
+|---------|---------|----------------------|
+| libass | 2026-10 | Available in official Wolfi (`apk add libass`) |
+| stremio-server | 2026-10 | To be replaced by a melange port of the Debian stremio-server installer |
+
+Already-published APKs of retired packages remain on SourceForge until the
+next repository cleanup.
+
 ## Contributing
 
 Contributions of new packages and updates are welcome. The short version:
@@ -200,7 +209,7 @@ users should switch to the official one.
 ## Infrastructure
 
 ```
-GitHub Actions / Cirrus CI          SourceForge
+GitHub Actions                      SourceForge
   melange build (per package)  ──►  signed APKs + APKINDEX
   RSA signing, APKINDEX            https://sourceforge.net/projects/wolfi/
   rsync over SSH
@@ -209,7 +218,6 @@ GitHub Actions / Cirrus CI          SourceForge
 - [`build-packages.yml`](.github/workflows/build-packages.yml) — builds all or selected packages (`package_filter`, `architectures` inputs) with a shared dependency cache.
 - [`sign-and-publish.yml`](.github/workflows/sign-and-publish.yml) — signs, indexes and publishes a build run (full or `incremental=true`).
 - [`cleanup-old-packages.yml`](.github/workflows/cleanup-old-packages.yml) — prunes superseded versions.
-- [`.cirrus.yml`](.cirrus.yml) — native aarch64 builds.
 
 ```bash
 # Build one package and publish it incrementally
