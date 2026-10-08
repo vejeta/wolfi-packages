@@ -148,7 +148,7 @@ Packages are retired when an official or better-suited alternative exists.
 | Package | Retired | Reason / replacement |
 |---------|---------|----------------------|
 | libass | 2026-10 | Available in official Wolfi (`apk add libass`) |
-| stremio-server | 2026-10 | To be replaced by a melange port of the Debian stremio-server installer |
+| stremio-server | 2026-10 | To be replaced by `stremio-server-installer`, generated from the Debian package with `debian-to-melange` |
 
 Already-published APKs of retired packages remain on SourceForge until the
 next repository cleanup.
@@ -189,7 +189,7 @@ instructions and review process.
 |------|--------|---------|
 | [`pkg-check`](tools/pkg-check/) | Initial version | Check whether a package already exists in Debian, Alpine or Wolfi before packaging it |
 | `alpine-to-melange` | Planned | Convert an `APKBUILD` to a melange YAML (building on `melange convert apkbuild` where possible) |
-| `debian-to-melange` | Planned | Convert `debian/control` + `debian/rules` + `debian/patches` to melange YAML |
+| `debian-to-melange` | Planned (first case: `stremio-server-installer`) | Convert `debian/control` + `debian/rules` + `debian/patches` to melange YAML |
 | `melange-to-debian` | Planned | Generate a `debian/` directory from a melange YAML |
 | `melange-to-alpine` | Planned | Generate an `APKBUILD` from a melange YAML |
 

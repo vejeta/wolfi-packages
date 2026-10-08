@@ -1,0 +1,111 @@
+package:
+  name: stremio-server-installer
+  # Tracks the server.js release this installer fetches (the Debian package
+  # uses an independent native counter instead).
+  version: 4.21.1
+  epoch: 0
+  description: Downloader for Stremio's streaming server component (server.js)
+  copyright:
+    - license: GPL-3.0-only
+  dependencies:
+    runtime:
+      - busybox
+      - ca-certificates-bundle
+      - nodejs
+  scripts:
+    post-install: |
+      #!/bin/sh
+      /usr/sbin/stremio-server-install --auto || \
+        echo "stremio-server-installer: run 'stremio-server-install' to retry" >&2
+      exit 0
+    post-upgrade: |
+      #!/bin/sh
+      /usr/sbin/stremio-server-install --auto || \
+        echo "stremio-server-installer: run 'stremio-server-install' to retry" >&2
+      exit 0
+    pre-deinstall: |
+      #!/bin/sh
+      /usr/sbin/stremio-server-install --remove || true
+      exit 0
+
+# Ported from Debian contrib stremio-server-installer:
+#   https://tracker.debian.org/pkg/stremio-server-installer
+#   https://salsa.debian.org/mendezr/stremio-server-installer
+# server.js is proprietary and not redistributable, so it is never shipped in
+# the APK: it is fetched from Stremio's CDN on the user's machine at install
+# time and verified against the pinned checksum below.
+#
+# Updating: download https://dl.strem.io/server/v<version>/desktop/server.js,
+# compute its sha256sum, then bump `version` and `server-sha256` together.
+vars:
+  server-sha256: 405eb494d6708406a30e716c3cfb5abae7a5e9c7a8b79446d64c3f821385930f
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - busybox
+
+pipeline:
+  - name: Install downloader
+    runs: |
+      mkdir -p "${{targets.destdir}}"/usr/sbin
+      sed -e 's/@VERSION@/${{package.version}}/g' \
+          -e 's/@SHA256@/${{vars.server-sha256}}/g' \
+          stremio-server-installer/stremio-server-install.sh \
+          > "${{targets.destdir}}"/usr/sbin/stremio-server-install
+      chmod 755 "${{targets.destdir}}"/usr/sbin/stremio-server-install
+
+      install -Dm644 stremio-server-installer/stremio-server-installer.conf \
+        "${{targets.destdir}}"/etc/stremio-server-installer.conf
+
+  - name: Install documentation
+    runs: |
+      mkdir -p "${{targets.destdir}}"/usr/share/doc/stremio-server-installer
+      cat > "${{targets.destdir}}"/usr/share/doc/stremio-server-installer/README <<'EOF'
+      stremio-server-installer
+      ========================
+
+      server.js is Stremio's proprietary streaming server, which enables
+      BitTorrent-based streaming in the stremio client. It is not
+      redistributable, so this package does not contain it. On install and
+      upgrade, the package downloads it from Stremio's own CDN
+      (https://dl.strem.io), verifies its sha256 checksum and installs it to
+      /usr/share/stremio/server.js, where stremio expects it. Use is subject
+      to Stremio's terms of service: https://www.stremio.com/tos
+
+      - Disable the automatic download: set STREMIO_SERVER_DOWNLOAD=no in
+        /etc/stremio-server-installer.conf before installing.
+      - Download manually / retry:  stremio-server-install
+      - Remove server.js:           stremio-server-install --remove
+
+      apko does not run package install scripts. In apko-built images, run
+      "stremio-server-install" at image build time (e.g. in a Dockerfile
+      layer) or at container start.
+
+      This package is a port of Debian's stremio-server-installer (contrib),
+      which follows the same model as ttf-mscorefonts-installer and
+      virtualbox-ext-pack.
+      EOF
+
+update:
+  # server.js has no release feed; bump manually (see header comment).
+  enabled: false
+
+test:
+  pipeline:
+    - name: Installer is present and pinned
+      runs: |
+        test -x /usr/sbin/stremio-server-install
+        test -f /etc/stremio-server-installer.conf
+        stremio-server-install --help
+        test "$(stremio-server-install --version)" = "${{package.version}}"
+        grep -q '${{vars.server-sha256}}' /usr/sbin/stremio-server-install
+    - name: Download can be disabled
+      runs: |
+        echo STREMIO_SERVER_DOWNLOAD=no > /etc/stremio-server-installer.conf
+        stremio-server-install --auto | grep -q "download disabled"
+        test ! -e /usr/share/stremio/server.js
