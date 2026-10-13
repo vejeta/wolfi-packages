@@ -2,7 +2,7 @@
 
 **Community-maintained packages for Wolfi OS**
 
-[![Packages](https://img.shields.io/badge/packages-24-brightgreen)](#available-packages)
+[![Packages](https://img.shields.io/badge/packages-25-brightgreen)](#available-packages)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
 [![SourceForge](https://img.shields.io/badge/Download-SourceForge-orange)](https://sourceforge.net/projects/wolfi/)
@@ -49,6 +49,7 @@ SourceForge.
 | rubberband | 4.0.0 | Audio time-stretching and pitch-shifting library | GPL-2.0-or-later |
 | shaderc | 2025.4 | Tools and libraries for Vulkan shader compilation | Apache-2.0 |
 | stremio | 4.4.169 | Modern media center for online video content | GPL-3.0-or-later |
+| stremio-server-installer | 4.21.1 | Downloader for Stremio's streaming server (server.js is fetched at install time, never redistributed) | GPL-3.0-only |
 | uchardet | 0.0.8 | Universal charset detection library | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later |
 | vulkan-loader | 1.4.330 | Vulkan Installable Client Driver (ICD) Loader | Apache-2.0 |
 | zimg | 3.0.6 | Scaling, colorspace conversion, and dithering library | WTFPL |
@@ -148,7 +149,7 @@ Packages are retired when an official or better-suited alternative exists.
 | Package | Retired | Reason / replacement |
 |---------|---------|----------------------|
 | libass | 2026-10 | Available in official Wolfi (`apk add libass`) |
-| stremio-server | 2026-10 | To be replaced by `stremio-server-installer`, generated from the Debian package with `debian-to-melange` |
+| stremio-server | 2026-10 | Replaced by `stremio-server-installer`, converted from the [Debian package](https://tracker.debian.org/pkg/stremio-server-installer) with `debian-to-melange` |
 
 Already-published APKs of retired packages remain on SourceForge until the
 next repository cleanup.
@@ -189,7 +190,7 @@ instructions and review process.
 |------|--------|---------|
 | [`pkg-check`](tools/pkg-check/) | Initial version | Check whether a package already exists in Debian, Alpine or Wolfi before packaging it |
 | `alpine-to-melange` | Planned | Convert an `APKBUILD` to a melange YAML (building on `melange convert apkbuild` where possible) |
-| `debian-to-melange` | Planned (first case: `stremio-server-installer`) | Convert `debian/control` + `debian/rules` + `debian/patches` to melange YAML |
+| [`debian-to-melange`](tools/debian-to-melange/) | Initial version | Convert Debian packaging (`control`, `rules`, `copyright`, patches, maintainer scripts, debconf) to a melange recipe |
 | `melange-to-debian` | Planned | Generate a `debian/` directory from a melange YAML |
 | `melange-to-alpine` | Planned | Generate an `APKBUILD` from a melange YAML |
 

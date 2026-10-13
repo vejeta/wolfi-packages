@@ -3,16 +3,16 @@
 Survey of existing tooling to convert between Alpine (`APKBUILD`), Debian
 (`debian/`) and melange YAML, carried out before building anything new.
 
-> Status: initial survey (2026-10). Items marked *verify* should be re-checked
-> against the latest melange / wolfictl releases (`melange convert --help`,
-> `wolfictl --help`) before starting implementation.
+> Status: survey 2026-10, updated 2026-10-13 after checking the melange
+> v0.62.1 source. `debian-to-melange` is now implemented in
+> [`tools/debian-to-melange`](../tools/debian-to-melange/).
 
 ## Summary
 
 | Direction | Exists? | Where | Gap we can cover |
 |-----------|---------|-------|------------------|
-| Alpine → melange | Partial | `melange convert apkbuild` (experimental, *verify* still shipped) | Robust converter: patches, subpackages, `checkdepends`, `_` variables, local APKBUILD files |
-| Debian → melange | No | — | Full tool (`debian/control` + `debian/rules` + `debian/patches`) |
+| Alpine → melange | No (removed) | `melange convert apkbuild` existed in older releases; not present in melange v0.62.1 | Robust converter: patches, subpackages, `checkdepends`, `_` variables, local APKBUILD files |
+| Debian → melange | **Implemented here** | [`tools/debian-to-melange`](../tools/debian-to-melange/) | Done (v0.1); extend mapping table and watch support |
 | melange → Debian | No | — | Full tool (generate `debian/` skeleton) |
 | melange → Alpine | No | — | Full tool (generate `APKBUILD`) |
 | "Does this package already exist?" | No unified tool | Per-distro web UIs/APIs only | `pkg-check` (see `tools/pkg-check/`) |
@@ -35,10 +35,11 @@ Survey of existing tooling to convert between Alpine (`APKBUILD`), Debian
     - Subpackages (`-dev`, `-doc`, `-libs`) are only partially mapped to
       melange `split/*` pipelines.
     - Experimental; output is a starting point, never build-ready.
-  - **Action**: before writing our own, test the current melange release on
-    3–4 APKBUILDs from this repo's history (libass, mujs, zimg). If it still
-    exists and is usable, we contribute a wrapper/post-processor instead of
-    a new tool.
+  - **Checked 2026-10-13**: melange v0.62.1 (module source from
+    proxy.golang.org) has no `convert` command; `pkg/cli` contains only
+    build, bump, compile, index, keygen, lint, query, rebuild, scan, sign,
+    source, test and related commands. NEWS.md still mentions the converters
+    of older releases. There is nothing upstream left to wrap.
 - No independent, maintained third-party `apkbuild2melange` project was found.
 
 ## 2. debian-to-melange
@@ -80,8 +81,8 @@ Survey of existing tooling to convert between Alpine (`APKBUILD`), Debian
 ## Gaps this project can cover (priority order)
 
 1. **pkg-check** — cheap, immediately useful, prevents duplicated work.
-2. **alpine-to-melange** — highest demand; build on or wrap
-   `melange convert apkbuild` if still available.
+2. **alpine-to-melange** — highest demand; nothing upstream to wrap any more,
+   so it can reuse the emitter, name mapping and test harness of `debian-to-melange`.
 3. **debian-to-melange** — no existing solution; covers `dh`-based packages.
 4. **melange-to-debian** / **melange-to-alpine** — upstreaming helpers.
 

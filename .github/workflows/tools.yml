@@ -1,0 +1,33 @@
+name: Tools
+
+on:
+  push:
+    paths:
+      - 'tools/**'
+      - '.github/workflows/tools.yml'
+  pull_request:
+    paths:
+      - 'tools/**'
+      - '.github/workflows/tools.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Unit tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.9', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install optional test dependencies
+        run: pip install pyyaml
+      - name: pkg-check
+        run: python -m unittest discover -s tools/pkg-check -v
+      - name: debian-to-melange
+        run: python -m unittest discover -s tools/debian-to-melange -v

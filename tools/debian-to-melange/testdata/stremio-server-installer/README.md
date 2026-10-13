@@ -1,22 +1,19 @@
 # Test case: stremio-server-installer
 
-First target for `debian-to-melange`.
+First real-world case for `debian-to-melange`.
 
-- Input: Debian contrib source package `stremio-server-installer` (1)
-  https://sources.debian.org/src/stremio-server-installer/1/debian/
-- `expected/`: hand-written reference port, used as the golden output the
-  converter should approximate. It is **not** a published package.
+- `debian/`: Debian contrib source package `stremio-server-installer` (1),
+  from https://sources.debian.org/src/stremio-server-installer/1/debian/
+  (translations in `debian/po/` omitted; they are not used by the converter).
+- `expected/`: converter output (snapshot). Identical, apart from the header
+  link, to the published [`packages/stremio-server-installer.yaml`](../../../../packages/stremio-server-installer.yaml),
+  which is generated with `--from-debian stremio-server-installer`.
+- `reference/`: the hand-written port made before the converter existed,
+  kept for comparison. It is not built or published.
 
-Mapping exercised by this case:
+Verified on 2026-10-13 with melange v0.62.1 (bubblewrap runner):
 
-| Debian | melange |
-|--------|---------|
-| `debian/rules` `SERVER_VERSION` / `SERVER_SHA256` | `package.version` / `vars.server-sha256` |
-| `debian/postinst.in` (`#VERSION#`, `#HASH#`) | installed helper script + `scripts.post-install` / `post-upgrade` |
-| `debian/config` + `debian/templates` (debconf prompt) | `/etc/stremio-server-installer.conf` (`STREMIO_SERVER_DOWNLOAD`) |
-| `Depends: wget, ca-certificates` | `dependencies.runtime: busybox, ca-certificates-bundle` |
-| `debian/copyright` (`GPL-3.0-only`) | `copyright[].license` |
-| `debian/README.source` | `/usr/share/doc/stremio-server-installer/README` |
-
-server.js 4.21.1 sha256 `405eb494…930f` was verified against
-https://dl.strem.io/server/v4.21.1/desktop/server.js on 2026-10-08.
+- `melange build` and `melange test` pass.
+- The generated `.post-install` downloads server.js 4.21.1 and its sha256
+  matches `405eb494…930f`; `STREMIO_SERVER_INSTALLER_DOWNLOAD="false"` skips
+  the download; a wrong checksum exits 1 and installs nothing.

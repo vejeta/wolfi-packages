@@ -1,0 +1,5 @@
+stremio-server-installer (1) unstable; urgency=low
+
+  * Initial release. (Closes: #1148084)
+
+ -- Juan Manuel Méndez Rey <juan.mendezr@proton.me>  Fri, 18 Sep 2026 00:10:00 +0200

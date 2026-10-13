@@ -1,0 +1,16 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: stremio-server-installer
+Source: https://salsa.debian.org/mendezr/stremio-server-installer
+Comment: This package contains no upstream source of its own. It is a
+ Debian-native downloader, modeled on ttf-mscorefonts-installer and
+ virtualbox-ext-pack, for Stremio's server.js. server.js itself is not
+ included and is not redistributed by Debian; see debian/README.source
+ for the full rationale.
+
+Files: *
+Copyright: 2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: GPL-3.0-only
+
+License: GPL-3.0-only
+ On Debian systems, the complete text of the GNU General Public License
+ version 3 can be found in "/usr/share/common-licenses/GPL-3".

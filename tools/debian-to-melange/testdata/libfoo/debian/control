@@ -1,0 +1,25 @@
+Source: libfoo
+Section: libs
+Priority: optional
+Maintainer: Example Maintainer <maint@example.org>
+Build-Depends: debhelper-compat (= 13), cmake, pkg-config, zlib1g-dev, libssl-dev (>= 3), python3-sphinx <!nodoc>
+Standards-Version: 4.7.0
+Homepage: https://github.com/example/libfoo
+
+Package: libfoo1
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, zlib1g
+Description: example library for frobnicating data
+ libfoo frobnicates data.
+
+Package: libfoo-dev
+Architecture: any
+Depends: libfoo1 (= ${binary:Version}), ${misc:Depends}
+Description: example library for frobnicating data - development files
+ Headers and pkg-config file.
+
+Package: foo-tools
+Architecture: any
+Depends: libfoo1 (= ${binary:Version}), ${shlibs:Depends}
+Description: command line tools for libfoo
+ The foo command.
