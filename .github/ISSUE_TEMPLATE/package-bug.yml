@@ -1,0 +1,24 @@
+name: Package bug
+description: Report a problem with a package from this repository
+labels: ["bug"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Package and version
+      placeholder: mpv 0.40.0-r0
+    validations:
+      required: true
+  - type: dropdown
+    id: arch
+    attributes:
+      label: Architecture
+      options: [x86_64, aarch64]
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Commands run and their output (`apk add`, logs, ...)
+      render: text
+    validations:
+      required: true

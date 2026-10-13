@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Official Wolfi packages
+    url: https://github.com/wolfi-dev/os/issues
+    about: Problems with packages from packages.wolfi.dev belong in wolfi-dev/os.

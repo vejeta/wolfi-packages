@@ -1,0 +1,40 @@
+name: Package request
+description: Ask for a package that is not available in official Wolfi
+labels: ["package-request"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Package name
+      placeholder: e.g. stremio
+    validations:
+      required: true
+  - type: input
+    id: upstream
+    attributes:
+      label: Upstream URL
+      placeholder: https://github.com/...
+    validations:
+      required: true
+  - type: input
+    id: license
+    attributes:
+      label: License (SPDX)
+      placeholder: GPL-3.0-or-later
+  - type: textarea
+    id: pkgcheck
+    attributes:
+      label: pkg-check output
+      description: Output of `python3 tools/pkg-check/pkg-check.py -p <name>` (Wolfi, Alpine, Debian)
+      render: text
+  - type: textarea
+    id: why
+    attributes:
+      label: Use case
+      description: What do you need it for? Is there an existing Debian or Alpine package to convert from?
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contribution
+      options:
+        - label: I can help package or maintain it
