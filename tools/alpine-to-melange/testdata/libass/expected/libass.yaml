@@ -52,6 +52,10 @@ pipeline:
       pkgdir="${{targets.destdir}}"
 
       make DESTDIR="$pkgdir" install
+  - name: Remove libtool archives (abuild does this by default)
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
+  - uses: strip
 subpackages:
   - name: libass-dev
     description: Portable library for SSA/ASS subtitle rendering (dev)

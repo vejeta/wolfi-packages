@@ -124,6 +124,24 @@ class RealAportsTest(unittest.TestCase):
         self.assertIn("strip-components: 0", text)
         self.assertNotIn("default_prepare", text)
 
+    def test_amove_defines_the_variables_it_uses(self):
+        sub = recipe_text("foobar").split("- name: foobar-tools", 1)[1]
+        self.assertLess(sub.index('subpkgdir="${{targets.contextdir}}"'), sub.index("amove() {"))
+        self.assertIn('pkgdir="${{targets.destdir}}"', sub)
+
+    def test_rename_also_renames_subpackages(self):
+        out = tempfile.mkdtemp()
+        try:
+            with redirect_stderr(io.StringIO()):
+                a2m.main(["--apkbuild-dir", os.path.join(TESTDATA, "libass", "aport"),
+                          "--name", "libass9", "--out", out])
+            with open(os.path.join(out, "libass9.yaml")) as fh:
+                text = fh.read()
+        finally:
+            shutil.rmtree(out)
+        self.assertIn("- name: libass9-dev", text)
+        self.assertIn("uses: split/dev", text)
+
     def test_abuild_meson_helper(self):
         text = recipe_text("rubberband")
         self.assertIn("abuild_meson() {", text)

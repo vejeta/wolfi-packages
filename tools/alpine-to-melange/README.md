@@ -59,8 +59,8 @@ would have provided, only for what the body actually uses:
 |----------|---------|
 | `pkgname`, `pkgver`, `pkgdesc`, `license` | `package.*` (license is already SPDX) |
 | `arch` | `target-architecture` when it is not `all`/`noarch` |
-| `depends`, `provides`, `replaces` | `dependencies.*` (`so:`, `cmd:`, `pc:` and `!conflicts` dropped) |
-| `makedepends*` (+ `checkdepends` with `--with-check`) | `environment.contents.packages`; musl-only packages dropped, `samurai` → `ninja` |
+| `depends`, `provides`, `replaces` | `dependencies.*` (`so:`, `cmd:`, `pc:`, `!conflicts` and virtual names such as `dbus:org.freedesktop.Secrets` dropped) |
+| `makedepends*` (+ `checkdepends` with `--with-check`) | `environment.contents.packages`; musl-only packages dropped, names mapped (`samurai` → `ninja`, `gtk4.0-dev` → `gtk-4-dev`, `ca-certificates` → `ca-certificates-bundle`); `glib-gir` added next to `gobject-introspection-dev` (Wolfi splits GLib's `.gir` files out of `glib-dev`) |
 | `source` + `sha512sums` | `fetch` with `expected-sha512`; the main tarball is extracted into the workspace, others into `_srcdir` |
 | `_pkgver=${pkgver/_rc/-rc}` used in a URL | `var-transforms` + `${{vars.mangled-pkgver}}`, and the inverse `update.version-transform` |
 | Local `*.patch` | Copied next to the recipe + `uses: patch` |
@@ -70,6 +70,8 @@ would have provided, only for what the body actually uses:
 | `name:func` subpackages | The function body (with `amove`), its `pkgdesc` and `depends` |
 | `-openrc`, `-pyc`, `-dbg` | Skipped, with a note |
 | GitHub source URL | `update.github` (tag prefix detected); otherwise `release-monitor` TODO |
+| abuild's automatic steps after `package()` | Remove `*.la` (unless `options=libtool`) and `uses: strip` (unless `options=!strip`) |
+| `--name NEW` | Renames the package and its `$pkgname-*` subpackages |
 | Test | `test/tw/ldd-check` for the package, `test/pkgconf` for `-dev` |
 
 ## Known limitations
@@ -83,6 +85,14 @@ would have provided, only for what the body actually uses:
   `--check-wolfi`; they have to be packaged (or dropped) first.
 
 ## Verified
+
+The GTK4/WebKitGTK stack needed by `stremio` was converted with this tool:
+`libfyaml`, `libxmlb`, `appstream`, `libsoup3`, `glib-networking`,
+`xdg-dbus-proxy`, `libadwaita` and `webkitgtk-6.0` (from `webkit2gtk-6.0`).
+Typical manual follow-ups were disabling optional features whose
+dependencies are not in Wolfi, `strip-components` for tarballs whose entries
+start with `./`, and using bundled meson subprojects
+(`--force-fallback-for`).
 
 With melange v0.62.1 (bubblewrap runner), the converted `mujs` recipe builds
 and passes `melange test` (ldd-check, pkgconf) unedited. It produces the same

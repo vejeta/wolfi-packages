@@ -74,6 +74,10 @@ pipeline:
       DESTDIR="$pkgdir" cmake --install build
       install -Dm644 "$srcdir"/foobar.conf "$pkgdir"/etc/foobar.conf
       install -Dm755 "$srcdir"/foobar.initd "$pkgdir"/etc/init.d/foobar
+  - name: Remove libtool archives (abuild does this by default)
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
+  - uses: strip
 subpackages:
   - name: foobar-doc
     description: Frobnicating daemon (doc)
@@ -83,6 +87,8 @@ subpackages:
     description: Frobnicating daemon (command line tools)
     pipeline:
       - runs: |
+          pkgdir="${{targets.destdir}}"
+          subpkgdir="${{targets.contextdir}}"
           amove() {
           	for _p in "$@"; do
           		_p=${_p#/}
@@ -103,6 +109,8 @@ subpackages:
     description: Frobnicating daemon (bash-completion)
     pipeline:
       - runs: |
+          pkgdir="${{targets.destdir}}"
+          subpkgdir="${{targets.contextdir}}"
           amove() {
           	for _p in "$@"; do
           		_p=${_p#/}

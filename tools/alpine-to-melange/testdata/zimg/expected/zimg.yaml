@@ -90,6 +90,10 @@ pipeline:
       pkgdir="${{targets.destdir}}"
 
       make DESTDIR="$pkgdir" install
+  - name: Remove libtool archives (abuild does this by default)
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
+  - uses: strip
 subpackages:
   - name: zimg-doc
     description: Scaling, colorspace conversion and dithering library (doc)
