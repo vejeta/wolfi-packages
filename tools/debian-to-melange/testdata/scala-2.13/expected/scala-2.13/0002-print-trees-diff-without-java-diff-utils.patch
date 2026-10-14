@@ -1,0 +1,33 @@
+Description: print whole trees for -Yprint-trees:diff, without java-diff-utils
+ The only use of java-diff-utils in the compiler is the debugging option
+ -Yprint-trees:diff, which prints a unified diff between tree dumps of
+ successive phases. java-diff-utils is not packaged in Debian, and nothing
+ else would need it, so print the whole tree with a note instead.
+Author: Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+Forwarded: not-needed
+Last-Update: 2026-10-02
+diff --git a/src/compiler/scala/tools/nsc/Global.scala b/src/compiler/scala/tools/nsc/Global.scala
+index 5bb3259..58ad067 100644
+--- a/src/compiler/scala/tools/nsc/Global.scala
++++ b/src/compiler/scala/tools/nsc/Global.scala
+@@ -235,15 +235,11 @@ class Global(var currentSettings: Settings, reporter0: Reporter)
+           println(s": tree is unchanged since $lastPrintedPhase")
+         else {
+           println()
+-          if (settings.showTreeDiff) {
+-            import scala.jdk.CollectionConverters._
+-            import com.github.difflib.{DiffUtils, UnifiedDiffUtils}
+-            val diff = DiffUtils.diff(lastPrintedSource.linesIterator.toList.asJava, source.linesIterator.toList.asJava)
+-            val unified = UnifiedDiffUtils.generateUnifiedDiff(lastPrintedPhase.name, phase.prev.name, lastPrintedSource.linesIterator.toList.asJava, diff, 1).asScala
+-            unified.foreach(println)
+-          }
+-          else
+-            println(source)
++          // Debian: java-diff-utils is not packaged, so -Yprint-trees:diff
++          // prints the whole tree instead of a unified diff against the last one.
++          if (settings.showTreeDiff)
++            println("(-Yprint-trees:diff: no diff support in this build, printing the whole tree)")
++          println(source)
+           println()
+           lastPrintedPhase  = phase.prev // since we're running inside "exitingPhase"
+           lastPrintedSource = source

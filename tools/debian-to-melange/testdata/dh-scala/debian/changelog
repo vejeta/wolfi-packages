@@ -1,0 +1,7 @@
+dh-scala (0.1) UNRELEASED; urgency=medium
+
+  * Initial release.
+  * Add dh-make-scala, a generator of Scala library packages from Maven
+    Central POMs and upstream git tags, as a second binary package.
+
+ -- Juan Manuel Méndez Rey <juan.mendezr@proton.me>  Sat, 03 Oct 2026 03:48:36 +0200

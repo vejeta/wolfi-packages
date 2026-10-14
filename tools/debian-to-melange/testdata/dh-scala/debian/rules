@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+include /usr/share/dpkg/pkg-info.mk
+
+POD2MAN = pod2man --center=dh-scala --release=$(DEB_VERSION) --date=$(shell date -u -d @$(SOURCE_DATE_EPOCH) +%F)
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	mkdir -p man
+	$(POD2MAN) --section=1 --name=dh_scala dh_scala man/dh_scala.1
+	$(POD2MAN) --section=1 --name=dh-make-scala dh-make-scala man/dh-make-scala.1
+	$(POD2MAN) --section=5 --name=scala-build scala-build.pod man/scala-build.5
+	$(POD2MAN) --section=7 --name=dh-scala dh-scala.pod man/dh-scala.7
+	$(POD2MAN) --section=3pm --name=Debian::Debhelper::Buildsystem::scala \
+	  lib/Debian/Debhelper/Buildsystem/scala.pm man/Debian::Debhelper::Buildsystem::scala.3pm
+
+override_dh_auto_test:
+ifeq ($(filter nocheck,$(DEB_BUILD_OPTIONS)),)
+	prove -Ilib t/
+endif

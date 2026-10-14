@@ -1,0 +1,330 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: scala
+Upstream-Contact: https://github.com/scala/bug
+Source: https://github.com/scala/scala
+Comment:
+ The upstream tarball is repacked (+ds) to remove files that are not in the
+ preferred form for modification or are not DFSG free; see Files-Excluded.
+ .
+ Only the Scala compiler and standard library JARs (Apache-2.0, EPFL and
+ Lightbend, plus the BSD-3-clause Scalax files in scalap.jar) are shipped
+ in the binary packages. The third-party web assets and fonts listed below
+ live in the source tree (scaladoc resources and the language
+ specification) and are documented here for completeness.
+ .
+ Of the Files-Excluded entries, the native test fixtures, the sbt-test
+ jars and the minified highlight.pack.js have no preferred-form source in
+ the tree. The Luxi fonts (Bigelow & Holmes) are under a licence that is
+ not DFSG free. admin/files/scala-key.asc.enc and spec/id_dsa_travis.enc
+ are encrypted keys for upstream's release and spec-publishing CI, opaque
+ data with no source. spec/public/images/classhierarchy.pdf is a rendered
+ copy of a figure whose source is not in the tree (the spec uses
+ classhierarchy.png). None of them is used by the build: the language
+ specification (spec/) is not built, and admin/ holds only upstream CI
+ scripts.
+Files-Excluded:
+ test/files/jvm/libnatives-32.so
+ test/files/jvm/libnatives-64.so
+ test/files/jvm/natives-32.dll
+ test/files/jvm/natives-64.dll
+ test/files/jvm/libnatives-x86.jnilib
+ test/files/jvm/libnatives-arm.jnilib
+ test/sbt-test/source-dependencies/canon/actual/a.jar
+ test/sbt-test/source-dependencies/canon/lib/a.jar
+ spec/public/scripts/highlight.pack.js
+ spec/public/fonts/LuxiMono-*.woff
+ spec/public/fonts/LuxiSans-*.woff
+ admin/files/scala-key.asc.enc
+ spec/id_dsa_travis.enc
+ spec/public/images/classhierarchy.pdf
+
+Files: *
+Copyright: 2002-2025 EPFL
+           2002-2025 LAMP/EPFL
+           2009-2010 EPFL/LAMP
+           EPFL and Lightbend, Inc. dba Akka
+           EPFL and Lightbend, Inc.
+           2011-2025 Lightbend, Inc. dba Akka
+           2012-2014 Lightbend Inc. <http://www.lightbend.com>
+           2009-2015 Typesafe Inc. <http://www.typesafe.com>
+           2014 Contributor.
+License: Apache-2.0
+Comment:
+ The holder spellings above are the ones used in the source headers. A few
+ test files say "Copyright (c) 2014 Contributor." with no licence of their
+ own; they were contributed to the Scala project under its Apache-2.0
+ licence and contributor agreement. The CompletionLatch class in
+ src/library/scala/concurrent/impl/Promise.scala says it is inspired by
+ Doug Lea's public domain AbstractQueuedSynchronizer; the file itself is
+ under the Scala header. The files marked "imported from
+ scalamacros/paradise" come from the macro paradise plugin, whose only
+ holder is EPFL (BSD-3-clause, "Copyright (c) 2013-2015 EPFL"); EPFL
+ contributed them to Scala under Apache-2.0.
+
+Files: src/reflect/scala/reflect/internal/util/AlmostFinalValue.java
+Copyright: EPFL and Lightbend, Inc. dba Akka
+           Remi Forax
+License: Apache-2.0
+Comment:
+ The file says it is "Originally from the JSR-292 cookbook created by Remi
+ Forax" (the jsr292-cookbook project on the now closed Google Code,
+ published under the New BSD licence) and was since reworked by the Scala
+ team. Its
+ header is the Scala Apache-2.0 one; the original author is listed here.
+
+Files: src/library/scala/math/BigInt.scala
+Copyright: EPFL and Lightbend, Inc. dba Akka
+           2011 The Guava Authors
+License: Apache-2.0
+Comment:
+ The private longGcd method is adapted from Google Guava's LongMath.java,
+ whose notice the file quotes.
+
+Files: src/sbt-bridge/*
+Copyright: Scala Center, Lightbend dba Akka, and Mark Harrah
+           EPFL and Lightbend, Inc. dba Akka
+License: Apache-2.0
+Comment:
+ Compiler bridge for zinc (sbt's incremental compiler), kept in the Scala
+ tree. Not built by this package.
+
+Files: test/tasty/neg/src-3/intent/Position.scala
+Copyright: 2001-2013 Artima, Inc.
+License: Apache-2.0
+Comment: Test macro based on ScalaTest code, as stated in the file.
+
+Files: test/jcstress/src/test/scala/example/APISample_01_Simple.scala
+Copyright: 2016 Red Hat Inc.
+License: GPL-2 with Classpath exception
+Comment:
+ jcstress API sample used by upstream's concurrency stress tests; the
+ header says "GNU General Public License version 2 only" and that "Oracle
+ designates this particular file as subject to the Classpath exception".
+ Not built and not shipped.
+
+Files: debian/*
+Copyright: 2007-2009 Lex Spoon
+           2008-2009 Min Huang
+           2009-2011 Mehdi Dogguy
+           2015 Emmanuel Bourg <ebourg@apache.org>
+           2026 Juan Manuel Mendez Rey <juan.mendezr@proton.me>
+License: BSD-3-clause
+Comment:
+ The wrappers, maintainer scripts and poms are adapted from the scala
+ package (2.12), which carries these holders.
+
+Files: src/scalap/scala/tools/scalap/scalax/rules/Memoisable.scala
+       src/scalap/scala/tools/scalap/scalax/rules/Result.scala
+       src/scalap/scala/tools/scalap/scalax/rules/Rule.scala
+       src/scalap/scala/tools/scalap/scalax/rules/Rules.scala
+       src/scalap/scala/tools/scalap/scalax/rules/SeqRule.scala
+Copyright: 2005-2008 The Scalax Project.
+License: BSD-3-clause
+Comment:
+ Imported from Scalax, the Scala Community Library; the headers say
+ "released under the terms of the Revised BSD License". These files are
+ compiled into scalap.jar. The scalasig/ subdirectory next to them is
+ EPFL/Lightbend Apache-2.0 and is covered by Files: *.
+
+Files: src/scaladoc/scala/tools/nsc/doc/html/resource/lib/lato-v11-latin-*
+Copyright: 2010-2011 Lukasz Dziedzic
+License: OFL-1.1
+Comment:
+ Lato web font subset. The subset strips the copyright name record; the
+ holder is the one in Debian's fonts-lato package. The licence URL is kept
+ in the font (name ID 14).
+
+Files: src/scaladoc/scala/tools/nsc/doc/html/resource/lib/source-code-pro-v6-latin-*
+Copyright: Adobe Systems Incorporated
+License: OFL-1.1
+Comment:
+ Source Code Pro web font subset. The subset carries no copyright record,
+ only a link to Adobe's type licensing page (name ID 14); the holder and the
+ OFL 1.1 come from the upstream Adobe Source Code Pro project. No years are
+ given because the subset does not state them.
+
+Files: src/scaladoc/scala/tools/nsc/doc/html/resource/lib/open-sans-v13-latin-*
+Copyright: 2010-2011 Google Corporation
+License: Apache-2.0
+Comment:
+ Open Sans web font subset; the font carries the Apache-2.0 licence URL
+ (name ID 14). Holder from the upstream Open Sans project.
+
+Files: src/scaladoc/scala/tools/nsc/doc/html/resource/lib/MaterialIcons-Regular.*
+Copyright: 2015 Google, Inc.
+License: Apache-2.0
+Comment: Material Icons font; holder as stated in the font itself.
+
+Files: spec/public/fonts/Heuristica-*.woff
+Copyright: 1989, 1991 Adobe Systems Incorporated
+License: OFL-1.1
+Comment:
+ Heuristica, derived from Adobe Utopia; the font states the holder and the
+ OFL licence URL (name IDs 0, 13, 14).
+
+Files: spec/public/scripts/LICENSE-highlight
+Copyright: 2006 Ivan Sagalaev
+License: BSD-3-clause-highlight
+Comment:
+ License text for highlight.js. The minified highlight.pack.js itself is
+ excluded from the +ds repack (no preferred-form source); see Files-Excluded.
+
+Files: spec/public/scripts/toc.js
+       spec/public/scripts/LICENSE-toc
+Copyright: 2013-2014 Greg Allen
+License: Expat
+
+Files: spec/public/octicons/*
+Copyright: 2012-2014 GitHub, Inc.
+License: Expat and OFL-1.1
+Comment:
+ GitHub octicons: the code (octicons.css) is MIT (Expat); the font files
+ (octicons.eot, octicons.svg, octicons.ttf, octicons.woff) are SIL OFL 1.1.
+
+Files: doc/licenses/mit_jquery.txt
+Copyright: JS Foundation and other contributors
+License: Expat
+Comment: License text bundled by upstream for the jQuery library.
+
+Files: doc/licenses/bsd_asm.txt
+Copyright: 2000-2011 INRIA, France Telecom
+License: BSD-3-clause
+Comment: License text bundled by upstream for the ASM library.
+
+Files: doc/licenses/bsd_jline.txt
+Copyright: 2002-2018 the original author or authors.
+License: BSD-3-clause
+Comment: License text bundled by upstream for the JLine 3 library.
+
+License: Apache-2.0
+ Licensed under the Apache License, Version 2.0 (the "License"); you may
+ not use this file except in compliance with the License. You may obtain
+ a copy of the License at
+ .
+     http://www.apache.org/licenses/LICENSE-2.0
+ .
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ .
+ On Debian systems, the complete text of the Apache License Version 2.0
+ can be found in "/usr/share/common-licenses/Apache-2.0".
+
+License: Expat
+ Permission is hereby granted, free of charge, to any person obtaining a
+ copy of this software and associated documentation files (the "Software"),
+ to deal in the Software without restriction, including without limitation
+ the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ and/or sell copies of the Software, and to permit persons to whom the
+ Software is furnished to do so, subject to the following conditions:
+ .
+ The above copyright notice and this permission notice shall be included
+ in all copies or substantial portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ DEALINGS IN THE SOFTWARE.
+
+License: BSD-3-clause
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ .
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ .
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ .
+ 3. Neither the name of the copyright holders nor the names of its
+    contributors may be used to endorse or promote products derived from
+    this software without specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ THE POSSIBILITY OF SUCH DAMAGE.
+
+License: BSD-3-clause-highlight
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+ .
+     * Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+     * Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in the
+       documentation and/or other materials provided with the distribution.
+     * Neither the name of highlight.js nor the names of its contributors
+       may be used to endorse or promote products derived from this software
+       without specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND ANY
+ EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE REGENTS AND CONTRIBUTORS BE LIABLE FOR ANY
+ DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+License: OFL-1.1
+ This Font Software is licensed under the SIL Open Font License, Version 1.1.
+ This license is available with a FAQ at: https://openfontlicense.org
+ .
+ The OFL allows the licensed fonts to be used, studied, modified and
+ redistributed freely as long as they are not sold by themselves. The fonts,
+ including any derivative works, can be bundled, embedded, redistributed
+ and/or sold with any software provided that any reserved names are not used
+ by derivative works. The fonts and derivatives, however, cannot be released
+ under any other type of license. The requirement for fonts to remain under
+ this license does not apply to any document created using the fonts or
+ their derivatives.
+ .
+ On Debian systems, the complete text of the SIL Open Font License version
+ 1.1 can be found in "/usr/share/common-licenses/OFL-1.1".
+
+License: GPL-2 with Classpath exception
+ This code is free software; you can redistribute it and/or modify it
+ under the terms of the GNU General Public License version 2 only, as
+ published by the Free Software Foundation.
+ .
+ This code is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ version 2 for more details.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 2 can be found in "/usr/share/common-licenses/GPL-2".
+ .
+ Classpath exception:
+ .
+ Linking this library statically or dynamically with other modules is
+ making a combined work based on this library. Thus, the terms and
+ conditions of the GNU General Public License cover the whole combination.
+ .
+ As a special exception, the copyright holders of this library give you
+ permission to link this library with independent modules to produce an
+ executable, regardless of the license terms of these independent modules,
+ and to copy and distribute the resulting executable under terms of your
+ choice, provided that you also meet, for each linked independent module,
+ the terms and conditions of the license of that module. An independent
+ module is a module which is not derived from or based on this library. If
+ you modify this library, you may extend this exception to your version of
+ the library, but you are not obligated to do so. If you do not wish to do
+ so, delete this exception statement from your version.

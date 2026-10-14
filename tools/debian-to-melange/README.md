@@ -62,6 +62,8 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | `Depends` / `Pre-Depends` | `dependencies.runtime`, names mapped to Wolfi |
 | `Recommends` | Comment (apk has no recommends) |
 | `Build-Depends{,-Indep,-Arch}` | `environment.contents.packages`, names mapped to Wolfi (`librust-*-dev` dropped: cargo fetches crates). Names not found are kept with a TODO, never dropped |
+| Build profiles (`<!nocheck>`, `<pkg.foo.stage0>`) | Evaluated for a normal build: dependencies only needed under a profile are left out |
+| `libfoo-perl`, `openjdk-N-jdk`, `default-jdk` | `perl-foo`, `openjdk-N`, `openjdk-25-default-jdk`; `lib*-java` flagged (Wolfi fetches jars from Maven Central); `libjs-*` and Debian Java helpers dropped |
 | `dh $@ --buildsystem=…` or detected build files | `cmake/*`, `meson/*`, `autoconf/*`, `py/pip-build-install`, `go/build`, `cargo/build`, plain `make` |
 | `override_dh_auto_configure: dh_auto_configure -- ARGS` | `with: opts: ARGS` on the configure step |
 | `override_dh_auto_build`, `override_dh_auto_install` | `runs` steps with the same commands (`debian/<pkg>/` → `${{targets.destdir}}/`, `debian/<file>` copied next to the recipe, `target/$(DEB_HOST_RUST_TYPE)/` → `target/`); TODO if make or debhelper constructs remain |
@@ -136,6 +138,12 @@ output, and an optional `args` file. Cases:
 - `stremio` — real Debian package (1.2.0+ds-1): Rust/cargo, `override_dh_auto_build`
   and `override_dh_auto_install`, exported variables, `Files-Excluded`,
   `*.install` and `*.manpages` from the source tree, a wrapper script in `debian/`.
+- `dh-scala` — real package (Debian Java team): Perl, two binary packages,
+  `libfoo-perl` → `perl-foo`, `default-jdk-headless` → `openjdk-25-default-jdk`,
+  five autopkgtests.
+- `scala-2.13` — real package (Debian Java team): self-hosting compiler with
+  build profiles (`<pkg.scala.stage0>`), `debian/watch` v5 in git mode, Java
+  library dependencies, `update-alternatives` in maintainer scripts.
 - `libfoo` — synthetic cmake library: multiple binaries, multiarch paths,
   patches, configure options, DEP-5 per-path licenses, GitHub watch,
   `update-alternatives` in a subpackage `postinst`.

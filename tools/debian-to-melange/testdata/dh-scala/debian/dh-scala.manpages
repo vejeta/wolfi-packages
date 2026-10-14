@@ -1,0 +1,4 @@
+man/dh_scala.1
+man/scala-build.5
+man/Debian::Debhelper::Buildsystem::scala.3pm
+man/dh-scala.7

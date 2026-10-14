@@ -1,0 +1,74 @@
+Source: dh-scala
+Section: devel
+Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.org>
+Uploaders:
+ Juan Manuel Méndez Rey <juan.mendezr@proton.me>,
+Build-Depends:
+ debhelper-compat (= 14),
+Build-Depends-Indep:
+ git <!nocheck>,
+ libarchive-zip-perl,
+ libdpkg-perl,
+ libfile-stripnondeterminism-perl <!nocheck>,
+ libxml-libxml-perl,
+ licensecheck <!nocheck>,
+ perl,
+ xz-utils <!nocheck>,
+Standards-Version: 4.7.4
+Testsuite: autopkgtest-pkg-perl
+Vcs-Git: https://salsa.debian.org/mendezr/dh-scala.git
+Vcs-Browser: https://salsa.debian.org/mendezr/dh-scala
+
+Package: dh-scala
+Architecture: all
+Multi-Arch: foreign
+Depends:
+ debhelper,
+ default-jdk-headless,
+ libarchive-zip-perl,
+ libdpkg-perl,
+ maven-repo-helper,
+ ${misc:Depends},
+ ${perl:Depends},
+Provides:
+ dh-sequence-scala,
+Description: debhelper build system for Scala libraries
+ dh-scala builds Scala libraries for Debian without sbt. A short
+ debian/scala-build file lists, for each artifact and Scala binary version
+ (2.12, 2.13 or 3), the source directories, the compiler options copied from
+ upstream's build.sbt and the dependencies, given as Maven coordinates
+ resolved in /usr/share/maven-repo. dh-scala compiles the Scala and Java
+ sources with the Scala compiler from the archive, writes reproducible jars
+ and installs them with maven-repo-helper under their Maven artifact names
+ (such as scala-xml_2.13).
+ .
+ To use it, build-depend on dh-sequence-scala and the Scala compiler
+ package, and call "dh $@ --buildsystem=scala" in debian/rules.
+
+Package: dh-make-scala
+Architecture: all
+Multi-Arch: foreign
+Depends:
+ ca-certificates,
+ dh-scala (= ${source:Version}),
+ git,
+ libarchive-zip-perl,
+ libio-socket-ssl-perl,
+ libnet-ssleay-perl,
+ libxml-libxml-perl,
+ licensecheck,
+ xz-utils,
+ ${misc:Depends},
+ ${perl:Depends},
+Recommends:
+ apt-file,
+Description: start Debian packages of Scala libraries from Maven Central
+ dh-make-scala writes the debian/ directory of a Scala library, built with
+ dh-scala, from what upstream publishes: the POM on Maven Central and the git
+ tag of the release. One source package covers every module of the upstream
+ repository and every requested Scala binary version (2.12, 2.13, 3), with
+ one binary package per module and version. Values it cannot know, such as
+ descriptions and copyright holders, are marked for review.
+ .
+ It can also list which dependencies of a library are missing from Debian
+ (estimate), and compare built jars with upstream's, class by class (check).

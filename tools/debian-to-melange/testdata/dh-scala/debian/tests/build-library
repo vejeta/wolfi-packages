@@ -1,0 +1,116 @@
+#!/bin/sh
+# Copyright 2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# Build the sample library of t/samples (Scala and Java mixed, a resource)
+# with dh-scala twice, check the installed layout, the substvars and the jar,
+# and that both builds give the same .deb.
+#
+# Usage: build-library 2.12|2.13|3     one Scala version
+#        build-library cross           one source, Scala 2.13 and 3
+#        build-library no-buildsystem  debian/rules without --buildsystem=scala
+#                                      must fail, not build an empty package
+set -eu
+MODE=$1
+T=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+
+case "$MODE" in
+	2.12|2.13|3) VERSIONS=$MODE ;;
+	cross) VERSIONS="2.13 3" ;;
+	no-buildsystem) VERSIONS=2.12 ;;
+	*) echo "usage: $0 2.12|2.13|3|cross|no-buildsystem" >&2; exit 2 ;;
+esac
+
+# Per Scala version: the standard library jar and the dependency dh_scala
+# must generate.
+stdlib() { echo "/usr/share/java/scala-library-$1.jar"; }
+stdlib_dep() { case $1 in 2.12) echo 'scala-library (>= 2.12~)' ;; 2.13) echo scala-library-2.13 ;; 3) echo scala3-library ;; esac; }
+
+# The sample packages of t/samples (the build-time tests use them too).
+make_source() {
+	sh t/samples/assemble "$MODE" "$1"
+}
+
+if [ "$MODE" = no-buildsystem ]; then
+	make_source "$T/nb/demo"
+	if (cd "$T/nb/demo" && dpkg-buildpackage -us -uc -b) > "$T/nb.log" 2>&1; then
+		echo "the build succeeded without --buildsystem=scala"; exit 1
+	fi
+	grep -q 'was not built; does debian/rules call dh with --buildsystem=scala' "$T/nb.log" \
+	  || { cat "$T/nb.log"; exit 1; }
+	echo "OK: without --buildsystem=scala the build stops: $(grep -o 'dh_scala: error: .*' "$T/nb.log")"
+	exit 0
+fi
+
+for n in 1 2; do
+	make_source "$T/b$n/demo"
+	(cd "$T/b$n/demo" && dpkg-buildpackage -us -uc -b)
+done
+
+for v in $VERSIONS; do
+	echo "== Scala $v"
+	DEB1=$T/b1/libdemo-scala$v-java_1.0+ds-1_all.deb
+	DEB2=$T/b2/libdemo-scala$v-java_1.0+ds-1_all.deb
+	if [ -n "${AUTOPKGTEST_ARTIFACTS:-}" ]; then
+		cp "$DEB1" "$AUTOPKGTEST_ARTIFACTS/scala$v-build1.deb"
+		cp "$DEB2" "$AUTOPKGTEST_ARTIFACTS/scala$v-build2.deb"
+	fi
+	cmp "$DEB1" "$DEB2"
+	echo "OK: two builds, identical .deb"
+
+	A=demo_$v
+	dpkg-deb -c "$DEB1" | awk '{print $6, $7, $8}' | sed 's/ *$//' | sort > "$T/list"
+	for f in \
+	  ./usr/share/java/$A-1.0.jar \
+	  "./usr/share/java/$A.jar -> $A-1.0.jar" \
+	  ./usr/share/maven-repo/org/example/$A/1.0/$A-1.0.pom \
+	  ./usr/share/maven-repo/org/example/$A/debian/$A-debian.pom \
+	  "./usr/share/maven-repo/org/example/$A/debian/$A-debian.jar -> ../../../../../java/$A-1.0.jar"; do
+		grep -qxF "$f" "$T/list" || { echo "missing: $f"; cat "$T/list"; exit 1; }
+	done
+	echo "OK: install layout"
+
+	dpkg-deb -f "$DEB1" Depends | grep -qF "$(stdlib_dep $v)"
+	dpkg-deb -f "$DEB1" Description | grep -qF "(Scala $v)"
+	echo "OK: substvars: $(dpkg-deb -f "$DEB1" Depends)"
+
+	rm -rf "$T/x" && mkdir "$T/x" && dpkg-deb -x "$DEB1" "$T/x"
+	J=$T/x/usr/share/java/$A-1.0.jar
+	perl -MArchive::Zip -e 'print scalar Archive::Zip->new($ARGV[0])->contents("META-INF/MANIFEST.MF")' "$J" \
+	  | tr -d '\r' | grep -qx 'Automatic-Module-Name: demo'
+	out=$(java -cp "$J:$(stdlib $v)" demo.Hello)
+	case "$out" in
+		"Hello, world from Java and Scala $v"*) echo "OK: jar runs: $out" ;;
+		*) echo "unexpected output: $out"; exit 1 ;;
+	esac
+	sv=${out##* Scala }
+	props=$(perl -MArchive::Zip -e 'print scalar Archive::Zip->new($ARGV[0])->contents("demo.properties")' "$J")
+	want=$(printf 'scala.version.number=%s\nscala.binary.version.number=%s\nversion.number=1.0' "$sv" "$v")
+	[ "$props" = "$want" ] || { echo "unexpected demo.properties:"; echo "$props"; exit 1; }
+	echo "OK: demo.properties says Scala $sv"
+done
+
+# dh-scala's smoke test (what dh-make-scala puts in debian/tests/control),
+# on all the packages of this source unpacked together.
+mkdir "$T/all"
+for v in $VERSIONS; do
+	dpkg-deb -x "$T/b1/libdemo-scala$v-java_1.0+ds-1_all.deb" "$T/all"
+done
+(cd "$T/b1/demo" && /usr/share/dh-scala/smoke-test --root "$T/all")
+echo "OK: smoke test passes"
+
+# ... and it must catch a class whose supertype is missing.
+for v in $VERSIONS; do
+	perl -MArchive::Zip=:ERROR_CODES -e '
+		my $z = Archive::Zip->new($ARGV[0]);
+		$z->removeMember("demo/Greeting.class") or die "no demo/Greeting.class";
+		$z->overwrite() == AZ_OK or die "rewrite failed";' "$T/all/usr/share/java/demo_$v-1.0.jar"
+done
+if (cd "$T/b1/demo" && /usr/share/dh-scala/smoke-test --root "$T/all") > "$T/smoke.log" 2>&1; then
+	cat "$T/smoke.log"; echo "the smoke test passed a jar without demo/Greeting.class"; exit 1
+fi
+grep -q 'NoClassDefFoundError: demo/Greeting' "$T/smoke.log" || { cat "$T/smoke.log"; exit 1; }
+echo "OK: smoke test catches a missing class"

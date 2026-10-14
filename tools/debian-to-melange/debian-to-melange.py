@@ -52,6 +52,8 @@ DROP = {
     "debhelper", "debhelper-compat", "cdbs", "quilt", "po-debconf", "debconf",
     "debconf-2.0", "lsb-base", "dpkg-dev", "init-system-helpers",
     "sensible-utils", "base-files", "base-passwd",
+    # Debian-only Java helpers (Maven repository layout, jar symlinks)
+    "maven-repo-helper", "maven-debian-helper", "javahelper",
 }
 DROP_PREFIXES = ("dh-", "dh_", "librust-")
 
@@ -127,6 +129,10 @@ NAME_MAP = {
     "qt6-base-dev": "qt6-qtbase-dev",
     "qt6-declarative-dev": "qt6-qtdeclarative-dev",
     "libmpv-dev": "mpv-dev",
+    "default-jdk": "openjdk-25-default-jdk",
+    "default-jdk-headless": "openjdk-25-default-jdk",
+    "default-jre": "openjdk-25-default-jvm",
+    "default-jre-headless": "openjdk-25-default-jvm",
     "libglib2.0-bin": "glib",
     "adduser": "shadow",
     "procps": "procps",
@@ -143,6 +149,12 @@ def dep_candidates(name):
     if name in NAME_MAP:
         return [NAME_MAP[name]]
     cands = [name]
+    m = re.match(r"^openjdk-(\d+)-(jdk|jre)(?:-headless)?$", name)
+    if m:
+        return ["openjdk-{}".format(m.group(1)) if m.group(2) == "jdk" else "openjdk-{}-jre".format(m.group(1))]
+    m = re.match(r"^lib(.+)-perl$", name)
+    if m:
+        return ["perl-" + m.group(1), name]
     m = re.match(r"^python3-(.+)$", name)
     if m and not name.endswith("-dev"):
         cands = ["py3-" + m.group(1), name]
@@ -242,6 +254,11 @@ def parse_relations(value):
             continue
         alts = []
         for alt in group.split("|"):
+            # Build profiles: <a b> <c> means (a and b) or c. With no profile
+            # enabled (a normal build), "!x" holds and "x" does not.
+            formulas = re.findall(r"<([^>]*)>", alt)
+            if formulas and not any(all(t.startswith("!") for t in f.split()) for f in formulas):
+                continue
             alt = re.sub(r"\(.*?\)|\[.*?\]|<.*?>", "", alt).strip()
             if not alt.startswith("${"):
                 alt = alt.split(":", 1)[0]      # :any, :native
@@ -781,6 +798,7 @@ class Converter:
             if var.startswith(("DEB_", "DH_")) or var in self.SKIP_EXPORTS or var not in rules.vars:
                 continue
             value = rules.expand(rules.vars[var]).replace("$(CURDIR)", "/home/build")
+            value = value.replace("/usr/lib/jvm/default-java", "/usr/lib/jvm/default-jvm")  # Wolfi's default JDK
             if "$(" in value or "${" in value:
                 continue
             env[var] = value
@@ -812,6 +830,15 @@ class Converter:
                 continue
             cand, alt, found = chosen
             if any(o == cand or (isinstance(o, C) and o.value == cand) for o in out):
+                continue
+            if found is not True and re.match(r"^libjs-", alt):
+                self.notes.append("{} dependency '{}': Debian ships JavaScript libraries separately; "
+                                  "Wolfi does not, keep the copy bundled upstream".format(kind, alt))
+                continue
+            if found is not True and re.match(r"^lib.+-java$", alt):
+                self.notes.append("{} dependency '{}' is a Java library: Wolfi has no packaged jars, "
+                                  "the build must fetch it from Maven Central".format(kind, alt))
+                out.append(C(cand, "{}: Java library, fetch from Maven Central (Debian: {})".format(TODO, alt)))
                 continue
             if found is False:
                 self.notes.append("{} dependency '{}' (Debian '{}') not found in Wolfi".format(kind, cand, alt))
@@ -877,9 +904,15 @@ class Converter:
             for ph, var in subs.items():
                 if var == version_var:
                     var_refs[var] = "${{package.version}}"
+                elif "DEB_VERSION_UPSTREAM" in rules.vars.get(var, "") or var in ("DEB_VERSION_UPSTREAM",):
+                    var_refs[var] = "${{package.version}}"
                 else:
+                    value = rules.expand(rules.vars.get(var, ""))
+                    if "$(" in value:
+                        self.notes.append("debian/rules variable {} = {} needs make to evaluate; "
+                                          "set its value by hand".format(var, rules.vars.get(var, "")))
                     key = var.lower().replace("_", "-")
-                    melange_vars[key] = rules.expand(rules.vars.get(var, ""))
+                    melange_vars[key] = value
                     var_refs[var] = "${{vars.%s}}" % key
 
         # ---- package ------------------------------------------------------
@@ -931,6 +964,13 @@ class Converter:
         build_deps = self.map_deps(parse_relations(source.get("build-depends")) +
                                    parse_relations(source.get("build-depends-indep")) +
                                    parse_relations(source.get("build-depends-arch")), "build")
+        own = {b["package"] for b in binaries}
+        self_deps = sorted(own & {alt for alts in parse_relations(source.get("build-depends")) for alt in alts})
+        if self_deps:
+            self.notes.append("build-depends on its own binary package(s) {} (self-hosting): Wolfi needs a "
+                              "bootstrap first, e.g. a {}-stage0 recipe from upstream binaries; Debian's "
+                              "build profiles show which dependencies that stage uses".format(
+                                  ", ".join(self_deps), name))
         bs = rules.buildsystem()
         if not bs:
             bs = next((b for f, b in BUILDSYSTEM_FILES if f in self.top), None)
@@ -1085,9 +1125,15 @@ class Converter:
         if not url:
             watch = self.read("watch") or ""
             m = re.search(r"https?://github\.com/([^/\s]+)/([^/\s]+?)(?:\.git)?/(?:tags|releases)", watch)
+            prefix = None
+            if not m and re.search(r"(?mi)^Mode:\s*git\b", watch):
+                # debian/watch v5, git mode: Source: <repo> + Matching-Pattern: refs/tags/<prefix>(...)
+                m = re.search(r"(?mi)^Source:\s*https?://github\.com/([^/\s]+)/([^/\s]+?)(?:\.git)?/?\s*$", watch)
+                pm = re.search(r"(?mi)^Matching-Pattern:\s*refs/tags/([^(\s]*)\(", watch)
+                prefix = pm.group(1).replace("\\", "") if pm else None
             if m:
                 # Wolfi pins GitHub sources with git-checkout + expected-commit.
-                steps, notes = git_checkout_step(m.group(1), m.group(2), version, resolve=self.args.download)
+                steps, notes = git_checkout_step(m.group(1), m.group(2), version, prefix, resolve=self.args.download)
                 self.notes += notes
                 if not notes:
                     self.notes.append("upstream from debian/watch (GitHub), pinned to the tag's commit")

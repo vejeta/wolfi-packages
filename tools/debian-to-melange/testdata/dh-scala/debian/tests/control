@@ -1,0 +1,40 @@
+Test-Command: debian/tests/build-library 2.12
+Features: test-name=build-library-2.12
+Depends:
+ build-essential,
+ dh-scala,
+ scala (>= 2.12~),
+Restrictions: allow-stderr
+
+Test-Command: debian/tests/build-library 2.13
+Features: test-name=build-library-2.13
+Depends:
+ build-essential,
+ dh-scala,
+ scala-2.13,
+Restrictions: allow-stderr
+
+Test-Command: debian/tests/build-library 3
+Features: test-name=build-library-3
+Depends:
+ build-essential,
+ dh-scala,
+ scala3,
+Restrictions: allow-stderr
+
+Test-Command: debian/tests/build-library cross
+Features: test-name=build-library-cross
+Depends:
+ build-essential,
+ dh-scala,
+ scala-2.13,
+ scala3,
+Restrictions: allow-stderr
+
+Test-Command: debian/tests/build-library no-buildsystem
+Features: test-name=build-library-no-buildsystem
+Depends:
+ build-essential,
+ dh-scala,
+ scala (>= 2.12~),
+Restrictions: allow-stderr

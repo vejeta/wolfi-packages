@@ -1,0 +1,5 @@
+dh_scala usr/bin
+lib/Debian/DhScala.pm usr/share/perl5/Debian
+lib/Debian/Debhelper usr/share/perl5/Debian
+smoke/smoke-test usr/share/dh-scala
+smoke/Smoke.java usr/share/dh-scala

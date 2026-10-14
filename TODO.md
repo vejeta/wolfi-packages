@@ -46,14 +46,32 @@ take any of them are welcome.
 
 ### Debian build systems
 
-- [ ] Corpus of ~10 real Debian packages as test cases: Go (with vendored
-  modules), Python (pybuild, `dh-sequence-python3`), CMake with several
-  binary packages, Node.js, Perl, a library with symbols file.
+- [ ] Corpus of ~10 real Debian packages as test cases. Done: stremio
+  (Rust), stremio-server-installer (debconf), dh-scala (Perl), scala-2.13
+  (self-hosting JVM compiler). Missing: Go with vendored modules, Python
+  (pybuild), CMake with several binary packages, Node.js, a library with a
+  symbols file.
+- ✅ Build profiles (`<pkg.x.stage0>`, `<!nocheck>`) evaluated for a normal build.
+- ✅ Perl (`libfoo-perl` → `perl-foo`) and JDK names; Java libraries flagged
+  (Wolfi uses Maven Central); `libjs-*` and Debian Java helpers dropped.
+- ✅ `debian/watch` v5 in git mode → `git-checkout`.
+- ✅ Self-hosting packages (build-depend on themselves) are reported.
+- [ ] `debian/*.poms` (maven-repo-helper) → install jars under
+  `/usr/share/java` with the same names.
+- [ ] Ported `debian/rules` recipes that use make functions (`$(firstword
+  ...)`, `$(subst ...)`): evaluate the common ones.
 - [ ] `dh-sequence-*` / `--with` add-ons that map to melange pipelines
   (python3, golang, nodejs).
 - [ ] `debian/*.symbols` → `so:` provides check in the test section.
 - [ ] `debian/*.service`, `*.tmpfiles`, `*.sysusers` → Wolfi equivalents.
 - [ ] Multi-arch `Architecture:` restrictions → `target-architecture`.
+
+### Scala / JVM
+
+- [ ] A melange `scala/build` pipeline equivalent to dh-scala, reading the
+  same `debian/scala-build` file, so dh-scala packages convert directly.
+- [ ] `scala-2.13-stage0` recipe from upstream binaries, then `scala-2.13`
+  built from source (Wolfi has scala 3.8 and sbt, not 2.12/2.13).
 
 ### Alpine
 
