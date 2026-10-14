@@ -21,11 +21,17 @@ on:
       architectures:
         description: 'Target architectures (comma-separated, e.g. "x86_64" or "x86_64,aarch64")'
         required: false
-        default: 'x86_64'
+        default: 'x86_64,aarch64'
         type: string
 
 permissions:
   contents: read
+
+# A new push to a pull request cancels the build of its previous commit.
+# Other events get a group of their own and are never cancelled.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('build-pr-{0}', github.event.pull_request.number) || format('build-{0}', github.run_id) }}
+  cancel-in-progress: true
 
 env:
   MELANGE_VERSION: latest
@@ -73,14 +79,13 @@ jobs:
               fi ;;
             *) if [ -n "$FILTER" ]; then sel="--filter $FILTER"; else sel="--all"; fi ;;
           esac
-          echo "Selection: $sel"
-          result=$(python3 scripts/build-order.py $sel)
+          [ -n "$ARCH_INPUT" ] || ARCH_INPUT="x86_64,aarch64"
+          echo "Selection: $sel ($ARCH_INPUT)"
+          result=$(python3 scripts/build-order.py $sel --arch "$ARCH_INPUT")
           echo "$result" | jq .
           for i in 1 2 3 4 5 6; do
             echo "wave$i=$(echo "$result" | jq -c ".waves[$((i-1))]")" >> "$GITHUB_OUTPUT"
           done
-
-          [ -n "$ARCH_INPUT" ] || ARCH_INPUT="x86_64"
           echo "architectures=$(echo "$ARCH_INPUT" | jq -R -c 'split(",")')" >> "$GITHUB_OUTPUT"
 
   wave-1:
@@ -90,8 +95,7 @@ jobs:
     secrets: inherit
     with:
       wave: 1
-      packages: ${{ needs.prepare-build-matrix.outputs.wave1 }}
-      architectures: ${{ needs.prepare-build-matrix.outputs.architectures }}
+      builds: ${{ needs.prepare-build-matrix.outputs.wave1 }}
 
   wave-2:
     needs: [prepare-build-matrix, wave-1]
@@ -100,8 +104,7 @@ jobs:
     secrets: inherit
     with:
       wave: 2
-      packages: ${{ needs.prepare-build-matrix.outputs.wave2 }}
-      architectures: ${{ needs.prepare-build-matrix.outputs.architectures }}
+      builds: ${{ needs.prepare-build-matrix.outputs.wave2 }}
 
   wave-3:
     needs: [prepare-build-matrix, wave-2]
@@ -110,8 +113,7 @@ jobs:
     secrets: inherit
     with:
       wave: 3
-      packages: ${{ needs.prepare-build-matrix.outputs.wave3 }}
-      architectures: ${{ needs.prepare-build-matrix.outputs.architectures }}
+      builds: ${{ needs.prepare-build-matrix.outputs.wave3 }}
 
   wave-4:
     needs: [prepare-build-matrix, wave-3]
@@ -120,8 +122,7 @@ jobs:
     secrets: inherit
     with:
       wave: 4
-      packages: ${{ needs.prepare-build-matrix.outputs.wave4 }}
-      architectures: ${{ needs.prepare-build-matrix.outputs.architectures }}
+      builds: ${{ needs.prepare-build-matrix.outputs.wave4 }}
 
   wave-5:
     needs: [prepare-build-matrix, wave-4]
@@ -130,8 +131,7 @@ jobs:
     secrets: inherit
     with:
       wave: 5
-      packages: ${{ needs.prepare-build-matrix.outputs.wave5 }}
-      architectures: ${{ needs.prepare-build-matrix.outputs.architectures }}
+      builds: ${{ needs.prepare-build-matrix.outputs.wave5 }}
 
   wave-6:
     needs: [prepare-build-matrix, wave-5]
@@ -140,8 +140,7 @@ jobs:
     secrets: inherit
     with:
       wave: 6
-      packages: ${{ needs.prepare-build-matrix.outputs.wave6 }}
-      architectures: ${{ needs.prepare-build-matrix.outputs.architectures }}
+      builds: ${{ needs.prepare-build-matrix.outputs.wave6 }}
 
   build-summary:
     name: Build Summary
@@ -165,8 +164,11 @@ jobs:
           echo "Total size:"
           du -sh all-artifacts
           echo ""
-          echo "x86_64 packages:"
-          find all-artifacts -path "*x86_64*" -name "*.apk" -exec basename {} \; | sort
+          for arch in x86_64 aarch64; do
+            echo ""
+            echo "$arch packages:"
+            find all-artifacts -path "*$arch*" -name "*.apk" -exec basename {} \; | sort
+          done
 
   consolidate-cache:
     name: Consolidate Package Cache

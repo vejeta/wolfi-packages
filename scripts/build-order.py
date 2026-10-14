@@ -16,6 +16,10 @@ Which recipes are built:
                         to the build tooling (pipelines/, this script, the
                         build workflows) selects every recipe
 
+Each wave is a list of {"package", "arch"} builds for the architectures in
+--arch, minus those a recipe excludes with package.target-architecture and
+those listed in packages/CI-SKIP.
+
 Prints JSON: {"waves": [[...], ...], "count": N}, padded to --max-waves.
 """
 
@@ -54,7 +58,8 @@ def load_recipes(pkgdir):
         needs = set()
         for dep in ((data.get("environment") or {}).get("contents") or {}).get("packages") or []:
             needs.add(re.split(r"[=<>~]", str(dep), maxsplit=1)[0])
-        recipes[name] = {"provides": provides, "needs": needs}
+        archs = data.get("package", {}).get("target-architecture") or ["all"]
+        recipes[name] = {"provides": provides, "needs": needs, "archs": archs}
     return recipes
 
 
@@ -96,6 +101,28 @@ def waves(selected, recipes):
     return out
 
 
+def load_skips(path):
+    """Read packages/CI-SKIP: {(recipe, arch)}."""
+    skips = set()
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                fields = line.split("#", 1)[0].split()
+                if len(fields) == 2:
+                    skips.add(tuple(fields))
+    return skips
+
+
+def builds(wave, recipes, archs, skips=frozenset()):
+    """Matrix entries for one wave: every recipe on every architecture it supports."""
+    out = []
+    for name in wave:
+        allowed = recipes[name]["archs"]
+        out += [{"package": name, "arch": a} for a in archs
+                if ("all" in allowed or a in allowed) and (name, a) not in skips]
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sel = ap.add_mutually_exclusive_group(required=True)
@@ -103,6 +130,7 @@ def main(argv=None):
     sel.add_argument("--filter")
     sel.add_argument("--changed-from", metavar="REF")
     ap.add_argument("--packages-dir", default="packages")
+    ap.add_argument("--arch", default="x86_64", help="comma-separated architectures")
     ap.add_argument("--max-waves", type=int, default=6)
     args = ap.parse_args(argv)
 
@@ -121,6 +149,9 @@ def main(argv=None):
     result = waves(selected, recipes)
     if len(result) > args.max_waves:
         sys.exit("error: {} waves needed, the workflow runs {}".format(len(result), args.max_waves))
+    archs = [a.strip() for a in args.arch.split(",") if a.strip()]
+    skips = load_skips(os.path.join(args.packages_dir, "CI-SKIP"))
+    result = [b for b in (builds(w, recipes, archs, skips) for w in result) if b]
     result += [[] for _ in range(args.max_waves - len(result))]
     print(json.dumps({"waves": result, "count": len(selected)}))
     return 0

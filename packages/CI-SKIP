@@ -1,0 +1,6 @@
+# Builds that GitHub Actions does not run (recipe architecture), one per line.
+#
+# scripts/build-order.py leaves these out of the build matrix. The recipe
+# itself still supports the architecture, so the package can be built
+# elsewhere (Cirrus CI or locally) and published as usual.
+qt5-qtwebengine aarch64  # longer than the 6 h job limit on GitHub's ARM runners

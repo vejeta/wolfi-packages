@@ -65,7 +65,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Download build artifacts (GitHub Actions - x86_64)
+      - name: Download build artifacts (GitHub Actions)
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
@@ -75,6 +75,10 @@ jobs:
           pattern: 'apk-packages-*'
 
       - name: Download Cirrus CI artifacts (aarch64)
+        # Only while Cirrus CI is enabled (.cirrus.yml). aarch64 is built on
+        # GitHub's ARM runners otherwise, and old Cirrus artifacts must not
+        # replace those packages.
+        if: hashFiles('.cirrus.yml') != ''
         continue-on-error: true
         run: |
           echo "=== Downloading Cirrus CI aarch64 artifacts ==="
