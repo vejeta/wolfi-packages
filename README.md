@@ -215,6 +215,7 @@ instructions and review process.
 | `melange-to-alpine` | Planned | Generate an `APKBUILD` from a melange YAML |
 
 Background research on existing tooling: [docs/research-tools.md](docs/research-tools.md).
+Design decisions behind the recipes and CI: [docs/design-notes.md](docs/design-notes.md).
 
 ## Why this project exists
 
