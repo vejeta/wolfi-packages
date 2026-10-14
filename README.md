@@ -30,13 +30,19 @@ SourceForge.
 
 | Package | Version | Description | License |
 |---------|---------|-------------|---------|
+| appstream | 1.2.1 | AppStream metadata library (library only; needed by libadwaita) | LGPL-2.1-or-later |
+| glib-networking | 2.90.0 | Network extensions for GLib: TLS support (GnuTLS) | LGPL-2.0-or-later |
+| libadwaita | 1.10.0 | Building blocks for modern GNOME applications (GTK4) | LGPL-2.1-or-later |
 | libass9 | 0.17.5 | Portable library for rendering ASS/SSA subtitles (shared; official Wolfi's libass is static-only) | ISC |
 | libbluray | 1.4.0 | Library to access Blu-Ray disks for video playback | LGPL-2.1-or-later |
 | libcdio | 2.2.0 | GNU Compact Disc Input and Control Library | GPL-3.0-or-later |
 | libcdio-paranoia | 10.2.2.0.2 | CD paranoia library from libcdio | GPL-3.0-or-later AND LGPL-2.1-or-later |
 | libdvdnav | 6.1.1 | Library for DVD navigation | GPL-2.0-or-later |
 | libdvdread | 6.1.3 | Library for reading DVD video disks | GPL-2.0-or-later |
+| libfyaml | 0.9.6 | Fully featured YAML 1.2 parser and emitter (needed by appstream) | MIT |
 | libplacebo | 7.351.0 | Reusable library for GPU-accelerated video/image rendering | LGPL-2.1-or-later |
+| libsoup3 | 3.6.6 | GNOME HTTP client/server library, version 3 | LGPL-2.0-or-later |
+| libxmlb | 0.3.29 | Library to create and query binary XML blobs (needed by appstream) | LGPL-2.1-or-later |
 | libxpresent | 1.0.2 | X11 Present extension library | MIT |
 | mpv | 0.40.0 | Free, open source, and cross-platform media player | GPL-2.0-or-later AND LGPL-2.1-or-later |
 | mujs | 1.3.7 | Lightweight JavaScript interpreter | ISC |
@@ -47,9 +53,12 @@ SourceForge.
 | qt5-qtwebengine | 5.15.17 | Qt5 - QtWebEngine (Chromium-based web rendering) | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
 | rubberband | 4.0.0 | Audio time-stretching and pitch-shifting library | GPL-2.0-or-later |
 | shaderc | 2025.4 | Tools and libraries for Vulkan shader compilation | Apache-2.0 |
+| stremio | 1.2.0 | Modern media center (Stremio desktop 1.x: GTK4, libadwaita, WebKitGTK); converted from the [Debian package](https://tracker.debian.org/pkg/stremio) with `debian-to-melange` | GPL-3.0-only |
 | stremio-qt5 | 4.4.169 | Modern media center for online video content (Stremio shell 4.x, Qt5) | GPL-3.0-or-later |
 | stremio-server-installer | 4.21.1 | Downloader for Stremio's streaming server (server.js is fetched at install time, never redistributed) | GPL-3.0-only |
 | uchardet | 0.0.8 | Universal charset detection library | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later |
+| webkitgtk-6.0 | 2.54.1 | WebKitGTK web engine, GTK4 API (webkitgtk-6.0) | LGPL-2.0-or-later AND BSD-2-Clause |
+| xdg-dbus-proxy | 0.1.9 | Filtering D-Bus proxy (used by the WebKitGTK sandbox) | LGPL-2.1-or-later |
 | zimg | 3.0.6 | Scaling, colorspace conversion, and dithering library | WTFPL |
 
 Versions reflect the recipes in [`packages/`](packages/); the YAML file is
@@ -76,8 +85,14 @@ wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
   https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
 echo "https://downloads.sourceforge.net/project/wolfi" >> /etc/apk/repositories
 apk update
-apk add mpv stremio-qt5
+apk add mpv stremio        # or stremio-qt5 for the Qt5 shell
 ```
+
+`stremio` is the current Stremio desktop client (1.x, GTK4/WebKitGTK);
+`stremio-qt5` is the previous Qt5 shell (4.x, command `stremio-qt5`). Both can
+be installed side by side. If you installed `stremio` 4.x from this
+repository before the rename, apk will not replace it with the lower 1.x
+version on its own: run `apk del stremio && apk add stremio stremio-qt5`.
 
 ### As build dependencies in a melange recipe
 
@@ -146,7 +161,7 @@ Packages are retired when an official or better-suited alternative exists.
 | Package | Here since | In official Wolfi since¹ | Retired | Reason / replacement |
 |---------|------------|--------------------------|---------|----------------------|
 | libass | 2025-11 | 2026-01-31 | 2026-10 | Replaced by `libass9`: official Wolfi's libass is built static-only and ships no `libass.so` |
-| stremio | 2025-11 | — | 2026-10 | Renamed to `stremio-qt5`: upstream's current desktop app no longer uses Qt5; the name `stremio` is kept for packaging it later |
+| stremio 4.x | 2025-11 | — | 2026-10 | Renamed to `stremio-qt5` (Stremio shell 4.x, Qt5). The name `stremio` now belongs to the GTK4/WebKitGTK client (1.x) |
 | stremio-server | 2025-11 | — | 2026-10 | Replaced by `stremio-server-installer`, converted from the [Debian package](https://tracker.debian.org/pkg/stremio-server-installer) with `debian-to-melange` |
 | libvpx | 2025-11 | 2026-09-25 | 2026-10 | Available in official Wolfi (newer version) |
 | libxcb | 2025-11 | 2025-08-07 or earlier | 2026-10 | Available in official Wolfi (all xcb libraries in one package) |

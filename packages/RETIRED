@@ -8,9 +8,6 @@ libass
 libvpx
 libxcb
 qt5-qtbase
-# stremio: renamed to stremio-qt5. Remove this line when the new, non-Qt5
-# stremio recipe is added, or every publish will delete it.
-stremio
 stremio-server
 vulkan-loader
 zlib
