@@ -69,8 +69,15 @@ environment:
       - https://packages.wolfi.dev/os
 ```
 
-Dependencies built in this repository are resolved by CI from its own build
-cache and from the published SourceForge repository.
+Dependencies built in this repository are resolved by CI from the packages
+built earlier in the same run, its build cache and the published SourceForge
+repository. Pull requests build only the recipes they change; recipes that
+need each other are built in order (waves computed by
+`scripts/build-order.py`):
+
+```bash
+python3 scripts/build-order.py --changed-from origin/master   # what CI will build
+```
 
 ## 4. Building locally
 
