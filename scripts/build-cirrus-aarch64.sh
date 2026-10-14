@@ -259,7 +259,7 @@ else
 fi
 
 echo ""
-echo "=== Copying debug logs to artifacts ===\"
+echo "=== Copying debug logs to artifacts ==="
 mkdir -p "$OUTPUT_DIR/$ARCH/logs"
 if [ -f /tmp/qemu-debug.log ]; then
     cp /tmp/qemu-debug.log "$OUTPUT_DIR/$ARCH/logs/qemu-debug.log"
