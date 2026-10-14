@@ -52,7 +52,7 @@ DROP = {
     "debconf-2.0", "lsb-base", "dpkg-dev", "init-system-helpers",
     "sensible-utils", "base-files", "base-passwd",
 }
-DROP_PREFIXES = ("dh-", "dh_")
+DROP_PREFIXES = ("dh-", "dh_", "librust-")
 
 # Exact Debian -> Wolfi mappings (runtime and build).
 NAME_MAP = {
@@ -126,6 +126,7 @@ NAME_MAP = {
     "qt6-base-dev": "qt6-qtbase-dev",
     "qt6-declarative-dev": "qt6-qtdeclarative-dev",
     "libmpv-dev": "mpv-dev",
+    "libglib2.0-bin": "glib",
     "adduser": "shadow",
     "procps": "procps",
     "xz-utils": "xz",
@@ -146,8 +147,10 @@ def dep_candidates(name):
         cands = ["py3-" + m.group(1), name]
     m = re.match(r"^lib(.+?)(-?[\d.]+)?-dev$", name)
     if m:
-        base = m.group(1)
+        base, ver = m.group(1), m.group(2) or ""
         cands += ["lib{}-dev".format(base), "{}-dev".format(base)]
+        if ver:
+            cands.append("{}{}-dev".format(base, ver))
     m = re.match(r"^lib(.+?)[\d.]+$", name)
     if m:
         cands += ["lib" + m.group(1), m.group(1)]
@@ -158,26 +161,47 @@ def dep_candidates(name):
     return seen
 
 
+# Packages published by this repository (Wolfi Community Packages).
+COMMUNITY_INDEX = "https://downloads.sourceforge.net/project/wolfi/{arch}/APKINDEX.tar.gz"
+
+
 class WolfiIndex:
-    """Optional lookup of package names in the Wolfi APKINDEX (via pkg-check)."""
+    """Optional lookup of package names in the Wolfi APKINDEX (via pkg-check).
+
+    Names published by this repository are tracked separately, so a
+    dependency that only exists here can be labelled as such.
+    """
 
     def __init__(self, enabled, arch="x86_64"):
         self.names = None
+        self.community = set()
         if not enabled:
             return
         spec = importlib.util.spec_from_file_location("pkg_check", PKG_CHECK)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        url = mod.WOLFI_INDEX.format(arch=arch)
+        self.names = self._load(mod, mod.WOLFI_INDEX.format(arch=arch))
+        try:
+            self.community = self._load(mod, COMMUNITY_INDEX.format(arch=arch))
+        except Exception as exc:  # the community index is optional
+            print("warning: cannot read {}: {}".format(COMMUNITY_INDEX.format(arch=arch), exc), file=sys.stderr)
+
+    @staticmethod
+    def _load(mod, url):
         names = set()
         for e in mod.parse_apkindex(mod.fetch(url, True)):
             names.add(e.get("P"))
             for prov in e.get("p", "").split():
                 names.add(re.split(r"[=<>~]", prov, maxsplit=1)[0])
-        self.names = names
+        return names
 
     def has(self, name):
-        return None if self.names is None else name in self.names
+        if self.names is None:
+            return None
+        return name in self.names or name in self.community
+
+    def community_only(self, name):
+        return self.names is not None and name not in self.names and name in self.community
 
 
 # ==========================================================================
@@ -291,11 +315,20 @@ def parse_copyright(text):
     return result
 
 
+def files_excluded(text):
+    """Paths listed in the Files-Excluded field of a DEP-5 debian/copyright."""
+    if not text:
+        return []
+    paras = parse_deb822(text)
+    return paras[0].get("files-excluded", "").split() if paras else []
+
+
 class Rules:
     """Minimal debian/rules (Makefile) model: variables, dh line, overrides."""
 
     def __init__(self, text):
         self.vars = {}
+        self.exports = []
         self.targets = {}
         self.dh_args = ""
         lines = self._join_continuations(text.splitlines())
@@ -311,6 +344,8 @@ class Rules:
             m = re.match(r"^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*([:?+]?=)\s*(.*)$", line)
             if m:
                 name, op, val = m.groups()
+                if line.startswith("export") and name not in self.exports:
+                    self.exports.append(name)
                 if op == "+=":
                     self.vars[name] = (self.vars.get(name, "") + " " + val).strip()
                 elif op != "?=" or name not in self.vars:
@@ -671,6 +706,7 @@ class Converter:
         self.notes = []
         self.aux = {}          # filename -> content (bytes or str) for <out>/<name>/
         self.rename = {}       # Debian binary package name -> melange package name
+        self.upstream_installs = True  # does the build system install into destdir?
 
     # -- helpers -----------------------------------------------------------
 
@@ -699,6 +735,56 @@ class Converter:
         self.notes.append(msg)
         return Comment("{}: {}".format(TODO, msg))
 
+    def port_recipe(self, rules, lines, name, deb_pkg):
+        """Translate a debian/rules recipe into shell for a melange step.
+
+        Returns None when a line still depends on make or debhelper.
+        """
+        out = []
+        for raw in lines:
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            line = line.lstrip("@-")
+            if re.match(r"^dh[_-]", line):
+                if re.match(r"^dh_auto_|^dh_(install|link)\b", line):
+                    return None
+                continue  # debhelper bookkeeping (Built-Using, substvars...)
+            line = rules.expand(line)
+            for pkg in (deb_pkg, "tmp"):
+                line = re.sub(r"\$\(CURDIR\)/debian/{}(/|\b)".format(re.escape(pkg)), "${{targets.destdir}}/", line)
+                line = re.sub(r"(?<![\w/])debian/{}/".format(re.escape(pkg)), "${{targets.destdir}}/", line)
+            line = re.sub(r"target/\$\(DEB_HOST_RUST_TYPE\)/", "target/", line)
+            line = line.replace("$(CURDIR)/", "").replace("$(CURDIR)", ".")
+            def aux(m):
+                rel = m.group(1)
+                path = os.path.join(self.deb, rel)
+                if not os.path.isfile(path):
+                    return m.group(0)
+                with open(path, "rb") as fh:
+                    self.aux[os.path.basename(rel)] = fh.read()
+                return "{}/{}".format(name, os.path.basename(rel))
+            line = re.sub(r"(?<![\w/$.])debian/([\w.+-]+)", aux, line)
+            line = line.replace("${{targets.destdir}}//", "${{targets.destdir}}/")
+            if "$(" in line:
+                return None
+            out.append(line)
+        return out
+
+    SKIP_EXPORTS = {"PATH", "CARGO_HOME", "CFLAGS", "CXXFLAGS", "CPPFLAGS", "LDFLAGS",
+                    "DH_VERBOSE", "PYBUILD_NAME", "GOCACHE", "GOPATH", "HOME"}
+
+    def ported_exports(self, rules):
+        env = {}
+        for var in rules.exports:
+            if var.startswith(("DEB_", "DH_")) or var in self.SKIP_EXPORTS or var not in rules.vars:
+                continue
+            value = rules.expand(rules.vars[var]).replace("$(CURDIR)", "/home/build")
+            if "$(" in value or "${" in value:
+                continue
+            env[var] = value
+        return env
+
     def map_deps(self, relations, kind):
         out, comments = [], []
         for alts in relations:
@@ -718,6 +804,9 @@ class Converter:
                             break
                 if chosen and chosen[2]:
                     break
+            if chosen is None:
+                # Nothing matched in the index: keep the best guess, flagged.
+                chosen = (dep_candidates(alts[0])[0], alts[0], False)
             if not chosen:
                 continue
             cand, alt, found = chosen
@@ -726,6 +815,8 @@ class Converter:
             if found is False:
                 self.notes.append("{} dependency '{}' (Debian '{}') not found in Wolfi".format(kind, cand, alt))
                 out.append(C(cand, "{}: not in Wolfi (Debian: {})".format(TODO, alt)))
+            elif self.wolfi.community_only(cand):
+                out.append(C(cand, "Wolfi Community Packages" + ("" if cand == alt else " (Debian: {})".format(alt))))
             elif cand != alt:
                 out.append(C(cand, "Debian: {}".format(alt)))
             else:
@@ -755,7 +846,8 @@ class Converter:
         name = a.name or main["package"]
         self.rename = {b["package"]: b["package"] for b in binaries}
         self.rename[main["package"]] = name
-        if deb_version and re.search(r"[+~](dfsg|ds|repack)", deb_version):
+        if deb_version and re.search(r"[+~](dfsg|ds|repack)", deb_version) \
+                and not files_excluded(self.read("copyright")):
             self.notes.append("Debian repacks the upstream tarball ({}); check debian/copyright "
                               "Files-Excluded before using the pristine upstream source".format(deb_version))
 
@@ -848,27 +940,47 @@ class Converter:
             "repositories": ["https://packages.wolfi.dev/os"],
             "packages": env_pkgs,
         }}
+        exports = self.ported_exports(rules)
+        if exports:
+            environment["environment"] = exports
 
         # ---- pipeline -----------------------------------------------------
         pipeline = []
         if not native:
             pipeline += self.fetch_step(source, version)
+            excluded = files_excluded(self.read("copyright"))
+            if excluded:
+                pipeline.append({"name": "Remove files excluded by Debian (debian/copyright Files-Excluded)",
+                                 "runs": "rm -rf " + " ".join(excluded) + "\n"})
         series = self.read("patches/series")
         if series:
             patches = [l.split()[0] for l in series.splitlines() if l.strip() and not l.startswith("#")]
             for p in patches:
                 with open(os.path.join(self.deb, "patches", p), "rb") as fh:
                     self.aux[os.path.basename(p)] = fh.read()
-            pipeline.append({"uses": "patch", "with": {"patches": " ".join(os.path.basename(p) for p in patches)}})
+            pipeline.append({"uses": "patch", "with": {"patches": " ".join(
+                "{}/{}".format(name, os.path.basename(p)) for p in patches)}})
 
-        if bs in BUILD_PIPELINES:
+        overrides = rules.overrides()
+        # cargo and go builds install nothing into debian/tmp, and an
+        # override_dh_auto_install replaces upstream's install step.
+        self.upstream_installs = bs not in ("cargo", "golang") and "override_dh_auto_install" not in overrides
+        ported = {}
+        for target in ("override_dh_auto_build", "override_dh_auto_install"):
+            if target in overrides:
+                ported[target] = self.port_recipe(rules, overrides[target], name, main["package"])
+        build_override = ported.get("override_dh_auto_build")
+        if build_override:
+            pipeline.append({"name": "Build (from debian/rules override_dh_auto_build)",
+                             "runs": "\n".join(build_override) + "\n"})
+        elif bs in BUILD_PIPELINES:
             opts = rules.configure_opts()
             for i, step in enumerate(BUILD_PIPELINES[bs]):
                 entry = {"uses": step}
                 if i == 0 and opts:
                     entry["with"] = {"opts": " ".join(opts)}
                 pipeline.append(entry)
-            if bs in ("pybuild", "golang", "cargo"):
+            if bs in ("pybuild", "golang", "cargo") and "override_dh_auto_build" not in overrides:
                 pipeline.append(self.todo("review the {} pipeline inputs (Debian used dh --buildsystem={})".format(BUILD_PIPELINES[bs][0], bs)))
         elif bs == "makefile":
             pipeline.append({"runs": 'make -j$(nproc)\nmake install DESTDIR="${{targets.destdir}}" PREFIX=/usr\n'})
@@ -877,9 +989,15 @@ class Converter:
 
         for with_ in rules.dh_with():
             self.notes.append("dh --with {} has no direct melange equivalent; review".format(with_))
-        skip_overrides = {"override_dh_installdeb", "override_dh_clean", "override_dh_auto_configure"}
-        for target, recipe in rules.overrides().items():
+        skip_overrides = {"override_dh_installdeb", "override_dh_clean", "override_dh_auto_configure",
+                          "override_dh_auto_clean"}
+        for target, recipe in overrides.items():
             if target in skip_overrides and (target != "override_dh_installdeb" or templated):
+                continue
+            if ported.get(target):
+                if target == "override_dh_auto_install":
+                    pipeline.append({"name": "Install (from debian/rules override_dh_auto_install)",
+                                     "runs": "\n".join(ported[target]) + "\n"})
                 continue
             if target.startswith(("override_dh_auto_test", "override_dh_strip", "override_dh_shlibdeps",
                                   "override_dh_makeshlibs", "override_dh_gencontrol", "override_dh_builddeb",
@@ -986,6 +1104,17 @@ class Converter:
     def install_lines(self, binary, main, native, destdir):
         cmds = []
         inst = self.pkgfile(binary["package"], "install", main)
+        if inst and main and not native and not self.upstream_installs:
+            # Nothing was installed by the upstream build system, so dh_install
+            # takes these paths from the source tree.
+            for line in inst.splitlines():
+                parts = line.split("#", 1)[0].split()
+                if not parts:
+                    continue
+                src = norm_path(parts[0])
+                dst = os.path.dirname(src) if len(parts) == 1 else norm_path(parts[-1])
+                cmds.append('mkdir -p "{0}/{1}"\ncp -a {2} "{0}/{1}/"'.format(destdir, dst, src))
+            inst = None
         # Upstream builds install straight into destdir; only subpackages
         # (and native packages, which copy from the source tree) move files.
         if inst and (native or not main):
@@ -1003,6 +1132,11 @@ class Converter:
                 else:
                     cmds.append('mkdir -p "{0}/{1}"\nmv {2} "{0}/{1}/"'.format(
                         destdir, dst, shell_path("${{targets.destdir}}", src)))
+        for line in (self.pkgfile(binary["package"], "manpages", main) or "").splitlines():
+            page = line.split("#", 1)[0].strip()
+            m = re.search(r"\.(\d)\w*(\.gz)?$", page)
+            if page and m:
+                cmds.append('install -Dm644 {0} -t "{1}/usr/share/man/man{2}"'.format(page, destdir, m.group(1)))
         for line in (self.pkgfile(binary["package"], "dirs", main) or "").splitlines():
             if line.strip():
                 cmds.append('mkdir -p "{}/{}"'.format(destdir, norm_path(line)))

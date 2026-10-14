@@ -37,7 +37,7 @@ used by every other recipe in this repository.
 | `--version-var VAR` | `debian/rules` variable that holds the version (native packages) |
 | `--upstream-url URL` | Upstream tarball; the version is templated as `${{package.version}}` |
 | `--download` | Download the tarball to fill in `expected-sha256` |
-| `--check-wolfi` | Verify mapped dependency names against the Wolfi APKINDEX (uses `pkg-check`) |
+| `--check-wolfi` | Verify mapped dependency names against the Wolfi APKINDEX (uses `pkg-check`); names only published by this repository are labelled `Wolfi Community Packages` |
 | `--strict` | Exit 1 if anything needs manual review (for CI) |
 
 Recommended workflow:
@@ -59,13 +59,17 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | `debian/copyright` (DEP-5) | `package.copyright` with SPDX ids (`GPL-2+` → `GPL-2.0-or-later`, `Expat` → `MIT`, …) and per-path entries |
 | `Depends` / `Pre-Depends` | `dependencies.runtime`, names mapped to Wolfi |
 | `Recommends` | Comment (apk has no recommends) |
-| `Build-Depends{,-Indep,-Arch}` | `environment.contents.packages`, names mapped to Wolfi |
+| `Build-Depends{,-Indep,-Arch}` | `environment.contents.packages`, names mapped to Wolfi (`librust-*-dev` dropped: cargo fetches crates). Names not found are kept with a TODO, never dropped |
 | `dh $@ --buildsystem=…` or detected build files | `cmake/*`, `meson/*`, `autoconf/*`, `py/pip-build-install`, `go/build`, `cargo/build`, plain `make` |
 | `override_dh_auto_configure: dh_auto_configure -- ARGS` | `with: opts: ARGS` on the configure step |
+| `override_dh_auto_build`, `override_dh_auto_install` | `runs` steps with the same commands (`debian/<pkg>/` → `${{targets.destdir}}/`, `debian/<file>` copied next to the recipe, `target/$(DEB_HOST_RUST_TYPE)/` → `target/`); TODO if make or debhelper constructs remain |
+| `export VAR = value` in `rules` | `environment.environment` (`$(CURDIR)` → `/home/build`; `DEB_*`, `PATH`, `CARGO_HOME`, compiler flags skipped) |
+| `Files-Excluded` in `debian/copyright` | `rm -rf` step after `fetch`, so the pristine tarball matches Debian's repack |
 | `debian/watch` (GitHub) | `fetch` URL and `update.github` |
 | `debian/patches/series` | Patches copied next to the recipe + `uses: patch` |
 | Extra binary packages + `*.install` | `subpackages` that move their files from `destdir` |
-| `*.dirs`, `*.links`, `*.docs` | `mkdir`, `ln -s`, `install` |
+| Main package `*.install` when nothing is installed by the build system (cargo, go, overridden `dh_auto_install`) | Copied from the source tree |
+| `*.dirs`, `*.links`, `*.docs`, `*.manpages` | `mkdir`, `ln -s`, `install` |
 | Multiarch paths (`usr/lib/*/`, `$(DEB_HOST_MULTIARCH)`) | `usr/lib/` |
 | `preinst` / `postinst` / `prerm` / `postrm` | `scriptlets` (see below) |
 | `debian/foo.in` + `sed s/#X#/$(VAR)/` in `rules` | Script with `${{package.version}}` / `${{vars.x}}`; `VAR` becomes a melange `vars` entry |
@@ -100,14 +104,18 @@ before installing to change the behaviour non-interactively.
 
 ## Known limitations
 
-- Arbitrary `debian/rules` logic (`override_dh_*` other than configure) is not
-  translated; it is listed as a TODO with the original commands.
+- Other `debian/rules` logic (`override_dh_*` beyond configure, build and
+  install, or recipes that still need make/debhelper) is listed as a TODO with
+  the original commands.
 - Package name mapping is a curated table plus heuristics; use `--check-wolfi`
   to confirm names exist.
 - Non-GitHub `debian/watch` files are not interpreted; pass `--upstream-url`.
 - `dh --with` add-ons are reported, not converted.
-- Debian-repacked tarballs (`+dfsg`) are reported: Debian may have removed
-  files listed in `Files-Excluded`.
+- Debian-repacked tarballs (`+dfsg`/`+ds`) without a `Files-Excluded` field
+  are reported for review.
+- Debian-specific patches (e.g. relaxing crate versions to match Debian's
+  `librust-*` packages) are copied as is; drop the ones that only make sense
+  inside Debian.
 
 ## Tests
 
@@ -122,6 +130,9 @@ output, and an optional `args` file. Cases:
 - `stremio-server-installer` — real Debian contrib package: native, debconf,
   templated `postinst`. Its output is published as
   [`packages/stremio-server-installer.yaml`](../../packages/stremio-server-installer.yaml).
+- `stremio` — real Debian package (1.2.0+ds-1): Rust/cargo, `override_dh_auto_build`
+  and `override_dh_auto_install`, exported variables, `Files-Excluded`,
+  `*.install` and `*.manpages` from the source tree, a wrapper script in `debian/`.
 - `libfoo` — synthetic cmake library: multiple binaries, multiarch paths,
   patches, configure options, DEP-5 per-path licenses, GitHub watch,
   `update-alternatives` in a subpackage `postinst`.

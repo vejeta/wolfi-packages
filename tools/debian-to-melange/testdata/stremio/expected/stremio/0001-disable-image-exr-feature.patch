@@ -1,0 +1,20 @@
+Description: Disable image crate's exr (OpenEXR) feature
+ OpenEXR poster/thumbnail support isn't needed for this application, and
+ pulling it in requires pulp and pulp-wasm-simd-flag, neither of which are
+ packaged in Debian.
+Author: Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+Forwarded: not-needed
+
+diff --git a/Cargo.toml b/Cargo.toml
+index b798d4f..0dd9313 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -31,7 +31,7 @@ serde = "1.0.229"
+ serde_json = "1.0.151"
+ itertools = "0.15.0"
+ libmpv2 = "5.0.3"
+-image = "0.25.10"
++image = { version = "0.25.10", default-features = false, features = ["rayon", "bmp", "dds", "ff", "gif", "hdr", "ico", "jpeg", "png", "pnm", "qoi", "tga", "tiff", "webp"] }
+ chrono = "0.4.45"
+ anyhow = "1.0.104"
+ url = "2.5.8"

@@ -131,6 +131,48 @@ class StremioServerInstallerTest(unittest.TestCase):
         self.assertIn('debian_postinst configure "$2"', self.text)
 
 
+class StremioTest(unittest.TestCase):
+    """Rust/cargo package with debian/rules overrides (stremio 1.2.0+ds-1)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp()
+        convert("stremio", cls.tmp)
+        with open(os.path.join(cls.tmp, "stremio.yaml")) as fh:
+            cls.text = fh.read()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp)
+
+    def test_rust_crates_are_not_build_dependencies(self):
+        self.assertNotIn("librust", self.text)
+
+    def test_build_dependencies_are_kept_even_if_unknown(self):
+        self.assertIn("- libwebkitgtk-6.0-dev", self.text)
+        self.assertIn("- mpv-dev  # Debian: libmpv-dev", self.text)
+
+    def test_overrides_are_ported(self):
+        self.assertIn("cargo build --release --features offline-build", self.text)
+        self.assertIn("install -D -m755 target/release/stremio-linux-shell "
+                      "${{targets.destdir}}/usr/libexec/stremio/stremio-bin", self.text)
+        self.assertIn("stremio/stremio-wrapper ${{targets.destdir}}/usr/bin/stremio", self.text)
+        self.assertNotIn("dh-cargo-built-using", self.text)
+        self.assertTrue(os.path.isfile(os.path.join(self.tmp, "stremio", "stremio-wrapper")))
+
+    def test_exports_become_environment(self):
+        self.assertIn("RUSTFLAGS: --remap-path-prefix=/home/build=.", self.text)
+        self.assertNotIn("CARGO_HOME", self.text)
+
+    def test_files_excluded_and_install_files(self):
+        self.assertIn("rm -rf data/server.js", self.text)
+        self.assertIn('cp -a data/com.stremio.Stremio.desktop "${{targets.destdir}}/usr/share/applications/"', self.text)
+        self.assertIn('install -Dm644 data/stremio.1 -t "${{targets.destdir}}/usr/share/man/man1"', self.text)
+
+    def test_patches_live_in_package_directory(self):
+        self.assertIn("patches: stremio/0001-disable-image-exr-feature.patch", self.text)
+
+
 class HelperTest(unittest.TestCase):
 
     def test_parse_relations(self):
@@ -150,6 +192,8 @@ class HelperTest(unittest.TestCase):
 
     def test_dep_candidates(self):
         self.assertEqual(d2m.dep_candidates("zlib1g-dev"), ["zlib-dev"])
+        self.assertIn("gtk-4-dev", d2m.dep_candidates("libgtk-4-dev"))
+        self.assertIn("webkitgtk-6.0-dev", d2m.dep_candidates("libwebkitgtk-6.0-dev"))
         self.assertEqual(d2m.dep_candidates("python3-requests")[0], "py3-requests")
         self.assertIn("libass-dev", d2m.dep_candidates("libass-dev"))
         self.assertIn("libfoo-dev", d2m.dep_candidates("libfoo2-dev"))
