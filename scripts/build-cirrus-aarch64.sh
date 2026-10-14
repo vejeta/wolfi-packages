@@ -99,7 +99,6 @@ PACKAGES=(
     "mpv"
 
     # Stage 8: Qt5 base
-    "qt5-qtbase"
 
     # Stage 9: Qt5 declarative components
     "qt5-qtdeclarative"

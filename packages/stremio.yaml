@@ -1,7 +1,7 @@
 package:
   name: stremio
   version: 4.4.169
-  epoch: 0
+  epoch: 1
   description: Modern media center for online video content
   copyright:
   - license: GPL-3.0-or-later
@@ -35,7 +35,7 @@ environment:
     - mpv-dev
     - nodejs
     - npm
-    - openssl-dev
+    - openssl-3.6-dev
     - pkgconf
     - qt5-qtbase-dev
     - qt5-qtdeclarative-dev

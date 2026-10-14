@@ -2,7 +2,7 @@
 
 **Community-maintained packages for Wolfi OS**
 
-[![Packages](https://img.shields.io/badge/packages-21-brightgreen)](#available-packages)
+[![Packages](https://img.shields.io/badge/packages-20-brightgreen)](#available-packages)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
 [![SourceForge](https://img.shields.io/badge/Download-SourceForge-orange)](https://sourceforge.net/projects/wolfi/)
@@ -38,7 +38,6 @@ SourceForge.
 | libxpresent | 1.0.2 | X11 Present extension library | MIT |
 | mpv | 0.40.0 | Free, open source, and cross-platform media player | GPL-2.0-or-later AND LGPL-2.1-or-later |
 | mujs | 1.3.7 | Lightweight JavaScript interpreter | ISC |
-| qt5-qtbase | 5.15.17 | Qt5 - QtBase components | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
 | qt5-qtdeclarative | 5.15.17 | Qt5 - QtDeclarative (QML/QtQuick) components | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
 | qt5-qtquickcontrols | 5.15.17 | Qt5 - QtQuick Controls 1 components | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
 | qt5-qtquickcontrols2 | 5.15.17 | Qt5 - QtQuick Controls 2 components | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
@@ -150,9 +149,10 @@ Packages are retired when an official or better-suited alternative exists.
 | libxcb | 2026-10 | Available in official Wolfi (`1.17.0-r11; all xcb libraries in one package`, newer version) |
 | vulkan-loader | 2026-10 | Available in official Wolfi (`1.4.365`, newer version) |
 | zlib | 2026-10 | Available in official Wolfi (`1.3.2`, newer version) |
+| qt5-qtbase | 2026-10 | Available in official Wolfi (`5.15.19`, newer version); the Qt5 modules here now build against it |
 
-Already-published APKs of retired packages remain on SourceForge until the
-next repository cleanup.
+Retired packages are listed in [`packages/RETIRED`](packages/RETIRED); every publish
+removes them, and their subpackages, from the repository index.
 
 ## Contributing
 

@@ -1,7 +1,7 @@
 package:
   name: qt5-qtwebengine
   version: 5.15.17
-  epoch: 0
+  epoch: 1
   description: Qt5 - QtWebEngine (Chromium-based web rendering)
   copyright:
   - license: LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0
@@ -23,7 +23,10 @@ environment:
     - build-base
     - busybox
     - ca-certificates-bundle
-    - cups-dev
+    # Wolfi is migrating to OpenSSL 4.0: cups-dev >= 2.4.19-r4 needs openssl-4.0-dev
+    # while qt5-qtbase-dev (5.15.19-r3) still needs openssl-3.6-dev. Drop this pin
+    # once qt5-qtbase-dev moves to OpenSSL 4.0.
+    - cups-dev=2.4.19-r3
     - dbus-dev
     - flex
     - fontconfig-dev
@@ -56,7 +59,7 @@ environment:
     - mesa-dev
     - ninja
     - nodejs-20
-    - openssl-dev
+    - openssl-3.6-dev
     - opus-dev
     - pciutils-dev
     - pciutils-libs

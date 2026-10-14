@@ -235,6 +235,10 @@ jobs:
             # Will regenerate fresh APKINDEX with all packages in next step
           done
 
+          # Drop packages retired from this repository (packages/RETIRED),
+          # including their subpackages, so they leave the APKINDEX
+          python3 scripts/remove-retired.py packages/RETIRED repo/x86_64 repo/aarch64
+
           # Copy permanent signing public key from local file
           # Extract public key from GitHub Secrets (convert PKCS#8 to PKCS#1 first)
           echo "${{ secrets.APK_SIGNING_KEY }}" > /tmp/melange-pkcs8.rsa
