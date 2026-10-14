@@ -169,8 +169,48 @@ class StremioTest(unittest.TestCase):
         self.assertIn('cp -a data/com.stremio.Stremio.desktop "${{targets.destdir}}/usr/share/applications/"', self.text)
         self.assertIn('install -Dm644 data/stremio.1 -t "${{targets.destdir}}/usr/share/man/man1"', self.text)
 
+    def test_github_watch_becomes_git_checkout(self):
+        self.assertIn("uses: git-checkout", self.text)
+        self.assertIn("repository: https://github.com/Stremio/stremio-linux-shell", self.text)
+        self.assertIn("tag: v${{package.version}}", self.text)
+        self.assertIn("TODO(debian-to-melange): set expected-commit", self.text)
+
     def test_patches_live_in_package_directory(self):
         self.assertIn("patches: stremio/0001-disable-image-exr-feature.patch", self.text)
+
+
+class AutopkgtestTest(unittest.TestCase):
+
+    def test_autopkgtests_become_test_steps(self):
+        out = tempfile.mkdtemp()
+        try:
+            convert("libfoo", out)
+            with open(os.path.join(out, "libfoo.yaml")) as fh:
+                text = fh.read()
+        finally:
+            shutil.rmtree(out)
+        test = text.split("\ntest:", 1)[1]
+        self.assertIn("name: 'autopkgtest: foo-tool --version'", test)
+        self.assertIn("name: 'autopkgtest: link-test'", test)
+        self.assertIn('export AUTOPKGTEST_TMP="$(mktemp -d)"', test)
+        self.assertIn("- libfoo-dev", test)
+        self.assertIn("- build-base  # Debian: build-essential", test)
+        self.assertNotIn("#!/bin/sh", test)
+
+
+class BuildOptionTest(unittest.TestCase):
+
+    def test_build_reports_a_missing_melange(self):
+        out = tempfile.mkdtemp()
+        try:
+            argv = ["--debian-dir", os.path.join(TESTDATA, "libfoo", "debian"), "--out", out,
+                    "--build", "--melange", "/nonexistent/melange"] + case_args("libfoo")
+            with redirect_stderr(io.StringIO()) as err:
+                rc = d2m.main(argv)
+        finally:
+            shutil.rmtree(out)
+        self.assertEqual(rc, 3)
+        self.assertIn("melange build: FAILED", err.getvalue())
 
 
 class HelperTest(unittest.TestCase):

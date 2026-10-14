@@ -566,6 +566,16 @@ class Converter:
             if url.startswith(("git+", "git://")) or url.endswith(".git"):
                 pipeline.append(self.todo("git source not converted: " + url))
                 continue
+            gh = re.match(r"^https://github\.com/([^/]+)/([^/]+)/archive/(?:refs/tags/)?(.+?)\.tar\.gz$", url)
+            if idx == 0 and gh and gh.group(3).endswith(version):
+                # Wolfi pins GitHub sources with git-checkout + expected-commit.
+                prefix = gh.group(3)[:-len(version)]
+                steps, notes = d2m.git_checkout_step(gh.group(1), gh.group(2), version, prefix,
+                                                     resolve=getattr(a, "download", False), todo=TODO)
+                self.notes += notes
+                pipeline += steps
+                main_url = template_version(url, apk, transforms)
+                continue
             step = {"uses": "fetch", "with": {"uri": template_version(url, apk, transforms)}}
             if fname in sums:
                 step["with"]["expected-sha512"] = sums[fname]
@@ -807,6 +817,12 @@ def main(argv=None):
     p.add_argument("--check-wolfi", action="store_true",
                    help="verify dependency names against the Wolfi APKINDEX")
     p.add_argument("--strict", action="store_true", help="exit 1 if anything needs manual review")
+    p.add_argument("--download", action="store_true",
+                   help="allow network lookups to pin sources (git ls-remote for GitHub tags)")
+    p.add_argument("--build", action="store_true",
+                   help="build the generated recipe with melange (bubblewrap runner) and report the result")
+    p.add_argument("--melange", default="melange", help="melange binary for --build (default: melange)")
+    p.add_argument("--melange-opts", default="", help="extra options for melange build (e.g. \"--cache-dir DIR\")")
     p.add_argument("-V", "--tool-version", action="version", version="%(prog)s " + __version__)
     args = p.parse_args(argv)
     args.aports_path = None
@@ -827,6 +843,9 @@ def main(argv=None):
     text = d2m.write_output(name, recipe, header, conv.aux, args.out, args.stdout)
     for n in conv.notes:
         print("note: " + n, file=sys.stderr)
+    built = d2m.report_build(args, name)
+    if built:
+        return built
     return 1 if args.strict and TODO in text else 0
 
 

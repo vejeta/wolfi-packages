@@ -39,6 +39,8 @@ used by every other recipe in this repository.
 | `--download` | Download the tarball to fill in `expected-sha256` |
 | `--check-wolfi` | Verify mapped dependency names against the Wolfi APKINDEX (uses `pkg-check`); names only published by this repository are labelled `Wolfi Community Packages` |
 | `--strict` | Exit 1 if anything needs manual review (for CI) |
+| `--build` | Build the generated recipe with melange (bubblewrap runner, this repository's pipelines) and report the result; exit 3 if it fails |
+| `--melange PATH`, `--melange-opts "..."` | melange binary and extra `melange build` options for `--build` (e.g. `--cache-dir`) |
 
 Recommended workflow:
 
@@ -65,7 +67,8 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | `override_dh_auto_build`, `override_dh_auto_install` | `runs` steps with the same commands (`debian/<pkg>/` → `${{targets.destdir}}/`, `debian/<file>` copied next to the recipe, `target/$(DEB_HOST_RUST_TYPE)/` → `target/`); TODO if make or debhelper constructs remain |
 | `export VAR = value` in `rules` | `environment.environment` (`$(CURDIR)` → `/home/build`; `DEB_*`, `PATH`, `CARGO_HOME`, compiler flags skipped) |
 | `Files-Excluded` in `debian/copyright` | `rm -rf` step after `fetch`, so the pristine tarball matches Debian's repack |
-| `debian/watch` (GitHub) | `fetch` URL and `update.github` |
+| `debian/watch` (GitHub) | `git-checkout` with `tag` and `expected-commit` (resolved with `git ls-remote` when `--download` is given), and `update.github` |
+| `debian/tests/control` (autopkgtest) | `test:` steps: `Test-Command` and `Tests` scripts (inlined, run in `$AUTOPKGTEST_TMP`); `Depends` mapped to Wolfi names |
 | `debian/patches/series` | Patches copied next to the recipe + `uses: patch` |
 | Extra binary packages + `*.install` | `subpackages` that move their files from `destdir` |
 | Main package `*.install` when nothing is installed by the build system (cargo, go, overridden `dh_auto_install`) | Copied from the source tree |

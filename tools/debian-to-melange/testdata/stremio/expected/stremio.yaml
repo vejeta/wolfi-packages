@@ -3,8 +3,7 @@
 # Debian packaging: https://salsa.debian.org/mendezr/stremio
 #
 # Conversion notes:
-# - upstream URL guessed from debian/watch (GitHub); verify the tag format
-# - compute expected-sha256 (re-run with --download)
+# - set expected-commit for tag v1.2.0 (re-run with --download, or git ls-remote)
 package:
   name: stremio
   version: '1.2.0'
@@ -43,11 +42,12 @@ environment:
     RUSTFLAGS: --remap-path-prefix=/home/build=.
     XDG_DATA_HOME: /home/build/debian/xdg_data_home
 pipeline:
-  # TODO(debian-to-melange): compute expected-sha256 (re-run with --download)
-  - uses: fetch
+  # TODO(debian-to-melange): set expected-commit for tag v1.2.0 (re-run with --download, or git ls-remote)
+  - uses: git-checkout
     with:
-      uri: https://github.com/Stremio/stremio-linux-shell/archive/refs/tags/v${{package.version}}.tar.gz
-      expected-sha256: '0000000000000000000000000000000000000000000000000000000000000000'
+      repository: https://github.com/Stremio/stremio-linux-shell
+      tag: v${{package.version}}
+      expected-commit: '0000000000000000000000000000000000000000'
   - name: Remove files excluded by Debian (debian/copyright Files-Excluded)
     runs: |
       rm -rf data/server.js

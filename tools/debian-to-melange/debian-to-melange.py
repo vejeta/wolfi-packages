@@ -24,6 +24,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -1085,8 +1086,12 @@ class Converter:
             watch = self.read("watch") or ""
             m = re.search(r"https?://github\.com/([^/\s]+)/([^/\s]+?)(?:\.git)?/(?:tags|releases)", watch)
             if m:
-                url = "https://github.com/{}/{}/archive/refs/tags/v${{{{package.version}}}}.tar.gz".format(m.group(1), m.group(2))
-                self.notes.append("upstream URL guessed from debian/watch (GitHub); verify the tag format")
+                # Wolfi pins GitHub sources with git-checkout + expected-commit.
+                steps, notes = git_checkout_step(m.group(1), m.group(2), version, resolve=self.args.download)
+                self.notes += notes
+                if not notes:
+                    self.notes.append("upstream from debian/watch (GitHub), pinned to the tag's commit")
+                return steps
         if not url:
             return [self.todo("set the upstream tarball URL (see debian/watch or {})".format(source.get("homepage", "Homepage"))),
                     {"uses": "fetch", "with": {"uri": "https://example.invalid/${{package.name}}-${{package.version}}.tar.gz",
@@ -1204,6 +1209,40 @@ class Converter:
         return {"enabled": True,
                 "release-monitor": {"identifier": C(0, "{}: set the release-monitoring.org project id".format(TODO))}}
 
+    def autopkgtests(self, name):
+        """debian/tests/control -> melange test pipeline steps and packages."""
+        control = self.read("tests/control")
+        if not control:
+            return [], []
+        steps, packages = [], []
+        for i, para in enumerate(parse_deb822(control)):
+            restrictions = para.get("restrictions", "").replace(",", " ").split()
+            for r in restrictions:
+                if r in ("isolation-machine", "breaks-testbed", "needs-reboot"):
+                    self.notes.append("autopkgtest restriction '{}' cannot be honoured by melange test".format(r))
+            deps = [d for d in parse_relations(para.get("depends", "@")) if d[0] not in ("@", "@builddeps@")]
+            for d in self.map_deps(deps, "test"):
+                if d not in packages:
+                    packages.append(d)
+            if "@builddeps@" in para.get("depends", ""):
+                self.notes.append("autopkgtest uses @builddeps@; add the build dependencies to the test environment")
+            env = 'export AUTOPKGTEST_TMP="$(mktemp -d)"\n'
+            if "test-command" in para:
+                steps.append({"name": "autopkgtest: {}".format(para["test-command"].split("\n")[0][:60]),
+                              "runs": env + para["test-command"].strip() + "\n"})
+            for test in para.get("tests", "").split():
+                script = self.read(os.path.join(para.get("tests-directory", "tests"), test))
+                if script is None:
+                    continue
+                shell = "bash" if script.startswith("#!/bin/bash") or script.startswith("#!/usr/bin/env bash") else "sh"
+                if shell == "bash" and "bash" not in packages:
+                    packages.append("bash")
+                steps.append({"name": "autopkgtest: " + test,
+                              "runs": env + 'cd "$AUTOPKGTEST_TMP"\n' + script.split("\n", 1)[1 if script.startswith("#!") else 0].strip() + "\n"})
+        if steps:
+            self.notes.append("autopkgtests converted to the test pipeline ({} steps)".format(len(steps)))
+        return steps, packages
+
     def test_section(self, binary, name, conffile, main=True):
         cmds = []
         inst = self.pkgfile(binary["package"], "install", main) or ""
@@ -1218,8 +1257,89 @@ class Converter:
             cmds.append("test -f /usr/share/doc/{}/copyright".format(name))
         if conffile:
             cmds.append("test -f {}".format(conffile))
-        return {"environment": {"contents": {"packages": ["busybox"]}},
+        test = {"environment": {"contents": {"packages": ["busybox"]}},
                 "pipeline": [{"runs": "\n".join(cmds) + "\n"}]}
+        if main:
+            steps, packages = self.autopkgtests(name)
+            test["environment"]["contents"]["packages"] += [p for p in packages if p != "busybox"]
+            test["pipeline"] += steps
+        return test
+
+
+def resolve_github_tag(owner, repo, version, prefixes=("v", "")):
+    """Return (tag, commit) for the first existing tag, or (None, None)."""
+    for prefix in prefixes:
+        tag = prefix + version
+        try:
+            out = subprocess.run(
+                ["git", "ls-remote", "https://github.com/{}/{}".format(owner, repo),
+                 "refs/tags/{0}".format(tag), "refs/tags/{0}^{{}}".format(tag)],
+                capture_output=True, text=True, timeout=60).stdout
+        except (OSError, subprocess.TimeoutExpired):
+            return None, None
+        refs = dict(reversed(line.split("\t")) for line in out.splitlines() if "\t" in line)
+        commit = refs.get("refs/tags/{}^{{}}".format(tag)) or refs.get("refs/tags/" + tag)
+        if commit:
+            return tag, commit
+    return None, None
+
+
+def git_checkout_step(owner, repo, version, tag_prefix=None, resolve=False, todo=None):
+    """A git-checkout step pinned to a commit, the Wolfi convention for GitHub.
+
+    Returns (steps, notes)."""
+    prefixes = (tag_prefix,) if tag_prefix is not None else ("v", "")
+    tag, commit = resolve_github_tag(owner, repo, version, prefixes) if resolve else (None, None)
+    prefix = tag[:-len(version)] if tag else prefixes[0]
+    step = {"uses": "git-checkout", "with": {
+        "repository": "https://github.com/{}/{}".format(owner, repo),
+        "tag": prefix + "${{package.version}}",
+        "expected-commit": commit or "0" * 40}}
+    if commit:
+        return [step], []
+    msg = "set expected-commit for tag {}{} (re-run with --download, or git ls-remote)".format(prefix, version)
+    return [Comment("{}: {}".format(todo or TODO, msg)), step], [msg]
+
+
+def verify_build(recipe_path, source_dir, melange="melange", arch=None, keep=False, extra=()):
+    """Build a generated recipe with melange; return (ok, log_tail)."""
+    import platform
+    arch = arch or {"aarch64": "aarch64", "arm64": "aarch64"}.get(platform.machine(), "x86_64")
+    work = tempfile.mkdtemp(prefix="melange-verify-")
+    key = os.path.join(work, "verify.rsa")
+    cmd_key = [melange, "keygen", key]
+    cmd = [melange, "build", recipe_path, "--arch", arch, "--runner", "bubblewrap",
+           "--source-dir", source_dir, "--out-dir", os.path.join(work, "out"),
+           "--signing-key", key, "--keyring-append", key + ".pub",
+           "--repository-append", "https://packages.wolfi.dev/os",
+           "--keyring-append", "https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"]
+    pipelines = os.path.join(HERE, "..", "..", "pipelines")  # this repository's shared pipelines
+    if os.path.isdir(pipelines):
+        cmd += ["--pipeline-dir", os.path.abspath(pipelines)]
+    cmd += list(extra)
+    try:
+        subprocess.run(cmd_key, capture_output=True, check=True)
+        res = subprocess.run(cmd, capture_output=True, text=True)
+    except (OSError, subprocess.CalledProcessError) as exc:
+        return False, "cannot run melange: {}".format(exc)
+    finally:
+        if not keep:
+            shutil.rmtree(work, ignore_errors=True)
+    tail = "\n".join((res.stdout + res.stderr).splitlines()[-25:])
+    return res.returncode == 0, tail
+
+
+def report_build(args, name):
+    """--build: verify the recipe that was just written. Returns an exit code."""
+    if not getattr(args, "build", False) or args.stdout:
+        return 0
+    import shlex
+    ok, tail = verify_build(os.path.join(args.out, name + ".yaml"), args.out, args.melange,
+                            extra=shlex.split(getattr(args, "melange_opts", "") or ""))
+    print("melange build: {}".format("OK" if ok else "FAILED"), file=sys.stderr)
+    if not ok:
+        print(tail, file=sys.stderr)
+    return 0 if ok else 3
 
 
 def write_output(name, recipe, header, aux, out, to_stdout):
@@ -1261,6 +1381,10 @@ def main(argv=None):
     p.add_argument("--check-wolfi", action="store_true",
                    help="verify mapped dependency names against the Wolfi APKINDEX")
     p.add_argument("--strict", action="store_true", help="exit 1 if anything needs manual review")
+    p.add_argument("--build", action="store_true",
+                   help="build the generated recipe with melange (bubblewrap runner) and report the result")
+    p.add_argument("--melange", default="melange", help="melange binary for --build (default: melange)")
+    p.add_argument("--melange-opts", default="", help="extra options for melange build (e.g. \"--cache-dir DIR\")")
     p.add_argument("-V", "--tool-version", action="version", version="%(prog)s " + __version__)
     args = p.parse_args(argv)
 
@@ -1278,6 +1402,9 @@ def main(argv=None):
         text = write_output(name, recipe, header, conv.aux, args.out, args.stdout)
         for n in conv.notes:
             print("note: " + n, file=sys.stderr)
+        built = report_build(args, name)
+        if built:
+            return built
         return 1 if args.strict and TODO in text else 0
     except urllib.error.URLError as exc:
         print("error: network: {}".format(exc), file=sys.stderr)

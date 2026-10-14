@@ -31,6 +31,9 @@ Output: `packages/<name>.yaml` plus `packages/<name>/` with local sources
 | `--with-check` | Run `check()` as part of the build |
 | `--check-wolfi` | Verify dependency names against the Wolfi APKINDEX |
 | `--strict` | Exit 1 if any `TODO(alpine-to-melange)` remains |
+| `--download` | Allow network lookups to pin sources (`git ls-remote` for GitHub tags) |
+| `--build` | Build the generated recipe with melange (bubblewrap runner, this repository's pipelines) and report the result; exit 3 if it fails |
+| `--melange PATH`, `--melange-opts "..."` | melange binary and extra `melange build` options for `--build` (e.g. `--cache-dir`) |
 
 ## Approach
 
@@ -69,6 +72,7 @@ would have provided, only for what the body actually uses:
 | `-dev`, `-doc`, `-static`, `-libs`, `-lang`, `-*-completion` | `split/dev` (+ `depends_dev`, `test/pkgconf`), `split/alldocs`, `split/static`, `split/lib`, `split/locales`, `amove` |
 | `name:func` subpackages | The function body (with `amove`), its `pkgdesc` and `depends` |
 | `-openrc`, `-pyc`, `-dbg` | Skipped, with a note |
+| GitHub `archive/` tarball | `git-checkout` with `tag` and `expected-commit` (resolved with `--download`) |
 | GitHub source URL | `update.github` (tag prefix detected); otherwise `release-monitor` TODO |
 | abuild's automatic steps after `package()` | Remove `*.la` (unless `options=libtool`) and `uses: strip` (unless `options=!strip`) |
 | `--name NEW` | Renames the package and its `$pkgname-*` subpackages |

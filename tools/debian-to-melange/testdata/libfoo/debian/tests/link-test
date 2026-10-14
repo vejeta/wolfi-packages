@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+cat > "$AUTOPKGTEST_TMP/t.c" <<EOC
+#include <foo.h>
+int main(void) { return foo_init(); }
+EOC
+cc -o "$AUTOPKGTEST_TMP/t" "$AUTOPKGTEST_TMP/t.c" $(pkgconf --cflags --libs foo)
+"$AUTOPKGTEST_TMP/t"

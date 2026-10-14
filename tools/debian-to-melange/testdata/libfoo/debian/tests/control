@@ -1,0 +1,7 @@
+Test-Command: foo-tool --version
+Depends: foo-tools
+Restrictions: superficial
+
+Tests: link-test
+Depends: @, libfoo-dev, build-essential, pkgconf
+Restrictions: allow-stderr

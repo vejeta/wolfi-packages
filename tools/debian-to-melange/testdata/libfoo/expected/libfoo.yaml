@@ -3,10 +3,10 @@
 #
 # Conversion notes:
 # - Debian repacks the upstream tarball (1:2.3.4+dfsg-2); check debian/copyright Files-Excluded before using the pristine upstream source
-# - upstream URL guessed from debian/watch (GitHub); verify the tag format
-# - compute expected-sha256 (re-run with --download)
+# - set expected-commit for tag v2.3.4 (re-run with --download, or git ls-remote)
 # - port debian/rules override_dh_install: dh_install && rm -f debian/tmp/usr/lib/*/libfoo.la
 # - foo-tools.postinst: uses Debian-only tool 'update-alternatives'
+# - autopkgtests converted to the test pipeline (2 steps)
 package:
   name: libfoo
   version: '2.3.4'
@@ -35,11 +35,12 @@ environment:
       - openssl-dev  # Debian: libssl-dev
       - py3-sphinx  # Debian: python3-sphinx
 pipeline:
-  # TODO(debian-to-melange): compute expected-sha256 (re-run with --download)
-  - uses: fetch
+  # TODO(debian-to-melange): set expected-commit for tag v2.3.4 (re-run with --download, or git ls-remote)
+  - uses: git-checkout
     with:
-      uri: https://github.com/example/libfoo/archive/refs/tags/v${{package.version}}.tar.gz
-      expected-sha256: '0000000000000000000000000000000000000000000000000000000000000000'
+      repository: https://github.com/example/libfoo
+      tag: v${{package.version}}
+      expected-commit: '0000000000000000000000000000000000000000'
   - uses: patch
     with:
       patches: libfoo/0001-fix-build.patch libfoo/0002-gcc15.patch
@@ -121,6 +122,25 @@ test:
     contents:
       packages:
         - busybox
+        - foo-tools
+        - libfoo-dev
+        - build-base  # Debian: build-essential
+        - pkgconf-dev  # Debian: pkgconf
   pipeline:
     - runs: |
         test -f /usr/share/doc/libfoo/copyright
+    - name: 'autopkgtest: foo-tool --version'
+      runs: |
+        export AUTOPKGTEST_TMP="$(mktemp -d)"
+        foo-tool --version
+    - name: 'autopkgtest: link-test'
+      runs: |
+        export AUTOPKGTEST_TMP="$(mktemp -d)"
+        cd "$AUTOPKGTEST_TMP"
+        set -e
+        cat > "$AUTOPKGTEST_TMP/t.c" <<EOC
+        #include <foo.h>
+        int main(void) { return foo_init(); }
+        EOC
+        cc -o "$AUTOPKGTEST_TMP/t" "$AUTOPKGTEST_TMP/t.c" $(pkgconf --cflags --libs foo)
+        "$AUTOPKGTEST_TMP/t"

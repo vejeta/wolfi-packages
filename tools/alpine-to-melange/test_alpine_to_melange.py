@@ -118,6 +118,12 @@ class RealAportsTest(unittest.TestCase):
         self.assertIn("_sover=${_sover%%.*}\n", text)
         self.assertNotIn("local ver3", text)
 
+    def test_github_archive_becomes_git_checkout(self):
+        text = recipe_text("zimg")
+        self.assertIn("uses: git-checkout", text)
+        self.assertIn("tag: release-${{package.version}}", text)
+        self.assertIn("TODO(alpine-to-melange): set expected-commit", text)
+
     def test_secondary_source_goes_to_srcdir(self):
         text = recipe_text("zimg")
         self.assertIn("directory: _srcdir", text)
