@@ -5,9 +5,7 @@
 # subpackages disappear from the repository. See "Retired packages" in
 # README.md for the reasons.
 libass
-# libvpx: kept in the index until qt5-qtwebengine >= 5.15.17-r1 (built
-# against Wolfi's libvpx) is published; the published 5.15.17-r0 needs
-# so:libvpx.so.11, which only this repository's libvpx 1.15.2 provides.
+libvpx
 libxcb
 qt5-qtbase
 stremio-server
