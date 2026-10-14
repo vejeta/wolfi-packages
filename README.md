@@ -189,7 +189,7 @@ instructions and review process.
 | Tool | Status | Purpose |
 |------|--------|---------|
 | [`pkg-check`](tools/pkg-check/) | Initial version | Check whether a package already exists in Debian, Alpine or Wolfi before packaging it |
-| `alpine-to-melange` | Planned | Convert an `APKBUILD` to a melange YAML (building on `melange convert apkbuild` where possible) |
+| [`alpine-to-melange`](tools/alpine-to-melange/) | Initial version | Convert an Alpine `APKBUILD` to a melange recipe (replaces the removed `melange convert apkbuild`) |
 | [`debian-to-melange`](tools/debian-to-melange/) | Initial version | Convert Debian packaging (`control`, `rules`, `copyright`, patches, maintainer scripts, debconf) to a melange recipe |
 | `melange-to-debian` | Planned | Generate a `debian/` directory from a melange YAML |
 | `melange-to-alpine` | Planned | Generate an `APKBUILD` from a melange YAML |

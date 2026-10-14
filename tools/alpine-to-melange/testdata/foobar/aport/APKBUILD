@@ -1,0 +1,47 @@
+# Synthetic test fixture for alpine-to-melange.
+pkgname=foobar
+pkgver=2.1.0_rc3
+pkgrel=1
+_pkgver=${pkgver/_rc/-rc}
+_major=${pkgver%%.*}
+pkgdesc="frobnicating daemon"
+url="https://github.com/example/foobar"
+arch="x86_64 aarch64 ppc64le"
+license="GPL-2.0-or-later AND MIT"
+depends="bash ca-certificates-bundle"
+makedepends="cmake samurai musl-dev linux-headers argp-standalone"
+install="$pkgname.pre-install $pkgname.post-install"
+subpackages="$pkgname-doc $pkgname-openrc $pkgname-tools:_tools $pkgname-bash-completion"
+source="foobar-$_pkgver.tar.gz::https://github.com/example/foobar/archive/refs/tags/v$_pkgver.tar.gz
+	0001-fix-musl.patch
+	foobar.initd
+	foobar.conf
+	"
+builddir="$srcdir/foobar-$_pkgver"
+options="net"
+
+build() {
+	cmake -B build -G Ninja \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DFOOBAR_MAJOR=$_major
+	cmake --build build -j $JOBS
+}
+
+package() {
+	DESTDIR="$pkgdir" cmake --install build
+	install -Dm644 "$srcdir"/foobar.conf "$pkgdir"/etc/foobar.conf
+	install -Dm755 "$srcdir"/foobar.initd "$pkgdir"/etc/init.d/foobar
+}
+
+_tools() {
+	pkgdesc="$pkgdesc (command line tools)"
+	depends="$pkgname=$pkgver-r$pkgrel"
+	amove usr/bin/foobar-*
+}
+
+sha512sums="
+1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111  foobar-2.1.0-rc3.tar.gz
+2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222  0001-fix-musl.patch
+3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333  foobar.initd
+4444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444  foobar.conf
+"

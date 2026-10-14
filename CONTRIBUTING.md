@@ -14,7 +14,9 @@ python3 tools/pkg-check/pkg-check.py --target debian --package <name>
 ```
 
 - **Exists in Wolfi** → it does not belong here; use or improve the official package.
-- **Exists in Alpine** → the `APKBUILD` is a good starting point for your recipe.
+- **Exists in Alpine** → generate a first recipe with
+  `tools/alpine-to-melange/alpine-to-melange.py --from-alpine <name> --check-wolfi`
+  and review every `TODO(alpine-to-melange)` it leaves.
 - **Exists in Debian** → generate a first recipe with
   `tools/debian-to-melange/debian-to-melange.py --from-debian <name> --check-wolfi`
   and review every `TODO(debian-to-melange)` it leaves.

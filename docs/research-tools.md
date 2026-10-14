@@ -11,7 +11,7 @@ Survey of existing tooling to convert between Alpine (`APKBUILD`), Debian
 
 | Direction | Exists? | Where | Gap we can cover |
 |-----------|---------|-------|------------------|
-| Alpine → melange | No (removed) | `melange convert apkbuild` existed in older releases; not present in melange v0.62.1 | Robust converter: patches, subpackages, `checkdepends`, `_` variables, local APKBUILD files |
+| Alpine → melange | **Implemented here** (upstream removed) | [`tools/alpine-to-melange`](../tools/alpine-to-melange/); `melange convert apkbuild` is not in melange v0.62.1 | Robust converter: patches, subpackages, `checkdepends`, `_` variables, local APKBUILD files |
 | Debian → melange | **Implemented here** | [`tools/debian-to-melange`](../tools/debian-to-melange/) | Done (v0.1); extend mapping table and watch support |
 | melange → Debian | No | — | Full tool (generate `debian/` skeleton) |
 | melange → Alpine | No | — | Full tool (generate `APKBUILD`) |
@@ -81,8 +81,8 @@ Survey of existing tooling to convert between Alpine (`APKBUILD`), Debian
 ## Gaps this project can cover (priority order)
 
 1. **pkg-check** — cheap, immediately useful, prevents duplicated work.
-2. **alpine-to-melange** — highest demand; nothing upstream to wrap any more,
-   so it can reuse the emitter, name mapping and test harness of `debian-to-melange`.
+2. ~~**alpine-to-melange**~~ — done (v0.1), reusing the emitter, Wolfi lookup
+   and test harness of `debian-to-melange`.
 3. **debian-to-melange** — no existing solution; covers `dh`-based packages.
 4. **melange-to-debian** / **melange-to-alpine** — upstreaming helpers.
 
