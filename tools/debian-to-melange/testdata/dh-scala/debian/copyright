@@ -1,0 +1,54 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: dh-scala
+
+Files: *
+Copyright: 2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: GPL-3+
+
+Files:
+ lib/Debian/DhScala/Make/Copyright.pm
+ t/lib.pl
+ t/make-copyright.t
+ t/make-package.t
+ t/make.expected/debian/copyright
+Copyright: 2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: GPL-3+
+Comment: These files are not under the Apache-2.0, BSD-3-clause or EPL-1.0
+ licences that licensecheck finds in them. Copyright.pm holds the Apache-2.0
+ header text that dh-make-scala writes into the debian/copyright of the
+ packages it generates. t/lib.pl builds a fictional upstream project for the
+ tests, with the holder "Example Corp." and an Apache-2.0 header;
+ t/make.expected/debian/copyright is the debian/copyright expected for that
+ project, and t/make-package.t checks it. t/make-copyright.t builds a
+ fictional project with a BSD-3-clause LICENSE and checks the licence names
+ and paragraphs dh-make-scala writes.
+
+Files: .perltidyrc
+Copyright: 2021-2025 Russ Allbery <eagle@eyrie.org>
+ 2012-2013 The Board of Trustees of the Leland Stanford Junior University
+License: FSFAP
+Comment: From rra-c-util (https://www.eyrie.org/~eagle/software/rra-c-util/),
+ as used by dh-golang.
+
+License: GPL-3+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU General Public
+ License version 3 can be found in "/usr/share/common-licenses/GPL-3".
+
+License: FSFAP
+ Copying and distribution of this file, with or without modification, are
+ permitted in any medium without royalty provided the copyright notice and
+ this notice are preserved.  This file is offered as-is, without any
+ warranty.

@@ -1,0 +1,46 @@
+Description: scaladoc: take jQuery from libjs-jquery
+ Upstream's sbt build extracts jquery.min.js from an org.webjars jar and
+ scaladoc checks it against a pinned Subresource Integrity hash. Debian has
+ no webjars; it ships the same jQuery version (3.7.1) in libjs-jquery, with
+ a minified file rebuilt in Debian, so the upstream hash cannot match. Read
+ it from /usr/share/javascript/jquery/ and drop the check.
+Author: Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+Forwarded: not-needed
+Last-Update: 2026-10-02
+diff --git a/src/scaladoc/scala/tools/nsc/doc/html/HtmlFactory.scala b/src/scaladoc/scala/tools/nsc/doc/html/HtmlFactory.scala
+index a3a31bf..d7d7379 100644
+--- a/src/scaladoc/scala/tools/nsc/doc/html/HtmlFactory.scala
++++ b/src/scaladoc/scala/tools/nsc/doc/html/HtmlFactory.scala
+@@ -117,28 +117,14 @@ class HtmlFactory(val universe: doc.Universe, val reporter: Reporter) {
+       finally out.close()
+     }
+ 
++    // Debian: jQuery comes from libjs-jquery, not from a webjar. Debian
++    // rebuilds the minified file, so the webjar's SRI hash does not apply.
+     def copyWebjarResource(resourceName: String, expectedSRI: String): Unit = {
+-      import java.security.MessageDigest
+-      import java.util.Base64
+-      val md = MessageDigest.getInstance("SHA-256")
+-      val base64encoder = Base64.getEncoder
+-
+-      // https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
+-      def calsSubResourceIntegrity(input: String): String = {
+-        val messageDigest = md.digest(input.getBytes)
+-        val base64encoded = base64encoder.encode(messageDigest)
+-        new String(base64encoded, "UTF-8")
+-      }
+-
+       val bytes = new Streamable.Bytes {
+-        val p = "/" + resourceName
+-        val inputStream = getClass.getResourceAsStream(p)
+-        assert(inputStream != null, p)
++        val p = "/usr/share/javascript/jquery/" + resourceName
++        val inputStream = new java.io.FileInputStream(p)
+       }.toByteArray()
+       val fileContent = new String(bytes)
+-      val actualSRI = calsSubResourceIntegrity(fileContent)
+-      if (expectedSRI != actualSRI)
+-        throw new Exception(s"Subresource Integrity unmatched on ${resourceName}. Could be wrong webjar or hijacked: $actualSRI")
+ 
+       val dest = Directory(siteRoot) / "lib" / resourceName
+       dest.parent.createDirectory()

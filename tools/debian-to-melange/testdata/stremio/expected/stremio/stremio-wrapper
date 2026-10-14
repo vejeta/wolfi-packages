@@ -1,0 +1,19 @@
+#!/bin/sh
+# Wrapper script for stremio
+#
+# data/server.js is excluded from the source (see debian/README.source);
+# point SERVER_PATH at the real one installed by stremio-server-installer.
+SERVER_PATH=/usr/share/stremio/server.js
+export SERVER_PATH
+
+# libmpv2 requires LC_NUMERIC=C exactly (its own crate docs say so: "Libmpv
+# requires LC_NUMERIC to be C, which should be the default value"). It is
+# not, on almost any real system locale (confirmed: even en_GB.UTF-8 fails
+# this) -- upstream's own main.rs never calls setlocale for this, so mpv
+# initialization panics with "Failed to create mpv: Null" on any non-C
+# locale. GTK/GLib's own locale handling for the rest of the app is
+# unaffected by overriding this one category alone.
+LC_NUMERIC=C
+export LC_NUMERIC
+
+exec /usr/libexec/stremio/stremio-bin "$@"

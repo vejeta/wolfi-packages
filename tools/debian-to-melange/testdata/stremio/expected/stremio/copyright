@@ -1,0 +1,52 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: stremio-linux-shell
+Upstream-Contact: Stremio <office@stremio.com>
+Source: https://github.com/Stremio/stremio-linux-shell
+Files-Excluded: data/server.js
+Comment: data/server.js is a 6.6MB webpack-minified JS bundle with no
+ corresponding source in this tree, and is not freely redistributable
+ (see stremio-server-installer's debian/README.source for the full
+ investigation). Excluded from the +ds tarball; the stremio-server-installer
+ package fetches it separately from Stremio's own servers to
+ /usr/share/stremio/server.js, which this package's wrapper script points
+ SERVER_PATH at. See debian/README.source.
+
+Files: *
+Copyright: 2024-2026 Smart Code OOD (Stremio)
+License: GPL-3.0-only
+
+Files: debian/*
+Copyright: 2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: GPL-3.0-only
+
+Files: data/com.stremio.Stremio.metainfo.xml
+Comment: The AppStream metadata declares <metadata_license>MIT</metadata_license>
+ for this file specifically (a common AppStream convention allowing catalog/
+ app-store reuse of the metadata itself), distinct from
+ <project_license>GPL-3.0-only</project_license> for the application as a whole.
+Copyright: 2024-2026 Smart Code OOD (Stremio)
+License: Expat
+
+License: GPL-3.0-only
+ On Debian systems, the complete text of the GNU General Public License
+ version 3 can be found in "/usr/share/common-licenses/GPL-3".
+
+License: Expat
+ Permission is hereby granted, free of charge, to any person obtaining a
+ copy of this software and associated documentation files (the
+ "Software"), to deal in the Software without restriction, including
+ without limitation the rights to use, copy, modify, merge, publish,
+ distribute, sublicense, and/or sell copies of the Software, and to
+ permit persons to whom the Software is furnished to do so, subject to
+ the following conditions:
+ .
+ The above copyright notice and this permission notice shall be included
+ in all copies or substantial portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

@@ -56,6 +56,10 @@ pipeline:
       pkgdir="${{targets.destdir}}"
 
       DESTDIR="$pkgdir" meson install --no-rebuild -C output
+  - name: Remove libtool archives (abuild does this by default)
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
+  - uses: strip
 subpackages:
   - name: rubberband-libs
     description: Library for audio time-stretching and pitch-shifting (libs)

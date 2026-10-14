@@ -1,0 +1,9 @@
+---
+include:
+  - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/recipes/debian.yml
+
+# The autopkgtests build sample packages with the Scala compilers, which are
+# not in unstable yet (scala 2.12, scala-2.13, scala3). Until they are, a
+# failing autopkgtest does not fail the pipeline.
+autopkgtest:
+  allow_failure: true

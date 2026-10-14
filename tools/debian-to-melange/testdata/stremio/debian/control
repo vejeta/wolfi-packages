@@ -1,0 +1,62 @@
+Source: stremio
+Section: video
+Maintainer: Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+Build-Depends: debhelper-compat (= 13),
+               dh-cargo,
+               cargo,
+               rustc (>= 1.85),
+               pkgconf,
+               libgtk-4-dev (>= 4.22),
+               libadwaita-1-dev (>= 1.9),
+               libwebkitgtk-6.0-dev (>= 2.52),
+               libmpv-dev,
+               libepoxy-dev,
+               libegl-dev,
+               gettext,
+               libglib2.0-bin,
+               librust-gtk4-dev (>= 0.11.3),
+               librust-gdk4-wayland-dev (>= 0.11.0),
+               librust-libadwaita-dev (>= 0.9.1),
+               librust-webkit6-dev (>= 0.6.1),
+               librust-ashpd-dev (>= 0.13.13),
+               librust-ksni-dev (>= 0.3.6),
+               librust-mpris-server-dev (>= 0.8.1),
+               librust-clap-dev (>= 4.6.5),
+               librust-gettext-rs-dev (>= 0.7.7),
+               librust-tokio-dev (>= 1.53.1),
+               librust-libloading-dev (>= 0.8.9),
+               librust-epoxy-dev (>= 0.1.0),
+               librust-flume-dev (>= 0.11.1),
+               librust-tracing-dev (>= 0.1.44),
+               librust-tracing-subscriber-dev (>= 0.3.23),
+               librust-serde-dev (>= 1.0.229),
+               librust-serde-json-dev (>= 1.0.151),
+               librust-itertools-dev (>= 0.14.0),
+               librust-libmpv2-dev (>= 5.0.3),
+               librust-image-dev (>= 0.25.10),
+               librust-chrono-dev (>= 0.4.45),
+               librust-anyhow-dev (>= 1.0.103),
+               librust-url-dev (>= 2.5.8),
+               librust-dirs-dev (>= 6.0.0),
+               librust-base64-dev (>= 0.22.1),
+               librust-libc-dev (>= 0.2.186),
+               librust-discord-rich-presence-dev (>= 1.1.0)
+Standards-Version: 4.7.4
+Homepage: https://www.stremio.com
+Vcs-Browser: https://salsa.debian.org/mendezr/stremio
+Vcs-Git: https://salsa.debian.org/mendezr/stremio.git
+
+Package: stremio
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends},
+         nodejs
+Recommends: stremio-server-installer
+Built-Using: ${cargo:Built-Using}
+Static-Built-Using: ${cargo:Static-Built-Using}
+Description: Modern media center (WebKitGTK client)
+ Stremio is a modern media center for online video content.
+ Features local and streaming content, subtitle management,
+ and an extensible addon system.
+ .
+ This is the GTK4/libadwaita/WebKitGTK6 version, replacing the
+ CEF-based renderer used before upstream release 1.0.0.

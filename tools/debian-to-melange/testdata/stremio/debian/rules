@@ -1,0 +1,41 @@
+#!/usr/bin/make -f
+include /usr/share/dpkg/architecture.mk
+include /usr/share/dpkg/buildflags.mk
+include /usr/share/rustc/architecture.mk
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export CARGO_PROFILE_RELEASE_DEBUG = true
+export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+# dpkg-buildflags already maps CURDIR to "." in CFLAGS via -ffile-prefix-map
+# (part of hardening=+all's fixfilepath); rustc has no dpkg-buildflags
+# integration for this yet, so do the same mapping manually to avoid
+# embedding the build path in the binary (lintian:
+# file-references-package-build-path).
+export RUSTFLAGS = --remap-path-prefix=$(CURDIR)=.
+export DEB_HOST_RUST_TYPE DEB_HOST_GNU_TYPE
+export CARGO_HOME = $(CURDIR)/debian/cargo_home
+export PATH := /usr/share/cargo/bin:$(PATH)
+# build.rs's setup_schemas() compiles the gschema into $XDG_DATA_HOME at
+# build time (it should really only install it for dpkg to trigger
+# glib-compile-schemas on at package-install time, but redoing that is out
+# of scope for this verification build) -- $HOME in the build chroot
+# doesn't exist/isn't writable, so point XDG_DATA_HOME somewhere that is.
+export XDG_DATA_HOME = $(CURDIR)/debian/xdg_data_home
+
+%:
+	dh $@ --buildsystem cargo
+
+override_dh_auto_build:
+	cargo build --release --features offline-build
+
+override_dh_auto_install:
+	install -D -m755 target/$(DEB_HOST_RUST_TYPE)/release/stremio-linux-shell $(CURDIR)/debian/stremio/usr/libexec/stremio/stremio-bin
+	install -D -m755 debian/stremio-wrapper $(CURDIR)/debian/stremio/usr/bin/stremio
+	# overriding dh_auto_install bypasses cargo buildsystem's own install
+	# step, which is what normally calls this to populate Built-Using
+	dh-cargo-built-using stremio
+
+override_dh_auto_test:
+
+override_dh_auto_clean:
+	rm -rf target debian/cargo_registry debian/cargo_home debian/xdg_data_home .cargo-checksum.json Cargo.lock

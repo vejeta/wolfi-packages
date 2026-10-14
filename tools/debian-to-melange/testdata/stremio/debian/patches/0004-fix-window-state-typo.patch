@@ -1,0 +1,18 @@
+Description: fix typo in the "remember window state" preferences subtitle
+ "retore" -> "restore". Caught by lintian's spelling-error-in-binary check.
+Author: Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+Forwarded: https://github.com/Stremio/stremio-linux-shell/pull/136
+
+diff --git a/src/app/dialogs/preferences/preferences.xml b/src/app/dialogs/preferences/preferences.xml
+index 112ece4..9075119 100644
+--- a/src/app/dialogs/preferences/preferences.xml
++++ b/src/app/dialogs/preferences/preferences.xml
+@@ -10,7 +10,7 @@
+                         <child>
+                             <object class="AdwSwitchRow" id="remember_window_state">
+                                 <property name="title" translatable="yes">Remember window state</property>
+-                                <property name="subtitle" translatable="yes">Save and retore window dimensions, maximized and fullscreen state</property>
++                                <property name="subtitle" translatable="yes">Save and restore window dimensions, maximized and fullscreen state</property>
+
+                                 <signal name="notify::active" handler="on_remember_window_state_changed" swapped="true"/>
+                             </object>

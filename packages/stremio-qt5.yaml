@@ -3,16 +3,13 @@
 package:
   name: stremio-qt5
   version: 4.4.169
-  epoch: 0
+  epoch: 1
   # Stremio shell 4.x, the last Qt5-based release. Upstream's current desktop
   # app no longer uses Qt5 and will be packaged separately as "stremio".
   description: Modern media center for online video content (Qt5 shell)
   copyright:
   - license: GPL-3.0-or-later
   dependencies:
-    # Previously published here as "stremio"; same files.
-    replaces:
-    - stremio
     runtime:
     - font-noto
     - fontconfig
@@ -111,8 +108,9 @@ pipeline:
   runs: "# Install binary to libexec (not directly in PATH)\ninstall -Dm755 build/stremio\
     \ \"${{targets.destdir}}\"/usr/libexec/stremio/stremio\n\n# Install wrapper script\
     \ (from package subdirectory)\ninstall -Dm755 stremio-qt5/stremio-wrapper.sh \"${{targets.destdir}}\"\
-    /usr/bin/stremio\n\n# Install desktop file\ninstall -Dm644 stremio.desktop \"\
-    ${{targets.destdir}}\"/usr/share/applications/stremio.desktop\n\n# Install icons\
+    /usr/bin/stremio-qt5\n\n# Install desktop file (renamed: the stremio package owns stremio)\nsed -e \"s/^Exec=stremio/Exec=stremio-qt5/\" -e \"s/^Name=Stremio$/Name=Stremio (Qt5)/\" stremio.desktop\
+    \ > stremio-qt5.desktop\ninstall -Dm644 stremio-qt5.desktop \"\
+    ${{targets.destdir}}\"/usr/share/applications/stremio-qt5.desktop\n\n# Install icons\
     \ (proper FreeDesktop hierarchy)\nfor size in 16 22 24 32 64 128; do\n  install\
     \ -Dm644 \"icons/smartcode-stremio_${size}.png\" \\\n    \"${{targets.destdir}}\"\
     /usr/share/icons/hicolor/${size}x${size}/apps/stremio.png\ndone\n\n# Install tray\
@@ -155,9 +153,9 @@ test:
       - qt5-qtwebengine
   pipeline:
   - name: Test binary exists and is executable
-    runs: 'test -f /usr/bin/stremio
+    runs: 'test -f /usr/bin/stremio-qt5
 
-      test -x /usr/bin/stremio
+      test -x /usr/bin/stremio-qt5
 
       '
   - name: Test wrapper script
@@ -167,9 +165,9 @@ test:
 
       '
   - name: Test desktop file
-    runs: 'test -f /usr/share/applications/stremio.desktop
+    runs: 'test -f /usr/share/applications/stremio-qt5.desktop
 
-      grep -q "Exec=stremio" /usr/share/applications/stremio.desktop
+      grep -q "Exec=stremio-qt5" /usr/share/applications/stremio-qt5.desktop
 
       '
   - name: Test icons installed

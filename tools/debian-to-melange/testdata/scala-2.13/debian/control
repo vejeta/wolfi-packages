@@ -1,0 +1,52 @@
+Source: scala-2.13
+Section: devel
+Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.org>
+Uploaders:
+ Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+Build-Depends:
+ debhelper-compat (= 14),
+ dh-sequence-maven-repo-helper,
+ default-jdk <!pkg.scala.stage0>,
+ libjline3-java (>= 3.29),
+ openjdk-25-jdk-headless <pkg.scala.stage0>,
+ scala-2.13 (>= 2.13~) <!pkg.scala.stage0>,
+ scala-2.13-stage0 <pkg.scala.stage0>,
+ scala-asm (>= 9.9.0)
+Standards-Version: 4.7.4
+Vcs-Git: https://salsa.debian.org/java-team/scala-2.13.git
+Vcs-Browser: https://salsa.debian.org/java-team/scala-2.13
+Homepage: https://www.scala-lang.org
+
+Package: scala-2.13
+Architecture: all
+Depends:
+ scala-library-2.13 (= ${source:Version}),
+ default-jre-headless | java8-runtime-headless,
+ libjline3-java (>= 3.29),
+ libjs-jquery,
+ scala-asm (>= 9.9.0),
+ ${misc:Depends}
+Description: compiler and tools for the Scala 2.13 programming language
+ Scala is a programming language that scales with you: from small
+ scripts to large multiplatform applications.
+ .
+ This package provides the Scala 2.13 compiler (scalac), runner and
+ interactive shell (scala), the documentation tool (scaladoc), the fast
+ offline compiler (fsc) and the class-file decoder (scalap). It can be
+ installed together with the Scala 2.12 package (scala); the commands are
+ also available as scalac-2.13, scala-2.13, and so on.
+ .
+ It is built from source with no sbt, by a two-pass self-hosting build.
+
+Package: scala-library-2.13
+Architecture: all
+Multi-Arch: foreign
+Depends:
+ ${misc:Depends}
+Description: Scala 2.13 standard library
+ Scala is a programming language that scales with you: from small
+ scripts to large multiplatform applications.
+ .
+ This package contains the Scala 2.13 standard library and reflection
+ jars needed to run programs built with Scala 2.13. It can be installed
+ together with scala-library (Scala 2.12).

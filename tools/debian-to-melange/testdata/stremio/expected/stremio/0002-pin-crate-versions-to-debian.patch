@@ -1,0 +1,67 @@
+Description: Loosen crate version requirements to match what Debian ships
+ Debian's librust-*-dev packages are a patch/minor release behind what
+ upstream's Cargo.toml pins for: gtk4, gdk4-wayland, libadwaita, mpris-server,
+ libloading, flume, itertools, anyhow, base64, libc.
+ .
+ Verified byte-for-byte identical API surface, for everything this crate
+ actually calls, between the requested and the Debian-shipped version of
+ each: base64::engine::general_purpose + read::DecoderReader, flume::
+ unbounded, itertools::Itertools::collect_vec, libloading::os::unix::
+ Library::new, the full mpris_server::Player/Metadata builder API this
+ crate uses, and the gtk4/gdk4-wayland/libadwaita feature flags this
+ crate requests (v4_22, v4_20+wayland_crate, v1_9 respectively, all
+ present already at Debian's shipped version). anyhow and libc only ever
+ add API in patch releases, never remove.
+Author: Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+Forwarded: not-needed
+
+diff --git a/Cargo.toml b/Cargo.toml
+index 0dd9313..aa5f512 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -12,34 +12,34 @@ edition = "2024"
+ offline-build = []
+ 
+ [dependencies]
+-gtk = { package = "gtk4", version = "0.11.4", features = ["v4_22"] }
+-gdk-wayland = { package = "gdk4-wayland", version = "0.11.4", features = ["v4_20", "wayland_crate"] }
+-adw = { package = "libadwaita", version = "0.9.2", features = ["v1_9"] }
++gtk = { package = "gtk4", version = "0.11.3", features = ["v4_22"] }
++gdk-wayland = { package = "gdk4-wayland", version = "0.11.0", features = ["v4_20", "wayland_crate"] }
++adw = { package = "libadwaita", version = "0.9.1", features = ["v1_9"] }
+ webkit = { package = "webkit6", version = "0.6.1", features = ["v2_52"] }
+ ashpd = { version = "0.13.13", features = ["background", "gtk4", "inhibit", "open_uri"] }
+ ksni = "0.3.6"
+-mpris-server = "0.10.0"
++mpris-server = "0.8.1"
+ clap = { version = "4.6.5", features = ["derive"] }
+ gettext-rs = { version = "0.7.7", features = ["gettext-system"] }
+ tokio = { version = "1.53.1", features = ["full"] }
+-libloading = "0.9.0"
++libloading = "0.8.9"
+ epoxy = "0.1.0"
+-flume = "0.12.0"
++flume = "0.11.1"
+ tracing = "0.1.44"
+ tracing-subscriber = "0.3.23"
+ serde = "1.0.229"
+ serde_json = "1.0.151"
+-itertools = "0.15.0"
++itertools = "0.14.0"
+ libmpv2 = "5.0.3"
+ image = { version = "0.25.10", default-features = false, features = ["rayon", "bmp", "dds", "ff", "gif", "hdr", "ico", "jpeg", "png", "pnm", "qoi", "tga", "tiff", "webp"] }
+ chrono = "0.4.45"
+-anyhow = "1.0.104"
++anyhow = "1.0.103"
+ url = "2.5.8"
+ dirs = "6.0.0"
+-base64 = "0.23.0"
+-libc = "0.2.189"
++base64 = "0.22.1"
++libc = "0.2.186"
+ discord-rich-presence = "1.1.0"
+ 
+ [build-dependencies]
+-anyhow = "1.0.104"
++anyhow = "1.0.103"
+ dirs = "6.0.0"

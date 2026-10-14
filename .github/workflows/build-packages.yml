@@ -35,197 +35,117 @@ jobs:
     name: Prepare Build Matrix
     runs-on: ubuntu-latest
     outputs:
-      packages: ${{ steps.find-packages.outputs.packages }}
-      architectures: ${{ steps.find-packages.outputs.architectures }}
+      wave1: ${{ steps.waves.outputs.wave1 }}
+      wave2: ${{ steps.waves.outputs.wave2 }}
+      wave3: ${{ steps.waves.outputs.wave3 }}
+      wave4: ${{ steps.waves.outputs.wave4 }}
+      wave5: ${{ steps.waves.outputs.wave5 }}
+      wave6: ${{ steps.waves.outputs.wave6 }}
+      architectures: ${{ steps.waves.outputs.architectures }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Find all package configurations
-        id: find-packages
-        run: |
-          # Find all .yaml files in packages/ directory (flat structure like wolfi-os)
-          packages=$(find packages -maxdepth 1 -name "*.yaml" -type f | sed 's|packages/||' | sed 's|\.yaml||' | sort -u | jq -R -s -c 'split("\n")[:-1]')
-
-          # If package_filter is set, filter the list
-          if [ -n "${{ github.event.inputs.package_filter }}" ]; then
-            # Split comma-separated filter into array and match any
-            filter_list=$(echo "${{ github.event.inputs.package_filter }}" | jq -R 'split(",")')
-            packages=$(echo "$packages" | jq -c --argjson filters "$filter_list" '[.[] | select(. as $pkg | $filters | index($pkg))]')
-          fi
-
-          # Process architectures parameter (default: x86_64)
-          ARCH_INPUT="${{ github.event.inputs.architectures }}"
-          if [ -z "$ARCH_INPUT" ]; then
-            ARCH_INPUT="x86_64"
-          fi
-          architectures=$(echo "$ARCH_INPUT" | jq -R -c 'split(",")')
-
-          echo "packages=$packages" >> $GITHUB_OUTPUT
-          echo "architectures=$architectures" >> $GITHUB_OUTPUT
-          echo "Found packages:"
-          echo "$packages" | jq .
-          echo "Target architectures:"
-          echo "$architectures" | jq .
-
-  build-packages:
-    name: Build ${{ matrix.package }} - ${{ matrix.arch }}
-    needs: prepare-build-matrix
-    # Use native ARM64 runner for aarch64 builds (fast, no QEMU emulation needed)
-    # Use standard x86_64 runner for x86_64 builds
-    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJson(needs.prepare-build-matrix.outputs.packages) }}
-        arch: ${{ fromJson(needs.prepare-build-matrix.outputs.architectures) }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up QEMU for cross-architecture builds
-        # Only needed when building non-native architectures
-        # Native ARM64 runner doesn't need QEMU for aarch64 builds
-        if: matrix.arch != 'aarch64'
-        uses: docker/setup-qemu-action@v3
         with:
-          platforms: linux/amd64,linux/arm64
+          fetch-depth: 0
 
-      - name: Restore package cache
-        uses: actions/cache/restore@v4
-        id: cache-restore
-        with:
-          path: ./consolidated-cache/${{ matrix.arch }}
-          key: ${{ github.run_id }}
-          restore-keys: |
-            wolfi-packages-consolidated-${{ matrix.arch }}-
-
-      - name: Create build directories
+      - name: Compute build waves
+        id: waves
+        env:
+          EVENT: ${{ github.event_name }}
+          FILTER: ${{ github.event.inputs.package_filter }}
+          ARCH_INPUT: ${{ github.event.inputs.architectures }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
         run: |
-          mkdir -p ./build-output
-          mkdir -p ./workspace
-          mkdir -p ./consolidated-cache/${{ matrix.arch }}
-
-      - name: Setup permanent APK signing key
-        run: |
-          # Load permanent signing key from GitHub Secrets
-          echo "${{ secrets.APK_SIGNING_KEY }}" > melange-pkcs8.rsa
-          chmod 600 melange-pkcs8.rsa
-
-          # Convert PKCS#8 to PKCS#1 format (required by Melange)
-          openssl rsa -in melange-pkcs8.rsa -out melange.rsa -traditional
-          chmod 600 melange.rsa
-          rm melange-pkcs8.rsa
-
-          # Extract public key from private key
-          openssl rsa -in melange.rsa -pubout > melange.rsa.pub
-          chmod 644 melange.rsa.pub
-
-          # Download official Wolfi signing key for repository verification
-          curl -o wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-
-          # Public key of this repository's published packages (SourceForge),
-          # used to resolve in-repo dependencies that are not in the cache
-          curl -fsSL -o vejeta-wolfi.rsa.pub \
-            https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
-
-          # Verify keys were created
-          ls -lh melange.rsa melange.rsa.pub wolfi-signing.rsa.pub vejeta-wolfi.rsa.pub
-
-          echo "Using permanent signing key from GitHub Secrets (converted to PKCS#1)"
-
-      - name: Setup package cache as local repository
-        run: |
-          echo "=== Checking package cache ==="
-          CACHE_PKG_COUNT=$(find ./consolidated-cache/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l || echo "0")
-          echo "Found $CACHE_PKG_COUNT packages in GitHub Actions cache"
-
-          if [ "$CACHE_PKG_COUNT" -gt 0 ]; then
-            echo "Using cached packages from previous builds"
-
-            # Copy signing key into cache directory so docker can access it
-            cp melange.rsa ./consolidated-cache/${{ matrix.arch }}/
-
-            cd ./consolidated-cache/${{ matrix.arch }}
-
-            # Generate APKINDEX for cached packages
-            docker run --rm \
-              -v $PWD:/work \
-              -w /work \
-              alpine:latest \
-              sh -c "apk add --no-cache apk-tools abuild && \
-                apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
-                abuild-sign -k /work/melange.rsa APKINDEX.tar.gz"
-
-            ls -lh
-            cd ../..
-          else
-            echo "No packages in cache; in-repo dependencies resolve from the published SourceForge repository"
-          fi
-
-      - name: Build package with Melange
-        run: |
-          # Use direct path to package YAML file (flat structure like wolfi-os)
-          PACKAGE_YAML="packages/${{ matrix.package }}.yaml"
-
-          if [ ! -f "$PACKAGE_YAML" ]; then
-            echo "Error: No YAML file found at $PACKAGE_YAML"
-            exit 1
-          fi
-
-          echo "Building package: ${{ matrix.package }}"
-          echo "Using configuration: $PACKAGE_YAML"
-          echo "Target architecture: ${{ matrix.arch }}"
-
-          # Build using Melange container
-          # Use package-cache as local repository (contains cached + SourceForge packages)
-          docker run --rm --privileged \
-            -v $PWD:/work \
-            -w /work \
-            cgr.dev/chainguard/melange:latest \
-            build \
-            --arch ${{ matrix.arch }} \
-            --signing-key melange.rsa \
-            --keyring-append melange.rsa.pub \
-            --keyring-append wolfi-signing.rsa.pub \
-            --keyring-append vejeta-wolfi.rsa.pub \
-            --repository-append https://packages.wolfi.dev/os \
-            --repository-append ./consolidated-cache \
-            --repository-append https://downloads.sourceforge.net/project/wolfi \
-            --pipeline-dir pipelines \
-            --generate-index \
-            --out-dir ./build-output \
-            "$PACKAGE_YAML"
-
-      - name: List built packages
-        run: |
-          echo "=== Built APK packages for ${{ matrix.arch }} ==="
-          ls -lh ./build-output/${{ matrix.arch }}/
-
-          # Show package info
-          for apk in ./build-output/${{ matrix.arch }}/*.apk; do
-            if [ -f "$apk" ]; then
-              echo "Package: $(basename $apk)"
-              echo "Size: $(du -h $apk | cut -f1)"
-            fi
+          pip install --quiet pyyaml
+          # Pull requests and pushes build the recipes they change; manual
+          # runs build the filtered recipes, or all of them. Recipes that
+          # depend on each other are split into waves (scripts/build-order.py).
+          case "$EVENT" in
+            pull_request) sel="--changed-from $PR_BASE" ;;
+            push)
+              if [ -n "$PUSH_BEFORE" ] && ! echo "$PUSH_BEFORE" | grep -q '^0*$' \
+                 && git cat-file -e "$PUSH_BEFORE^{commit}" 2>/dev/null; then
+                sel="--changed-from $PUSH_BEFORE"
+              else
+                sel="--all"
+              fi ;;
+            *) if [ -n "$FILTER" ]; then sel="--filter $FILTER"; else sel="--all"; fi ;;
+          esac
+          echo "Selection: $sel"
+          result=$(python3 scripts/build-order.py $sel)
+          echo "$result" | jq .
+          for i in 1 2 3 4 5 6; do
+            echo "wave$i=$(echo "$result" | jq -c ".waves[$((i-1))]")" >> "$GITHUB_OUTPUT"
           done
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: apk-packages-${{ matrix.package }}-${{ matrix.arch }}
-          path: ./build-output/${{ matrix.arch }}/*.apk
-          retention-days: 30
-          if-no-files-found: error
+          [ -n "$ARCH_INPUT" ] || ARCH_INPUT="x86_64"
+          echo "architectures=$(echo "$ARCH_INPUT" | jq -R -c 'split(",")')" >> "$GITHUB_OUTPUT"
 
-      # Note: We no longer upload the signing key as an artifact
-      # The permanent key is stored in GitHub Secrets and loaded in each workflow run
+  wave-1:
+    needs: prepare-build-matrix
+    if: needs.prepare-build-matrix.outputs.wave1 != '[]'
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 1
+      packages: ${{ needs.prepare-build-matrix.outputs.wave1 }}
+      architectures: ${{ needs.prepare-build-matrix.outputs.architectures }}
+
+  wave-2:
+    needs: [prepare-build-matrix, wave-1]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave2 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 2
+      packages: ${{ needs.prepare-build-matrix.outputs.wave2 }}
+      architectures: ${{ needs.prepare-build-matrix.outputs.architectures }}
+
+  wave-3:
+    needs: [prepare-build-matrix, wave-2]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave3 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 3
+      packages: ${{ needs.prepare-build-matrix.outputs.wave3 }}
+      architectures: ${{ needs.prepare-build-matrix.outputs.architectures }}
+
+  wave-4:
+    needs: [prepare-build-matrix, wave-3]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave4 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 4
+      packages: ${{ needs.prepare-build-matrix.outputs.wave4 }}
+      architectures: ${{ needs.prepare-build-matrix.outputs.architectures }}
+
+  wave-5:
+    needs: [prepare-build-matrix, wave-4]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave5 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 5
+      packages: ${{ needs.prepare-build-matrix.outputs.wave5 }}
+      architectures: ${{ needs.prepare-build-matrix.outputs.architectures }}
+
+  wave-6:
+    needs: [prepare-build-matrix, wave-5]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave6 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 6
+      packages: ${{ needs.prepare-build-matrix.outputs.wave6 }}
+      architectures: ${{ needs.prepare-build-matrix.outputs.architectures }}
 
   build-summary:
     name: Build Summary
-    needs: build-packages
+    needs: [wave-1, wave-2, wave-3, wave-4, wave-5, wave-6]
     runs-on: ubuntu-latest
     if: always()
 
@@ -250,7 +170,7 @@ jobs:
 
   consolidate-cache:
     name: Consolidate Package Cache
-    needs: [prepare-build-matrix, build-packages]
+    needs: [prepare-build-matrix, wave-1, wave-2, wave-3, wave-4, wave-5, wave-6]
     runs-on: ubuntu-latest
     if: always()
     strategy:

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Scala 2.13 documentation tool (Debian scala-2.13).
+J=/usr/share/java
+CP=$J/scala-library-2.13.jar:$J/scala-reflect-2.13.jar:$J/scala-compiler-2.13.jar:/usr/share/maven-repo/org/scala-lang/modules/scala-asm/debian/scala-asm-debian.jar:$J/jline3.jar
+exec java -cp "$CP" scala.tools.nsc.ScalaDoc -usejavacp "$@"

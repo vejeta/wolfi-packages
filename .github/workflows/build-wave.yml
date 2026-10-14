@@ -1,0 +1,211 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# One wave of build-packages.yml: builds the given recipes in parallel. From
+# the second wave on, the packages built by earlier waves of the same run are
+# available as a repository, so recipes can depend on each other.
+name: Build wave
+
+on:
+  workflow_call:
+    inputs:
+      wave:
+        type: number
+        required: true
+      packages:
+        description: JSON list of recipe names
+        type: string
+        required: true
+      architectures:
+        description: JSON list of architectures
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.package }} - ${{ matrix.arch }}
+    # Use native ARM64 runner for aarch64 builds (fast, no QEMU emulation needed)
+    # Use standard x86_64 runner for x86_64 builds
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(inputs.packages) }}
+        arch: ${{ fromJson(inputs.architectures) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for cross-architecture builds
+        # Only needed when building non-native architectures
+        # Native ARM64 runner doesn't need QEMU for aarch64 builds
+        if: matrix.arch != 'aarch64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Restore package cache
+        uses: actions/cache/restore@v4
+        id: cache-restore
+        with:
+          path: ./consolidated-cache/${{ matrix.arch }}
+          key: ${{ github.run_id }}
+          restore-keys: |
+            wolfi-packages-consolidated-${{ matrix.arch }}-
+
+      - name: Create build directories
+        run: |
+          mkdir -p ./build-output
+          mkdir -p ./workspace
+          mkdir -p ./consolidated-cache/${{ matrix.arch }}
+
+      - name: Setup permanent APK signing key
+        run: |
+          # Load permanent signing key from GitHub Secrets
+          echo "${{ secrets.APK_SIGNING_KEY }}" > melange-pkcs8.rsa
+          chmod 600 melange-pkcs8.rsa
+
+          # Convert PKCS#8 to PKCS#1 format (required by Melange)
+          openssl rsa -in melange-pkcs8.rsa -out melange.rsa -traditional
+          chmod 600 melange.rsa
+          rm melange-pkcs8.rsa
+
+          # Extract public key from private key
+          openssl rsa -in melange.rsa -pubout > melange.rsa.pub
+          chmod 644 melange.rsa.pub
+
+          # Download official Wolfi signing key for repository verification
+          curl -o wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+
+          # Public key of this repository's published packages (SourceForge),
+          # used to resolve in-repo dependencies that are not in the cache
+          curl -fsSL -o vejeta-wolfi.rsa.pub \
+            https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
+
+          # Verify keys were created
+          ls -lh melange.rsa melange.rsa.pub wolfi-signing.rsa.pub vejeta-wolfi.rsa.pub
+
+          echo "Using permanent signing key from GitHub Secrets (converted to PKCS#1)"
+
+      - name: Setup package cache as local repository
+        run: |
+          echo "=== Checking package cache ==="
+          CACHE_PKG_COUNT=$(find ./consolidated-cache/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l || echo "0")
+          echo "Found $CACHE_PKG_COUNT packages in GitHub Actions cache"
+
+          if [ "$CACHE_PKG_COUNT" -gt 0 ]; then
+            echo "Using cached packages from previous builds"
+
+            # Copy signing key into cache directory so docker can access it
+            cp melange.rsa ./consolidated-cache/${{ matrix.arch }}/
+
+            cd ./consolidated-cache/${{ matrix.arch }}
+
+            # Generate APKINDEX for cached packages
+            docker run --rm \
+              -v $PWD:/work \
+              -w /work \
+              alpine:latest \
+              sh -c "apk add --no-cache apk-tools abuild && \
+                apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
+                abuild-sign -k /work/melange.rsa APKINDEX.tar.gz"
+
+            ls -lh
+            cd ../..
+          else
+            echo "No packages in cache; in-repo dependencies resolve from the published SourceForge repository"
+          fi
+
+      - name: Download packages built by earlier waves
+        if: inputs.wave > 1
+        uses: actions/download-artifact@v4
+        with:
+          path: ./earlier-waves/${{ matrix.arch }}
+          pattern: 'apk-packages-*-${{ matrix.arch }}'
+          merge-multiple: true
+
+      - name: Index packages from earlier waves
+        if: inputs.wave > 1
+        run: |
+          # Packages built earlier in this run take precedence over the cache
+          # and the published repository (same version, newer build).
+          mkdir -p ./earlier-waves/${{ matrix.arch }}
+          if ls ./earlier-waves/${{ matrix.arch }}/*.apk >/dev/null 2>&1; then
+            cp melange.rsa ./earlier-waves/${{ matrix.arch }}/
+            docker run --rm -v $PWD/earlier-waves/${{ matrix.arch }}:/work -w /work alpine:latest \
+              sh -c "apk add --no-cache apk-tools abuild && \
+                apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
+                abuild-sign -k /work/melange.rsa APKINDEX.tar.gz"
+            rm ./earlier-waves/${{ matrix.arch }}/melange.rsa
+          fi
+          ls -lh ./earlier-waves/${{ matrix.arch }}
+
+      - name: Build package with Melange
+        run: |
+          # Packages from earlier waves of this run, when there are any
+          EARLIER_REPO=""
+          if [ -f ./earlier-waves/${{ matrix.arch }}/APKINDEX.tar.gz ]; then
+            EARLIER_REPO="--repository-append ./earlier-waves"
+          fi
+
+          # Use direct path to package YAML file (flat structure like wolfi-os)
+          PACKAGE_YAML="packages/${{ matrix.package }}.yaml"
+
+          if [ ! -f "$PACKAGE_YAML" ]; then
+            echo "Error: No YAML file found at $PACKAGE_YAML"
+            exit 1
+          fi
+
+          echo "Building package: ${{ matrix.package }}"
+          echo "Using configuration: $PACKAGE_YAML"
+          echo "Target architecture: ${{ matrix.arch }}"
+
+          # Build using Melange container
+          # Use package-cache as local repository (contains cached + SourceForge packages)
+          docker run --rm --privileged \
+            -v $PWD:/work \
+            -w /work \
+            cgr.dev/chainguard/melange:latest \
+            build \
+            --arch ${{ matrix.arch }} \
+            --signing-key melange.rsa \
+            --keyring-append melange.rsa.pub \
+            --keyring-append wolfi-signing.rsa.pub \
+            --keyring-append vejeta-wolfi.rsa.pub \
+            $EARLIER_REPO \
+            --repository-append https://packages.wolfi.dev/os \
+            --repository-append ./consolidated-cache \
+            --repository-append https://downloads.sourceforge.net/project/wolfi \
+            --pipeline-dir pipelines \
+            --generate-index \
+            --out-dir ./build-output \
+            "$PACKAGE_YAML"
+
+      - name: List built packages
+        run: |
+          echo "=== Built APK packages for ${{ matrix.arch }} ==="
+          ls -lh ./build-output/${{ matrix.arch }}/
+
+          # Show package info
+          for apk in ./build-output/${{ matrix.arch }}/*.apk; do
+            if [ -f "$apk" ]; then
+              echo "Package: $(basename $apk)"
+              echo "Size: $(du -h $apk | cut -f1)"
+            fi
+          done
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-packages-${{ matrix.package }}-${{ matrix.arch }}
+          path: ./build-output/${{ matrix.arch }}/*.apk
+          retention-days: 30
+          if-no-files-found: error
+
+      # Note: We no longer upload the signing key as an artifact
+      # The permanent key is stored in GitHub Secrets and loaded in each workflow run
+

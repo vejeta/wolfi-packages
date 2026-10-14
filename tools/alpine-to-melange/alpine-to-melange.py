@@ -54,6 +54,11 @@ DROP = {
 }
 NAME_MAP = {
     "samurai": "ninja",
+    "ca-certificates": "ca-certificates-bundle",
+    "gtk4.0": "gtk-4",
+    "gtk4.0-dev": "gtk-4-dev",
+    "gtk+3.0": "gtk-3",
+    "gtk+3.0-dev": "gtk-3-dev",
     "py3-setuptools": "py3-setuptools",
     "linux-headers": "linux-headers",
 }
@@ -405,6 +410,9 @@ class Converter:
         for name in names:
             if name.startswith(("!", "so:", "cmd:", "pc:", "/")) or "$" in name:
                 continue
+            if ":" in name:  # virtual provider such as dbus:org.freedesktop.Secrets
+                self.notes.append("{} dependency '{}' is an Alpine virtual name; not converted".format(kind, name))
+                continue
             base = re.split(r"[<>=~]", name, maxsplit=1)[0]
             if base in DROP:
                 continue
@@ -452,12 +460,14 @@ class Converter:
                     needed.add(n)
                     changed = True
         used |= needed
+        funcs = [code for helper, code in HELPERS.items()
+                 if re.search(r"(^|[\s;(|&]){}\b".format(re.escape(helper)), text)]
+        for code in funcs:  # helpers use abuild variables too ($pkgdir, $subpkgdir)
+            used |= refs(code)
+        text = re.sub(r"(^|[\s;(|&])abuild-meson\b", r"\1abuild_meson", text)
         pre = ['{}="{}"'.format(n, v) for n, v in PREAMBLE_VARS if n in used]
         pre += ["{}={}".format(n, v) for n, v in helpers if n in used]
-        for helper, code in HELPERS.items():
-            if re.search(r"(^|[\s;(|&]){}\b".format(re.escape(helper)), text):
-                pre.append(code)
-                text = re.sub(r"(^|[\s;(|&])abuild-meson\b", r"\1abuild_meson", text)
+        pre += funcs
         if "srcdir" in used and self.local_payload():
             pre.append('mkdir -p "$srcdir"')
             for f in self.local_payload():
@@ -536,6 +546,10 @@ class Converter:
         env_pkgs = ["build-base", "busybox"] + [
             d for d in self.map_deps(build_names, "build")
             if (d.value if isinstance(d, C) else d) not in ("build-base", "busybox")]
+        plain = [d.value if isinstance(d, C) else d for d in env_pkgs]
+        if "gobject-introspection-dev" in plain and "glib-gir" not in plain:
+            # Alpine ships GLib's .gir files in glib-dev; Wolfi splits them out.
+            env_pkgs.append(C("glib-gir", "GLib .gir files (part of glib-dev on Alpine)"))
         environment = {"contents": {
             "keyring": ["https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"],
             "repositories": ["https://packages.wolfi.dev/os"],
@@ -551,6 +565,16 @@ class Converter:
             url = apk.expand(url)
             if url.startswith(("git+", "git://")) or url.endswith(".git"):
                 pipeline.append(self.todo("git source not converted: " + url))
+                continue
+            gh = re.match(r"^https://github\.com/([^/]+)/([^/]+)/archive/(?:refs/tags/)?(.+?)\.tar\.gz$", url)
+            if idx == 0 and gh and gh.group(3).endswith(version):
+                # Wolfi pins GitHub sources with git-checkout + expected-commit.
+                prefix = gh.group(3)[:-len(version)]
+                steps, notes = d2m.git_checkout_step(gh.group(1), gh.group(2), version, prefix,
+                                                     resolve=getattr(a, "download", False), todo=TODO)
+                self.notes += notes
+                pipeline += steps
+                main_url = template_version(url, apk, transforms)
                 continue
             step = {"uses": "fetch", "with": {"uri": template_version(url, apk, transforms)}}
             if fname in sums:
@@ -591,6 +615,14 @@ class Converter:
                 self.notes.append("check() not run (pass --with-check to add it to the build)")
         if "package" not in apk.functions:
             pipeline.append(self.todo("APKBUILD has no package() function"))
+        else:
+            # abuild deletes libtool archives and strips binaries after
+            # package(); melange does neither on its own.
+            if "libtool" not in options:
+                pipeline.append({"name": "Remove libtool archives (abuild does this by default)",
+                                 "runs": 'find "${{targets.destdir}}" -name "*.la" -delete\n'})
+            if "!strip" not in options:
+                pipeline.append({"uses": "strip"})
 
         # ---- subpackages -------------------------------------------------
         subpackages = [s for s in (self.subpackage(entry, name) for entry in apk.words("subpackages")) if s]
@@ -659,6 +691,9 @@ class Converter:
         parts = entry.split(":")
         sub = parts[0]
         func = parts[1] if len(parts) > 1 and parts[1] else None
+        orig = self.apk.get("pkgname") or name
+        if orig != name and sub.startswith(orig + "-"):
+            sub = name + sub[len(orig):]  # --name renames the subpackages too
         suffix = sub[len(name) + 1:] if sub.startswith(name + "-") else sub
         if func is None:
             func = suffix.replace("-", "_") if suffix.replace("-", "_") in self.apk.functions else None
@@ -782,6 +817,12 @@ def main(argv=None):
     p.add_argument("--check-wolfi", action="store_true",
                    help="verify dependency names against the Wolfi APKINDEX")
     p.add_argument("--strict", action="store_true", help="exit 1 if anything needs manual review")
+    p.add_argument("--download", action="store_true",
+                   help="allow network lookups to pin sources (git ls-remote for GitHub tags)")
+    p.add_argument("--build", action="store_true",
+                   help="build the generated recipe with melange (bubblewrap runner) and report the result")
+    p.add_argument("--melange", default="melange", help="melange binary for --build (default: melange)")
+    p.add_argument("--melange-opts", default="", help="extra options for melange build (e.g. \"--cache-dir DIR\")")
     p.add_argument("-V", "--tool-version", action="version", version="%(prog)s " + __version__)
     args = p.parse_args(argv)
     args.aports_path = None
@@ -802,6 +843,9 @@ def main(argv=None):
     text = d2m.write_output(name, recipe, header, conv.aux, args.out, args.stdout)
     for n in conv.notes:
         print("note: " + n, file=sys.stderr)
+    built = d2m.report_build(args, name)
+    if built:
+        return built
     return 1 if args.strict and TODO in text else 0
 
 

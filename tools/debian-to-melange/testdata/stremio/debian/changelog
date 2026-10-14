@@ -1,0 +1,5 @@
+stremio (1.2.0+ds-1) unstable; urgency=low
+
+  * Initial release (Closes: #943703)
+
+ -- Juan Manuel Méndez Rey <juan.mendezr@proton.me>  Thu, 17 Sep 2026 22:10:00 +0200

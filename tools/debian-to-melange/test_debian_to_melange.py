@@ -131,11 +131,142 @@ class StremioServerInstallerTest(unittest.TestCase):
         self.assertIn('debian_postinst configure "$2"', self.text)
 
 
+class StremioTest(unittest.TestCase):
+    """Rust/cargo package with debian/rules overrides (stremio 1.2.0+ds-1)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp()
+        convert("stremio", cls.tmp)
+        with open(os.path.join(cls.tmp, "stremio.yaml")) as fh:
+            cls.text = fh.read()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp)
+
+    def test_rust_crates_are_not_build_dependencies(self):
+        self.assertNotIn("librust", self.text)
+
+    def test_build_dependencies_are_kept_even_if_unknown(self):
+        self.assertIn("- libwebkitgtk-6.0-dev", self.text)
+        self.assertIn("- mpv-dev  # Debian: libmpv-dev", self.text)
+
+    def test_overrides_are_ported(self):
+        self.assertIn("cargo build --release --features offline-build", self.text)
+        self.assertIn("install -D -m755 target/release/stremio-linux-shell "
+                      "${{targets.destdir}}/usr/libexec/stremio/stremio-bin", self.text)
+        self.assertIn("stremio/stremio-wrapper ${{targets.destdir}}/usr/bin/stremio", self.text)
+        self.assertNotIn("dh-cargo-built-using", self.text)
+        self.assertTrue(os.path.isfile(os.path.join(self.tmp, "stremio", "stremio-wrapper")))
+
+    def test_exports_become_environment(self):
+        self.assertIn("RUSTFLAGS: --remap-path-prefix=/home/build=.", self.text)
+        self.assertNotIn("CARGO_HOME", self.text)
+
+    def test_files_excluded_and_install_files(self):
+        self.assertIn("rm -rf data/server.js", self.text)
+        self.assertIn('cp -a data/com.stremio.Stremio.desktop "${{targets.destdir}}/usr/share/applications/"', self.text)
+        self.assertIn('install -Dm644 data/stremio.1 -t "${{targets.destdir}}/usr/share/man/man1"', self.text)
+
+    def test_github_watch_becomes_git_checkout(self):
+        self.assertIn("uses: git-checkout", self.text)
+        self.assertIn("repository: https://github.com/Stremio/stremio-linux-shell", self.text)
+        self.assertIn("tag: v${{package.version}}", self.text)
+        self.assertIn("TODO(debian-to-melange): set expected-commit", self.text)
+
+    def test_patches_live_in_package_directory(self):
+        self.assertIn("patches: stremio/0001-disable-image-exr-feature.patch", self.text)
+
+
+class JvmPackagesTest(unittest.TestCase):
+    """dh-scala and scala-2.13 (Debian Java team, salsa.debian.org/mendezr)."""
+
+    @staticmethod
+    def text(name):
+        out = tempfile.mkdtemp()
+        try:
+            convert(name, out)
+            with open(os.path.join(out, name + ".yaml")) as fh:
+                return fh.read()
+        finally:
+            shutil.rmtree(out)
+
+    def test_watch_v5_git_mode_becomes_git_checkout(self):
+        text = self.text("scala-2.13")
+        self.assertIn("repository: https://github.com/scala/scala", text)
+        self.assertIn("tag: v${{package.version}}", text)
+
+    def test_java_libraries_and_libjs(self):
+        text = self.text("scala-2.13")
+        self.assertIn("Java library, fetch from Maven Central (Debian: libjline3-java)", text)
+        self.assertNotIn("- libjs-jquery", text)
+        self.assertNotIn("- maven-repo-helper", text)
+        self.assertIn("JAVA_HOME: /usr/lib/jvm/default-jvm", text)
+
+    def test_build_profiles_are_honoured(self):
+        text = self.text("scala-2.13")
+        env = text.split("environment:", 1)[1].split("pipeline:", 1)[0]
+        self.assertNotIn("scala-2.13-stage0", env)      # only with <pkg.scala.stage0>
+        self.assertIn("- scala-2.13\n", env)             # <!pkg.scala.stage0>: normal build
+        self.assertNotIn("$(firstword", text)
+
+    def test_self_hosting_is_reported(self):
+        out = tempfile.mkdtemp()
+        try:
+            with redirect_stderr(io.StringIO()) as err:
+                d2m.main(["--debian-dir", os.path.join(TESTDATA, "scala-2.13", "debian"), "--out", out])
+        finally:
+            shutil.rmtree(out)
+        self.assertIn("self-hosting", err.getvalue())
+
+    def test_perl_modules_and_jdk(self):
+        text = self.text("dh-scala")
+        self.assertIn("perl-archive-zip  # Debian: libarchive-zip-perl", text)
+        self.assertIn("openjdk-25-default-jdk  # Debian: default-jdk-headless", text)
+        self.assertIn("autopkgtest: debian/tests/build-library 2.13", text)
+
+
+class AutopkgtestTest(unittest.TestCase):
+
+    def test_autopkgtests_become_test_steps(self):
+        out = tempfile.mkdtemp()
+        try:
+            convert("libfoo", out)
+            with open(os.path.join(out, "libfoo.yaml")) as fh:
+                text = fh.read()
+        finally:
+            shutil.rmtree(out)
+        test = text.split("\ntest:", 1)[1]
+        self.assertIn("name: 'autopkgtest: foo-tool --version'", test)
+        self.assertIn("name: 'autopkgtest: link-test'", test)
+        self.assertIn('export AUTOPKGTEST_TMP="$(mktemp -d)"', test)
+        self.assertIn("- libfoo-dev", test)
+        self.assertIn("- build-base  # Debian: build-essential", test)
+        self.assertNotIn("#!/bin/sh", test)
+
+
+class BuildOptionTest(unittest.TestCase):
+
+    def test_build_reports_a_missing_melange(self):
+        out = tempfile.mkdtemp()
+        try:
+            argv = ["--debian-dir", os.path.join(TESTDATA, "libfoo", "debian"), "--out", out,
+                    "--build", "--melange", "/nonexistent/melange"] + case_args("libfoo")
+            with redirect_stderr(io.StringIO()) as err:
+                rc = d2m.main(argv)
+        finally:
+            shutil.rmtree(out)
+        self.assertEqual(rc, 3)
+        self.assertIn("melange build: FAILED", err.getvalue())
+
+
 class HelperTest(unittest.TestCase):
 
     def test_parse_relations(self):
         rel = d2m.parse_relations("a (>= 1), b | c [amd64], ${misc:Depends}, d:any <!nocheck>")
         self.assertEqual(rel, [["a"], ["b", "c"], ["${misc:Depends}"], ["d"]])
+        self.assertEqual(d2m.parse_relations("x <stage1>, y <!stage1>, z <stage1> <!nocheck>"), [["y"], ["z"]])
 
     def test_to_spdx(self):
         self.assertEqual(d2m.to_spdx("GPL-2+"), "GPL-2.0-or-later")
@@ -150,6 +281,12 @@ class HelperTest(unittest.TestCase):
 
     def test_dep_candidates(self):
         self.assertEqual(d2m.dep_candidates("zlib1g-dev"), ["zlib-dev"])
+        self.assertIn("gtk-4-dev", d2m.dep_candidates("libgtk-4-dev"))
+        self.assertIn("webkitgtk-6.0-dev", d2m.dep_candidates("libwebkitgtk-6.0-dev"))
+        self.assertEqual(d2m.dep_candidates("libxml-libxml-perl")[0], "perl-xml-libxml")
+        self.assertEqual(d2m.dep_candidates("openjdk-25-jdk-headless"), ["openjdk-25"])
+        self.assertEqual(d2m.dep_candidates("openjdk-21-jre-headless"), ["openjdk-21-jre"])
+        self.assertEqual(d2m.dep_candidates("default-jdk-headless"), ["openjdk-25-default-jdk"])
         self.assertEqual(d2m.dep_candidates("python3-requests")[0], "py3-requests")
         self.assertIn("libass-dev", d2m.dep_candidates("libass-dev"))
         self.assertIn("libfoo-dev", d2m.dep_candidates("libfoo2-dev"))

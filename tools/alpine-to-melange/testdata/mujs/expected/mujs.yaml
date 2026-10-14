@@ -47,6 +47,10 @@ pipeline:
       mv usr/lib/libmujs.so usr/lib/libmujs.so.$_sover.$ver3
       ldconfig -n usr/lib
       ln -s libmujs.so.$_sover.$ver3 usr/lib/libmujs.so
+  - name: Remove libtool archives (abuild does this by default)
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
+  - uses: strip
 subpackages:
   - name: mujs-static
     description: An embeddable JavaScript interpreter (static)

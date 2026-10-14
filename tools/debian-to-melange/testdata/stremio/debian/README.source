@@ -1,0 +1,34 @@
+stremio for Debian - Source Package Notes
+==========================================
+
++ds tarball: data/server.js excluded
+-------------------------------------
+
+Upstream's git tree bundles data/server.js, a 6.6MB webpack-minified
+JavaScript blob with no corresponding source in this repository (its
+preferred form for modification lives in the separate stremio-server
+upstream project). This is excluded from the +ds tarball via
+Files-Excluded in debian/copyright.
+
+At runtime the application reads the SERVER_PATH environment variable
+(src/server.rs) to find server.js and spawn it with `node`. The
+debian/stremio-wrapper script sets SERVER_PATH to
+/usr/share/stremio/server.js.
+
+server.js itself is not freely redistributable (see
+stremio-server-installer's own debian/README.source for the full
+investigation), so this package does not, and cannot, Depend: on a
+Debian package that ships it. Instead, this package Recommends:
+stremio-server-installer, a contrib package that downloads server.js
+from Stremio's own servers onto the user's machine at install time
+(modeled on ttf-mscorefonts-installer/virtualbox-ext-pack). Without it,
+stremio still runs, but BitTorrent-based streaming is unavailable.
+
+No vendored Rust dependencies
+------------------------------
+
+Unlike stremio-gtk (the CEF-based sibling package), this package vendors
+nothing: every crate dependency is satisfied by a librust-*-dev package
+in Debian's archive. See debian/patches for the two Cargo.toml patches
+that pin a handful of direct dependencies to the exact versions Debian
+ships instead of upstream's slightly newer pins.

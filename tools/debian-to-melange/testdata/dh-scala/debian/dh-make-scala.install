@@ -1,0 +1,3 @@
+dh-make-scala usr/bin
+lib/Debian/DhScala/Make.pm usr/share/perl5/Debian/DhScala
+lib/Debian/DhScala/Make usr/share/perl5/Debian/DhScala
