@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 # Generate APKINDEX.tar.gz for APK repository
 # Usage: ./generate-apkindex.sh <packages-dir> <signing-key>
 

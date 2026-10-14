@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 # Sign an APK package with RSA key
 # Usage: ./sign-apk.sh <apk-file> <signing-key>
 

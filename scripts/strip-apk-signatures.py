@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 """Remove every signature section from .apk files, in place.
 
 An .apk is a concatenation of gzip streams: [signature] control data.

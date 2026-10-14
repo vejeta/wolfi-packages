@@ -3,6 +3,7 @@
 **Community-maintained packages for Wolfi OS**
 
 [![Packages](https://img.shields.io/badge/packages-20-brightgreen)](#available-packages)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
 [![SourceForge](https://img.shields.io/badge/Download-SourceForge-orange)](https://sourceforge.net/projects/wolfi/)
@@ -141,15 +142,17 @@ RUN wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
 
 Packages are retired when an official or better-suited alternative exists.
 
-| Package | Retired | Reason / replacement |
-|---------|---------|----------------------|
-| libass | 2026-10 | Available in official Wolfi (`apk add libass`) |
-| stremio-server | 2026-10 | Replaced by `stremio-server-installer`, converted from the [Debian package](https://tracker.debian.org/pkg/stremio-server-installer) with `debian-to-melange` |
-| libvpx | 2026-10 | Available in official Wolfi (`1.17.0`, newer version) |
-| libxcb | 2026-10 | Available in official Wolfi (`1.17.0-r11; all xcb libraries in one package`, newer version) |
-| vulkan-loader | 2026-10 | Available in official Wolfi (`1.4.365`, newer version) |
-| zlib | 2026-10 | Available in official Wolfi (`1.3.2`, newer version) |
-| qt5-qtbase | 2026-10 | Available in official Wolfi (`5.15.19`, newer version); the Qt5 modules here now build against it |
+| Package | Here since | In official Wolfi since¹ | Retired | Reason / replacement |
+|---------|------------|--------------------------|---------|----------------------|
+| libass | 2025-11 | 2026-01-31 | 2026-10 | Available in official Wolfi |
+| stremio-server | 2025-11 | — | 2026-10 | Replaced by `stremio-server-installer`, converted from the [Debian package](https://tracker.debian.org/pkg/stremio-server-installer) with `debian-to-melange` |
+| libvpx | 2025-11 | 2026-09-25 | 2026-10 | Available in official Wolfi (newer version) |
+| libxcb | 2025-11 | 2025-08-07 or earlier | 2026-10 | Available in official Wolfi (all xcb libraries in one package) |
+| vulkan-loader | 2025-11 | 2025-09-26 or earlier | 2026-10 | Available in official Wolfi (newer version) |
+| zlib | 2025-11 | 2025-01-16 or earlier | 2026-10 | Available in official Wolfi (newer version) |
+| qt5-qtbase | 2025-11 | 2026-04-01 | 2026-10 | Available in official Wolfi (5.15.19); the Qt5 modules here build against it |
+
+¹ Earliest build of the package in the official Wolfi APKINDEX (x86_64), checked 2026-10-14.
 
 Retired packages are listed in [`packages/RETIRED`](packages/RETIRED); every publish
 removes them, and their subpackages, from the repository index.
@@ -204,8 +207,10 @@ community-maintained alternative so that those packages remain available,
 buildable and reproducible, using the same tooling (melange, apko) and
 conventions as Wolfi itself.
 
-When a package is accepted into official Wolfi, it is removed from here and
-users should switch to the official one.
+Recipes are developed, reviewed and published only in this repository. When
+official Wolfi starts shipping one of these packages, the recipe is retired
+here (see [Retired packages](#retired-packages)) and users should switch to
+the official one.
 
 ## Infrastructure
 
@@ -247,5 +252,13 @@ pull request — reviewer and maintainer roles are open.
 
 ## License
 
-Build recipes, scripts and tools in this repository: MIT.
-Each package retains its upstream license, declared in its YAML recipe.
+Copyright (C) 2025-2026 Juan Manuel Méndez Rey.
+
+Build recipes, scripts, workflows and tools in this repository are licensed
+under the [GNU General Public License v3.0 or later](LICENSE)
+(`SPDX-License-Identifier: GPL-3.0-or-later` in each file). Reuse is welcome
+under its terms: keep the copyright and license notices, and share modified
+versions under the same license. See [NOTICE](NOTICE) for exceptions
+(Debian-derived recipes, upstream patches, test fixtures).
+
+Each built package keeps its upstream license, declared in its recipe.

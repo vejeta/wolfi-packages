@@ -141,5 +141,13 @@ updated. Users are pointed to the official package.
 
 ## License
 
-By contributing you agree that your recipes, patches and scripts are licensed
-under the MIT License. Packaged software keeps its upstream license.
+Contributions are accepted under the GNU General Public License v3.0 or
+later. New files must start with:
+
+```
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: <year> <your name> <your email>
+```
+
+Patches to upstream software are covered by that software's license, and
+built packages keep their upstream licenses. See [NOTICE](NOTICE).

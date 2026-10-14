@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 """Delete .apk files whose origin is listed in packages/RETIRED.
 
     scripts/remove-retired.py packages/RETIRED repo/x86_64 [repo/aarch64 ...]

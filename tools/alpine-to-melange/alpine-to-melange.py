@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 """alpine-to-melange: convert an Alpine APKBUILD to a melange recipe.
 
     alpine-to-melange --from-alpine libass --check-wolfi

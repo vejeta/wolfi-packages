@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 """debian-to-melange: convert Debian source packaging to a melange recipe.
 
     debian-to-melange --from-debian stremio-server-installer

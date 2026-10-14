@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 """pkg-check: check whether a package already exists in Debian, Alpine or Wolfi.
 
 Run it before investing time in packaging something that already exists.

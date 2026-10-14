@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 # Build a single package with Melange using official container
 # Usage: ./build-with-melange.sh <package-yaml> <architecture> <output-dir>
 

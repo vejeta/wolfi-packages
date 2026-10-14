@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 # Build all Wolfi packages for aarch64 using Melange natively on Cirrus CI
 # This script is designed to run in the Alpine container on Cirrus CI
 # with ARM64 native architecture (AWS Graviton2)
