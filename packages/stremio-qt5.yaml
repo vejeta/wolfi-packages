@@ -1,13 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 package:
-  name: stremio
+  name: stremio-qt5
   version: 4.4.169
-  epoch: 1
-  description: Modern media center for online video content
+  epoch: 0
+  # Stremio shell 4.x, the last Qt5-based release. Upstream's current desktop
+  # app no longer uses Qt5 and will be packaged separately as "stremio".
+  description: Modern media center for online video content (Qt5 shell)
   copyright:
   - license: GPL-3.0-or-later
   dependencies:
+    # Previously published here as "stremio"; same files.
+    replaces:
+    - stremio
     runtime:
     - font-noto
     - fontconfig
@@ -63,34 +68,34 @@ pipeline:
     expected-commit: 0589927cb53bc68e09776ec94ce3860b64ca10a4
 - uses: patch
   with:
-    patches: stremio/001-release-makefile-fhs.patch
+    patches: stremio-qt5/001-release-makefile-fhs.patch
 - uses: patch
   with:
-    patches: stremio/002-cmake-add-singleapp.patch
+    patches: stremio-qt5/002-cmake-add-singleapp.patch
 - uses: patch
   with:
-    patches: stremio/003-qtwebengine-correct.patch
+    patches: stremio-qt5/003-qtwebengine-correct.patch
 - uses: patch
   with:
-    patches: stremio/004-fhs-server-paths.patch
+    patches: stremio-qt5/004-fhs-server-paths.patch
 - uses: patch
   with:
-    patches: stremio/005-process-environment-fix.patch
+    patches: stremio-qt5/005-process-environment-fix.patch
 - uses: patch
   with:
-    patches: stremio/006-cmake-remove-singleapp-dep.patch
+    patches: stremio-qt5/006-cmake-remove-singleapp-dep.patch
 - uses: patch
   with:
-    patches: stremio/007-remove-qthelper-deprecated.patch
+    patches: stremio-qt5/007-remove-qthelper-deprecated.patch
 - uses: patch
   with:
-    patches: stremio/008-disable-systemtray-wolfi.patch
+    patches: stremio-qt5/008-disable-systemtray-wolfi.patch
 - uses: patch
   with:
-    patches: stremio/009-intelligent-gpu-detection.patch
+    patches: stremio-qt5/009-intelligent-gpu-detection.patch
 - uses: patch
   with:
-    patches: stremio/010-mpv-libmpv-software-rendering.patch
+    patches: stremio-qt5/010-mpv-libmpv-software-rendering.patch
 - name: Generate icons
   runs: "mkdir -p icons\ncd icons\nfor size in 16 22 24 32 64 128; do\n  rsvg-convert\
     \ ../images/stremio.svg -w $size -o smartcode-stremio_${size}.png\n  rsvg-convert\
@@ -105,7 +110,7 @@ pipeline:
 - name: Install files
   runs: "# Install binary to libexec (not directly in PATH)\ninstall -Dm755 build/stremio\
     \ \"${{targets.destdir}}\"/usr/libexec/stremio/stremio\n\n# Install wrapper script\
-    \ (from package subdirectory)\ninstall -Dm755 stremio/stremio-wrapper.sh \"${{targets.destdir}}\"\
+    \ (from package subdirectory)\ninstall -Dm755 stremio-qt5/stremio-wrapper.sh \"${{targets.destdir}}\"\
     /usr/bin/stremio\n\n# Install desktop file\ninstall -Dm644 stremio.desktop \"\
     ${{targets.destdir}}\"/usr/share/applications/stremio.desktop\n\n# Install icons\
     \ (proper FreeDesktop hierarchy)\nfor size in 16 22 24 32 64 128; do\n  install\
@@ -115,8 +120,8 @@ pipeline:
     \ in 16 22 24 32 64 128; do\n  install -Dm644 \"icons/smartcode-stremio-tray_${size}.png\"\
     \ \\\n    \"${{targets.destdir}}\"/usr/share/stremio/icons/\ndone\n"
 subpackages:
-- name: stremio-doc
-  description: Stremio documentation
+- name: stremio-qt5-doc
+  description: Stremio (Qt5 shell) documentation
   pipeline:
   - runs: 'mkdir -p "${{targets.subpkgdir}}"/usr/share/doc/stremio
 

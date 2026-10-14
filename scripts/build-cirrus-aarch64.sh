@@ -114,7 +114,7 @@ PACKAGES=(
     "qt5-qtwebengine"
 
     # Stage 12: Stremio application
-    "stremio"
+    "stremio-qt5"
 )
 
 TOTAL_PACKAGES=${#PACKAGES[@]}
@@ -282,8 +282,8 @@ du -sh "$OUTPUT_DIR/$ARCH/"
 # Exit with error if critical packages failed
 CRITICAL_FAILURES=()
 for pkg in "${FAILED_PACKAGES[@]}"; do
-    # Check if this is a critical package (qt5-qtwebengine or stremio)
-    if [[ "$pkg" == "qt5-qtwebengine" ]] || [[ "$pkg" == "stremio" ]]; then
+    # Check if this is a critical package (qt5-qtwebengine or stremio-qt5)
+    if [[ "$pkg" == "qt5-qtwebengine" ]] || [[ "$pkg" == "stremio-qt5" ]]; then
         CRITICAL_FAILURES+=("$pkg")
     fi
 done

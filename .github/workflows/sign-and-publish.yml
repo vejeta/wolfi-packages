@@ -416,7 +416,7 @@ jobs:
           apk update
 
           # Install packages
-          apk add stremio mpv qt5-qtwebengine
+          apk add stremio-qt5 mpv
           ```
 
           ## Package Statistics

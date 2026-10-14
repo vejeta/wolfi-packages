@@ -47,7 +47,7 @@ SourceForge.
 | qt5-qtwebengine | 5.15.17 | Qt5 - QtWebEngine (Chromium-based web rendering) | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
 | rubberband | 4.0.0 | Audio time-stretching and pitch-shifting library | GPL-2.0-or-later |
 | shaderc | 2025.4 | Tools and libraries for Vulkan shader compilation | Apache-2.0 |
-| stremio | 4.4.169 | Modern media center for online video content | GPL-3.0-or-later |
+| stremio-qt5 | 4.4.169 | Modern media center for online video content (Stremio shell 4.x, Qt5) | GPL-3.0-or-later |
 | stremio-server-installer | 4.21.1 | Downloader for Stremio's streaming server (server.js is fetched at install time, never redistributed) | GPL-3.0-only |
 | uchardet | 0.0.8 | Universal charset detection library | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later |
 | zimg | 3.0.6 | Scaling, colorspace conversion, and dithering library | WTFPL |
@@ -76,7 +76,7 @@ wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
   https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
 echo "https://downloads.sourceforge.net/project/wolfi" >> /etc/apk/repositories
 apk update
-apk add mpv stremio
+apk add mpv stremio-qt5
 ```
 
 ### As build dependencies in a melange recipe
@@ -146,6 +146,7 @@ Packages are retired when an official or better-suited alternative exists.
 | Package | Here since | In official Wolfi since¹ | Retired | Reason / replacement |
 |---------|------------|--------------------------|---------|----------------------|
 | libass | 2025-11 | 2026-01-31 | 2026-10 | Replaced by `libass9`: official Wolfi's libass is built static-only and ships no `libass.so` |
+| stremio | 2025-11 | — | 2026-10 | Renamed to `stremio-qt5`: upstream's current desktop app no longer uses Qt5; the name `stremio` is kept for packaging it later |
 | stremio-server | 2025-11 | — | 2026-10 | Replaced by `stremio-server-installer`, converted from the [Debian package](https://tracker.debian.org/pkg/stremio-server-installer) with `debian-to-melange` |
 | libvpx | 2025-11 | 2026-09-25 | 2026-10 | Available in official Wolfi (newer version) |
 | libxcb | 2025-11 | 2025-08-07 or earlier | 2026-10 | Available in official Wolfi (all xcb libraries in one package) |
@@ -170,8 +171,8 @@ Contributions of new packages and updates are welcome. The short version:
 ```
 packages/
 ├── mpv.yaml                  # recipe (flat layout, same as wolfi-dev/os)
-├── stremio.yaml
-└── stremio/                  # optional: patches and auxiliary files
+├── stremio-qt5.yaml
+└── stremio-qt5/                  # optional: patches and auxiliary files
     ├── 001-release-makefile-fhs.patch
     └── stremio-wrapper.sh
 ```
