@@ -60,6 +60,9 @@ instead of the default of 1.
 ## Retired packages
 
 `packages/RETIRED` lists origins that the publish workflow removes from
-the repository, usually because Wolfi now provides them. An entry must be
-removed if a recipe with the same name is added again, or each publish
-will delete the new package.
+the repository, usually because Wolfi now provides them. Old files stay on
+SourceForge, because uploads never delete, so the filter runs on every
+publish.
+
+An entry can be limited to a version range when a new recipe reuses a
+name: `stremio>=4` removes the old 4.x builds and keeps `stremio` 1.x.

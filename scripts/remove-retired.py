@@ -8,19 +8,48 @@
 The origin is read from each package's .PKGINFO (falling back to pkgname),
 so subpackages of a retired recipe are removed as well.
 
+An entry "name>=version" or "name<version" removes only the builds of that
+origin in that version range, for a name that a new recipe reuses.
+
 Standard library only.
 """
 
 import io
 import os
+import re
 import sys
 import tarfile
 import zlib
 
 
 def read_list(path):
+    """Return {origin: (operator, version) or None}."""
+    retired = {}
     with open(path, encoding="utf-8") as fh:
-        return {l.split("#", 1)[0].strip() for l in fh} - {""}
+        for line in fh:
+            entry = line.split("#", 1)[0].strip()
+            if entry:
+                m = re.match(r"^([^<>=\s]+)\s*(?:(>=|<)\s*(\S+))?$", entry)
+                if not m:
+                    sys.exit("error: bad entry in {}: {}".format(path, entry))
+                retired[m.group(1)] = (m.group(2), m.group(3)) if m.group(2) else None
+    return retired
+
+
+def version_key(version):
+    """Numeric sort key for versions such as 4.4.169-r1 (release ignored)."""
+    version = re.sub(r"-r\d+$", "", version)
+    return [int(n) for n in re.findall(r"\d+", version)]
+
+
+def is_retired(retired, origin, version):
+    if origin not in retired:
+        return False
+    if retired[origin] is None:
+        return True
+    op, limit = retired[origin]
+    older = version_key(version) < version_key(limit)
+    return older if op == "<" else not older
 
 
 def pkginfo(path):
@@ -63,7 +92,7 @@ def main(argv):
             path = os.path.join(directory, name)
             info = pkginfo(path)
             origin = info.get("origin") or info.get("pkgname")
-            if origin in retired:
+            if is_retired(retired, origin, info.get("pkgver", "")):
                 os.remove(path)
                 removed += 1
                 print("removed {} (origin {})".format(path, origin))
