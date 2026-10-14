@@ -1,0 +1,21 @@
+Subject: Include <signal.h> before defining SYS_SECCOMP (glibc >= 2.42)
+Upstream: No
+Origin: Wolfi Community Packages
+
+Recent glibc declares SYS_SECCOMP as an enumerator in
+<bits/siginfo-consts.h>. Chromium's linux_seccomp.h defines
+SYS_SECCOMP as the macro 1 when it is not yet defined, so if <signal.h>
+is included afterwards the glibc declaration expands to "1 = 1" and
+the sandbox fails to build. Including <signal.h> first lets glibc
+define SYS_SECCOMP and the #ifndef guard skip the fallback.
+
+--- a/src/3rdparty/chromium/sandbox/linux/system_headers/linux_seccomp.h	2026-10-14 01:28:57.753458132 +0000
++++ b/src/3rdparty/chromium/sandbox/linux/system_headers/linux_seccomp.h	2026-10-14 01:28:57.804866640 +0000
+@@ -5,6 +5,7 @@
+ #ifndef SANDBOX_LINUX_SYSTEM_HEADERS_LINUX_SECCOMP_H_
+ #define SANDBOX_LINUX_SYSTEM_HEADERS_LINUX_SECCOMP_H_
+ 
++#include <signal.h>
+ #include <stdint.h>
+ 
+ #include "build/build_config.h"

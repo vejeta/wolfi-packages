@@ -144,6 +144,8 @@ pipeline:
 
       qt5-qtwebengine/026-huffman-trie-entry-gcc15-cstdint.patch
 
+      qt5-qtwebengine/027-sandbox-seccomp-glibc-sys-seccomp.patch
+
       '
 - name: Configure QtWebEngine
   runs: "# Container-safe baseline CPU flags with -NDEBUG to disable asserts - MUST\
