@@ -13,7 +13,21 @@ run, indexes them, and adds them as a local repository.
 This allows a dependency chain to be built and tested in one run, without
 first publishing the intermediate packages. Pull requests rebuild only the
 changed recipes. A change to `pipelines/` or to the build workflows
-rebuilds everything.
+rebuilds everything. A new push to a pull request cancels the build of the
+previous commit.
+
+A source download that fails with a network error (DNS, or a runner without
+an IPv6 route) is retried once. Other failures are not retried.
+
+## Architectures
+
+x86_64 and aarch64 are built on GitHub's native runners
+(`ubuntu-24.04-arm` for aarch64, without emulation). qt5-qtwebengine does not
+finish on an ARM runner within the 6-hour job limit. It is listed in
+`packages/CI-SKIP` instead of being limited with `target-architecture`, so
+the recipe still builds for aarch64 elsewhere (Cirrus CI, see
+`.cirrus.yml.disabled`, or locally). The publish workflow only downloads
+Cirrus artifacts while `.cirrus.yml` exists.
 
 ## Rust: crates from `Cargo.lock`
 

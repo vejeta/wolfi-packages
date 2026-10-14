@@ -76,8 +76,13 @@ need each other are built in order (waves computed by
 `scripts/build-order.py`):
 
 ```bash
-python3 scripts/build-order.py --changed-from origin/master   # what CI will build
+python3 scripts/build-order.py --changed-from origin/master --arch x86_64,aarch64   # what CI will build
 ```
+
+Each recipe is built for x86_64 and aarch64, on native runners. A recipe can
+limit its architectures with `package.target-architecture`. A build that
+GitHub Actions cannot run, but that works elsewhere, is listed in
+`packages/CI-SKIP`.
 
 ## 4. Building locally
 

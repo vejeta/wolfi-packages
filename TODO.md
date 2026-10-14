@@ -79,34 +79,40 @@ take any of them are welcome.
 - [ ] Convert `triggers=` into documented notes or `scriptlets: trigger`.
 - [ ] Detect bundled meson subprojects that need `--force-fallback-for`.
 
-## New direction: melange → Debian (`melange-to-debian`)
+## melange → Debian (`melange-to-debian`)
 
 Many packages exist in Wolfi but not in Debian. An initial `debian/`
-directory generated from a melange recipe would speed up ITPs:
+directory generated from a melange recipe speeds up ITPs.
 
-- [ ] `debian/control` from `package`, `dependencies`, `environment`
+- ✅ `debian/control` from `package`, `dependencies`, `environment`
   (Wolfi → Debian name mapping, the reverse of the converters' tables).
-- [ ] `debian/copyright` (DEP-5) from the SPDX `copyright` entries.
-- [ ] `debian/rules` with `dh` and the buildsystem detected from the
+- ✅ `debian/copyright` (DEP-5) from the SPDX `copyright` entries, with
+  `Files-Excluded`.
+- ✅ `debian/rules` with `dh` and the buildsystem detected from the
   pipelines (`meson/*`, `cmake/*`, `autoconf/*`, `go/build`, `cargo/build`).
-- [ ] `debian/watch` from `update:` (GitHub, release-monitor).
-- [ ] `debian/patches/` + `series` from `uses: patch`.
-- [ ] Subpackages (`split/dev`, `-doc`) → binary packages and `.install` files.
-
-With the three converters, melange becomes a pivot format between Debian,
-Alpine and Wolfi.
+- ✅ `debian/watch` from `update.github` or a versioned tarball URL.
+- ✅ `debian/patches/` + `series` from `uses: patch`.
+- ✅ Subpackages (`split/dev`, `-doc`) → binary packages and `.install` files.
+- ✅ autopkgtests from the recipe's `test:` steps.
+- [ ] `debian/watch` from `update.release-monitor`.
+- [ ] Shell control flow in `runs:` steps → `debian/rules` (currently reported).
+- [ ] Library package names from the SONAME, read from a built package.
+- [ ] Run `lintian` on the result in the tests.
 
 ## Distribution of the tools
 
-- [ ] Publish the converters as a standalone project (PyPI and a Debian
-  package, e.g. `melange-converters`), GPL-3.0-or-later.
-- [ ] Man pages for the three tools.
+- The tools stay in this repository, in `tools/`, each with its README and
+  tests.
+- [ ] Man pages for the tools.
 - [ ] `pkg-check --target debian` against a configurable suite (stable,
   testing, unstable).
 
 ## Repository / CI
 
 - ✅ Build only changed recipes, in dependency waves (`scripts/build-order.py`).
-- [ ] aarch64 builds with the wave workflow.
+- ✅ aarch64 builds with the wave workflow (native ARM runners; `packages/CI-SKIP`
+  for builds that exceed the job limit).
+- ✅ A new push to a pull request cancels the previous build; network errors
+  while fetching sources are retried once.
 - [ ] Publish from the wave workflow automatically after merge, with a
   summary of what changed in the index.

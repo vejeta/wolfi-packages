@@ -52,8 +52,9 @@ packages and `APKINDEX` are published on SourceForge.
 | zimg | 3.0.6 | Scaling, colorspace conversion, and dithering library | WTFPL |
 
 The recipes in [`packages/`](packages/) are the reference for versions.
-Packages are built for x86_64; aarch64 builds can be requested with the
-`architectures` input of the build workflow (qt5-qtwebengine is x86_64 only).
+Packages are built for x86_64 and aarch64. qt5-qtwebengine takes longer
+than GitHub's 6-hour job limit on ARM runners, so its aarch64 package is built
+outside GitHub Actions (see [`packages/CI-SKIP`](packages/CI-SKIP)).
 
 ## Using these packages
 
@@ -196,13 +197,38 @@ process.
 
 ## Tools
 
-| Tool | Status | Purpose |
-|------|--------|---------|
-| [`pkg-check`](tools/pkg-check/) | Initial version | Check whether a package already exists in Debian, Alpine or Wolfi before packaging it |
-| [`alpine-to-melange`](tools/alpine-to-melange/) | Initial version | Convert an Alpine `APKBUILD` to a melange recipe (replaces the removed `melange convert apkbuild`) |
-| [`debian-to-melange`](tools/debian-to-melange/) | Initial version | Convert Debian packaging (`control`, `rules`, `copyright`, patches, maintainer scripts, debconf) to a melange recipe |
-| `melange-to-debian` | Planned | Generate a `debian/` directory from a melange YAML |
-| `melange-to-alpine` | Planned | Generate an `APKBUILD` from a melange YAML |
+The [`tools/`](tools/) directory has packaging tools for moving packages
+between Debian, Alpine and Wolfi. melange recipes are the common format:
+Debian and Alpine packaging can be converted into a recipe, and a recipe into
+Debian packaging. Each tool is a single Python script with its own README and
+unit tests, run in CI by [`tools.yml`](.github/workflows/tools.yml).
+
+| Tool | Purpose |
+|------|---------|
+| [`pkg-check`](tools/pkg-check/) | Check whether a package already exists in Debian, Alpine or Wolfi, and in which version |
+| [`debian-to-melange`](tools/debian-to-melange/) | Convert Debian packaging (`control`, `rules`, `copyright`, patches, maintainer scripts, debconf, autopkgtests) to a melange recipe |
+| [`alpine-to-melange`](tools/alpine-to-melange/) | Convert an Alpine `APKBUILD` to a melange recipe (replaces the removed `melange convert apkbuild`) |
+| [`melange-to-debian`](tools/melange-to-debian/) | Generate a `debian/` directory from a melange recipe, as a starting point for an ITP |
+
+Typical uses:
+
+```bash
+# Is it packaged anywhere already?
+python3 tools/pkg-check/pkg-check.py -t all -p foo
+
+# Debian package -> Wolfi recipe, built to verify it
+tools/debian-to-melange/debian-to-melange.py --from-debian foo --check-wolfi --build
+
+# Alpine package -> Wolfi recipe
+tools/alpine-to-melange/alpine-to-melange.py --from-alpine foo --check-wolfi
+
+# Wolfi recipe -> debian/ for a new Debian package
+tools/melange-to-debian/melange-to-debian.py packages/foo.yaml --out ~/src/foo --check-debian
+```
+
+Every tool reports what it could not convert on stderr and marks it with a
+`TODO(<tool>)` comment in its output. A `melange-to-alpine` converter is
+planned.
 
 See also [docs/research-tools.md](docs/research-tools.md) (existing
 conversion tools), [docs/design-notes.md](docs/design-notes.md) (recipe and
