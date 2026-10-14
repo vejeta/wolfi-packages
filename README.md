@@ -2,7 +2,7 @@
 
 **Community-maintained packages for Wolfi OS**
 
-[![Packages](https://img.shields.io/badge/packages-20-brightgreen)](#available-packages)
+[![Packages](https://img.shields.io/badge/packages-21-brightgreen)](#available-packages)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
@@ -30,6 +30,7 @@ SourceForge.
 
 | Package | Version | Description | License |
 |---------|---------|-------------|---------|
+| libass9 | 0.17.5 | Portable library for rendering ASS/SSA subtitles (shared; official Wolfi's libass is static-only) | ISC |
 | libbluray | 1.4.0 | Library to access Blu-Ray disks for video playback | LGPL-2.1-or-later |
 | libcdio | 2.2.0 | GNU Compact Disc Input and Control Library | GPL-3.0-or-later |
 | libcdio-paranoia | 10.2.2.0.2 | CD paranoia library from libcdio | GPL-3.0-or-later AND LGPL-2.1-or-later |
@@ -100,7 +101,7 @@ environment:
     packages:
       - build-base
       - mpv-dev
-      - libass-dev
+      - libass9-dev
 
 pipeline:
   # ...
@@ -144,7 +145,7 @@ Packages are retired when an official or better-suited alternative exists.
 
 | Package | Here since | In official Wolfi since¹ | Retired | Reason / replacement |
 |---------|------------|--------------------------|---------|----------------------|
-| libass | 2025-11 | 2026-01-31 | 2026-10 | Available in official Wolfi |
+| libass | 2025-11 | 2026-01-31 | 2026-10 | Replaced by `libass9`: official Wolfi's libass is built static-only and ships no `libass.so` |
 | stremio-server | 2025-11 | — | 2026-10 | Replaced by `stremio-server-installer`, converted from the [Debian package](https://tracker.debian.org/pkg/stremio-server-installer) with `debian-to-melange` |
 | libvpx | 2025-11 | 2026-09-25 | 2026-10 | Available in official Wolfi (newer version) |
 | libxcb | 2025-11 | 2025-08-07 or earlier | 2026-10 | Available in official Wolfi (all xcb libraries in one package) |
