@@ -62,7 +62,7 @@ Repository base URL and signing key:
 
 ```
 Repository: https://downloads.sourceforge.net/project/wolfi
-Key:        https://sourceforge.net/projects/wolfi/files/keys/vejeta-wolfi.rsa.pub/download
+Key:        https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
 Browse:     https://sourceforge.net/projects/wolfi/files/
 ```
 
@@ -73,7 +73,7 @@ base URL automatically.
 
 ```bash
 wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
-  https://sourceforge.net/projects/wolfi/files/keys/vejeta-wolfi.rsa.pub/download
+  https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
 echo "https://downloads.sourceforge.net/project/wolfi" >> /etc/apk/repositories
 apk update
 apk add mpv stremio
@@ -94,7 +94,7 @@ environment:
   contents:
     keyring:
       - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-      - https://sourceforge.net/projects/wolfi/files/keys/vejeta-wolfi.rsa.pub/download
+      - https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
     repositories:
       - https://packages.wolfi.dev/os
       - https://downloads.sourceforge.net/project/wolfi
@@ -113,7 +113,7 @@ pipeline:
 contents:
   keyring:
     - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-    - https://sourceforge.net/projects/wolfi/files/keys/vejeta-wolfi.rsa.pub/download
+    - https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
   repositories:
     - https://packages.wolfi.dev/os
     - https://downloads.sourceforge.net/project/wolfi
@@ -134,7 +134,7 @@ archs:
 FROM cgr.dev/chainguard/wolfi-base
 
 RUN wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
-      https://sourceforge.net/projects/wolfi/files/keys/vejeta-wolfi.rsa.pub/download \
+      https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub \
  && echo "https://downloads.sourceforge.net/project/wolfi" >> /etc/apk/repositories \
  && apk add --no-cache mpv
 ```

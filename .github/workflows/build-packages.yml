@@ -129,7 +129,7 @@ jobs:
           # Public key of this repository's published packages (SourceForge),
           # used to resolve in-repo dependencies that are not in the cache
           curl -fsSL -o vejeta-wolfi.rsa.pub \
-            https://sourceforge.net/projects/wolfi/files/keys/vejeta-wolfi.rsa.pub/download
+            https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
 
           # Verify keys were created
           ls -lh melange.rsa melange.rsa.pub wolfi-signing.rsa.pub vejeta-wolfi.rsa.pub

@@ -407,7 +407,7 @@ jobs:
           ```bash
           # Add repository signing key
           wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
-            https://sourceforge.net/projects/wolfi/files/keys/vejeta-wolfi.rsa.pub/download
+            https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
 
           # Add repository to /etc/apk/repositories
           echo "https://downloads.sourceforge.net/project/wolfi" >> /etc/apk/repositories
