@@ -62,7 +62,7 @@ environment:
     - unixodbc-dev
     - vulkan-headers
     - libxcb-dev
-    - libxcb-glx
+    - libxcb
     - xcb-util-dev
     - xcb-util-image-dev
     - xcb-util-keysyms-dev

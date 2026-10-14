@@ -2,7 +2,7 @@
 
 **Community-maintained packages for Wolfi OS**
 
-[![Packages](https://img.shields.io/badge/packages-25-brightgreen)](#available-packages)
+[![Packages](https://img.shields.io/badge/packages-21-brightgreen)](#available-packages)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
 [![SourceForge](https://img.shields.io/badge/Download-SourceForge-orange)](https://sourceforge.net/projects/wolfi/)
@@ -35,8 +35,6 @@ SourceForge.
 | libdvdnav | 6.1.1 | Library for DVD navigation | GPL-2.0-or-later |
 | libdvdread | 6.1.3 | Library for reading DVD video disks | GPL-2.0-or-later |
 | libplacebo | 7.351.0 | Reusable library for GPU-accelerated video/image rendering | LGPL-2.1-or-later |
-| libvpx | 1.15.2 | Library for the VP8/VP9 codecs | BSD-3-Clause |
-| libxcb | 1.17.0 | X11 client-side library | MIT |
 | libxpresent | 1.0.2 | X11 Present extension library | MIT |
 | mpv | 0.40.0 | Free, open source, and cross-platform media player | GPL-2.0-or-later AND LGPL-2.1-or-later |
 | mujs | 1.3.7 | Lightweight JavaScript interpreter | ISC |
@@ -51,9 +49,7 @@ SourceForge.
 | stremio | 4.4.169 | Modern media center for online video content | GPL-3.0-or-later |
 | stremio-server-installer | 4.21.1 | Downloader for Stremio's streaming server (server.js is fetched at install time, never redistributed) | GPL-3.0-only |
 | uchardet | 0.0.8 | Universal charset detection library | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later |
-| vulkan-loader | 1.4.330 | Vulkan Installable Client Driver (ICD) Loader | Apache-2.0 |
 | zimg | 3.0.6 | Scaling, colorspace conversion, and dithering library | WTFPL |
-| zlib | 1.3.1 | Library implementing the zlib compression algorithms | MPL-2.0 AND MIT |
 
 Versions reflect the recipes in [`packages/`](packages/); the YAML file is
 always the source of truth. Architectures: **x86_64** and **aarch64** (GitHub Actions ARM runners;
@@ -150,6 +146,10 @@ Packages are retired when an official or better-suited alternative exists.
 |---------|---------|----------------------|
 | libass | 2026-10 | Available in official Wolfi (`apk add libass`) |
 | stremio-server | 2026-10 | Replaced by `stremio-server-installer`, converted from the [Debian package](https://tracker.debian.org/pkg/stremio-server-installer) with `debian-to-melange` |
+| libvpx | 2026-10 | Available in official Wolfi (`1.17.0`, newer version) |
+| libxcb | 2026-10 | Available in official Wolfi (`1.17.0-r11; all xcb libraries in one package`, newer version) |
+| vulkan-loader | 2026-10 | Available in official Wolfi (`1.4.365`, newer version) |
+| zlib | 2026-10 | Available in official Wolfi (`1.3.2`, newer version) |
 
 Already-published APKs of retired packages remain on SourceForge until the
 next repository cleanup.

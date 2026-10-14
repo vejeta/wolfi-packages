@@ -72,24 +72,20 @@ echo ""
 # Based on build_order_summary.md
 PACKAGES=(
     # Stage 1: Base utilities and libraries
-    "zlib"
     "uchardet"
     "mujs"
 
     # Stage 2: Graphics and media foundations
     "zimg"
     "libcdio"
-    "libxcb"
     "libxpresent"
 
     # Stage 3: Audio/video processing and graphics
     "libcdio-paranoia"
-    "vulkan-loader"
     "shaderc"
 
     # Stage 4: Media libraries
     "rubberband"
-    "libvpx"
     "libplacebo"
     "libbluray"
 
