@@ -3,7 +3,7 @@
 package:
   name: libdvdnav
   version: 6.1.1
-  epoch: 0
+  epoch: 1
   description: Library for DVD navigation
   copyright:
   - license: GPL-2.0-or-later
@@ -46,6 +46,7 @@ pipeline:
     make DESTDIR="${{targets.destdir}}" install
 
     '
+- runs: find "${{targets.destdir}}" -name '*.la' -delete
 - uses: strip
 subpackages:
 - name: libdvdnav-dev

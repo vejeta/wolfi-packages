@@ -3,7 +3,7 @@
 package:
   name: libxpresent
   version: 1.0.2
-  epoch: 0
+  epoch: 1
   description: X11 Present extension library
   copyright:
   - license: MIT
@@ -21,7 +21,7 @@ environment:
     - libxfixes-dev
     - libxrandr-dev
     - pkgconf-dev
-    - util-macros
+    - util-macros-dev
     - wolfi-base
     - xorgproto
     keyring:
@@ -46,6 +46,7 @@ pipeline:
     opts: --enable-shared --disable-static --disable-dependency-tracking
 - uses: autoconf/make
 - uses: autoconf/make-install
+- runs: find "${{targets.destdir}}" -name '*.la' -delete
 - uses: strip
 subpackages:
 - name: libxpresent-dev
