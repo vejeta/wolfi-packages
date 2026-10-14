@@ -34,6 +34,10 @@ environment:
     - libnspr-dev
     - libnss-dev
     - librsvg
+    # Wolfi is migrating to OpenSSL 4.0: libarchive-dev >= 3.8.9-r3 (pulled in
+    # by mpv-dev) needs openssl-4.0-dev, while qt5-qtbase-dev still needs
+    # openssl-3.6-dev. Drop this pin once qt5-qtbase-dev moves to OpenSSL 4.0.
+    - libarchive-dev=3.8.9-r2
     - mpv-dev
     - nodejs
     - npm
