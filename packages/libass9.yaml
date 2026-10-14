@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# Shared build of libass, named after its soname (libass.so.9) as Debian
+# does (libass9). Official Wolfi's libass is built static-only: its runtime
+# package ships no libass.so, so dynamically linked consumers such as mpv
+# cannot use it. The different name avoids clashing with Wolfi's packages.
+package:
+  name: libass9
+  version: 0.17.5
+  epoch: 0
+  description: Portable library for rendering ASS/SSA subtitles (shared library)
+  copyright:
+    - license: ISC
+  dependencies:
+    replaces:
+      - libass
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - build-base
+      - busybox
+      - fontconfig-dev
+      - freetype-dev
+      - fribidi-dev
+      - harfbuzz-dev
+      - meson
+      - nasm
+      - pkgconf
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/libass/libass
+      tag: ${{package.version}}
+      expected-commit: 4a05d8127f525943ebf45fdc6497c9e665947f0d
+  - uses: meson/configure
+    with:
+      opts: -Ddefault_library=shared
+  - uses: meson/compile
+  - uses: meson/install
+  - uses: strip
+
+subpackages:
+  - name: libass9-dev
+    description: libass9 development files
+    pipeline:
+      - uses: split/dev
+    dependencies:
+      runtime:
+        - libass9
+      replaces:
+        - libass-dev
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - uses: test/pkgconf
+
+update:
+  enabled: true
+  github:
+    identifier: libass/libass
+    use-tag: true
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - name: Shared library is present
+      runs: test -f /usr/lib/libass.so.9
+    - uses: test/tw/ldd-check

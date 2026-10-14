@@ -1,7 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 package:
   name: libdvdread
   version: 6.1.3
-  epoch: 0
+  epoch: 1
   description: Library for reading DVD video disks
   copyright:
   - license: GPL-2.0-or-later
@@ -40,6 +42,7 @@ pipeline:
     /bin/bash ./configure \\\n  --prefix=/usr \\\n  --disable-static \\\n  --enable-shared\n"
 - uses: autoconf/make
 - uses: autoconf/make-install
+- runs: find "${{targets.destdir}}" -name '*.la' -delete
 - uses: strip
 subpackages:
 - name: libdvdread-dev

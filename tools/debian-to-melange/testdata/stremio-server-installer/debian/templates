@@ -1,0 +1,14 @@
+Template: stremio-server-installer/download
+Type: boolean
+Default: true
+_Description: Download Stremio's streaming server component?
+ server.js is Stremio's proprietary streaming server, which enables
+ BitTorrent-based streaming in the stremio media center client. It is not
+ included in this package and is not redistributed by Debian: accepting
+ this prompt downloads it directly from Stremio's own servers
+ (dl.strem.io), the same file used by Stremio's own official desktop
+ client and by Stremio Service, subject to Stremio's terms of service
+ (https://www.stremio.com/tos).
+ .
+ If you decline, stremio will still work, but BitTorrent-based streaming
+ will be unavailable.

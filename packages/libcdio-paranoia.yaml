@@ -1,7 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 package:
   name: libcdio-paranoia
   version: 10.2.2.0.2
-  epoch: 0
+  epoch: 1
   description: CD paranoia library from libcdio
   copyright:
   - license: GPL-3.0-or-later AND LGPL-2.1-or-later
@@ -40,6 +42,7 @@ pipeline:
 - uses: autoconf/configure
 - uses: autoconf/make
 - uses: autoconf/make-install
+- runs: find "${{targets.destdir}}" -name '*.la' -delete
 - uses: strip
 subpackages:
 - name: libcdio-paranoia-dev

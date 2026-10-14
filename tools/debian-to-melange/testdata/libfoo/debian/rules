@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@ --buildsystem=cmake
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DFOO_ENABLE_TESTS=OFF \
+		-DFOO_WITH_SSL=ON
+
+override_dh_auto_test:
+	@echo skipped
+
+override_dh_install:
+	dh_install
+	rm -f debian/tmp/usr/lib/*/libfoo.la

@@ -1,0 +1,90 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+name: pkg-check
+
+# Gate: a recipe added in a pull request must not already exist in official
+# Wolfi. Weekly: report recipes that have since landed in official Wolfi so
+# they can be retired.
+
+on:
+  pull_request:
+    paths:
+      - 'packages/*.yaml'
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  new-recipes:
+    name: New recipes are not in Wolfi
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check added recipes
+        run: |
+          added=$(git diff --name-only --diff-filter=A \
+            "origin/${{ github.base_ref }}...HEAD" -- 'packages/*.yaml' \
+            | sed 's|packages/||; s|\.yaml$||')
+          if [ -z "$added" ]; then
+            echo "No new recipes."
+            exit 0
+          fi
+          args=""
+          for p in $added; do args="$args -p $p"; done
+          set +e
+          python3 tools/pkg-check/pkg-check.py -t wolfi $args
+          rc=$?
+          set -e
+          case $rc in
+            0) echo "OK: none of the new recipes exist in official Wolfi." ;;
+            3) echo "::warning::pkg-check could not query Wolfi; verify manually." ;;
+            *) echo "::error::A new recipe already exists in official Wolfi (see above)."; exit 1 ;;
+          esac
+
+  landed-in-wolfi:
+    name: Recipes now available in Wolfi
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check all recipes
+        id: check
+        run: |
+          args=""
+          for f in packages/*.yaml; do args="$args -p $(basename "$f" .yaml)"; done
+          python3 tools/pkg-check/pkg-check.py -t wolfi --json $args > results.jsonl || true
+          python3 - <<'PY' > report.md
+          import json
+          rows = [json.loads(l) for l in open("results.jsonl")]
+          hits = [r for r in rows if r["status"] in ("present", "older")]
+          if hits:
+              print("These recipes are now also provided by official Wolfi "
+                    "(packages.wolfi.dev/os). Consider retiring them here.\n")
+              print("| Package | Ours | Wolfi |")
+              print("|---------|------|-------|")
+              for r in hits:
+                  print("| {} | {} | {} |".format(r["package"], r["yours"] or "-", r["version"]))
+          PY
+          cat report.md
+          if [ -s report.md ]; then echo "found=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Open or update issue
+        if: steps.check.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Recipes now available in official Wolfi"
+          num=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ -n "$num" ]; then
+            gh issue edit "$num" --body-file report.md
+          else
+            gh issue create --title "$title" --body-file report.md
+          fi

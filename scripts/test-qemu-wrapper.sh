@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 # Test script for QEMU wrapper and initramfs combination logic
 # This simulates the Cirrus CI environment locally using Docker
 

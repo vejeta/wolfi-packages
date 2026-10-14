@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 # Test script to validate Cirrus CI configuration logic
 # Tests the module extraction and QEMU wrapper logic without requiring ARM64
 

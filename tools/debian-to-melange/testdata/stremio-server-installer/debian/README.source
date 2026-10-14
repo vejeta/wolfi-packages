@@ -1,0 +1,47 @@
+stremio-server-installer for Debian
+====================================
+
+What this package is
+---------------------
+
+`server.js` is Stremio's proprietary streaming server component. Stremio's
+own dev lead has stated it is "not meant to be used / distributed outside
+of an official Stremio app" (see
+https://github.com/Stremio/stremio-shell/issues/435), and no explicit
+grant permitting Debian to redistribute copies of it through Debian's own
+mirrors has been obtained. It is therefore not included in this package,
+and this package is not itself proprietary or non-free software.
+
+Instead, this package's `postinst` downloads server.js directly from
+Stremio's own CDN (the same public URL Stremio's own official downloads
+use) onto the user's own machine at install time, verifies its checksum,
+and installs it to `/usr/share/stremio/server.js` (where the `stremio`
+package's wrapper script expects it via `SERVER_PATH`). Debian never
+hosts or redistributes the file itself.
+
+This is the same model used by two real, currently-shipping Debian
+`contrib` packages facing an equivalent problem:
+
+- `ttf-mscorefonts-installer` (Microsoft's TrueType fonts)
+- `virtualbox-ext-pack` (Oracle's proprietary, PUEL-licensed VirtualBox
+  Extension Pack)
+
+`debian/postinst.in`/`debian/rules`/`debian/templates`/`debian/config`
+are modeled directly on `virtualbox-ext-pack`'s real packaging
+(`https://salsa.debian.org/pkg-virtualbox-team/virtualbox-ext-pack`).
+
+Updating to a new server.js release
+------------------------------------
+
+This is a Debian-native package (`3.0 (native)`): its own version number
+(`debian/changelog`) is just this package's own release counter and is
+independent of which server.js version it fetches.
+
+1. Download the new `https://dl.strem.io/server/v<version>/desktop/server.js`
+   and compute its real sha256sum.
+2. Update `SERVER_VERSION` and `SERVER_SHA256` in `debian/rules` to match.
+3. Add a `debian/changelog` entry describing the server.js version bump
+   (bumping this package's own native version, e.g. 1 -> 2).
+
+Do not bump `SERVER_VERSION`/`SERVER_SHA256` without actually downloading
+and hashing the real file for that version.

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 name: Sign and Publish APK Repository
 
 on:
@@ -235,6 +237,10 @@ jobs:
             # Will regenerate fresh APKINDEX with all packages in next step
           done
 
+          # Drop packages retired from this repository (packages/RETIRED),
+          # including their subpackages, so they leave the APKINDEX
+          python3 scripts/remove-retired.py packages/RETIRED repo/x86_64 repo/aarch64
+
           # Copy permanent signing public key from local file
           # Extract public key from GitHub Secrets (convert PKCS#8 to PKCS#1 first)
           echo "${{ secrets.APK_SIGNING_KEY }}" > /tmp/melange-pkcs8.rsa
@@ -280,20 +286,25 @@ jobs:
 
               cd repo/$arch
 
-              # Use Alpine container to:
-              # 1. Re-sign ALL .apk files with vejeta-wolfi.rsa
-              # 2. Generate APKINDEX with all packages
-              # 3. Sign APKINDEX with vejeta-wolfi.rsa
+              # 1. Drop existing signature sections. abuild-sign on an .apk
+              #    prepends a new one each time, which apk/apko/melange then
+              #    misread as the control section ("control hash mismatch").
+              python3 ../../scripts/strip-apk-signatures.py *.apk
+
+              # 2. Sign the control section of every package (SHA-256), as
+              #    melange does at build time, with vejeta-wolfi.rsa
+              docker run --rm \
+                -v $PWD:/packages \
+                -w /packages \
+                cgr.dev/chainguard/melange:latest \
+                sign --signing-key vejeta-wolfi.rsa *.apk
+
+              # 3. Generate APKINDEX with all packages and sign it
               docker run --rm \
                 -v $PWD:/packages \
                 -w /packages \
                 alpine:latest \
                 sh -c "apk add --no-cache apk-tools abuild && \
-                  echo '=== Re-signing all packages ===' && \
-                  for apk in *.apk; do \
-                    echo \"Re-signing \$apk...\" && \
-                    abuild-sign -k /packages/vejeta-wolfi.rsa \"\$apk\"; \
-                  done && \
                   echo '=== Generating APKINDEX ===' && \
                   apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
                   echo '=== Signing APKINDEX ===' && \
@@ -396,16 +407,16 @@ jobs:
           ```bash
           # Add repository signing key
           wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
-            https://sourceforge.net/projects/wolfi/files/keys/vejeta-wolfi.rsa.pub
+            https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
 
           # Add repository to /etc/apk/repositories
-          echo "https://downloads.sourceforge.net/project/wolfi/repo/$(uname -m)" >> /etc/apk/repositories
+          echo "https://downloads.sourceforge.net/project/wolfi" >> /etc/apk/repositories
 
           # Update package index
           apk update
 
           # Install packages
-          apk add stremio mpv qt5-qtwebengine
+          apk add stremio-qt5 mpv
           ```
 
           ## Package Statistics

@@ -1,0 +1,44 @@
+#!/bin/sh
+set -e
+
+version="#VERSION#"
+hash="#HASH#"
+file="server.js"
+url="https://dl.strem.io/server/v${version}/desktop/server.js"
+
+cachedir="/var/cache/stremio-server-installer"
+destdir="/usr/share/stremio"
+
+error()
+{
+	echo "stremio-server-installer: $1" >&2
+	rm -f "${cachedir}/${file}"
+	exit 1
+}
+
+# Source debconf library.
+. /usr/share/debconf/confmodule
+
+if [ "$1" = "configure" ]; then
+	db_get stremio-server-installer/download || true
+	if [ "${RET}" = "true" ]; then
+		mkdir -p "${cachedir}"
+		cd "${cachedir}"
+
+		echo "stremio-server-installer: downloading ${url}"
+		wget -q -O "${file}.tmp" "${url}" || error "download failed"
+		mv "${file}.tmp" "${file}"
+
+		echo "${hash}  ${file}" | sha256sum -c > /dev/null 2>&1 \
+			|| error "checksum mismatch for ${file}, expected ${hash}"
+
+		install -Dm644 "${cachedir}/${file}" "${destdir}/${file}"
+		echo "stremio-server-installer: installed ${destdir}/${file}"
+	else
+		echo "stremio-server-installer: download declined, skipping"
+	fi
+fi
+
+db_stop
+
+#DEBHELPER#

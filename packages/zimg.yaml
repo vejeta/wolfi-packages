@@ -1,7 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 package:
   name: zimg
   version: 3.0.6
-  epoch: 0
+  epoch: 1
   description: Scaling, colorspace conversion, and dithering library
   copyright:
   - license: WTFPL
@@ -34,6 +36,7 @@ pipeline:
     \  --disable-static \\\n  --enable-shared\n"
 - uses: autoconf/make
 - uses: autoconf/make-install
+- runs: find "${{targets.destdir}}" -name '*.la' -delete
 - uses: strip
 subpackages:
 - name: zimg-dev

@@ -1,0 +1,14 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: libfoo
+
+Files: *
+Copyright: 2020 Example Upstream
+License: LGPL-2.1+
+
+Files: tools/*
+Copyright: 2020 Example Upstream
+License: GPL-2+ or Expat
+
+Files: debian/*
+Copyright: 2026 Example Maintainer
+License: GPL-2+

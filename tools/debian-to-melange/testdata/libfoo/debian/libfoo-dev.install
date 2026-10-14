@@ -1,0 +1,3 @@
+usr/include
+usr/lib/*/libfoo.so
+usr/lib/*/pkgconfig

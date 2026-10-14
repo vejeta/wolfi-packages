@@ -1,0 +1,26 @@
+Wolfi Community Packages
+https://github.com/vejeta/wolfi-packages
+
+Copyright (C) 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+
+The build recipes (packages/*.yaml), scripts, workflows and tools in this
+repository are free software: you can redistribute them and/or modify them
+under the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option)
+any later version. See LICENSE.
+
+Each file states its license with an SPDX-License-Identifier header.
+Redistributions of these files, modified or not, must keep those notices.
+
+Exceptions:
+- packages/stremio-server-installer.yaml and its files are generated from
+  the Debian packaging of stremio-server-installer and are GPL-3.0-only.
+- Patches under packages/<name>/ apply to upstream software and are
+  covered by that software's license.
+- Test fixtures under tools/*/testdata/*/debian and tools/*/testdata/*/aport
+  are copies of Debian and Alpine packaging, kept under their own licenses
+  for testing purposes.
+- Built packages (.apk) are covered by the licenses of their upstream
+  projects, as declared in each recipe's `copyright` field.
+
+These recipes are developed and published only in this repository.

@@ -1,0 +1,29 @@
+Source: stremio-server-installer
+Section: contrib/misc
+Priority: optional
+Maintainer: Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+Build-Depends: debhelper-compat (= 13), po-debconf
+Standards-Version: 4.7.4
+Rules-Requires-Root: no
+Homepage: https://www.stremio.com
+Vcs-Browser: https://salsa.debian.org/mendezr/stremio-server-installer
+Vcs-Git: https://salsa.debian.org/mendezr/stremio-server-installer.git
+
+Package: stremio-server-installer
+Architecture: all
+Pre-Depends: debconf (>= 0.5) | debconf-2.0
+Depends: wget, ca-certificates, ${misc:Depends}
+Recommends: stremio
+Description: downloader for Stremio's streaming server component
+ Stremio's optional streaming server (server.js) provides BitTorrent
+ streaming and other advanced streaming features for the stremio media
+ center client. server.js itself is not freely redistributable, so this
+ package does not contain it: it downloads the current version directly
+ from Stremio's own servers during installation, verifies its checksum,
+ and installs it where the stremio package expects to find it.
+ .
+ stremio functions without this package, with BitTorrent-based streaming
+ unavailable.
+ .
+ This is an empty package: all of its work happens in the postinst
+ script, and it ships no files of its own.

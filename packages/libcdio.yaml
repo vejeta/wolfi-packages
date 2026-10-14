@@ -1,7 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 package:
   name: libcdio
   version: 2.2.0
-  epoch: 0
+  epoch: 1
   description: GNU Compact Disc Input and Control Library
   copyright:
   - license: GPL-3.0-or-later
@@ -81,6 +83,7 @@ pipeline:
     rm -rf ${{targets.destdir}}/usr/share/doc
 
     '
+- runs: find "${{targets.destdir}}" -name '*.la' -delete
 - uses: strip
 subpackages:
 - name: libcdio-dev

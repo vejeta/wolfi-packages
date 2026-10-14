@@ -1,0 +1,16 @@
+# Packages retired from this repository (melange origin names, one per line).
+#
+# sign-and-publish.yml removes every published .apk whose origin is listed
+# here before generating the APKINDEX, so the retired package and all its
+# subpackages disappear from the repository. See "Retired packages" in
+# README.md for the reasons.
+libass
+libvpx
+libxcb
+qt5-qtbase
+# stremio: renamed to stremio-qt5. Remove this line when the new, non-Qt5
+# stremio recipe is added, or every publish will delete it.
+stremio
+stremio-server
+vulkan-loader
+zlib

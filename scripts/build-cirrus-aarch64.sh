@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 # Build all Wolfi packages for aarch64 using Melange natively on Cirrus CI
 # This script is designed to run in the Alpine container on Cirrus CI
 # with ARM64 native architecture (AWS Graviton2)
@@ -72,27 +74,22 @@ echo ""
 # Based on build_order_summary.md
 PACKAGES=(
     # Stage 1: Base utilities and libraries
-    "zlib"
     "uchardet"
     "mujs"
 
     # Stage 2: Graphics and media foundations
     "zimg"
     "libcdio"
-    "libxcb"
     "libxpresent"
 
     # Stage 3: Audio/video processing and graphics
     "libcdio-paranoia"
-    "vulkan-loader"
     "shaderc"
 
     # Stage 4: Media libraries
     "rubberband"
-    "libvpx"
     "libplacebo"
     "libbluray"
-    "libass"
 
     # Stage 5: DVD support
     "libdvdread"
@@ -104,7 +101,6 @@ PACKAGES=(
     "mpv"
 
     # Stage 8: Qt5 base
-    "qt5-qtbase"
 
     # Stage 9: Qt5 declarative components
     "qt5-qtdeclarative"
@@ -118,7 +114,7 @@ PACKAGES=(
     "qt5-qtwebengine"
 
     # Stage 12: Stremio application
-    "stremio"
+    "stremio-qt5"
 )
 
 TOTAL_PACKAGES=${#PACKAGES[@]}
@@ -263,7 +259,7 @@ else
 fi
 
 echo ""
-echo "=== Copying debug logs to artifacts ===\"
+echo "=== Copying debug logs to artifacts ==="
 mkdir -p "$OUTPUT_DIR/$ARCH/logs"
 if [ -f /tmp/qemu-debug.log ]; then
     cp /tmp/qemu-debug.log "$OUTPUT_DIR/$ARCH/logs/qemu-debug.log"
@@ -286,8 +282,8 @@ du -sh "$OUTPUT_DIR/$ARCH/"
 # Exit with error if critical packages failed
 CRITICAL_FAILURES=()
 for pkg in "${FAILED_PACKAGES[@]}"; do
-    # Check if this is a critical package (qt5-qtwebengine or stremio)
-    if [[ "$pkg" == "qt5-qtwebengine" ]] || [[ "$pkg" == "stremio" ]]; then
+    # Check if this is a critical package (qt5-qtwebengine or stremio-qt5)
+    if [[ "$pkg" == "qt5-qtwebengine" ]] || [[ "$pkg" == "stremio-qt5" ]]; then
         CRITICAL_FAILURES+=("$pkg")
     fi
 done

@@ -1,7 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025-2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 package:
   name: mpv
   version: 0.40.0
-  epoch: 0
+  epoch: 1
   description: Free, open source, and cross-platform media player
   copyright:
   - license: GPL-2.0-or-later AND LGPL-2.1-or-later
@@ -17,7 +19,7 @@ environment:
     - ffmpeg-dev
     - lcms2-dev
     - libarchive-dev
-    - libass-dev
+    - libass9-dev
     - libbluray-dev
     - libcdio-paranoia-dev
     - libdvdnav-dev
