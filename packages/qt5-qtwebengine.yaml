@@ -169,6 +169,7 @@ pipeline:
 - runs: 'make INSTALL_ROOT="${{targets.destdir}}" install
 
     '
+- runs: find "${{targets.destdir}}" -name '*.la' -delete
 subpackages:
 - name: qt5-qtwebengine-dev
   pipeline:

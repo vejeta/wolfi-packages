@@ -37,6 +37,7 @@ pipeline:
 - runs: 'make INSTALL_ROOT="${{targets.destdir}}" install
 
     '
+- runs: find "${{targets.destdir}}" -name '*.la' -delete
 - uses: strip
 subpackages:
 - name: qt5-qtquickcontrols2-dev
