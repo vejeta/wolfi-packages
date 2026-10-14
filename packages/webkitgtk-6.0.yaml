@@ -69,8 +69,10 @@ environment:
       - lld
       - llvm
       - mesa-dev
+      - mesa-gbm
       - openjpeg-dev
       - pango-dev
+      - perl
       - python3
       - ruby-3.4
       - bubblewrap
