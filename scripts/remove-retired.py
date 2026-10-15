@@ -9,7 +9,8 @@ The origin is read from each package's .PKGINFO (falling back to pkgname),
 so subpackages of a retired recipe are removed as well.
 
 An entry "name>=version" or "name<version" removes only the builds of that
-origin in that version range, for a name that a new recipe reuses.
+origin in that version range, for a name that a new recipe reuses. Names of
+architectures after the entry limit it to those directories (repo/aarch64).
 
 Standard library only.
 """
@@ -23,16 +24,17 @@ import zlib
 
 
 def read_list(path):
-    """Return {origin: (operator, version) or None}."""
+    """Return {origin: ((operator, version) or None, {arch} or None)}."""
     retired = {}
     with open(path, encoding="utf-8") as fh:
         for line in fh:
             entry = line.split("#", 1)[0].strip()
             if entry:
-                m = re.match(r"^([^<>=\s]+)\s*(?:(>=|<)\s*(\S+))?$", entry)
+                m = re.match(r"^([^<>=\s]+)\s*(?:(>=|<)\s*([^\s<>=]+))?((?:\s+[a-z0-9_]+)*)$", entry)
                 if not m:
                     sys.exit("error: bad entry in {}: {}".format(path, entry))
-                retired[m.group(1)] = (m.group(2), m.group(3)) if m.group(2) else None
+                versions = (m.group(2), m.group(3)) if m.group(2) else None
+                retired[m.group(1)] = (versions, set(m.group(4).split()) or None)
     return retired
 
 
@@ -42,12 +44,15 @@ def version_key(version):
     return [int(n) for n in re.findall(r"\d+", version)]
 
 
-def is_retired(retired, origin, version):
+def is_retired(retired, origin, version, arch):
     if origin not in retired:
         return False
-    if retired[origin] is None:
+    versions, arches = retired[origin]
+    if arches is not None and arch not in arches:
+        return False
+    if versions is None:
         return True
-    op, limit = retired[origin]
+    op, limit = versions
     older = version_key(version) < version_key(limit)
     return older if op == "<" else not older
 
@@ -92,7 +97,8 @@ def main(argv):
             path = os.path.join(directory, name)
             info = pkginfo(path)
             origin = info.get("origin") or info.get("pkgname")
-            if is_retired(retired, origin, info.get("pkgver", "")):
+            arch = os.path.basename(os.path.normpath(directory))
+            if is_retired(retired, origin, info.get("pkgver", ""), arch):
                 os.remove(path)
                 removed += 1
                 print("removed {} (origin {})".format(path, origin))

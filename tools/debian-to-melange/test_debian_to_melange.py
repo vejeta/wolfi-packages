@@ -227,6 +227,21 @@ class JvmPackagesTest(unittest.TestCase):
         self.assertIn("autopkgtest: debian/tests/build-library 2.13", text)
 
 
+class ScalaBuildTest(unittest.TestCase):
+    """dh --buildsystem=scala becomes the scala/build pipeline."""
+
+    def test_scala_build(self):
+        with tempfile.TemporaryDirectory() as out:
+            convert("scala-xml", out)
+            with open(os.path.join(out, "libscala-xml-java.yaml")) as fh:
+                text = fh.read()
+            self.assertTrue(filecmp.cmp(os.path.join(out, "libscala-xml-java", "scala-build"),
+                                        os.path.join(TESTDATA, "scala-xml", "debian", "scala-build"), False))
+        self.assertIn("  - uses: scala/build\n", text)
+        self.assertIn("- scala-2.12  # Debian: scala", text)
+        self.assertNotIn("dh-sequence-scala", text)
+
+
 class AutopkgtestTest(unittest.TestCase):
 
     def test_autopkgtests_become_test_steps(self):

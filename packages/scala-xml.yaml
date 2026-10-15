@@ -1,0 +1,113 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# The Scala XML library for Scala 3, 2.13 and 2.12, built without sbt by the
+# scala/build pipeline from scala-xml/scala-build.
+package:
+  name: scala-xml
+  version: '2.5.0'
+  epoch: 0
+  description: Scala XML library for Scala 3
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - scala-3.8
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - busybox
+      - openjdk-25-default-jdk
+      - scala-2.12
+      - scala-2.13
+      - scala-3.8
+  environment:
+    JAVA_HOME: /usr/lib/jvm/default-jvm
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/scala/scala-xml
+      tag: v${{package.version}}
+      expected-commit: 8329863472f6a2f04939974d88d1540c357d5062
+
+  - uses: scala/build
+
+  - runs: |
+      for d in ${{targets.outdir}}/${{package.name}} ${{targets.outdir}}/${{package.name}}-2.13 \
+               ${{targets.outdir}}/${{package.name}}-2.12; do
+        install -Dm644 LICENSE NOTICE -t $d/usr/share/licenses/$(basename $d)
+      done
+
+subpackages:
+  - name: scala-xml-2.13
+    description: Scala XML library for Scala 2.13
+    dependencies:
+      runtime:
+        - scala-2.13
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+            - openjdk-25-default-jvm
+      pipeline:
+        - runs: |
+            cd "$(mktemp -d)"
+            cat > X.scala <<'SCALA'
+            object X extends App { println((<a><b>hi</b></a> \ "b").text) }
+            SCALA
+            scalac-2.13 -cp /usr/share/java/scala-xml_2.13.jar X.scala
+            scala-2.13 -cp /usr/share/java/scala-xml_2.13.jar:. X | grep -qx hi
+
+  - name: scala-xml-2.12
+    description: Scala XML library for Scala 2.12
+    dependencies:
+      runtime:
+        - scala-2.12
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+            - openjdk-25-default-jvm
+      pipeline:
+        - runs: |
+            cd "$(mktemp -d)"
+            cat > X.scala <<'SCALA'
+            object X extends App { println((<a><b>hi</b></a> \ "b").text) }
+            SCALA
+            L=/usr/share/scala-2.12/lib
+            java -cp $L/scala-compiler.jar:$L/scala-library.jar:$L/scala-reflect.jar:$L/scala-asm.jar \
+              scala.tools.nsc.Main -usejavacp -nobootcp -bootclasspath $L/scala-library.jar \
+              -classpath /usr/share/java/scala-xml_2.12.jar X.scala
+            java -cp $L/scala-library.jar:/usr/share/java/scala-xml_2.12.jar:. X | grep -qx hi
+
+update:
+  enabled: true
+  github:
+    identifier: scala/scala-xml
+    strip-prefix: v
+    use-tag: true
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+        - openjdk-25-default-jvm
+  pipeline:
+    - name: Jar contents
+      runs: |
+        J=/usr/share/java/scala-xml_3.jar
+        test -L $J
+        cd "$(mktemp -d)"
+        unzip -q $J META-INF/MANIFEST.MF scala-xml.properties scala/xml/Elem.tasty
+        grep -q 'Automatic-Module-Name: scala.xml' META-INF/MANIFEST.MF
+        grep -qx 'version.number=${{package.version}}' scala-xml.properties
+        test -f /usr/share/maven-repo/org/scala-lang/modules/scala-xml_3/${{package.version}}/scala-xml_3-${{package.version}}.pom

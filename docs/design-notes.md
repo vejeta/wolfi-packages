@@ -36,6 +36,10 @@ the recipe still builds for aarch64 elsewhere (Cirrus CI, see
 well, because it needs that qt5-qtwebengine. The publish workflow only
 downloads Cirrus artifacts while `.cirrus.yml` exists.
 
+The aarch64 builds of both published earlier came from Cirrus and need
+`libvpx.so.11`, which Wolfi no longer has. They are retired for aarch64;
+they can be rebuilt on request.
+
 ## Rust: crates from `Cargo.lock`
 
 Debian builds Rust programs against its packaged `librust-*` crates. Wolfi
@@ -89,6 +93,14 @@ The sources of each module are passed to scalac in sorted order. In
 `find`'s order, which depends on the file system, scaladoc failed to
 compile with a `CyclicReference` error.
 
+## Scala libraries: scala/build
+
+The `scala/build` pipeline reads the `scala-build` file of Debian's dh-scala,
+so a library packaged for Debian with dh-scala is built here from the same
+file. The Python script is embedded in the pipeline because melange
+pipelines cannot ship extra files; `scripts/test_scala_build.py` extracts and
+tests it. See [scala-build.md](scala-build.md).
+
 ## Retired packages
 
 `packages/RETIRED` lists origins that the publish workflow removes from
@@ -98,3 +110,4 @@ publish.
 
 An entry can be limited to a version range when a new recipe reuses a
 name: `stremio>=4` removes the old 4.x builds and keeps `stremio` 1.x.
+Architecture names after an entry limit it to those architectures.

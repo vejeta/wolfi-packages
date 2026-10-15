@@ -1,0 +1,40 @@
+# scala-build(5) file for scala/build: upstream's source sets for each Scala
+# version (configSettings in build.sbt) and scalacOptions that affect the
+# bytecode. sbt-scala-module adds the manifest line and scala-xml.properties.
+# Upstream builds the Scala 3 jar with 3.3 for Java 8; Wolfi's Scala 3.8
+# needs Java 17.
+
+Artifact: scala-xml
+Group: org.scala-lang.modules
+Scala-Version: 3
+Sources:
+ shared/src/main/scala
+ shared/src/main/scala-3
+ shared/src/main/scala-2.13+
+Scalac-Options: -nowarn -release:17
+Manifest: Automatic-Module-Name: scala.xml
+Version-Properties: scala-xml.properties
+
+Artifact: scala-xml
+Group: org.scala-lang.modules
+Scala-Version: 2.13
+Package: scala-xml-2.13
+Sources:
+ shared/src/main/scala
+ shared/src/main/scala-2
+ shared/src/main/scala-2.13+
+Scalac-Options: -nowarn -release:8
+Manifest: Automatic-Module-Name: scala.xml
+Version-Properties: scala-xml.properties
+
+Artifact: scala-xml
+Group: org.scala-lang.modules
+Scala-Version: 2.12
+Package: scala-xml-2.12
+Sources:
+ shared/src/main/scala
+ shared/src/main/scala-2
+ shared/src/main/scala-2.12
+Scalac-Options: -nowarn -target:jvm-1.8
+Manifest: Automatic-Module-Name: scala.xml
+Version-Properties: scala-xml.properties

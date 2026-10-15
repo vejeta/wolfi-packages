@@ -64,7 +64,7 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | `Build-Depends{,-Indep,-Arch}` | `environment.contents.packages`, names mapped to Wolfi (`librust-*-dev` dropped: cargo fetches crates). Names not found are kept with a TODO, never dropped |
 | Build profiles (`<!nocheck>`, `<pkg.foo.stage0>`) | Evaluated for a normal build: dependencies only needed under a profile are left out |
 | `libfoo-perl`, `openjdk-N-jdk`, `default-jdk` | `perl-foo`, `openjdk-N`, `openjdk-25-default-jdk`; `lib*-java` flagged (Wolfi fetches jars from Maven Central); `libjs-*` and Debian Java helpers dropped |
-| `dh $@ --buildsystem=…` or detected build files | `cmake/*`, `meson/*`, `autoconf/*`, `py/pip-build-install`, `go/build`, `cargo/build`, plain `make` |
+| `dh $@ --buildsystem=…` or detected build files | `cmake/*`, `meson/*`, `autoconf/*`, `py/pip-build-install`, `go/build`, `cargo/build`, `scala/build` (dh-scala, with `debian/scala-build` copied next to the recipe), plain `make` |
 | `override_dh_auto_configure: dh_auto_configure -- ARGS` | `with: opts: ARGS` on the configure step |
 | `override_dh_auto_build`, `override_dh_auto_install` | `runs` steps with the same commands (`debian/<pkg>/` → `${{targets.destdir}}/`, `debian/<file>` copied next to the recipe, `target/$(DEB_HOST_RUST_TYPE)/` → `target/`); TODO if make or debhelper constructs remain |
 | `export VAR = value` in `rules` | `environment.environment` (`$(CURDIR)` → `/home/build`; `DEB_*`, `PATH`, `CARGO_HOME`, compiler flags skipped) |

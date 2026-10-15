@@ -1,0 +1,15 @@
+Source: scala-xml
+Section: java
+Priority: optional
+Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.org>
+Uploaders: Juan Manuel Méndez Rey <vejeta@gmail.com>
+Build-Depends: debhelper-compat (= 13), dh-sequence-scala, default-jdk-headless, scala (>= 2.12~)
+Standards-Version: 4.7.2
+Homepage: https://github.com/scala/scala-xml
+Rules-Requires-Root: no
+
+Package: libscala-xml-java
+Architecture: all
+Depends: ${misc:Depends}, ${java:Depends}
+Description: Scala XML library
+ The standard Scala XML library, for Scala 2.12.

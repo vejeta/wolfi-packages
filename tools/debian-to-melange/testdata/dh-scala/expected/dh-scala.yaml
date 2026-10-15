@@ -93,13 +93,15 @@ test:
       packages:
         - busybox
         - build-base  # Debian: build-essential
-        - scala
+        - scala-2.12  # Debian: scala
         - build-base  # Debian: build-essential
         - scala-2.13
         - build-base  # Debian: build-essential
-        - scala3
+        - scala-3.8  # Debian: scala3
         - build-base  # Debian: build-essential
+        - scala-3.8  # Debian: scala3
         - build-base  # Debian: build-essential
+        - scala-2.12  # Debian: scala
   pipeline:
     - runs: |
         test -f /usr/share/doc/dh-scala/copyright

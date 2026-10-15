@@ -68,6 +68,9 @@ NAME_MAP = {
     "pkgconf": "pkgconf-dev",
     "ca-certificates": "ca-certificates-bundle",
     "golang-go": "go",
+    # Scala compilers (dh-scala's table): scala is Debian's 2.12 series
+    "scala": "scala-2.12",
+    "scala3": "scala-3.8",
     "golang": "go",
     "cargo": "rust",
     "rustc": "rust",
@@ -1023,6 +1026,15 @@ class Converter:
                 pipeline.append(entry)
             if bs in ("pybuild", "golang", "cargo") and "override_dh_auto_build" not in overrides:
                 pipeline.append(self.todo("review the {} pipeline inputs (Debian used dh --buildsystem={})".format(BUILD_PIPELINES[bs][0], bs)))
+        elif bs == "scala":
+            # dh-scala: the scala/build pipeline of this repository reads the
+            # same file, copied next to the recipe.
+            config = self.read("scala-build") or ""
+            self.aux["scala-build"] = config
+            pipeline.append({"uses": "scala/build"})
+            if re.search(r"^Package:", config, re.M | re.I):
+                pipeline.append(self.todo("the Package fields of scala-build name Debian packages; "
+                                          "use melange package names, or remove them"))
         elif bs == "makefile":
             pipeline.append({"runs": 'make -j$(nproc)\nmake install DESTDIR="${{targets.destdir}}" PREFIX=/usr\n'})
         elif bs:

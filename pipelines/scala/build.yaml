@@ -1,0 +1,576 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# Build Scala libraries without sbt, from a scala-build file in the format of
+# Debian's dh-scala (scala-build(5)): one stanza per artifact and Scala
+# binary version. See docs/scala-build.md.
+name: Build Scala libraries described in a scala-build file
+
+needs:
+  packages:
+    - python3
+
+inputs:
+  config:
+    description: scala-build file, relative to the source directory
+    default: ${{package.name}}/scala-build
+  version:
+    description: Artifact version for stanzas without a Version field
+    default: ${{package.version}}
+  destdir:
+    description: Where stanzas without a Package field are installed
+    default: ${{targets.contextdir}}
+  outdir:
+    description: Parent directory of the packages named by Package fields
+    default: ${{targets.outdir}}
+  java-opts:
+    description: JVM options for the Scala compiler
+    default: -Xss16m
+
+pipeline:
+  - runs: |
+      cat > "${TMPDIR:-/tmp}/scala-build.py" <<'PY'
+      """Build the stanzas of a scala-build file (dh-scala's format).
+
+      scala-build.py CONFIG VERSION DESTDIR OUTDIR JAVA_OPTS
+      """
+
+      import glob
+      import os
+      import re
+      import shutil
+      import subprocess
+      import sys
+      import time
+      import zipfile
+
+      JAVA_DIR = "/usr/share/java"
+      MAVEN_REPO = "/usr/share/maven-repo"
+      BUILD_ROOT = ".scala-build"
+      SAFE_EPOCH = 315576060  # earliest date a zip entry can carry
+
+      FIELDS = {
+          "artifact": True, "group": True, "scala-version": True,
+          "cross-version": False, "version": False, "package": False,
+          "sources": False, "exclude": False, "resources": False,
+          "classpath": False, "scalac-options": False, "javac-options": False,
+          "manifest": False, "pom": False, "install": False,
+          "version-properties": False,
+      }
+
+
+      class Error(Exception):
+          pass
+
+
+      def one(pattern):
+          """The single file matching a glob pattern, or None."""
+          found = sorted(glob.glob(pattern))
+          return found[-1] if found else None
+
+
+      def compilers():
+          """Compiler table, by Scala binary version, for the Wolfi packages."""
+          table = {}
+          for binver in ("2.12", "2.13"):
+              lib = "/usr/share/scala-{}/lib".format(binver)
+              table[binver] = {
+                  "package": "scala-" + binver,
+                  "main": "scala.tools.nsc.Main",
+                  "run_cp": [lib + "/scala-compiler.jar", lib + "/scala-library.jar",
+                             lib + "/scala-reflect.jar", lib + "/scala-asm.jar"],
+                  "stdlib": [lib + "/scala-library.jar"],
+                  "stdlib_opt": "-bootclasspath",
+                  "stdlib_pom": [("org.scala-lang", "scala-library")],
+              }
+          m2 = "/usr/share/scala/maven2/"
+
+          def jar(path):
+              return one(m2 + path) or m2 + path
+
+          table["3"] = {
+              "package": "scala-3.x",
+              "main": "dotty.tools.dotc.Main",
+              "run_cp": [jar(p) for p in (
+                  "org/scala-lang/scala3-compiler_3/*/*.jar",
+                  "org/scala-lang/scala3-interfaces/*/*.jar",
+                  "org/scala-lang/tasty-core_3/*/*.jar",
+                  "org/scala-lang/scala-library/*/*.jar",
+                  "org/scala-lang/scala3-library_3/*/*.jar",
+                  "org/scala-lang/modules/scala-asm/*/*.jar",
+                  "org/scala-sbt/compiler-interface/*/*.jar",
+                  "org/scala-sbt/util-interface/*/*.jar")],
+              "stdlib": [jar("org/scala-lang/scala-library/*/*.jar"),
+                         jar("org/scala-lang/scala3-library_3/*/*.jar")],
+              "stdlib_opt": "-classpath",
+              "stdlib_pom": [("org.scala-lang", "scala3-library_3")],
+          }
+          return table
+
+
+      COMPILERS = compilers()
+
+
+      def parse(path):
+          """Stanzas of a deb822 file: [(line, {field: value})]."""
+          stanzas, cur, start, last = [], None, 0, None
+          with open(path, encoding="utf-8") as fh:
+              lines = fh.read().splitlines()
+          for n, line in enumerate(lines, 1):
+              if line.startswith("#"):
+                  continue
+              if not line.strip():
+                  if cur is not None:
+                      stanzas.append((start, cur))
+                  cur, last = None, None
+              elif line[0] in " \t":
+                  if last is None:
+                      raise Error("{}:{}: continuation line outside a field".format(path, n))
+                  cur[last] += "\n" + line.strip()
+              else:
+                  m = re.match(r"^([^\s:][^:]*):\s*(.*)$", line)
+                  if not m:
+                      raise Error("{}:{}: bad line".format(path, n))
+                  if cur is None:
+                      cur, start = {}, n
+                  last = m.group(1).lower()
+                  if last in cur:
+                      raise Error("{}:{}: field {} twice".format(path, n, m.group(1)))
+                  cur[last] = m.group(2).strip()
+          if cur is not None:
+              stanzas.append((start, cur))
+          if not stanzas:
+              raise Error("{} has no stanza".format(path))
+          return stanzas
+
+
+      def default_sources(binver):
+          major = binver.split(".")[0]
+          dirs = []
+          for d in ("scala", "java", "scala-" + major, "scala-" + binver):
+              if "src/main/" + d not in dirs:
+                  dirs.append("src/main/" + d)
+          return dirs
+
+
+      def read_config(path, version):
+          """The stanzas of a scala-build file, with defaults filled in."""
+          out, seen = [], set()
+          for line, f in parse(path):
+              where = "{}:{}".format(path, line)
+              for k in f:
+                  if k not in FIELDS:
+                      raise Error("{}: unknown field {}".format(where, k))
+              for k, required in sorted(FIELDS.items()):
+                  if required and not f.get(k):
+                      raise Error("{}: missing field {}".format(where, k))
+              binver = f["scala-version"]
+              if binver not in COMPILERS:
+                  raise Error("{}: unknown Scala-Version '{}' (known: {})".format(
+                      where, binver, ", ".join(sorted(COMPILERS))))
+              v = f.get("version") or version
+              for k in f:
+                  f[k] = f[k].replace("@BINVER@", binver).replace("@VERSION@", v)
+              cross = f.get("cross-version", "binary").lower()
+              if cross not in ("binary", "none"):
+                  raise Error("{}: Cross-Version must be binary or none".format(where))
+              install = f.get("install", "yes").lower()
+              if install not in ("yes", "no"):
+                  raise Error("{}: Install must be yes or no".format(where))
+              ident = f["artifact"] + ("_" + binver if cross == "binary" else "")
+              if ident in seen:
+                  raise Error("{}: artifact {} defined twice".format(where, ident))
+              seen.add(ident)
+              manifest = [l.strip() for l in f.get("manifest", "").split("\n") if l.strip()]
+              for l in manifest:
+                  if not re.match(r"^[A-Za-z0-9][A-Za-z0-9_-]*: \S", l):
+                      raise Error("{}: bad Manifest line '{}'".format(where, l))
+              props = f.get("version-properties")
+              if props is not None and not re.match(r"^[A-Za-z0-9][A-Za-z0-9._-]*\.properties$", props):
+                  raise Error("{}: Version-Properties must be a file name ending in .properties".format(where))
+              out.append({
+                  "artifact": f["artifact"], "group": f["group"], "binver": binver,
+                  "cross": cross, "id": ident, "version": v,
+                  "package": f.get("package"), "install": install == "yes",
+                  "sources": f["sources"].split() if "sources" in f else None,
+                  "exclude": f.get("exclude", "").split(),
+                  "resources": f["resources"].split() if "resources" in f else None,
+                  "classpath": f.get("classpath", "").split(),
+                  "scalac_options": f.get("scalac-options", "").split(),
+                  "javac_options": f.get("javac-options", "").split(),
+                  "manifest": manifest, "pom": f.get("pom"),
+                  "version_properties": props,
+                  "builddir": os.path.join(BUILD_ROOT, ident),
+                  "where": "{} ({})".format(where, ident),
+              })
+          return out
+
+
+      def repo_version(group, artifact, version=None):
+          """Version directory of an artifact in /usr/share/maven-repo."""
+          base = os.path.join(MAVEN_REPO, group.replace(".", "/"), artifact)
+          if version:
+              return version if os.path.isfile(os.path.join(base, version, "{}-{}.jar".format(artifact, version))) else None
+          found = sorted(d for d in os.listdir(base)
+                         if os.path.isfile(os.path.join(base, d, "{}-{}.jar".format(artifact, d)))) \
+              if os.path.isdir(base) else []
+          if "debian" in found:
+              return "debian"
+          return found[0] if len(found) == 1 else None
+
+
+      def repo_jar(group, artifact, version):
+          return os.path.join(MAVEN_REPO, group.replace(".", "/"), artifact, version,
+                              "{}-{}.jar".format(artifact, version))
+
+
+      def pom_dependencies(pom):
+          """Compile and runtime dependencies of an installed POM."""
+          try:
+              with open(pom, encoding="utf-8") as fh:
+                  t = fh.read()
+          except OSError:
+              return []
+          t = re.sub(r"<!--.*?-->", "", t, flags=re.S)
+          t = re.sub(r"<(dependencyManagement|build|profiles|reporting|parent)\b.*?</\1>", "", t, flags=re.S)
+          deps = []
+          for d in re.findall(r"<dependency>(.*?)</dependency>", t, flags=re.S):
+              f = {}
+              for k in ("groupId", "artifactId", "version", "scope", "optional"):
+                  m = re.search(r"<{0}>\s*([^<]*?)\s*</{0}>".format(k), d)
+                  f[k] = m.group(1) if m else None
+              if not f["groupId"] or not f["artifactId"]:
+                  continue
+              if (f["scope"] or "compile") in ("test", "provided", "system", "import"):
+                  continue
+              if f["optional"] == "true":
+                  continue
+              deps.append(f)
+          return deps
+
+
+      def pom_closure(group, artifact, version):
+          """Jars a Maven artifact needs, transitively, from the installed POMs."""
+          out, seen, todo = [], set(), [(group, artifact, version)]
+          while todo:
+              g, a, v = todo.pop(0)
+              if (g, a) in seen:
+                  continue
+              seen.add((g, a))
+              pom = repo_jar(g, a, v)[:-4] + ".pom"
+              for d in pom_dependencies(pom):
+                  dv = repo_version(d["groupId"], d["artifactId"], d["version"]) \
+                      or repo_version(d["groupId"], d["artifactId"])
+                  if dv is None:
+                      continue
+                  out.append({"path": repo_jar(d["groupId"], d["artifactId"], dv),
+                              "coords": (d["groupId"], d["artifactId"], dv), "transitive": True})
+                  todo.append((d["groupId"], d["artifactId"], dv))
+          return out
+
+
+      def resolve_classpath(s, built, top):
+          r = []
+          for e in s["classpath"]:
+              if e.startswith("@"):
+                  name = e[1:]
+                  deps = [b for b in built.values() if b["artifact"] == name
+                          and (b["binver"] == s["binver"] or b["cross"] == "none")]
+                  if not deps:
+                      raise Error("{}: Classpath {} is not an earlier stanza for Scala {}".format(
+                          s["where"], e, s["binver"]))
+                  dep = deps[0]
+                  r.append({"path": os.path.join(top, dep["builddir"], "classes"),
+                            "coords": (dep["group"], dep["id"], dep["version"])})
+                  r.extend(dict(x, transitive=True) for x in dep["resolved_classpath"])
+              elif e.startswith("/"):
+                  if not os.path.exists(e):
+                      raise Error("{}: {} does not exist (missing build dependency?)".format(s["where"], e))
+                  r.append({"path": e})
+              else:
+                  m = re.match(r"^([^:\s]+):([^:\s]+)(?::([^:\s]+))?$", e)
+                  if not m:
+                      raise Error("{}: bad Classpath entry '{}'".format(s["where"], e))
+                  g, a, v = m.groups()
+                  rv = repo_version(g, a, v)
+                  if rv is None:
+                      raise Error("{}: {} not found in {} (missing build dependency?)".format(
+                          s["where"], e, MAVEN_REPO))
+                  r.append({"path": repo_jar(g, a, rv), "coords": (g, a, rv)})
+                  r.extend(pom_closure(g, a, rv))
+          seen, out = set(), []
+          for x in [x for x in r if not x.get("transitive")] + [x for x in r if x.get("transitive")]:
+              if x["path"] not in seen:
+                  seen.add(x["path"])
+                  out.append(x)
+          return out
+
+
+      def glob_to_regex(g):
+          r = ""
+          while g:
+              if g.startswith("**"):
+                  r, g = r + ".*", g[2:]
+              elif g[0] == "*":
+                  r, g = r + "[^/]*", g[1:]
+              elif g[0] == "?":
+                  r, g = r + "[^/]", g[1:]
+              else:
+                  r, g = r + re.escape(g[0]), g[1:]
+          return re.compile("^" + r + "$")
+
+
+      def collect_sources(s, srcdir):
+          """Sorted .scala and .java files, relative to srcdir: (all, java)."""
+          if s["sources"] is not None:
+              dirs = s["sources"]
+              for d in dirs:
+                  if not os.path.isdir(os.path.join(srcdir, d)):
+                      raise Error("{}: source directory {} does not exist".format(s["where"], d))
+          else:
+              dirs = [d for d in default_sources(s["binver"]) if os.path.isdir(os.path.join(srcdir, d))]
+          ex = [glob_to_regex(g) for g in s["exclude"]]
+          files = set()
+          for d in dirs:
+              for root, _, names in os.walk(os.path.join(srcdir, d)):
+                  for n in names:
+                      if not n.endswith((".scala", ".java")):
+                          continue
+                      rel = os.path.relpath(os.path.join(root, n), srcdir)
+                      if any(x.match(rel) for x in ex):
+                          continue
+                      if re.search(r"\s", rel):
+                          raise Error("{}: whitespace in source path {}".format(s["where"], rel))
+                      files.add(rel)
+          if not files:
+              raise Error("{}: no sources in {}".format(s["where"], " ".join(dirs)))
+          all_files = sorted(files)
+          return all_files, [f for f in all_files if f.endswith(".java")]
+
+
+      def copy_resources(s, srcdir, classes):
+          if s["resources"] is not None:
+              dirs = s["resources"]
+              for d in dirs:
+                  if not os.path.isdir(os.path.join(srcdir, d)):
+                      raise Error("{}: resource directory {} does not exist".format(s["where"], d))
+          else:
+              dirs = ["src/main/resources"] if os.path.isdir(os.path.join(srcdir, "src/main/resources")) else []
+          for d in dirs:
+              root = os.path.join(srcdir, d)
+              for base, _, names in os.walk(root):
+                  for n in sorted(names):
+                      rel = os.path.relpath(os.path.join(base, n), root)
+                      to = os.path.join(classes, rel)
+                      if os.path.exists(to):
+                          raise Error("{}: resource {}/{} clashes with a compiled file".format(s["where"], d, rel))
+                      os.makedirs(os.path.dirname(to), exist_ok=True)
+                      shutil.copy(os.path.join(base, n), to)
+
+
+      def stdlib_version(jar):
+          with zipfile.ZipFile(jar) as z:
+              for name in ("library.properties", "compiler.properties"):
+                  if name in z.namelist():
+                      m = re.search(r"^version\.number=(\S+)", z.read(name).decode(), re.M)
+                      if m:
+                          return m.group(1)
+          m = re.search(r"/([0-9][^/]*)/[^/]+\.jar$", jar)
+          if m:
+              return m.group(1)
+          raise Error("no version.number in {}".format(jar))
+
+
+      def run(cmd, cwd):
+          print("+ " + " ".join(cmd), flush=True)
+          subprocess.run(cmd, cwd=cwd, check=True)
+
+
+      def compile_stanza(s, cp, srcdir, top, java_home, java_opts):
+          c = COMPILERS[s["binver"]]
+          for f in c["run_cp"] + c["stdlib"]:
+              if not os.path.exists(f):
+                  raise Error("{}: {} not found: the build needs {} (Scala {})".format(
+                      s["where"], f, c["package"], s["binver"]))
+          opts = s["scalac_options"] + s["javac_options"]
+          if any(re.match(r"^--?(release|java-output-version)([:=].*)?$", o) for o in opts) \
+                  and not os.path.exists(os.path.join(java_home, "lib/ct.sym")):
+              raise Error("{}: --release/--java-output-version need a JDK, but {}/lib/ct.sym is missing".format(
+                  s["where"], java_home))
+          all_files, java = collect_sources(s, srcdir)
+          bd = os.path.join(top, s["builddir"])
+          classes = os.path.join(bd, "classes")
+          shutil.rmtree(bd, ignore_errors=True)
+          os.makedirs(classes)
+          libcp = [classes] + [x["path"] for x in cp]
+          if len(all_files) > len(java):
+              with open(os.path.join(bd, "sources"), "w") as fh:
+                  fh.write("".join(f + "\n" for f in all_files))
+              if c["stdlib_opt"] == "-bootclasspath":
+                  lib = ["-bootclasspath", ":".join(c["stdlib"]), "-classpath", ":".join(libcp)]
+              else:
+                  lib = ["-classpath", ":".join(libcp + c["stdlib"])]
+              run([os.path.join(java_home, "bin/java")] + java_opts
+                  + ["-cp", ":".join(c["run_cp"]), c["main"], "-d", classes] + lib
+                  + s["scalac_options"] + ["@" + os.path.join(bd, "sources")], srcdir)
+          if java:
+              with open(os.path.join(bd, "java-sources"), "w") as fh:
+                  fh.write("".join(f + "\n" for f in java))
+              run([os.path.join(java_home, "bin/javac"), "-d", classes,
+                   "-cp", ":".join(libcp + c["stdlib"])] + s["javac_options"]
+                  + ["@" + os.path.join(bd, "java-sources")], srcdir)
+          return classes
+
+
+      def write_jar(jar, directory, manifest, epoch):
+          """A reproducible jar: manifest first, then sorted entries, one date."""
+          epoch = max(epoch, SAFE_EPOCH)
+          date = time.gmtime(epoch)[:6]
+          dirs, files = {"META-INF/"}, {}
+          for root, dnames, fnames in os.walk(directory):
+              for d in dnames:
+                  dirs.add(os.path.relpath(os.path.join(root, d), directory) + "/")
+              for f in fnames:
+                  files[os.path.relpath(os.path.join(root, f), directory)] = os.path.join(root, f)
+          if "META-INF/MANIFEST.MF" in files:
+              raise Error("{} contains META-INF/MANIFEST.MF; use the Manifest field".format(directory))
+          mf = "".join(l + "\r\n" for l in ["Manifest-Version: 1.0"] + manifest) + "\r\n"
+          first = ["META-INF/", "META-INF/MANIFEST.MF"]
+          names = first + sorted((dirs | set(files)) - set(first))
+          with zipfile.ZipFile(jar, "w") as z:
+              for name in names:
+                  info = zipfile.ZipInfo(name, date)
+                  info.create_system = 3
+                  if name.endswith("/"):
+                      info.external_attr = (0o40755 << 16) | 0x10
+                      z.writestr(info, b"")
+                      continue
+                  info.external_attr = 0o100644 << 16
+                  info.compress_type = zipfile.ZIP_DEFLATED
+                  if name == "META-INF/MANIFEST.MF":
+                      data = mf.encode()
+                  else:
+                      with open(files[name], "rb") as fh:
+                          data = fh.read()
+                  z.writestr(info, data)
+
+
+      def xml(s):
+          return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+      def pom_version(text):
+          t = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+          parent = re.search(r"<parent>(.*?)</parent>", t, flags=re.S)
+          t = re.sub(r"<(parent|dependencies|dependencyManagement|build|profiles|reporting|plugins"
+                     r"|pluginRepositories|repositories|distributionManagement)\b.*?</\1>", "", t, flags=re.S)
+          m = re.search(r"<version>\s*([^<\s]+)\s*</version>", t)
+          if not m and parent:
+              m = re.search(r"<version>\s*([^<\s]+)\s*</version>", parent.group(1))
+          return m.group(1) if m else None
+
+
+      def pom_text(s, cp):
+          c = COMPILERS[s["binver"]]
+          deps = [(g, a, stdlib_version(c["stdlib"][0])) for g, a in c["stdlib_pom"]]
+          deps += [x["coords"] for x in cp if x.get("coords") and not x.get("transitive")]
+          body = "".join(
+              "    <dependency>\n      <groupId>{}</groupId>\n      <artifactId>{}</artifactId>\n"
+              "      <version>{}</version>\n    </dependency>\n".format(xml(g), xml(a), xml(v))
+              for g, a, v in deps)
+          return ('<?xml version="1.0" encoding="UTF-8"?>\n'
+                  '<project xmlns="http://maven.apache.org/POM/4.0.0"\n'
+                  '         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n'
+                  '         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 '
+                  'http://maven.apache.org/xsd/maven-4.0.0.xsd">\n'
+                  "  <modelVersion>4.0.0</modelVersion>\n"
+                  "  <groupId>{}</groupId>\n  <artifactId>{}</artifactId>\n"
+                  "  <version>{}</version>\n  <packaging>jar</packaging>\n"
+                  "  <name>{}</name>\n  <dependencies>\n{}  </dependencies>\n</project>\n").format(
+                      xml(s["group"]), xml(s["id"]), xml(s["version"]), xml(s["artifact"]), body)
+
+
+      def write_pom(s, bd, cp, confdir, srcdir):
+          src = s["pom"] or os.path.join(confdir, "poms", s["id"] + ".pom.xml")
+          path = os.path.join(srcdir, src)
+          if s["pom"] is None and not os.path.exists(path):
+              text = pom_text(s, cp)
+          else:
+              with open(path, encoding="utf-8") as fh:
+                  text = fh.read().replace("@VERSION@", s["version"])
+              pv = pom_version(text)
+              if pv != s["version"]:
+                  raise Error("{}: {} says version {}, the package builds {}; write "
+                              "<version>@VERSION@</version> in the POM".format(
+                                  s["where"], src, pv or "(none)", s["version"]))
+          with open(os.path.join(bd, s["id"] + ".pom"), "w", encoding="utf-8") as fh:
+              fh.write(text)
+
+
+      def install(s, bd, dest):
+          """/usr/share/java/<id>-<version>.jar, <id>.jar, and the Maven layout."""
+          ident, v = s["id"], s["version"]
+          java = dest + JAVA_DIR
+          os.makedirs(java, exist_ok=True)
+          shutil.copy(os.path.join(bd, ident + ".jar"), os.path.join(java, "{}-{}.jar".format(ident, v)))
+          os.chmod(os.path.join(java, "{}-{}.jar".format(ident, v)), 0o644)
+          link = os.path.join(java, ident + ".jar")
+          if os.path.lexists(link):
+              os.remove(link)
+          os.symlink("{}-{}.jar".format(ident, v), link)
+          rel = os.path.join(s["group"].replace(".", "/"), ident, v)
+          repo = os.path.join(dest + MAVEN_REPO, rel)
+          os.makedirs(repo, exist_ok=True)
+          shutil.copy(os.path.join(bd, ident + ".pom"), os.path.join(repo, "{}-{}.pom".format(ident, v)))
+          os.chmod(os.path.join(repo, "{}-{}.pom".format(ident, v)), 0o644)
+          jar = os.path.join(repo, "{}-{}.jar".format(ident, v))
+          if os.path.lexists(jar):
+              os.remove(jar)
+          up = "../" * (len(rel.split("/")) + 2)
+          os.symlink("{}share/java/{}-{}.jar".format(up, ident, v), jar)
+
+
+      def main(argv):
+          config, version, destdir, outdir, java_opts = argv
+          srcdir = os.getcwd()
+          java_home = os.environ.get("JAVA_HOME", "/usr/lib/jvm/default-jvm")
+          epoch = int(os.environ.get("SOURCE_DATE_EPOCH", "0"))
+          stanzas = read_config(config, version)
+          built = {}
+          for s in stanzas:
+              c = COMPILERS[s["binver"]]
+              cp = resolve_classpath(s, built, srcdir)
+              s["resolved_classpath"] = cp
+              bd = os.path.join(srcdir, s["builddir"])
+              classes = compile_stanza(s, cp, srcdir, srcdir, java_home, java_opts.split())
+              copy_resources(s, srcdir, classes)
+              if s["version_properties"]:
+                  f = os.path.join(classes, s["version_properties"])
+                  if os.path.exists(f):
+                      raise Error("{}: {} already exists in the resources".format(
+                          s["where"], s["version_properties"]))
+                  with open(f, "w") as fh:
+                      fh.write("scala.version.number={}\nscala.binary.version.number={}\n"
+                               "version.number={}\n".format(
+                                   stdlib_version(c["stdlib"][0]), s["binver"], s["version"]))
+              print("scala-build: writing {}/{}.jar".format(s["builddir"], s["id"]), flush=True)
+              write_jar(os.path.join(bd, s["id"] + ".jar"), classes, s["manifest"], epoch)
+              write_pom(s, bd, cp, os.path.dirname(config), srcdir)
+              built[s["id"]] = s
+          for s in stanzas:
+              if s["install"]:
+                  dest = os.path.join(outdir, s["package"]) if s["package"] else destdir
+                  install(s, os.path.join(srcdir, s["builddir"]), dest)
+          return 0
+
+
+      if __name__ == "__main__":
+          try:
+              sys.exit(main(sys.argv[1:]))
+          except Error as e:
+              sys.exit("scala-build: error: {}".format(e))
+          except subprocess.CalledProcessError as e:
+              sys.exit("scala-build: error: {} exited with {}".format(e.cmd[0], e.returncode))
+      PY
+      python3 "${TMPDIR:-/tmp}/scala-build.py" "${{inputs.config}}" "${{inputs.version}}" \
+        "${{inputs.destdir}}" "${{inputs.outdir}}" "${{inputs.java-opts}}"
