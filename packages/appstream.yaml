@@ -61,12 +61,11 @@ environment:
       - wayland-dev
       - yaml-dev
 pipeline:
-  - uses: fetch
+  - uses: git-checkout
     with:
-      uri: https://www.freedesktop.org/software/appstream/releases/AppStream-${{package.version}}.tar.xz
-      expected-sha512: 1bd83c514253560c2bb9ec89c9796e556ae33f27240b7db18e90175159ad38d933ef6fc36244f24c4b7b1ec9874cde70e835454be25a180eb78911a7b59c48d7
-      # The tarball's entries start with ./AppStream-<version>/
-      strip-components: 2
+      repository: https://github.com/ximion/appstream
+      tag: v${{package.version}}
+      expected-commit: 4e3a4de973810e25bbada1b822185ed4d90eb1f5
   - name: Build
     runs: |
       abuild_meson() {
@@ -129,8 +128,10 @@ subpackages:
       - uses: split/locales
 update:
   enabled: true
-  release-monitor:
-    identifier: 0  # TODO(alpine-to-melange): set the release-monitoring.org project id
+  github:
+    identifier: ximion/appstream
+    strip-prefix: v
+    use-tag: true
 test:
   environment:
     contents:

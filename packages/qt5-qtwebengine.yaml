@@ -166,8 +166,10 @@ pipeline:
     \ → ninja\ncase \"${{build.arch}}\" in\n  x86_64)\n    export CXXFLAGS=\"-march=x86-64\
     \ -mtune=generic -O2 -DNDEBUG -g -Wno-error=template-id-cdtor\"\n    ;;\n  aarch64)\n\
     \    export CXXFLAGS=\"-march=armv8-a -O2 -DNDEBUG -g -Wno-error=template-id-cdtor\"\
-    \n    ;;\nesac\n\n# Build (typically takes 1-2 hours on powerful machines)\nmake\
-    \ -j$(nproc)\n"
+    \n    ;;\nesac\n\n# Build (typically takes 1-2 hours on powerful machines).\n# Chromium's\
+    \ ninja graph misses some dependencies on generated headers (e.g.\n# chrome/grit/generated_resources.h),\
+    \ so a parallel build can fail\n# before they exist; a second run resumes and finds\
+    \ them.\nmake -j$(nproc) || make -j$(nproc)\n"
 - runs: 'make INSTALL_ROOT="${{targets.destdir}}" install
 
     '

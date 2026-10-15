@@ -24,10 +24,18 @@ pipeline:
     repository: https://github.com/google/shaderc
     tag: v${{package.version}}
     expected-commit: 73743588fe9c39f2f1c780a087d94afac691a189
-- runs: './utils/git-sync-deps # TODO: remove thirdparty dependencies and use the
-    system ones
-
-    '
+- runs: |
+    # TODO: remove thirdparty dependencies and use the system ones.
+    # git-sync-deps does not fail when a clone fails, so check the result and
+    # retry: a clone interrupted by the server (early EOF) leaves a directory out.
+    for attempt in 1 2 3; do
+      ./utils/git-sync-deps || true
+      if [ -d third_party/glslang ] && [ -d third_party/spirv-tools ] && [ -d third_party/spirv-headers ]; then
+        break
+      fi
+      sleep 15
+    done
+    [ -d third_party/glslang ] && [ -d third_party/spirv-tools ] && [ -d third_party/spirv-headers ]
 - uses: cmake/configure
   with:
     opts: '-DCMAKE_BUILD_TYPE=Release \

@@ -82,6 +82,7 @@ environment:
       - libdrm-dev
       - wayland-dev
       - wayland-protocols
+      - wayland-protocols-dev  # pc:wayland-protocols (protocol directory for CMake)
       - libjxl-dev
       - harfbuzz-dev
       - libx11-dev

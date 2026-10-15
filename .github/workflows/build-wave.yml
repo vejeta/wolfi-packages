@@ -12,12 +12,8 @@ on:
       wave:
         type: number
         required: true
-      packages:
-        description: JSON list of recipe names
-        type: string
-        required: true
-      architectures:
-        description: JSON list of architectures
+      builds:
+        description: 'JSON list of {"package", "arch"} entries (scripts/build-order.py)'
         type: string
         required: true
 
@@ -33,8 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ fromJson(inputs.packages) }}
-        arch: ${{ fromJson(inputs.architectures) }}
+        include: ${{ fromJson(inputs.builds) }}
 
     steps:
       - name: Checkout repository
@@ -166,6 +161,7 @@ jobs:
 
           # Build using Melange container
           # Use package-cache as local repository (contains cached + SourceForge packages)
+          build() {
           docker run --rm --privileged \
             -v $PWD:/work \
             -w /work \
@@ -184,6 +180,23 @@ jobs:
             --generate-index \
             --out-dir ./build-output \
             "$PACKAGE_YAML"
+          }
+
+          # A source download that fails for network reasons (DNS, no IPv6
+          # route) is retried once; any other failure is reported as is.
+          set +e
+          build 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            if grep -Eq 'Network is unreachable|Temporary failure in name resolution|Unable to establish SSL connection|Connection timed out' build.log; then
+              echo "::warning::Network error while fetching sources; retrying once in 60 s"
+              sleep 60
+              build
+            else
+              exit "$status"
+            fi
+          fi
 
       - name: List built packages
         run: |
