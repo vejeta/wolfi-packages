@@ -3,14 +3,18 @@
 # sign-and-publish.yml removes every published .apk whose origin is listed
 # here before generating the APKINDEX, so the retired package and all its
 # subpackages disappear from the repository. "name>=version" or
-# "name<version" retires only the builds in that range. See "Retired packages" in
+# "name<version" retires only the builds in that range, and architecture names
+# after an entry only the builds for those. See "Retired packages" in
 # README.md for the reasons.
 libass
 libvpx
 libxcb
 qt5-qtbase
+# Old Cirrus builds that need libvpx.so.11, no longer in Wolfi.
+qt5-qtwebengine aarch64
 # stremio 4.x was renamed to stremio-qt5; stremio 1.x is a new recipe.
 stremio>=4
+stremio-qt5 aarch64
 stremio-server
 vulkan-loader
 zlib
