@@ -171,6 +171,9 @@ Packages are retired when an official or better-suited alternative exists.
 Retired packages are listed in [`packages/RETIRED`](packages/RETIRED); every publish
 removes them, and their subpackages, from the repository index.
 
+Recipes of retired packages stay in the git history. To ask for one back,
+open an [issue](https://github.com/vejeta/wolfi-packages/issues).
+
 ## Contributing
 
 New packages and updates are accepted through pull requests:
