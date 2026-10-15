@@ -73,7 +73,7 @@ take any of them are welcome.
 - ✅ `scala-2.13` built from source without sbt, ported from the Debian
   package; pass 1 uses upstream's STARR from Maven Central, so no stage0
   package is needed.
-- [ ] `scala-2.12` the same way (Debian's `scala` package).
+- ✅ `scala-2.12` the same way, from the Debian scala-2.12 package.
 
 ### Alpine
 
