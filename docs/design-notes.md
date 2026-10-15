@@ -26,8 +26,9 @@ x86_64 and aarch64 are built on GitHub's native runners
 finish on an ARM runner within the 6-hour job limit. It is listed in
 `packages/CI-SKIP` instead of being limited with `target-architecture`, so
 the recipe still builds for aarch64 elsewhere (Cirrus CI, see
-`.cirrus.yml.disabled`, or locally). The publish workflow only downloads
-Cirrus artifacts while `.cirrus.yml` exists.
+`.cirrus.yml.disabled`, or locally). stremio-qt5 for aarch64 is skipped as
+well, because it needs that qt5-qtwebengine. The publish workflow only
+downloads Cirrus artifacts while `.cirrus.yml` exists.
 
 ## Rust: crates from `Cargo.lock`
 

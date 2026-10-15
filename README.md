@@ -53,8 +53,8 @@ packages and `APKINDEX` are published on SourceForge.
 
 The recipes in [`packages/`](packages/) are the reference for versions.
 Packages are built for x86_64 and aarch64. qt5-qtwebengine takes longer
-than GitHub's 6-hour job limit on ARM runners, so its aarch64 package is built
-outside GitHub Actions (see [`packages/CI-SKIP`](packages/CI-SKIP)).
+than GitHub's 6-hour job limit on ARM runners, so it and stremio-qt5 are built
+for aarch64 outside GitHub Actions (see [`packages/CI-SKIP`](packages/CI-SKIP)).
 
 ## Using these packages
 
