@@ -65,12 +65,6 @@ in Wolfi: gamepad (libmanette), speech synthesis (flite), hyphenation
 (hyphen) and Sysprof tracing. GObject introspection, MiniBrowser and
 WebDriver are also disabled because no package here uses them.
 
-## AppStream tarball
-
-The entries in the AppStream release tarball begin with
-`./AppStream-<version>/`, so the `fetch` step uses `strip-components: 2`
-instead of the default of 1.
-
 ## Retired packages
 
 `packages/RETIRED` lists origins that the publish workflow removes from
