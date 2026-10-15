@@ -47,6 +47,16 @@ class BuildOrderTest(unittest.TestCase):
         wave = bo.builds(["app"], self.recipes, ["x86_64", "aarch64"], {("app", "aarch64")})
         self.assertEqual(wave, [{"package": "app", "arch": "x86_64"}])
 
+    def test_published_versions_are_reused(self):
+        index = {"x86_64": {("liba", "1.0-r0")}, "aarch64": {("liba", "0.9-r0")}}
+        self.recipes["liba"]["version"] = "1.0-r0"
+        reused = bo.already_published({"liba", "app"}, self.recipes, ["x86_64", "aarch64"], index)
+        self.assertEqual(reused, {("liba", "x86_64")})
+
+    def test_unreachable_index_reuses_nothing(self):
+        reused = bo.already_published({"liba"}, self.recipes, ["x86_64"], {"x86_64": None})
+        self.assertEqual(reused, set())
+
     def test_cycle_is_reported(self):
         self.recipes["liba"]["needs"].add("app")
         with self.assertRaises(SystemExit):
