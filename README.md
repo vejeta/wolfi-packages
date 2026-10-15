@@ -1,6 +1,6 @@
 # Wolfi Community Packages
 
-[![Packages](https://img.shields.io/badge/packages-32-brightgreen)](#available-packages)
+[![Packages](https://img.shields.io/badge/packages-33-brightgreen)](#available-packages)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
@@ -44,6 +44,7 @@ packages and `APKINDEX` are published on SourceForge.
 | rubberband | 4.0.0 | Audio time-stretching and pitch-shifting library | GPL-2.0-or-later |
 | scala-2.12 | 2.12.21 | Scala 2.12 compiler and tools (`scalac-2.12`, `scala-2.12`, `scaladoc-2.12`), built from source without sbt | Apache-2.0 |
 | scala-2.13 | 2.13.18 | Scala 2.13 compiler and tools (`scalac-2.13`, `scala-2.13`, `scaladoc-2.13`), built from source without sbt | Apache-2.0 |
+| scala-xml | 2.5.0 | Scala XML library for Scala 3; `scala-xml-2.13` and `scala-xml-2.12` for Scala 2. Built with the `scala/build` pipeline | Apache-2.0 |
 | shaderc | 2025.4 | Tools and libraries for Vulkan shader compilation | Apache-2.0 |
 | stremio | 1.2.0 | Modern media center (Stremio desktop 1.x: GTK4, libadwaita, WebKitGTK); converted from the [Debian package](https://tracker.debian.org/pkg/stremio) with `debian-to-melange` | GPL-3.0-only |
 | stremio-qt5 | 4.4.169 | Modern media center for online video content (Stremio shell 4.x, Qt5) | GPL-3.0-or-later |
@@ -54,9 +55,11 @@ packages and `APKINDEX` are published on SourceForge.
 | zimg | 3.0.6 | Scaling, colorspace conversion, and dithering library | WTFPL |
 
 The recipes in [`packages/`](packages/) are the reference for versions.
-Packages are built for x86_64 and aarch64. qt5-qtwebengine takes longer
-than GitHub's 6-hour job limit on ARM runners, so it and stremio-qt5 are built
-for aarch64 outside GitHub Actions (see [`packages/CI-SKIP`](packages/CI-SKIP)).
+Packages are built for x86_64 and aarch64, except qt5-qtwebengine and
+stremio-qt5, which are x86_64 only: qt5-qtwebengine takes longer than
+GitHub's 6-hour job limit on ARM runners (see [`packages/CI-SKIP`](packages/CI-SKIP)).
+Scala libraries can be built from a dh-scala `scala-build` file with the
+`scala/build` pipeline ([docs/scala-build.md](docs/scala-build.md)).
 
 ## Using these packages
 
@@ -161,6 +164,7 @@ Packages are retired when an official or better-suited alternative exists.
 | vulkan-loader | 2025-11 | 2025-09-26 or earlier | 2026-10 | Available in official Wolfi (newer version) |
 | zlib | 2025-11 | 2025-01-16 or earlier | 2026-10 | Available in official Wolfi (newer version) |
 | qt5-qtbase | 2025-11 | 2026-04-01 | 2026-10 | Available in official Wolfi (5.15.19); the Qt5 modules here build against it |
+| qt5-qtwebengine, stremio-qt5 (aarch64) | 2025-11 | — | 2026-10 | Old builds that need `libvpx.so.11`, no longer in Wolfi; x86_64 builds remain. Rebuilt on request |
 
 ¹ Earliest build of the package in the official Wolfi APKINDEX (x86_64), checked 2026-10-14.
 

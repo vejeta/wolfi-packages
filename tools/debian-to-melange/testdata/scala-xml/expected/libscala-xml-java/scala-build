@@ -1,0 +1,13 @@
+# Built with dh-scala (see scala-build(5)): upstream's Scala 2.12 source set,
+# shared/src/main/{scala,scala-2,scala-2.12}; the scala-2.13+ and scala-3
+# trees are for other Scala versions.
+Artifact: scala-xml
+Group: org.scala-lang.modules
+Scala-Version: 2.12
+Sources:
+ shared/src/main/scala
+ shared/src/main/scala-2
+ shared/src/main/scala-2.12
+Scalac-Options: -nowarn -target:jvm-1.8
+# As upstream's jar (build.sbt: scalaModuleAutomaticModuleName).
+Manifest: Automatic-Module-Name: scala.xml

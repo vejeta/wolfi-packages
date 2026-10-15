@@ -68,8 +68,9 @@ take any of them are welcome.
 
 ### Scala / JVM
 
-- [ ] A melange `scala/build` pipeline equivalent to dh-scala, reading the
-  same `debian/scala-build` file, so dh-scala packages convert directly.
+- ✅ A melange `scala/build` pipeline equivalent to dh-scala, reading the
+  same `scala-build` file; `debian-to-melange` uses it for
+  `dh --buildsystem=scala`. First user: `scala-xml` (Scala 3, 2.13, 2.12).
 - ✅ `scala-2.13` built from source without sbt, ported from the Debian
   package; pass 1 uses upstream's STARR from Maven Central, so no stage0
   package is needed.

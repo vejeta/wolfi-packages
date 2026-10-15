@@ -8,12 +8,20 @@ on:
       - 'tools/**'
       - 'scripts/build-order.py'
       - 'scripts/test_build_order.py'
+      - 'scripts/remove-retired.py'
+      - 'scripts/test_remove_retired.py'
+      - 'scripts/test_scala_build.py'
+      - 'pipelines/scala/**'
       - '.github/workflows/tools.yml'
   pull_request:
     paths:
       - 'tools/**'
       - 'scripts/build-order.py'
       - 'scripts/test_build_order.py'
+      - 'scripts/remove-retired.py'
+      - 'scripts/test_remove_retired.py'
+      - 'scripts/test_scala_build.py'
+      - 'pipelines/scala/**'
       - '.github/workflows/tools.yml'
 
 permissions:
@@ -41,5 +49,5 @@ jobs:
         run: python -m unittest discover -s tools/alpine-to-melange -v
       - name: melange-to-debian
         run: python -m unittest discover -s tools/melange-to-debian -v
-      - name: build-order
+      - name: scripts and the scala/build pipeline
         run: python -m unittest discover -s scripts -v
