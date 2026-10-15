@@ -68,14 +68,18 @@ jobs:
           # Pull requests and pushes build the recipes they change; manual
           # runs build the filtered recipes, or all of them. Recipes that
           # depend on each other are split into waves (scripts/build-order.py).
+          # When the build tooling changes, pull requests and pushes rebuild
+          # only what is not published yet, plus a few canary recipes; a
+          # manual run without a filter rebuilds everything.
+          reuse="--skip-published https://downloads.sourceforge.net/project/wolfi --canary mujs,libxmlb,appstream"
           case "$EVENT" in
-            pull_request) sel="--changed-from $PR_BASE" ;;
+            pull_request) sel="--changed-from $PR_BASE $reuse" ;;
             push)
               if [ -n "$PUSH_BEFORE" ] && ! echo "$PUSH_BEFORE" | grep -q '^0*$' \
                  && git cat-file -e "$PUSH_BEFORE^{commit}" 2>/dev/null; then
-                sel="--changed-from $PUSH_BEFORE"
+                sel="--changed-from $PUSH_BEFORE $reuse"
               else
-                sel="--all"
+                sel="--all $reuse"
               fi ;;
             *) if [ -n "$FILTER" ]; then sel="--filter $FILTER"; else sel="--all"; fi ;;
           esac

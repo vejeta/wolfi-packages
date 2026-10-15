@@ -116,5 +116,7 @@ directory generated from a melange recipe speeds up ITPs.
   for builds that exceed the job limit).
 - ✅ A new push to a pull request cancels the previous build; network errors
   while fetching sources are retried once.
+- ✅ Tooling changes rebuild only what is not published yet, plus canary
+  recipes.
 - [ ] Publish from the wave workflow automatically after merge, with a
   summary of what changed in the index.

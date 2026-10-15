@@ -12,9 +12,15 @@ run, indexes them, and adds them as a local repository.
 
 This allows a dependency chain to be built and tested in one run, without
 first publishing the intermediate packages. Pull requests rebuild only the
-changed recipes. A change to `pipelines/` or to the build workflows
-rebuilds everything. A new push to a pull request cancels the build of the
+changed recipes. A new push to a pull request cancels the build of the
 previous commit.
+
+A change to `pipelines/` or to the build workflows selects every recipe,
+but a recipe whose version and epoch are already published for an
+architecture is not rebuilt; three small canary recipes (mujs, libxmlb and
+appstream, which uses the other two across waves) always are. This keeps
+such changes from rebuilding qt5-qtwebengine, about three hours. A manual
+run of the workflow without a filter rebuilds everything.
 
 A source download that fails with a network error (DNS, or a runner without
 an IPv6 route) is retried once. Other failures are not retried.

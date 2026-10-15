@@ -79,6 +79,10 @@ need each other are built in order (waves computed by
 python3 scripts/build-order.py --changed-from origin/master --arch x86_64,aarch64   # what CI will build
 ```
 
+When the build tooling changes, recipes already published at the same
+version are not rebuilt (`--skip-published`); run the workflow by hand
+without a filter for a full rebuild.
+
 Each recipe is built for x86_64 and aarch64, on native runners. A recipe can
 limit its architectures with `package.target-architecture`. A build that
 GitHub Actions cannot run, but that works elsewhere, is listed in

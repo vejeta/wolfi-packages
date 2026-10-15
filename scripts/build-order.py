@@ -16,6 +16,11 @@ Which recipes are built:
                         to the build tooling (pipelines/, this script, the
                         build workflows) selects every recipe
 
+With --skip-published URL, a recipe that is selected only because the
+tooling changed (or by --all) is left out for an architecture when the
+repository at URL already has that version and epoch. Recipes whose own
+files changed, and the --canary recipes, are always built.
+
 Each wave is a list of {"package", "arch"} builds for the architectures in
 --arch, minus those a recipe excludes with package.target-architecture and
 those listed in packages/CI-SKIP.
@@ -24,11 +29,15 @@ Prints JSON: {"waves": [[...], ...], "count": N}, padded to --max-waves.
 """
 
 import argparse
+import gzip
+import io
 import json
 import os
 import re
 import subprocess
 import sys
+import tarfile
+import urllib.request
 
 try:
     import yaml
@@ -58,22 +67,45 @@ def load_recipes(pkgdir):
         needs = set()
         for dep in ((data.get("environment") or {}).get("contents") or {}).get("packages") or []:
             needs.add(re.split(r"[=<>~]", str(dep), maxsplit=1)[0])
-        archs = data.get("package", {}).get("target-architecture") or ["all"]
-        recipes[name] = {"provides": provides, "needs": needs, "archs": archs}
+        pkg = data.get("package", {})
+        archs = pkg.get("target-architecture") or ["all"]
+        version = "{}-r{}".format(pkg.get("version"), pkg.get("epoch", 0))
+        recipes[name] = {"provides": provides, "needs": needs, "archs": archs,
+                         "origin": pkg.get("name", name), "version": version}
     return recipes
 
 
 def changed_recipes(ref, recipes):
+    """Return (recipes whose files changed, whether the build tooling changed)."""
     out = subprocess.run(["git", "diff", "--name-only", ref, "HEAD"],
                          capture_output=True, text=True, check=True).stdout.split()
-    selected = set()
+    selected, tooling = set(), False
     for path in out:
         if path.startswith(GLOBAL_TRIGGERS):
-            return set(recipes)
+            tooling = True
         m = re.match(r"^packages/([^/]+?)(?:\.yaml$|/)", path)
         if m and m.group(1) in recipes:
             selected.add(m.group(1))
-    return selected
+    return selected, tooling
+
+
+def published(url, arch):
+    """{(origin, version)} in the APKINDEX at URL/ARCH, or None if unreachable."""
+    try:
+        with urllib.request.urlopen("{}/{}/APKINDEX.tar.gz".format(url.rstrip("/"), arch),
+                                    timeout=60) as resp:
+            blob = resp.read()
+        with tarfile.open(fileobj=io.BytesIO(blob), mode="r:gz") as tar:
+            text = tar.extractfile("APKINDEX").read().decode("utf-8", "replace")
+    except (OSError, tarfile.TarError, KeyError, gzip.BadGzipFile) as exc:
+        print("warning: {}/{}: {}; building everything".format(url, arch, exc), file=sys.stderr)
+        return None
+    out = set()
+    for block in text.split("\n\n"):
+        fields = dict(l.split(":", 1) for l in block.splitlines() if len(l) > 2 and l[1] == ":")
+        if "V" in fields:
+            out.add((fields.get("o") or fields.get("P"), fields["V"]))
+    return out
 
 
 def waves(selected, recipes):
@@ -114,12 +146,26 @@ def load_skips(path):
 
 
 def builds(wave, recipes, archs, skips=frozenset()):
-    """Matrix entries for one wave: every recipe on every architecture it supports."""
+    """Matrix entries for one wave: every recipe on every architecture it supports.
+
+    skips holds (recipe, arch) pairs to leave out."""
     out = []
     for name in wave:
         allowed = recipes[name]["archs"]
         out += [{"package": name, "arch": a} for a in archs
                 if ("all" in allowed or a in allowed) and (name, a) not in skips]
+    return out
+
+
+def already_published(candidates, recipes, archs, index):
+    """(recipe, arch) pairs among candidates whose version is in index[arch]."""
+    out = set()
+    for a in archs:
+        if index.get(a) is None:
+            continue
+        for name in candidates:
+            if (recipes[name]["origin"], recipes[name]["version"]) in index[a]:
+                out.add((name, a))
     return out
 
 
@@ -131,12 +177,17 @@ def main(argv=None):
     sel.add_argument("--changed-from", metavar="REF")
     ap.add_argument("--packages-dir", default="packages")
     ap.add_argument("--arch", default="x86_64", help="comma-separated architectures")
+    ap.add_argument("--skip-published", metavar="URL",
+                    help="repository whose published versions need no rebuild")
+    ap.add_argument("--canary", default="", help="recipes always built (comma-separated)")
     ap.add_argument("--max-waves", type=int, default=6)
     args = ap.parse_args(argv)
 
     recipes = load_recipes(args.packages_dir)
+    reusable = set()  # selected without a change of their own
     if args.all:
         selected = set(recipes)
+        reusable = set(recipes)
     elif args.filter:
         names = {n.strip() for n in args.filter.split(",") if n.strip()}
         unknown = names - set(recipes)
@@ -144,16 +195,24 @@ def main(argv=None):
             sys.exit("error: unknown recipes: " + ", ".join(sorted(unknown)))
         selected = names
     else:
-        selected = changed_recipes(args.changed_from, recipes)
+        direct, tooling = changed_recipes(args.changed_from, recipes)
+        selected = set(recipes) if tooling else direct
+        reusable = selected - direct
+    reusable -= {n.strip() for n in args.canary.split(",") if n.strip()}
 
     result = waves(selected, recipes)
     if len(result) > args.max_waves:
         sys.exit("error: {} waves needed, the workflow runs {}".format(len(result), args.max_waves))
     archs = [a.strip() for a in args.arch.split(",") if a.strip()]
     skips = load_skips(os.path.join(args.packages_dir, "CI-SKIP"))
-    result = [b for b in (builds(w, recipes, archs, skips) for w in result) if b]
+    reused = set()
+    if args.skip_published and reusable:
+        index = {a: published(args.skip_published, a) for a in archs}
+        reused = already_published(reusable, recipes, archs, index)
+    result = [b for b in (builds(w, recipes, archs, skips | reused) for w in result) if b]
     result += [[] for _ in range(args.max_waves - len(result))]
-    print(json.dumps({"waves": result, "count": len(selected)}))
+    print(json.dumps({"waves": result, "count": len(selected),
+                      "reused": sorted("{}/{}".format(n, a) for n, a in reused)}))
     return 0
 
 
