@@ -1,0 +1,14 @@
+#!/bin/sh
+# Scala 2.13 commands. Installed as /usr/share/scala-2.13/bin/<command> and
+# linked as /usr/bin/<command>-2.13; the command name selects the main class.
+L=/usr/share/scala-2.13/lib
+CP=$L/scala-library.jar:$L/scala-reflect.jar:$L/scala-compiler.jar:$L/scala-asm.jar:$L/jline.jar:$L/java-diff-utils.jar
+cmd=$(basename "$0")
+case "${cmd%-2.13}" in
+  scala)    exec java $JAVA_OPTS -cp "$CP" scala.tools.nsc.MainGenericRunner -usejavacp "$@" ;;
+  scalac)   exec java $JAVA_OPTS -cp "$CP" scala.tools.nsc.Main -usejavacp "$@" ;;
+  scaladoc) exec java $JAVA_OPTS -cp "$CP" scala.tools.nsc.ScalaDoc -usejavacp "$@" ;;
+  fsc)      exec java $JAVA_OPTS -cp "$CP" scala.tools.nsc.fsc.CompileClient -usejavacp "$@" ;;
+  scalap)   exec java $JAVA_OPTS -cp "$CP:$L/scalap.jar" scala.tools.scalap.Main "$@" ;;
+  *) echo "scala-2.13: unknown command $cmd" >&2; exit 2 ;;
+esac

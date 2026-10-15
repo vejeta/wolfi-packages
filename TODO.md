@@ -70,8 +70,10 @@ take any of them are welcome.
 
 - [ ] A melange `scala/build` pipeline equivalent to dh-scala, reading the
   same `debian/scala-build` file, so dh-scala packages convert directly.
-- [ ] `scala-2.13-stage0` recipe from upstream binaries, then `scala-2.13`
-  built from source (Wolfi has scala 3.8 and sbt, not 2.12/2.13).
+- ✅ `scala-2.13` built from source without sbt, ported from the Debian
+  package; pass 1 uses upstream's STARR from Maven Central, so no stage0
+  package is needed.
+- [ ] `scala-2.12` the same way (Debian's `scala` package).
 
 ### Alpine
 

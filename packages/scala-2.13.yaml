@@ -1,0 +1,222 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# Scala 2.13, built from source without sbt. The build follows the Debian
+# scala-2.13 package (two passes with scala-2.13/build-driver.sh):
+# - pass 1 compiles the sources with upstream's pinned STARR (starr.version
+#   in versions.properties), downloaded from Maven Central;
+# - pass 2 compiles them again with the pass-1 compiler; only pass-2 jars
+#   are installed.
+# Debian builds pass 1 from its own scala-2.13 package and patches out
+# java-diff-utils, which it does not ship; here both come from Maven
+# Central, so no patch is needed.
+#
+# Wolfi ships Scala 3 as scala-3.x. This package installs its commands as
+# scala-2.13, scalac-2.13, scaladoc-2.13, fsc-2.13 and scalap-2.13.
+package:
+  name: scala-2.13
+  version: '2.13.18'
+  epoch: 0
+  description: Compiler and tools for the Scala 2.13 programming language
+  copyright:
+    - license: Apache-2.0
+    # Jars installed with it (/usr/share/scala-2.13/lib)
+    - license: BSD-3-Clause
+      paths:
+        - usr/share/scala-2.13/lib/scala-asm.jar
+        - usr/share/scala-2.13/lib/jline.jar
+    - license: Apache-2.0
+      paths:
+        - usr/share/scala-2.13/lib/java-diff-utils.jar
+    # jquery.min.js, inside scala-compiler.jar (scaladoc)
+    - license: MIT
+      paths:
+        - usr/share/scala-2.13/lib/scala-compiler.jar
+  dependencies:
+    runtime:
+      - openjdk-25-default-jvm
+
+vars:
+  starr: '2.13.17'
+  scala_asm: '9.9.0-scala-1'
+  jline: '3.29.0'
+  diffutils: '4.16'
+  jquery: '3.7.1'
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - busybox
+      - coreutils
+      - findutils
+      - openjdk-25-default-jdk
+      - unzip
+  environment:
+    JAVA_HOME: /usr/lib/jvm/default-jvm
+    LANG: en_US.UTF-8
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/scala/scala
+      tag: v${{package.version}}
+      expected-commit: 98f40d00ddcf59a802862d38a9fe79806cde59fa
+
+  - uses: fetch
+    with:
+      uri: https://repo1.maven.org/maven2/org/scala-lang/scala-library/${{vars.starr}}/scala-library-${{vars.starr}}.jar
+      expected-sha256: b7822c4225243215f185925724a6edff92cf18777a136cc738276c4446fac76c
+      extract: false
+
+  - uses: fetch
+    with:
+      uri: https://repo1.maven.org/maven2/org/scala-lang/scala-reflect/${{vars.starr}}/scala-reflect-${{vars.starr}}.jar
+      expected-sha256: 734533897bcfabe7a6e7fa09dbee165b257b0396e14e8a57c75111db8e04bb98
+      extract: false
+
+  - uses: fetch
+    with:
+      uri: https://repo1.maven.org/maven2/org/scala-lang/scala-compiler/${{vars.starr}}/scala-compiler-${{vars.starr}}.jar
+      expected-sha256: 073ab364dc902519719bd6b9463562128abc5881d2a2e4b7a5e2d04cdd7bc025
+      extract: false
+
+  - uses: fetch
+    with:
+      uri: https://repo1.maven.org/maven2/org/scala-lang/modules/scala-asm/${{vars.scala_asm}}/scala-asm-${{vars.scala_asm}}.jar
+      expected-sha256: 75ac366e8ecb691e06a7e85041eed0f67919a646e5262fa0901225698c104375
+      extract: false
+
+  - uses: fetch
+    with:
+      uri: https://repo1.maven.org/maven2/org/jline/jline/${{vars.jline}}/jline-${{vars.jline}}.jar
+      expected-sha256: 99c22a966838ba4291e69a5dd5689afd049500eb9362b23baace731f9c9c97dd
+      extract: false
+
+  - uses: fetch
+    with:
+      uri: https://repo1.maven.org/maven2/io/github/java-diff-utils/java-diff-utils/${{vars.diffutils}}/java-diff-utils-${{vars.diffutils}}.jar
+      expected-sha256: 620403030d676a4a27f780a3acec7438dee1b1651a1c804fa6bb11bb07399a6f
+      extract: false
+
+  - uses: fetch
+    with:
+      uri: https://repo1.maven.org/maven2/org/webjars/jquery/${{vars.jquery}}/jquery-${{vars.jquery}}.jar
+      expected-sha256: 262016dd3a559df87aefbe392804e9bf620787c9204c0ab8522d4c231ea65097
+      extract: false
+
+  - name: Check pinned versions
+    runs: |
+      # The STARR and module versions above must match upstream's.
+      grep -qx "starr.version=${{vars.starr}}" versions.properties
+      grep -qx "scala-asm.version=${{vars.scala_asm}}" versions.properties
+      grep -qx "jline.version=${{vars.jline}}" versions.properties
+      grep -q '"java-diff-utils" *% "${{vars.diffutils}}"' build.sbt
+      grep -q '"org.webjars" *% "jquery" *% "${{vars.jquery}}"' project/ScaladocSettings.scala
+
+  - name: Build (two passes)
+    runs: |
+      export PATH="$JAVA_HOME/bin:$PATH"
+      mkdir -p deps starr0/lib starr1/lib
+      mv scala-asm-${{vars.scala_asm}}.jar deps/scala-asm.jar
+      mv jline-${{vars.jline}}.jar deps/jline.jar
+      mv java-diff-utils-${{vars.diffutils}}.jar deps/java-diff-utils.jar
+      for j in library reflect compiler; do
+        mv scala-$j-${{vars.starr}}.jar starr0/lib/scala-$j.jar
+      done
+      DEPS=$PWD/deps/scala-asm.jar:$PWD/deps/jline.jar:$PWD/deps/java-diff-utils.jar
+      # scaladoc loads jquery.min.js from the root of its classpath
+      mkdir -p webjars
+      unzip -j -o jquery-${{vars.jquery}}.jar "META-INF/resources/webjars/jquery/${{vars.jquery}}/jquery.min.js" -d webjars
+
+      sh scala-2.13/build-driver.sh "$PWD" "$PWD/starr0" "$DEPS" out1 ${{package.version}} "$PWD/webjars"
+      cp out1/jars/scala-library.jar out1/jars/scala-reflect.jar out1/jars/scala-compiler.jar starr1/lib/
+      sh scala-2.13/build-driver.sh "$PWD" "$PWD/starr1" "$DEPS" out2 ${{package.version}} "$PWD/webjars"
+
+  - name: Manual pages
+    runs: |
+      export PATH="$JAVA_HOME/bin:$PATH"
+      J=out2/jars
+      mkdir -p man/classes
+      java -cp $J/scala-library.jar:$J/scala-reflect.jar:$J/scala-compiler.jar:deps/scala-asm.jar \
+        scala.tools.nsc.Main -nowarn -d man/classes -classpath $J/scala-library.jar \
+        src/manual/scala/tools/docutil/ManPage.scala \
+        src/manual/scala/tools/docutil/EmitManPage.scala \
+        src/manual/scala/man1/*.scala
+      for c in scala scalac scaladoc fsc scalap; do
+        java -cp man/classes:$J/scala-library.jar scala.tools.docutil.EmitManPage scala.man1.$c man/$c.1
+      done
+
+  - name: Install
+    runs: |
+      D=${{targets.destdir}}
+      S=/usr/share/scala-2.13
+      install -Dm644 -t $D$S/lib out2/jars/scala-library.jar out2/jars/scala-reflect.jar \
+        out2/jars/scala-compiler.jar out2/jars/scalap.jar \
+        deps/scala-asm.jar deps/jline.jar deps/java-diff-utils.jar
+      for c in scala scalac scaladoc fsc scalap; do
+        install -Dm755 scala-2.13/scala-wrapper $D$S/bin/$c
+        mkdir -p $D/usr/bin
+        ln -s ../share/scala-2.13/bin/$c $D/usr/bin/$c-2.13
+        install -Dm644 man/$c.1 $D/usr/share/man/man1/$c-2.13.1
+      done
+      install -Dm644 LICENSE NOTICE -t $D/usr/share/licenses/scala-2.13
+
+subpackages:
+  - name: scala-2.13-doc
+    description: Compiler and tools for the Scala 2.13 programming language (manual pages)
+    pipeline:
+      - uses: split/manpages
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - uses: test/docs
+
+update:
+  enabled: true
+  github:
+    identifier: scala/scala
+    strip-prefix: v
+    tag-filter-prefix: v2.13.
+    use-tag: true
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+        - openjdk-25-default-jvm
+  pipeline:
+    - name: Version
+      runs: |
+        scalac-2.13 -version 2>&1 | grep -q "version ${{package.version}}"
+        scala-2.13 -version 2>&1 | grep -q "version ${{package.version}}"
+    - name: Compile and run a program
+      runs: |
+        cd "$(mktemp -d)"
+        cat > Hello.scala <<'SCALA'
+        object Hello {
+          def main(args: Array[String]): Unit = {
+            val xs = List(1, 2, 3).map(_ + 1)
+            println(s"Scala ${util.Properties.versionNumberString} says: " + xs.mkString(", "))
+          }
+        }
+        SCALA
+        scalac-2.13 Hello.scala
+        scala-2.13 Hello | tee out.txt
+        grep -qx "Scala ${{package.version}} says: 2, 3, 4" out.txt
+        scalap-2.13 -cp . Hello | grep -q "object Hello"
+    - name: Scaladoc
+      runs: |
+        cd "$(mktemp -d)"
+        printf 'object A { def f = 1 }\n' > A.scala
+        mkdir doc
+        scaladoc-2.13 -d doc A.scala
+        test -s doc/index.html
+        test -s doc/lib/jquery.min.js
