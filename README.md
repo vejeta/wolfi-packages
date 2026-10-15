@@ -1,6 +1,6 @@
 # Wolfi Community Packages
 
-[![Packages](https://img.shields.io/badge/packages-30-brightgreen)](#available-packages)
+[![Packages](https://img.shields.io/badge/packages-31-brightgreen)](#available-packages)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
@@ -42,6 +42,7 @@ packages and `APKINDEX` are published on SourceForge.
 | qt5-qtwebchannel | 5.15.17 | Qt5 - QtWebChannel (bidirectional client-server communication) | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
 | qt5-qtwebengine | 5.15.17 | Qt5 - QtWebEngine (Chromium-based web rendering) | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
 | rubberband | 4.0.0 | Audio time-stretching and pitch-shifting library | GPL-2.0-or-later |
+| scala-2.13 | 2.13.18 | Scala 2.13 compiler and tools (`scalac-2.13`, `scala-2.13`, `scaladoc-2.13`), built from source without sbt | Apache-2.0 |
 | shaderc | 2025.4 | Tools and libraries for Vulkan shader compilation | Apache-2.0 |
 | stremio | 1.2.0 | Modern media center (Stremio desktop 1.x: GTK4, libadwaita, WebKitGTK); converted from the [Debian package](https://tracker.debian.org/pkg/stremio) with `debian-to-melange` | GPL-3.0-only |
 | stremio-qt5 | 4.4.169 | Modern media center for online video content (Stremio shell 4.x, Qt5) | GPL-3.0-or-later |

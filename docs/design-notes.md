@@ -66,6 +66,22 @@ in Wolfi: gamepad (libmanette), speech synthesis (flite), hyphenation
 (hyphen) and Sysprof tracing. GObject introspection, MiniBrowser and
 WebDriver are also disabled because no package here uses them.
 
+## Scala 2.13 without sbt
+
+`scala-2.13` follows the Debian scala-2.13 package: `build-driver.sh`
+compiles each module directly with scalac and javac, in two passes. Pass 1
+uses upstream's pinned bootstrap compiler (STARR) and pass 2 uses the
+pass-1 compiler; only pass-2 jars are installed. Debian needs a separate
+stage0 package for pass 1; Wolfi builds may download from Maven Central,
+so the STARR jars and the libraries the compiler uses (scala-asm, jline,
+java-diff-utils, the jQuery webjar for scaladoc) are fetched with pinned
+checksums. The recipe checks the pins against upstream's
+`versions.properties` and `build.sbt`.
+
+The sources of each module are passed to scalac in sorted order. In
+`find`'s order, which depends on the file system, scaladoc failed to
+compile with a `CyclicReference` error.
+
 ## Retired packages
 
 `packages/RETIRED` lists origins that the publish workflow removes from
