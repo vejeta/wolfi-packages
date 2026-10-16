@@ -1,0 +1,89 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# Joern, a code analysis platform based on code property graphs, for finding
+# vulnerabilities in source code and binaries. Built from source with sbt;
+# dependencies come from Maven Central, and the frontends download their
+# parsers (astgen and similar) as upstream's build does.
+package:
+  name: joern
+  version: '4.0.656'
+  epoch: 0
+  description: Code property graph platform for vulnerability analysis of source code and binaries
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - bash
+      - openjdk-21-default-jvm
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - bash
+      - busybox
+      - curl
+      - git
+      - openjdk-21-default-jdk
+      - sbt
+      - unzip
+  environment:
+    JAVA_HOME: /usr/lib/jvm/default-jvm
+    LANG: en_US.UTF-8
+    SBT_OPTS: -Xmx6g -Xss8m
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/joernio/joern
+      tag: v${{package.version}}
+      expected-commit: 14d72bb5f1a04aa050c44ae9870c53f6db0ef869
+
+  - name: Build
+    runs: |
+      # sbt-dynver computes the version from git history, which a shallow
+      # checkout lacks; a build-level setting overrides it.
+      echo 'ThisBuild / version := "${{package.version}}"' > version.sbt
+      sbt -batch -Dsbt.server.forcestart=false joerncli/stage
+
+  - name: Install
+    runs: |
+      D=${{targets.destdir}}/usr/share/joern
+      mkdir -p $D ${{targets.destdir}}/usr/bin
+      cp -a joern-cli/target/universal/stage/. $D/
+      find $D -name '*.bat' -delete
+      for c in joern joern-parse joern-export joern-flow joern-scan joern-slice joern-vectors c2cpg.sh; do
+        [ -e $D/$c ] && ln -s ../share/joern/$c ${{targets.destdir}}/usr/bin/${c%.sh}
+      done
+      install -Dm644 LICENSE -t ${{targets.destdir}}/usr/share/licenses/joern
+
+update:
+  enabled: true
+  github:
+    identifier: joernio/joern
+    strip-prefix: v
+    use-tag: true
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+    environment:
+      JAVA_HOME: /usr/lib/jvm/default-jvm
+  pipeline:
+    - name: Parse a C program
+      runs: |
+        cd "$(mktemp -d)"
+        mkdir src
+        cat > src/main.c <<'C'
+        #include <string.h>
+        void copy(char *in) { char buf[8]; strcpy(buf, in); }
+        int main(int argc, char **argv) { copy(argv[1]); return 0; }
+        C
+        joern-parse src --output cpg.bin
+        test -s cpg.bin
