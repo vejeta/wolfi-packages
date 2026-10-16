@@ -1,6 +1,6 @@
 # Wolfi Community Packages
 
-[![Packages](https://img.shields.io/badge/packages-33-brightgreen)](#available-packages)
+[![Packages](https://img.shields.io/badge/packages-39-brightgreen)](#available-packages)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
@@ -29,7 +29,9 @@ packages and `APKINDEX` are published on SourceForge.
 | libcdio-paranoia | 10.2.2.0.2 | CD paranoia library from libcdio | GPL-3.0-or-later AND LGPL-2.1-or-later |
 | libdvdnav | 6.1.1 | Library for DVD navigation | GPL-2.0-or-later |
 | libdvdread | 6.1.3 | Library for reading DVD video disks | GPL-2.0-or-later |
+| libebml | 1.4.7 | Extensible Binary Meta Language library (used by libmatroska) | LGPL-2.1-or-later |
 | libfyaml | 0.9.6 | Fully featured YAML 1.2 parser and emitter (needed by appstream) | MIT |
+| libmatroska | 1.7.2 | Matroska (MKV) container library | LGPL-2.1-or-later |
 | libplacebo | 7.351.0 | Reusable library for GPU-accelerated video/image rendering | LGPL-2.1-or-later |
 | libsoup3 | 3.6.6 | GNOME HTTP client/server library, version 3 | LGPL-2.0-or-later |
 | libxmlb | 0.3.29 | Library to create and query binary XML blobs (needed by appstream) | LGPL-2.1-or-later |
@@ -39,8 +41,10 @@ packages and `APKINDEX` are published on SourceForge.
 | qt5-qtdeclarative | 5.15.17 | Qt5 - QtDeclarative (QML/QtQuick) components | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
 | qt5-qtquickcontrols | 5.15.17 | Qt5 - QtQuick Controls 1 components | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
 | qt5-qtquickcontrols2 | 5.15.17 | Qt5 - QtQuick Controls 2 components | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
+| qt5-qtsvg | 5.15.17 | Qt5 - QtSvg (SVG rendering) | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
 | qt5-qtwebchannel | 5.15.17 | Qt5 - QtWebChannel (bidirectional client-server communication) | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
 | qt5-qtwebengine | 5.15.17 | Qt5 - QtWebEngine (Chromium-based web rendering) | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
+| qt5-qtx11extras | 5.15.17 | Qt5 - QtX11Extras (X11 platform extras) | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
 | rubberband | 4.0.0 | Audio time-stretching and pitch-shifting library | GPL-2.0-or-later |
 | scala-2.12 | 2.12.21 | Scala 2.12 compiler and tools (`scalac-2.12`, `scala-2.12`, `scaladoc-2.12`), built from source without sbt | Apache-2.0 |
 | scala-2.13 | 2.13.18 | Scala 2.13 compiler and tools (`scalac-2.13`, `scala-2.13`, `scaladoc-2.13`), built from source without sbt | Apache-2.0 |
@@ -49,7 +53,9 @@ packages and `APKINDEX` are published on SourceForge.
 | stremio | 1.2.0 | Modern media center (Stremio desktop 1.x: GTK4, libadwaita, WebKitGTK); converted from the [Debian package](https://tracker.debian.org/pkg/stremio) with `debian-to-melange` | GPL-3.0-only |
 | stremio-qt5 | 4.4.169 | Modern media center for online video content (Stremio shell 4.x, Qt5) | GPL-3.0-or-later |
 | stremio-server-installer | 4.21.1 | Downloader for Stremio's streaming server (server.js is fetched at install time, never redistributed) | GPL-3.0-only |
+| taglib | 2.3.2 | Library for reading and editing the metadata of audio files | LGPL-2.1-only OR MPL-1.1 |
 | uchardet | 0.0.8 | Universal charset detection library | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later |
+| vlc | 3.0.24 | VLC media player with the Qt5 interface (MKV, DVD, Blu-ray, VA-API, libass subtitles) | GPL-2.0-or-later |
 | webkitgtk-6.0 | 2.54.1 | WebKitGTK web engine, GTK4 API (webkitgtk-6.0) | LGPL-2.0-or-later AND BSD-2-Clause |
 | xdg-dbus-proxy | 0.1.9 | Filtering D-Bus proxy (used by the WebKitGTK sandbox) | LGPL-2.1-or-later |
 | zimg | 3.0.6 | Scaling, colorspace conversion, and dithering library | WTFPL |

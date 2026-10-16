@@ -93,6 +93,19 @@ The sources of each module are passed to scalac in sorted order. In
 `find`'s order, which depends on the file system, scaladoc failed to
 compile with a `CyclicReference` error.
 
+## VLC
+
+VLC 3.0 with the Qt5 interface. Wolfi is moving to OpenSSL 4: libarchive-dev
+and libssh2-dev already need it, while qt5-qtbase-dev needs 3.6, so VLC is
+built without archive and SFTP access. Wolfi's libsrt, which ffmpeg uses,
+depends on `pc:openssl`; the recipe lists `openssl-dev<4` so that apk does
+not choose OpenSSL 4 for it.
+
+No plugin cache (`plugins.dat`) is shipped: melange resets file dates when
+packaging, which makes a cache written at build time stale, and Wolfi has no
+install triggers to write it later. VLC scans its plugins at startup.
+Hardware decoding uses VA-API; Wolfi's ffmpeg is built without VDPAU.
+
 ## Scala libraries: scala/build
 
 The `scala/build` pipeline reads the `scala-build` file of Debian's dh-scala,

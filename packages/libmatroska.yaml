@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+package:
+  name: libmatroska
+  version: '1.7.2'
+  epoch: 0
+  description: Matroska (MKV) container library
+  copyright:
+    - license: LGPL-2.1-or-later
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - build-base
+      - busybox
+      - cmake
+      - libebml-dev
+      - samurai
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/Matroska-Org/libmatroska
+      tag: release-${{package.version}}
+      expected-commit: 455ff88136fd44df7dc0f7adbc0ec188a5b3828e
+
+  - uses: cmake/configure
+    with:
+      opts: -DBUILD_SHARED_LIBS=ON
+
+  - uses: cmake/build
+
+  - uses: cmake/install
+
+  - uses: strip
+
+subpackages:
+  - name: libmatroska-dev
+    description: libmatroska development files
+    pipeline:
+      - uses: split/dev
+    dependencies:
+      runtime:
+        - libmatroska
+        - libebml-dev
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - uses: test/pkgconf
+
+update:
+  enabled: true
+  github:
+    identifier: Matroska-Org/libmatroska
+    strip-prefix: release-
+    tag-filter-prefix: release-
+    use-tag: true
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - uses: test/tw/ldd-check

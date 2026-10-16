@@ -1,0 +1,70 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+package:
+  name: libebml
+  version: '1.4.7'
+  epoch: 0
+  description: Extensible Binary Meta Language library (used by libmatroska)
+  copyright:
+    - license: LGPL-2.1-or-later
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - build-base
+      - busybox
+      - cmake
+      - samurai
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/Matroska-Org/libebml
+      tag: release-${{package.version}}
+      expected-commit: 849ab34f3cc2812d41965c29863294a387d91268
+
+  - uses: cmake/configure
+    with:
+      opts: -DBUILD_SHARED_LIBS=ON
+
+  - uses: cmake/build
+
+  - uses: cmake/install
+
+  - uses: strip
+
+subpackages:
+  - name: libebml-dev
+    description: libebml development files
+    pipeline:
+      - uses: split/dev
+    dependencies:
+      runtime:
+        - libebml
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - uses: test/pkgconf
+
+update:
+  enabled: true
+  github:
+    identifier: Matroska-Org/libebml
+    strip-prefix: release-
+    tag-filter-prefix: release-
+    use-tag: true
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - uses: test/tw/ldd-check

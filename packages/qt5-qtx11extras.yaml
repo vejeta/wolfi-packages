@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+package:
+  name: qt5-qtx11extras
+  version: '5.15.17'
+  epoch: 0
+  description: Qt5 - QtX11Extras (X11 platform extras)
+  copyright:
+    - license: LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0
+  dependencies:
+    runtime:
+      - qt5-qtbase
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - build-base
+      - busybox
+      - qt5-qtbase-dev
+
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://download.qt.io/archive/qt/5.15/${{package.version}}/submodules/qtx11extras-everywhere-opensource-src-${{package.version}}.tar.xz
+      expected-sha256: eeb17b1faac1f7c20fbb81c167c9d48536111801a46b159fa4746422555bb090
+
+  - runs: |
+      qmake
+      make -j$(nproc)
+      make INSTALL_ROOT="${{targets.destdir}}" install
+      find "${{targets.destdir}}" -name '*.la' -delete
+
+  - uses: strip
+
+subpackages:
+  - name: qt5-qtx11extras-dev
+    description: qt5-qtx11extras development files
+    pipeline:
+      - uses: split/dev
+    dependencies:
+      runtime:
+        - qt5-qtx11extras
+        - qt5-qtbase-dev
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - uses: test/pkgconf
+
+update:
+  enabled: false
+  exclude-reason: Qt 5.15 open-source releases are archived; versions follow the other qt5 modules here
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - runs: test -e /usr/lib/libQt5X11Extras.so.5
+    - uses: test/tw/ldd-check
