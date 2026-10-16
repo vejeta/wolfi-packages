@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# JBang runs Java source files as scripts. Built with Gradle from source; the
+# dependencies come from Maven Central. The native-image binary is not built:
+# the jbang launcher falls back to the jar.
+package:
+  name: jbang
+  version: '0.142.0'
+  epoch: 0
+  description: Run Java source files as scripts, with their dependencies
+  copyright:
+    - license: MIT
+  dependencies:
+    runtime:
+      - bash
+      - openjdk-25-default-jdk
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - bash
+      - busybox
+      - git
+      - gradle-8
+      - openjdk-21
+      - openjdk-25
+  environment:
+    # Gradle 8 runs on Java 21; the code is compiled with the Java 25
+    # toolchain that build.gradle asks for. Gradle 9 cannot read this build.
+    JAVA_HOME: /usr/lib/jvm/java-21-openjdk
+    LANG: en_US.UTF-8
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/jbangdev/jbang
+      tag: v${{package.version}}
+      expected-commit: d98cbdf5814582ffdb99501f750a502f2c4fcd3c
+
+  - name: Build
+    runs: |
+      # The toolchain asks for an Adoptium JDK 25; any JDK 25 will do.
+      sed -i '/vendor = JvmVendorSpec.ADOPTIUM/d' build.gradle
+      # The version is computed from the git history, which a shallow
+      # checkout lacks.
+      sed -i "s/def resolvedVersion = .*/def resolvedVersion = '${{package.version}}'/" build.gradle
+      gradle --no-daemon -Porg.gradle.java.installations.auto-download=false \
+        -Porg.gradle.java.installations.paths=/usr/lib/jvm/java-25-openjdk \
+        -x test -x javadocJar installDist
+
+  - name: Install
+    runs: |
+      D=${{targets.destdir}}/usr/share/jbang
+      install -Dm644 build/install/jbang/bin/jbang.jar $D/bin/jbang.jar
+      install -Dm755 build/install/jbang/bin/jbang $D/bin/jbang
+      mkdir -p ${{targets.destdir}}/usr/bin
+      ln -s ../share/jbang/bin/jbang ${{targets.destdir}}/usr/bin/jbang
+      install -Dm644 LICENSE -t ${{targets.destdir}}/usr/share/licenses/jbang
+
+update:
+  enabled: true
+  github:
+    identifier: jbangdev/jbang
+    strip-prefix: v
+    use-tag: true
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+    environment:
+      JAVA_HOME: /usr/lib/jvm/default-jvm
+  pipeline:
+    - name: Version
+      runs: |
+        jbang version | grep -qx '${{package.version}}'
+    - name: Run a script
+      runs: |
+        cd "$(mktemp -d)"
+        export JBANG_DIR=$PWD/.jbang JBANG_NO_VERSION_CHECK=true
+        cat > hello.java <<'JAVA'
+        class hello {
+            public static void main(String... args) {
+                System.out.println("hello from jbang " + args[0]);
+            }
+        }
+        JAVA
+        jbang hello.java wolfi | grep -qx 'hello from jbang wolfi'

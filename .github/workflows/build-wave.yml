@@ -74,11 +74,11 @@ jobs:
           chmod 644 melange.rsa.pub
 
           # Download official Wolfi signing key for repository verification
-          curl -o wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+          curl -fsSL --retry 5 --retry-all-errors -o wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
 
           # Public key of this repository's published packages (SourceForge),
           # used to resolve in-repo dependencies that are not in the cache
-          curl -fsSL -o vejeta-wolfi.rsa.pub \
+          curl -fsSL --retry 5 --retry-all-errors -o vejeta-wolfi.rsa.pub \
             https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
 
           # Verify keys were created

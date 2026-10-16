@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# Coursier, the Scala artifact fetcher and application installer (cs).
+# Built from source with upstream's Mill launcher; dependencies come from
+# Maven Central. This is the JVM launcher, not the native-image binary.
+package:
+  name: coursier
+  version: '2.1.26'
+  epoch: 0
+  description: Pure Scala artifact fetching and application installer (cs)
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - openjdk-21-default-jvm
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - bash
+      - busybox
+      - curl
+      - git
+      - openjdk-21-default-jdk
+  environment:
+    JAVA_HOME: /usr/lib/jvm/default-jvm
+    # C.UTF-8 is built into glibc; without a UTF-8 locale the JVM cannot
+    # handle the paths zinc writes.
+    LANG: C.UTF-8
+    LC_ALL: C.UTF-8
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/coursier/coursier
+      tag: v${{package.version}}
+      expected-commit: cdd5cb5a85fffb669145248dc74a1a503da1592b
+
+  - name: Build
+    runs: |
+      # Mill does not let build tasks read files in the source tree that are
+      # not declared inputs, so the dependency cache lives outside it.
+      export COURSIER_CACHE=/tmp/coursier-cache
+      # Mill runs the build on the JDK that build.mill names (mill-jvm-version),
+      # which it downloads; the launcher it produces runs on Wolfi's JDK.
+      ./mill --no-daemon cli.assembly
+
+  - name: Install
+    runs: |
+      # Mill 2 may keep its output next to the workspace, not inside it.
+      J=$(find "$PWD" "$(dirname "$PWD")" -path '*/out/cli/assembly.dest/out.jar' 2>/dev/null | head -1)
+      install -Dm644 "$J" ${{targets.destdir}}/usr/share/coursier/coursier.jar
+      mkdir -p ${{targets.destdir}}/usr/bin
+      cat > ${{targets.destdir}}/usr/bin/cs <<'SH'
+      #!/bin/sh
+      exec java -jar /usr/share/coursier/coursier.jar "$@"
+      SH
+      chmod 755 ${{targets.destdir}}/usr/bin/cs
+      ln -s cs ${{targets.destdir}}/usr/bin/coursier
+      install -Dm644 LICENSE -t ${{targets.destdir}}/usr/share/licenses/coursier
+
+update:
+  enabled: true
+  github:
+    identifier: coursier/coursier
+    strip-prefix: v
+    use-tag: true
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+    environment:
+      JAVA_HOME: /usr/lib/jvm/default-jvm
+  pipeline:
+    - name: Version
+      runs: |
+        cs version | grep -q '${{package.version}}'
