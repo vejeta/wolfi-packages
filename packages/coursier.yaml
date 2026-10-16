@@ -40,7 +40,9 @@ pipeline:
 
   - name: Build
     runs: |
-      export COURSIER_CACHE=$PWD/.cache/coursier
+      # Mill does not let build tasks read files in the source tree that are
+      # not declared inputs, so the dependency cache lives outside it.
+      export COURSIER_CACHE=/tmp/coursier-cache
       # Mill runs the build on the JDK that build.mill names (mill-jvm-version),
       # which it downloads; the launcher it produces runs on Wolfi's JDK.
       ./mill --no-daemon show cli.assembly > launcher.json
