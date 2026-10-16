@@ -29,7 +29,10 @@ environment:
       - openjdk-21-default-jdk
   environment:
     JAVA_HOME: /usr/lib/jvm/default-jvm
-    LANG: en_US.UTF-8
+    # C.UTF-8 is built into glibc; without a UTF-8 locale the JVM cannot
+    # handle the paths zinc writes.
+    LANG: C.UTF-8
+    LC_ALL: C.UTF-8
 
 pipeline:
   - uses: git-checkout
