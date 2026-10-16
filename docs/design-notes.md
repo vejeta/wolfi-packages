@@ -114,6 +114,8 @@ which downloads the dependencies from Maven Central, as Wolfi does for its
 Java applications. Libraries are built without a build tool instead (see
 scala/build). jbang is built with Gradle 8 on Java 21, as Gradle 9 cannot
 read its build; coursier is the JVM launcher, not the native-image binary.
+Joern is built the same way with sbt; its frontends download the parsers
+they wrap (astgen and similar) during the build, as upstream's does.
 
 ## Scala libraries: scala/build
 
