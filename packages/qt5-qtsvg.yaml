@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+package:
+  name: qt5-qtsvg
+  version: '5.15.17'
+  epoch: 0
+  description: Qt5 - QtSvg (SVG rendering)
+  copyright:
+    - license: LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0
+  dependencies:
+    runtime:
+      - qt5-qtbase
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - build-base
+      - busybox
+      - qt5-qtbase-dev
+
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://download.qt.io/archive/qt/5.15/${{package.version}}/submodules/qtsvg-everywhere-opensource-src-${{package.version}}.tar.xz
+      expected-sha256: 750ad4cd70c0e739d2cdfb9b18ea57211fcb2af1116771131858f35956a31e6c
+
+  - runs: |
+      qmake
+      make -j$(nproc)
+      make INSTALL_ROOT="${{targets.destdir}}" install
+      find "${{targets.destdir}}" -name '*.la' -delete
+
+  - uses: strip
+
+subpackages:
+  - name: qt5-qtsvg-dev
+    description: qt5-qtsvg development files
+    pipeline:
+      - uses: split/dev
+    dependencies:
+      runtime:
+        - qt5-qtsvg
+        - qt5-qtbase-dev
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - uses: test/pkgconf
+
+update:
+  enabled: false
+  exclude-reason: Qt 5.15 open-source releases are archived; versions follow the other qt5 modules here
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - runs: test -e /usr/lib/libQt5Svg.so.5
+    - uses: test/tw/ldd-check

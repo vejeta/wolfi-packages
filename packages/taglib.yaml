@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+package:
+  name: taglib
+  version: '2.3.2'
+  epoch: 0
+  description: Library for reading and editing the metadata of audio files
+  copyright:
+    - license: LGPL-2.1-only OR MPL-1.1
+    # Bundled utfcpp (3rdparty/utfcpp, headers only)
+    - license: BSL-1.0
+      paths:
+        - 3rdparty/utfcpp/*
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - build-base
+      - busybox
+      - cmake
+      - samurai
+      - zlib-dev
+
+pipeline:
+  # The release tarball includes the utfcpp submodule.
+  - uses: fetch
+    with:
+      uri: https://taglib.org/releases/taglib-${{package.version}}.tar.gz
+      expected-sha256: 3ca2d8afaa7f1cf7f6ed10e511ebc368bfacd6dcaa3dbfa690b89e502e8963dc
+
+  - uses: cmake/configure
+    with:
+      opts: -DBUILD_SHARED_LIBS=ON -DWITH_ZLIB=ON -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF
+
+  - uses: cmake/build
+
+  - uses: cmake/install
+
+  - uses: strip
+
+subpackages:
+  - name: taglib-dev
+    description: taglib development files
+    pipeline:
+      - uses: split/dev
+    dependencies:
+      runtime:
+        - taglib
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - uses: test/pkgconf
+
+update:
+  enabled: true
+  github:
+    identifier: taglib/taglib
+    strip-prefix: v
+    use-tag: true
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - uses: test/tw/ldd-check

@@ -1,0 +1,198 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# VLC media player 3.0 with the Qt5 interface. Matroska, taglib, DVD, Blu-ray,
+# libass and Qt5 SVG/X11Extras come from this repository; the rest from Wolfi.
+# libarchive and libssh2 (archive and SFTP access) are left out while their
+# -dev packages need OpenSSL 4 and qt5-qtbase-dev needs OpenSSL 3.6.
+# Hardware decoding uses VA-API; Wolfi's ffmpeg has no VDPAU.
+package:
+  name: vlc
+  version: '3.0.24'
+  epoch: 0
+  description: Multimedia player and framework (VLC media player)
+  copyright:
+    - license: GPL-2.0-or-later
+    # libvlc and libvlccore
+    - license: LGPL-2.1-or-later
+      paths:
+        - usr/lib/libvlc*
+  dependencies:
+    runtime:
+      - lua5.3
+      - qt5-qtsvg
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - alsa-lib-dev
+      - aom-dev
+      - avahi-dev
+      - build-base
+      - busybox
+      - dav1d-dev
+      - dbus-dev
+      - ffmpeg-dev
+      - flac-dev
+      - fontconfig-dev
+      - freetype-dev
+      - fribidi-dev
+      - gettext-dev
+      - gnutls-dev
+      - harfbuzz-dev
+      - libass9-dev
+      - libbluray-dev
+      - libcdio-paranoia-dev
+      - libdrm-dev
+      - libdvdnav-dev
+      - libdvdread-dev
+      - libgcrypt-dev
+      - libjpeg-turbo-dev
+      - libmatroska-dev
+      - libnotify-dev
+      - libogg-dev
+      - libpng-dev
+      - libsamplerate-dev
+      - libsecret-dev
+      - libtheora-dev
+      - libva-dev
+      - libvorbis-dev
+      - libvpx-dev
+      - libx11-dev
+      - libxcb-dev
+      - libxi-dev
+      - libxinerama-dev
+      - libxkbcommon-dev
+      - libxml2-dev
+      - libxpm-dev
+      - lua5.3
+      - lua5.3-dev
+      - mesa-dev
+      # Wolfi's libsrt (needed by ffmpeg) depends on pc:openssl, which apk
+      # would take from openssl-4.0-dev; qt5-qtbase-dev needs 3.6.
+      - openssl-dev<4
+      - opus-dev
+      - pulseaudio-dev
+      - qt5-qtbase-dev
+      - qt5-qtsvg-dev
+      - qt5-qtx11extras-dev
+      - soxr-dev
+      - speex-dev
+      - speexdsp-dev
+      - systemd-dev
+      - taglib-dev
+      - wayland-dev
+      - wayland-protocols
+      - x264-dev
+      - x265-dev
+      - xcb-util-keysyms-dev
+      - zlib-dev
+
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://download.videolan.org/pub/videolan/vlc/${{package.version}}/vlc-${{package.version}}.tar.xz
+      expected-sha256: e7cab503d1d7d5849b89d2cf0e1ee60d0ef6d012407791b644b9cfc0cc225fdf
+
+  - name: Configure
+    runs: |
+      # VLC 3.0 predates C23, which GCC 15 uses by default.
+      export CFLAGS="$CFLAGS -std=gnu17"
+      # Wolfi's Lua 5.3 has lua5.3.pc, which VLC does not look for, and
+      # installs liblua.so in /usr/lib/lua5.3.
+      export LUA_CFLAGS="$(pkg-config --cflags lua5.3)" LUAC=luac5.3
+      export LUA_LIBS="-L/usr/lib/lua5.3 -Wl,-rpath,/usr/lib/lua5.3 -llua"
+      ./configure \
+        --prefix=/usr \
+        --sysconfdir=/etc \
+        --localstatedir=/var \
+        --disable-static \
+        --disable-rpath \
+        --enable-qt \
+        --disable-skins2 \
+        --enable-dbus \
+        --enable-lua \
+        --enable-matroska \
+        --enable-taglib \
+        --enable-dvdread \
+        --enable-dvdnav \
+        --enable-bluray \
+        --enable-libass \
+        --enable-avcodec \
+        --enable-avformat \
+        --enable-swscale \
+        --enable-libva \
+        --disable-vdpau \
+        --enable-pulse \
+        --enable-alsa \
+        --enable-gnutls \
+        --disable-a52 \
+        --disable-mad \
+        --disable-libmpeg2 \
+        --disable-chromecast \
+        --disable-update-check
+
+  - uses: autoconf/make
+
+  - uses: autoconf/make-install
+
+  - name: Clean up
+    runs: |
+      # make install writes a plugin cache, but melange resets file dates
+      # when packaging, which makes it stale. VLC scans the plugins instead.
+      rm "${{targets.destdir}}"/usr/lib/vlc/plugins/plugins.dat
+      find "${{targets.destdir}}" -name '*.la' -delete
+
+  - uses: strip
+
+subpackages:
+  - name: vlc-dev
+    description: VLC development files (libvlc)
+    pipeline:
+      - uses: split/dev
+    dependencies:
+      runtime:
+        - vlc
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - uses: test/pkgconf
+
+  - name: vlc-lang
+    description: VLC translations
+    pipeline:
+      - uses: split/locales
+
+update:
+  enabled: true
+  release-monitor:
+    identifier: 6504
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+    accounts:
+      users:
+        - username: viewer
+          uid: 1000
+      run-as: viewer
+  pipeline:
+    - name: Version and plugins
+      runs: |
+        cd "$(mktemp -d)"
+        vlc --version > version.txt
+        grep -q "VLC version ${{package.version}} " version.txt
+        cvlc --list > modules.txt 2> errors.txt
+        grep -qw mkv modules.txt
+        grep -qw qt modules.txt
+        ! grep -q "stale plugins cache" errors.txt
+    - uses: test/tw/ldd-check
