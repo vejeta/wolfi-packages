@@ -48,14 +48,19 @@ pipeline:
       export COURSIER_CACHE=/tmp/coursier-cache
       # Mill runs the build on the JDK that build.mill names (mill-jvm-version),
       # which it downloads; the launcher it produces runs on Wolfi's JDK.
-      ./mill --no-daemon show cli.assembly > launcher.json
-      cat launcher.json
+      ./mill --no-daemon cli.assembly
 
   - name: Install
     runs: |
-      # show prints "ref:v0:<hash>:/path"
-      L=$(tr -d '"' < launcher.json | sed 's|.*:/|/|')
-      install -Dm755 "$L" ${{targets.destdir}}/usr/bin/cs
+      # Mill 2 may keep its output next to the workspace, not inside it.
+      J=$(find "$PWD" "$(dirname "$PWD")" -path '*/out/cli/assembly.dest/out.jar' 2>/dev/null | head -1)
+      install -Dm644 "$J" ${{targets.destdir}}/usr/share/coursier/coursier.jar
+      mkdir -p ${{targets.destdir}}/usr/bin
+      cat > ${{targets.destdir}}/usr/bin/cs <<'SH'
+      #!/bin/sh
+      exec java -jar /usr/share/coursier/coursier.jar "$@"
+      SH
+      chmod 755 ${{targets.destdir}}/usr/bin/cs
       ln -s cs ${{targets.destdir}}/usr/bin/coursier
       install -Dm644 LICENSE -t ${{targets.destdir}}/usr/share/licenses/coursier
 
