@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# Coursier, the Scala artifact fetcher and application installer (cs).
+# Built from source with upstream's Mill launcher; dependencies come from
+# Maven Central. This is the JVM launcher, not the native-image binary.
+package:
+  name: coursier
+  version: '2.1.26'
+  epoch: 0
+  description: Pure Scala artifact fetching and application installer (cs)
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - openjdk-21-default-jvm
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - bash
+      - busybox
+      - curl
+      - git
+      - openjdk-21-default-jdk
+  environment:
+    JAVA_HOME: /usr/lib/jvm/default-jvm
+    LANG: en_US.UTF-8
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/coursier/coursier
+      tag: v${{package.version}}
+      expected-commit: cdd5cb5a85fffb669145248dc74a1a503da1592b
+
+  - name: Build
+    runs: |
+      export COURSIER_CACHE=$PWD/.cache/coursier
+      # Mill runs the build on the JDK that build.mill names (mill-jvm-version),
+      # which it downloads; the launcher it produces runs on Wolfi's JDK.
+      ./mill --no-daemon show cli.assembly > launcher.json
+      cat launcher.json
+
+  - name: Install
+    runs: |
+      # show prints "ref:v0:<hash>:/path"
+      L=$(tr -d '"' < launcher.json | sed 's|.*:/|/|')
+      install -Dm755 "$L" ${{targets.destdir}}/usr/bin/cs
+      ln -s cs ${{targets.destdir}}/usr/bin/coursier
+      install -Dm644 LICENSE -t ${{targets.destdir}}/usr/share/licenses/coursier
+
+update:
+  enabled: true
+  github:
+    identifier: coursier/coursier
+    strip-prefix: v
+    use-tag: true
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+    environment:
+      JAVA_HOME: /usr/lib/jvm/default-jvm
+  pipeline:
+    - name: Version
+      runs: |
+        cs version | grep -q '${{package.version}}'

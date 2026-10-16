@@ -1,0 +1,73 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# Mill, a build tool for Java, Scala and Kotlin. Built from source with the
+# previous Mill release (upstream's ./mill script); dependencies come from
+# Maven Central.
+package:
+  name: mill
+  version: '1.3.0'
+  epoch: 0
+  description: Build tool for Java, Scala and Kotlin
+  copyright:
+    - license: MIT
+  dependencies:
+    runtime:
+      - openjdk-21-default-jvm
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - bash
+      - busybox
+      - curl
+      - git
+      - openjdk-21-default-jdk
+  environment:
+    JAVA_HOME: /usr/lib/jvm/default-jvm
+    LANG: en_US.UTF-8
+    # The version comes from the git tag; CI leaves out the dirty-tree hash.
+    CI: 'true'
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/com-lihaoyi/mill
+      tag: ${{package.version}}
+      expected-commit: bf390ff0bb7bfefe4130e6c74f47af9564c5f575
+
+  - name: Build
+    runs: |
+      export COURSIER_CACHE=$PWD/.cache/coursier
+      ./mill --no-daemon show dist.executableVersioned > executable.json
+      cat executable.json
+
+  - name: Install
+    runs: |
+      # show prints "ref:v0:<hash>:/path"
+      E=$(tr -d '"' < executable.json | sed 's|.*:/|/|')
+      install -Dm755 "$E" ${{targets.destdir}}/usr/bin/mill
+      install -Dm644 LICENSE -t ${{targets.destdir}}/usr/share/licenses/mill
+
+update:
+  enabled: true
+  github:
+    identifier: com-lihaoyi/mill
+    use-tag: true
+    tag-filter-prefix: '1.'
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+    environment:
+      JAVA_HOME: /usr/lib/jvm/default-jvm
+  pipeline:
+    - name: Version
+      runs: |
+        mill --no-daemon --version | grep -q '${{package.version}}'

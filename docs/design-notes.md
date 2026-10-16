@@ -106,6 +106,15 @@ packaging, which makes a cache written at build time stale, and Wolfi has no
 install triggers to write it later. VLC scans its plugins at startup.
 Hardware decoding uses VA-API; Wolfi's ffmpeg is built without VDPAU.
 
+## JVM tools: jbang, coursier and mill
+
+These are applications with hundreds of dependencies, so they are built
+with upstream's own build (Gradle for jbang, Mill for coursier and mill),
+which downloads the dependencies from Maven Central, as Wolfi does for its
+Java applications. Libraries are built without a build tool instead (see
+scala/build). jbang is built with Gradle 8 on Java 21, as Gradle 9 cannot
+read its build; coursier is the JVM launcher, not the native-image binary.
+
 ## Scala libraries: scala/build
 
 The `scala/build` pipeline reads the `scala-build` file of Debian's dh-scala,
