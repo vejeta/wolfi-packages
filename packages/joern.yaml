@@ -46,9 +46,9 @@ pipeline:
   - name: Build
     runs: |
       # sbt-dynver computes the version from git history, which a shallow
-      # checkout lacks.
-      sbt -batch -Dsbt.server.forcestart=false \
-        'set ThisBuild / version := "${{package.version}}"' joerncli/stage
+      # checkout lacks; a build-level setting overrides it.
+      echo 'ThisBuild / version := "${{package.version}}"' > version.sbt
+      sbt -batch -Dsbt.server.forcestart=false joerncli/stage
 
   - name: Install
     runs: |
