@@ -58,6 +58,8 @@ pipeline:
       mkdir -p "${{targets.destdir}}/usr/share/man/man1"
       ln -sf /usr/share/man/man1/xclip-copyfile.1 "${{targets.destdir}}/usr/share/man/man1/xclip-cutfile.1"
       ln -sf /usr/share/man/man1/xclip-copyfile.1 "${{targets.destdir}}/usr/share/man/man1/xclip-pastefile.1"
+      mkdir -p "${{targets.destdir}}/usr/share/doc/xclip"
+      cp -a README "${{targets.destdir}}/usr/share/doc/xclip/"
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/xclip
   - uses: strip
 update:

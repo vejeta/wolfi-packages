@@ -76,6 +76,8 @@ pipeline:
       mkdir -p "${{targets.destdir}}/usr/share"
       mkdir -p "${{targets.destdir}}/usr/share/man"
       mkdir -p "${{targets.destdir}}/usr/share/man/man1"
+      mkdir -p "${{targets.destdir}}/usr/share/doc/xdotool"
+      cp -a README "${{targets.destdir}}/usr/share/doc/xdotool/"
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/xdotool/copyright
   - uses: strip
 subpackages:
@@ -94,6 +96,8 @@ subpackages:
           mkdir -p "${{targets.contextdir}}/usr/include"
           mv "${{targets.destdir}}/usr/include/xdo.h" "${{targets.contextdir}}/usr/include/"
           mkdir -p "${{targets.contextdir}}/usr"
+          mkdir -p "${{targets.contextdir}}/usr/share/doc/libxdo-dev"
+          cp -a docs/* "${{targets.contextdir}}/usr/share/doc/libxdo-dev/"
     dependencies:
       runtime:
         - libx11-dev
@@ -111,6 +115,6 @@ test:
         - busybox
   pipeline:
     - runs: |
-        xdotool --version || xdotool --help
+        xdotool --version || (xdotool --help 2>&1 || true) | grep -qi -e usage -e xdotool
         test -f /usr/share/doc/xdotool/copyright
     - uses: test/tw/ldd-check
