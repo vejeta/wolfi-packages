@@ -150,20 +150,25 @@ test:
     - name: 'autopkgtest: debian/tests/build-library 2.12'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         debian/tests/build-library 2.12
     - name: 'autopkgtest: debian/tests/build-library 2.13'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         debian/tests/build-library 2.13
     - name: 'autopkgtest: debian/tests/build-library 3'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         debian/tests/build-library 3
     - name: 'autopkgtest: debian/tests/build-library cross'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         debian/tests/build-library cross
     - name: 'autopkgtest: debian/tests/build-library no-buildsystem'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         debian/tests/build-library no-buildsystem

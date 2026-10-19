@@ -1,0 +1,21 @@
+From: Stephane Glondu <steph@glondu.net>
+Date: Sun, 28 Nov 2021 10:05:01 +0100
+Subject: Avoid infinite loop in test
+
+---
+ test/styled_perf_bug.ml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/test/styled_perf_bug.ml b/test/styled_perf_bug.ml
+index d8e69a1..1c55397 100644
+--- a/test/styled_perf_bug.ml
++++ b/test/styled_perf_bug.ml
+@@ -1,7 +1,7 @@
+ let n = 10000
+ 
+ let () =
+-  while true do
++  for _i = 1 to 10 do
+     let t0 = Unix.gettimeofday () in
+     for _i = 1 to n do
+       ignore @@ Fmt.str "Hello %a" Fmt.string "world"

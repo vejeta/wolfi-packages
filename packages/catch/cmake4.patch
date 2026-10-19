@@ -1,0 +1,66 @@
+From: =?utf-8?q?Timo_R=C3=B6hling?= <roehling@debian.org>
+Date: Thu, 25 Sep 2025 23:03:43 +0200
+Subject: Bump CMake policy version
+
+---
+ CMakeLists.txt                      | 2 +-
+ contrib/ParseAndAddCatchTests.cmake | 2 +-
+ docs/build-systems.md               | 4 ++--
+ test_package/CMakeLists.txt         | 2 +-
+ 4 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 6e608fa..e3e82dc 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-cmake_minimum_required(VERSION 3.0)
++cmake_minimum_required(VERSION 3.10)
+ 
+ project(CatchSelfTest)
+ 
+diff --git a/contrib/ParseAndAddCatchTests.cmake b/contrib/ParseAndAddCatchTests.cmake
+index cb2846d..f742568 100644
+--- a/contrib/ParseAndAddCatchTests.cmake
++++ b/contrib/ParseAndAddCatchTests.cmake
+@@ -41,7 +41,7 @@
+ #                                                                                                  #
+ #==================================================================================================#
+ 
+-cmake_minimum_required(VERSION 2.8.8)
++cmake_minimum_required(VERSION 3.10)
+ 
+ option(PARSE_CATCH_TESTS_VERBOSE "Print Catch to CTest parser debug messages" OFF)
+ option(PARSE_CATCH_TESTS_NO_HIDDEN_TESTS "Exclude tests with [!hide], [.] or [.foo] tags" OFF)
+diff --git a/docs/build-systems.md b/docs/build-systems.md
+index 5dddc09..df77f43 100644
+--- a/docs/build-systems.md
++++ b/docs/build-systems.md
+@@ -58,7 +58,7 @@ Because of the incremental nature of Catch's test suites and ability to run spec
+ 
+ In general we recommend "vendoring" Catch's single-include releases inside your own repository. If you do this, the following example shows a minimal CMake project:
+ ```CMake
+-cmake_minimum_required(VERSION 3.0)
++cmake_minimum_required(VERSION 3.10)
+ 
+ project(cmake_test)
+ 
+@@ -77,7 +77,7 @@ Note that it assumes that the path to the Catch's header is `catch/catch.hpp` fr
+ 
+ You can also use the following CMake snippet to automatically fetch the entire Catch repository from github and configure it as an external project:
+ ```CMake
+-cmake_minimum_required(VERSION 2.8.8)
++cmake_minimum_required(VERSION 3.10)
+ project(catch_builder CXX)
+ include(ExternalProject)
+ find_package(Git REQUIRED)
+diff --git a/test_package/CMakeLists.txt b/test_package/CMakeLists.txt
+index 339facb..65d0837 100644
+--- a/test_package/CMakeLists.txt
++++ b/test_package/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-cmake_minimum_required(VERSION 3.0)
++cmake_minimum_required(VERSION 3.10)
+ project(CatchTest CXX)
+ 
+ include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)

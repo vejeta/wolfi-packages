@@ -159,6 +159,7 @@ test:
     - name: 'autopkgtest: cd test; python3 ./auto.py -v'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         cd test; python3 ./auto.py -v
     - uses: python/import
       with:

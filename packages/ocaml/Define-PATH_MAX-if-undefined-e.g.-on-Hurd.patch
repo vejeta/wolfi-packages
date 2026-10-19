@@ -1,0 +1,24 @@
+From: =?utf-8?q?St=C3=A9phane_Glondu?= <glondu@debian.org>
+Date: Thu, 2 Jul 2026 05:20:34 +0100
+Subject: Define PATH_MAX if undefined (e.g. on Hurd)
+
+---
+ stdlib/header.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/stdlib/header.c b/stdlib/header.c
+index e42f9f7..2e5ad4e 100644
+--- a/stdlib/header.c
++++ b/stdlib/header.c
+@@ -155,6 +155,11 @@ NORETURN static void exit_with_error(const wchar_t *wstr1,
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ 
++/* hurd does not have PATH_MAX defined */
++#if !defined(PATH_MAX)
++#define PATH_MAX 4096
++#endif
++
+ /* O_BINARY is defined in Gnulib, but is not POSIX */
+ #ifndef O_BINARY
+ #define O_BINARY 0

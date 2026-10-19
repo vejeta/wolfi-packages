@@ -1,0 +1,24 @@
+#!/bin/sh
+install -D --mode 644 _build/src/topkg.a debian/tmp$OCAML_STDLIB_DIR/topkg/topkg.a
+install -D --mode 644 _build/src/topkg.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg.cmx
+install -D --mode 644 _build/src/topkg.cmxa debian/tmp$OCAML_STDLIB_DIR/topkg/topkg.cmxa
+install -D --mode 644 _build/src/topkg.cmxs debian/tmp$OCAML_STDLIB_DIR/topkg/topkg.cmxs
+install -D --mode 644 _build/src/topkg_build.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_build.cmx
+install -D --mode 644 _build/src/topkg_cmd.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_cmd.cmx
+install -D --mode 644 _build/src/topkg_codec.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_codec.cmx
+install -D --mode 644 _build/src/topkg_conf.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_conf.cmx
+install -D --mode 644 _build/src/topkg_distrib.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_distrib.cmx
+install -D --mode 644 _build/src/topkg_fexts.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_fexts.cmx
+install -D --mode 644 _build/src/topkg_fpath.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_fpath.cmx
+install -D --mode 644 _build/src/topkg_install.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_install.cmx
+install -D --mode 644 _build/src/topkg_ipc.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_ipc.cmx
+install -D --mode 644 _build/src/topkg_log.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_log.cmx
+install -D --mode 644 _build/src/topkg_main.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_main.cmx
+install -D --mode 644 _build/src/topkg_opam.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_opam.cmx
+install -D --mode 644 _build/src/topkg_os.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_os.cmx
+install -D --mode 644 _build/src/topkg_pkg.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_pkg.cmx
+install -D --mode 644 _build/src/topkg_publish.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_publish.cmx
+install -D --mode 644 _build/src/topkg_result.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_result.cmx
+install -D --mode 644 _build/src/topkg_string.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_string.cmx
+install -D --mode 644 _build/src/topkg_test.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_test.cmx
+install -D --mode 644 _build/src/topkg_vcs.cmx debian/tmp$OCAML_STDLIB_DIR/topkg/topkg_vcs.cmx

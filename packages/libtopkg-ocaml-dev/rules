@@ -1,0 +1,33 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+include /usr/share/ocaml/ocamlvars.mk
+
+DESTDIR=$(CURDIR)/debian/tmp
+
+%:
+	dh $@ --with ocaml
+
+override_dh_auto_build:
+	./pkg/pkg.ml build --pkg-name topkg
+
+debian/install_bytecode.sh:
+	ocaml debian/installer-generator.ml
+
+override_dh_auto_install:
+ifeq (,$(filter pkg.ocaml-topkg.noopam, $(DEB_BUILD_PROFILES)))
+	for a in bytecode native; do \
+	  mv debian/install_$$a.sh debian/install_$$a.sh.old; \
+	done
+	debian/rules debian/install_bytecode.sh
+	diff -u debian/install_bytecode.sh.old debian/install_bytecode.sh
+ifeq ($(OCAML_HAVE_OCAMLOPT),yes)
+	diff -u debian/install_native.sh.old debian/install_native.sh
+endif
+	mv debian/install_bytecode.sh.old debian/install_bytecode.sh
+	mv debian/install_native.sh.old debian/install_native.sh
+endif
+	OCAML_STDLIB_DIR=$(OCAML_STDLIB_DIR) debian/install_bytecode.sh
+ifeq ($(OCAML_HAVE_OCAMLOPT),yes)
+	OCAML_STDLIB_DIR=$(OCAML_STDLIB_DIR) debian/install_native.sh
+endif

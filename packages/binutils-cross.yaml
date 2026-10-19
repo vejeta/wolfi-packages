@@ -1,0 +1,307 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# GNU binutils for other architectures (as, ld, objdump, dlltool ...), as
+# Debian's binutils-<triplet> and binutils-mingw-w64-* packages. Neither
+# Wolfi nor Alpine ship them; arch-test assembles its probes with them.
+# Each subpackage installs <triplet>-<tool> into /usr/bin.
+package:
+  name: binutils-cross
+  version: '2.47'
+  epoch: 0
+  description: GNU binutils for other architectures
+  copyright:
+    - license: GPL-3.0-or-later
+  dependencies:
+    runtime:
+      - binutils-x86-64-linux-gnu
+      - binutils-aarch64-linux-gnu
+      - binutils-arm-linux-gnueabihf
+      - binutils-m68k-linux-gnu
+      - binutils-powerpc-linux-gnu
+      - binutils-powerpc64le-linux-gnu
+      - binutils-s390x-linux-gnu
+      - binutils-sh4-linux-gnu
+      - binutils-sparc64-linux-gnu
+      - binutils-alpha-linux-gnu
+      - binutils-hppa-linux-gnu
+      - binutils-riscv64-linux-gnu
+      - binutils-loongarch64-linux-gnu
+      - binutils-arc-linux-gnu
+      - binutils-mingw-w64-i686
+      - binutils-mingw-w64-x86-64
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - build-base
+      - busybox
+      - bash
+      - bison
+      - flex
+      - texinfo
+      - zlib-dev
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://ftp.gnu.org/gnu/binutils/binutils-${{package.version}}.tar.xz
+      expected-sha256: 154ab23b60070e8f27013c22977f1129425d67d1e8acd6e13010e617811e4cff
+  - name: Build and install for each target
+    runs: |
+      for target in \
+        x86_64-linux-gnu \
+        aarch64-linux-gnu \
+        arm-linux-gnueabihf \
+        m68k-linux-gnu \
+        powerpc-linux-gnu \
+        powerpc64le-linux-gnu \
+        s390x-linux-gnu \
+        sh4-linux-gnu \
+        sparc64-linux-gnu \
+        alpha-linux-gnu \
+        hppa-linux-gnu \
+        riscv64-linux-gnu \
+        loongarch64-linux-gnu \
+        arc-linux-gnu \
+        i686-w64-mingw32 \
+        x86_64-w64-mingw32 \
+        ; do
+        mkdir -p "build-$target"
+        (
+          cd "build-$target"
+          ../configure \
+            --build=${{host.triplet.gnu}} --host=${{host.triplet.gnu}} --target="$target" \
+            --prefix=/usr --with-sysroot=/usr/"$target" --program-prefix="$target-" \
+            --disable-nls --disable-werror --disable-multilib --disable-gdb --disable-gdbserver \
+            --disable-gprof --disable-gprofng --disable-gold --disable-sim --disable-readline \
+            --disable-libdecnumber --disable-shared --enable-deterministic-archives --with-system-zlib
+          make -j$(nproc) all-gas all-ld all-binutils
+          make DESTDIR="${{targets.destdir}}" install-gas install-ld install-binutils
+        )
+      done
+      # documentation and host libraries come with Wolfi's own binutils
+      rm -rf "${{targets.destdir}}"/usr/share "${{targets.destdir}}"/usr/lib "${{targets.destdir}}"/usr/include
+      install -Dm644 COPYING3 -t "${{targets.destdir}}"/usr/share/licenses/binutils-cross
+  - uses: strip
+subpackages:
+  - name: binutils-x86-64-linux-gnu
+    description: GNU binutils for x86_64-linux-gnu
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/x86_64-linux-gnu-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/x86_64-linux-gnu "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            x86_64-linux-gnu-as --version | grep -q "GNU assembler"
+            x86_64-linux-gnu-ld --version | grep -q "GNU ld"
+            x86_64-linux-gnu-objdump -i | grep -q .
+  - name: binutils-aarch64-linux-gnu
+    description: GNU binutils for aarch64-linux-gnu
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/aarch64-linux-gnu-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/aarch64-linux-gnu "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            aarch64-linux-gnu-as --version | grep -q "GNU assembler"
+            aarch64-linux-gnu-ld --version | grep -q "GNU ld"
+            aarch64-linux-gnu-objdump -i | grep -q .
+  - name: binutils-arm-linux-gnueabihf
+    description: GNU binutils for arm-linux-gnueabihf
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/arm-linux-gnueabihf-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/arm-linux-gnueabihf "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            arm-linux-gnueabihf-as --version | grep -q "GNU assembler"
+            arm-linux-gnueabihf-ld --version | grep -q "GNU ld"
+            arm-linux-gnueabihf-objdump -i | grep -q .
+  - name: binutils-m68k-linux-gnu
+    description: GNU binutils for m68k-linux-gnu
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/m68k-linux-gnu-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/m68k-linux-gnu "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            m68k-linux-gnu-as --version | grep -q "GNU assembler"
+            m68k-linux-gnu-ld --version | grep -q "GNU ld"
+            m68k-linux-gnu-objdump -i | grep -q .
+  - name: binutils-powerpc-linux-gnu
+    description: GNU binutils for powerpc-linux-gnu
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/powerpc-linux-gnu-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/powerpc-linux-gnu "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            powerpc-linux-gnu-as --version | grep -q "GNU assembler"
+            powerpc-linux-gnu-ld --version | grep -q "GNU ld"
+            powerpc-linux-gnu-objdump -i | grep -q .
+  - name: binutils-powerpc64le-linux-gnu
+    description: GNU binutils for powerpc64le-linux-gnu
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/powerpc64le-linux-gnu-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/powerpc64le-linux-gnu "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            powerpc64le-linux-gnu-as --version | grep -q "GNU assembler"
+            powerpc64le-linux-gnu-ld --version | grep -q "GNU ld"
+            powerpc64le-linux-gnu-objdump -i | grep -q .
+  - name: binutils-s390x-linux-gnu
+    description: GNU binutils for s390x-linux-gnu
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/s390x-linux-gnu-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/s390x-linux-gnu "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            s390x-linux-gnu-as --version | grep -q "GNU assembler"
+            s390x-linux-gnu-ld --version | grep -q "GNU ld"
+            s390x-linux-gnu-objdump -i | grep -q .
+  - name: binutils-sh4-linux-gnu
+    description: GNU binutils for sh4-linux-gnu
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/sh4-linux-gnu-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/sh4-linux-gnu "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            sh4-linux-gnu-as --version | grep -q "GNU assembler"
+            sh4-linux-gnu-ld --version | grep -q "GNU ld"
+            sh4-linux-gnu-objdump -i | grep -q .
+  - name: binutils-sparc64-linux-gnu
+    description: GNU binutils for sparc64-linux-gnu
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/sparc64-linux-gnu-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/sparc64-linux-gnu "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            sparc64-linux-gnu-as --version | grep -q "GNU assembler"
+            sparc64-linux-gnu-ld --version | grep -q "GNU ld"
+            sparc64-linux-gnu-objdump -i | grep -q .
+  - name: binutils-alpha-linux-gnu
+    description: GNU binutils for alpha-linux-gnu
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/alpha-linux-gnu-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/alpha-linux-gnu "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            alpha-linux-gnu-as --version | grep -q "GNU assembler"
+            alpha-linux-gnu-ld --version | grep -q "GNU ld"
+            alpha-linux-gnu-objdump -i | grep -q .
+  - name: binutils-hppa-linux-gnu
+    description: GNU binutils for hppa-linux-gnu
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/hppa-linux-gnu-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/hppa-linux-gnu "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            hppa-linux-gnu-as --version | grep -q "GNU assembler"
+            hppa-linux-gnu-ld --version | grep -q "GNU ld"
+            hppa-linux-gnu-objdump -i | grep -q .
+  - name: binutils-riscv64-linux-gnu
+    description: GNU binutils for riscv64-linux-gnu
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/riscv64-linux-gnu-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/riscv64-linux-gnu "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            riscv64-linux-gnu-as --version | grep -q "GNU assembler"
+            riscv64-linux-gnu-ld --version | grep -q "GNU ld"
+            riscv64-linux-gnu-objdump -i | grep -q .
+  - name: binutils-loongarch64-linux-gnu
+    description: GNU binutils for loongarch64-linux-gnu
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/loongarch64-linux-gnu-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/loongarch64-linux-gnu "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            loongarch64-linux-gnu-as --version | grep -q "GNU assembler"
+            loongarch64-linux-gnu-ld --version | grep -q "GNU ld"
+            loongarch64-linux-gnu-objdump -i | grep -q .
+  - name: binutils-arc-linux-gnu
+    description: GNU binutils for arc-linux-gnu
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/arc-linux-gnu-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/arc-linux-gnu "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            arc-linux-gnu-as --version | grep -q "GNU assembler"
+            arc-linux-gnu-ld --version | grep -q "GNU ld"
+            arc-linux-gnu-objdump -i | grep -q .
+  - name: binutils-mingw-w64-i686
+    description: GNU binutils for i686-w64-mingw32
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/i686-w64-mingw32-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/i686-w64-mingw32 "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            i686-w64-mingw32-as --version | grep -q "GNU assembler"
+            i686-w64-mingw32-ld --version | grep -q "GNU ld"
+            i686-w64-mingw32-objdump -i | grep -q .
+  - name: binutils-mingw-w64-x86-64
+    description: GNU binutils for x86_64-w64-mingw32
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr/bin
+          mv "${{targets.destdir}}"/usr/bin/x86_64-w64-mingw32-* "${{targets.contextdir}}"/usr/bin/
+          mv "${{targets.destdir}}"/usr/x86_64-w64-mingw32 "${{targets.contextdir}}"/usr/
+    test:
+      pipeline:
+        - runs: |
+            x86_64-w64-mingw32-as --version | grep -q "GNU assembler"
+            x86_64-w64-mingw32-ld --version | grep -q "GNU ld"
+            x86_64-w64-mingw32-objdump -i | grep -q .
+update:
+  enabled: true
+  release-monitor:
+    identifier: 7981
+test:
+  pipeline:
+    - runs: |
+        x86_64-linux-gnu-as --version | grep -q "GNU assembler"
+        printf '.globl _start\n_start: nop\n' > t.s
+        aarch64-linux-gnu-as t.s -o t.o && aarch64-linux-gnu-ld t.o -o t && aarch64-linux-gnu-objdump -f t | grep -q aarch64

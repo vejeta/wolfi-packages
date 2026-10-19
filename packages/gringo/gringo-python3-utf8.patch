@@ -1,0 +1,28 @@
+From: Thomas Krennwallner <tkren@kr.tuwien.ac.at>
+Date: Mon, 5 Feb 2018 06:31:16 +0000
+Subject: Fix testsuite for python3 when reading utf-8 scripts
+
+===================================================================
+---
+ app/clingo/tests/run.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+Index: gringo/app/clingo/tests/run.py
+===================================================================
+--- gringo.orig/app/clingo/tests/run.py	2025-10-02 17:29:40.981542282 +0200
++++ gringo/app/clingo/tests/run.py	2025-10-02 17:33:09.752994980 +0200
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ 
+ import argparse
+ import difflib as dl
+@@ -133,7 +133,7 @@
+         for f in sorted(files):
+             if f.endswith(".lp"):
+                 b = os.path.join(root, f[:-3])
+-                with open(b + ".lp", "r") as inst_file:
++                with open(b + ".lp", "r", encoding='utf-8') as inst_file:
+                     inst = inst_file.read()
+                     if (
+                         (not with_python and re.search(r"#script[ ]*\(python\)", inst))

@@ -1,0 +1,28 @@
+From: Stephane Glondu <steph@glondu.net>
+Date: Fri, 8 Sep 2023 17:53:19 +0200
+Subject: Fix expected test outputs following update of ocamlgraph to 2.1.0
+
+Bug-Debian: https://bugs.debian.org/1051484
+---
+ tests/applications/dose-tests/ceve_cone_dot           | 1 +
+ tests/applications/dose-tests/ceve_cone_multiarch_dot | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/tests/applications/dose-tests/ceve_cone_dot b/tests/applications/dose-tests/ceve_cone_dot
+index fbc1e93..419118f 100644
+--- a/tests/applications/dose-tests/ceve_cone_dot
++++ b/tests/applications/dose-tests/ceve_cone_dot
+@@ -280,3 +280,4 @@ digraph G {
+   1054195454 -> 203983860 [style="solid", ];
+   
+   }
++
+diff --git a/tests/applications/dose-tests/ceve_cone_multiarch_dot b/tests/applications/dose-tests/ceve_cone_multiarch_dot
+index 18749f9..41b5d57 100644
+--- a/tests/applications/dose-tests/ceve_cone_multiarch_dot
++++ b/tests/applications/dose-tests/ceve_cone_multiarch_dot
+@@ -280,3 +280,4 @@ digraph G {
+   828552574 -> 744010895 [style="solid", ];
+   
+   }
++

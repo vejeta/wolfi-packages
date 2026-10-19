@@ -1,0 +1,84 @@
+From: Stephane Glondu <steph@glondu.net>
+Date: Fri, 14 Jun 2024 09:48:38 +0200
+Subject: Fix build with OCaml 5.2.0
+
+---
+ c-lib/Makefile          | 18 ++++++++++++++----
+ c-lib/Makefile.variants |  2 +-
+ c-lib/cudf.pc.in        |  2 +-
+ 3 files changed, 16 insertions(+), 6 deletions(-)
+
+diff --git a/c-lib/Makefile b/c-lib/Makefile
+index cc9301e..51f84ce 100644
+--- a/c-lib/Makefile
++++ b/c-lib/Makefile
+@@ -1,6 +1,14 @@
+ include ../Makefile.config
+ all: libcudf.a c-test
+ opt: libcudf-opt.a c-test-opt
++
++OCAML_GE_5 := $(shell if [ "$$(ocamlc -version | cut -d. -f1)" -ge 5 ]; then echo yes; fi)
++ifeq ($(OCAML_GE_5),yes)
++STUBS_SUFFIX_BYT := byt
++STUBS_SUFFIX_OPT := nat
++OTHER_CLIBS := -lzstd -latomic -lpthread
++endif
++
+ include Makefile.variants
+ 
+ ifneq ($(DESTDIR),)
+@@ -13,7 +21,8 @@ PROG_CFLAGS = -Wall
+ OCAML_LIBDIR := $(shell ocamlc -where)
+ INCLUDES = -I . -I $(OCAML_LIBDIR) $(shell pkg-config --cflags glib-2.0)
+ CUDF_LDFLAGS = -L$(OCAML_LIBDIR) -L$(CURDIR)
+-CUDF_CLIBS = -lcudf -lm -ldl -lunix -lncurses -lglib-2.0
++CUDF_CLIBS_BYT = -lcudf $(OTHER_CLIBS) -lm -ldl -lunix$(STUBS_SUFFIX_BYT) -lncurses -lglib-2.0
++CUDF_CLIBS_OPT = -lcudf-opt $(OTHER_CLIBS) -lm -ldl -lunix$(STUBS_SUFFIX_OPT) -lncurses -lglib-2.0
+ OCAMLC = ocamlfind ocamlc -package unix,extlib
+ OCAMLOPT = ocamlfind ocamlopt -package unix,extlib
+ 
+@@ -42,10 +51,9 @@ c-test.o: c-test.c cudf.o
+ 	$(CC) $(PROG_CFLAGS) $(INCLUDES) -c $<
+ 
+ c-test: c-test.o libcudf.a
+-	$(CC) $(PROG_CFLAGS) -o $@ $(INCLUDES) $(CUDF_LDFLAGS) $< $(CUDF_CLIBS)
++	$(CC) $(PROG_CFLAGS) -o $@ $(INCLUDES) $(CUDF_LDFLAGS) $< $(CUDF_CLIBS_BYT)
+ c-test-opt: c-test.o libcudf-opt.a
+-	$(CC) $(PROG_CFLAGS) -o $@ $(INCLUDES) $(CUDF_LDFLAGS) $< \
+-		$(subst -lcudf,-lcudf-opt,$(CUDF_CLIBS))
++	$(CC) $(PROG_CFLAGS) -o $@ $(INCLUDES) $(CUDF_LDFLAGS) $< $(CUDF_CLIBS_OPT)
+ 
+ test: ../tests/data/legacy.cudf ../tests/data/legacy-sol.cudf c-test
+ 	./c-test ../tests/data/legacy.cudf ../tests/data/legacy-sol.cudf > /dev/null
+@@ -55,6 +63,8 @@ cudf.pc: cudf.pc.in
+ 			-e "s,@VERSION@,$(VERSION),g" \
+ 			-e "s,@LIBDIR@,$(LIBDIR),g" \
+ 			-e "s,@INCDIR@,$(INCDIR),g" \
++			-e "s,@OTHER_CLIBS@,$(OTHER_CLIBS),g" \
++			-e "s,@STUBS_SUFFIX_BYT@,$(STUBS_SUFFIX_BYT),g" \
+ 		> $@
+ 
+ %.o: %.c
+diff --git a/c-lib/Makefile.variants b/c-lib/Makefile.variants
+index fdf2655..299ee03 100644
+--- a/c-lib/Makefile.variants
++++ b/c-lib/Makefile.variants
+@@ -65,7 +65,7 @@ cudf-variants.h: caml_hash_variant Makefile.variants
+ caml_hash_variant: caml_hash_variant.o
+ 	> dummy.ml
+ 	ocamlc -o dummy.o -output-obj dummy.ml
+-	$(CC) $(CFLAGS) -o $@ $< dummy.o -L$(OCAML_LIBDIR) -lcamlrun -lm -lcurses -ldl
++	$(CC) $(CFLAGS) -o $@ $< dummy.o -L$(OCAML_LIBDIR) -lcamlrun $(OTHER_CLIBS) -lm -lcurses -ldl
+ 	@rm -f dummy.*
+ 
+ clean: clean-variants
+diff --git a/c-lib/cudf.pc.in b/c-lib/cudf.pc.in
+index 2c660b7..22a0701 100644
+--- a/c-lib/cudf.pc.in
++++ b/c-lib/cudf.pc.in
+@@ -8,4 +8,4 @@ Name: CUDF
+ Description: access descriptions of package upgrade problems
+ Version: @VERSION@
+ Requires: glib-2.0
+-Libs: -L${libdir} -L${ocaml_libdir} -lcudf -lm -ldl -lunix -lncurses
++Libs: -L${libdir} -L${ocaml_libdir} -lcudf @OTHER_CLIBS@ -lm -ldl -lunix@STUBS_SUFFIX_BYT@ -lncurses

@@ -1,0 +1,59 @@
+From: Thomas Krennwallner <tkren@kr.tuwien.ac.at>
+Date: Wed, 11 Mar 2020 06:50:20 -0400
+Subject: link with libatomic on architectures that require it
+
+Last-Update: 2020-03-11
+Forwarded: no
+
+clingo requires c++11 threads with 64bit __atomic_exchange, we need to
+link with libatomic on armel, powerpc, powerpcspe, m68k, mips, mipsel,
+and sh4, see also https://gcc.gnu.org/wiki/Atomic and
+https://gcc.gnu.org/wiki/Atomic/GCCMM/LIbrary
+
+This patch was shamelessly adapted from
+https://github.com/potassco/clasp/blob/master/CMakeLists.txt
+https://github.com/potassco/clasp/commit/fe3e176e2813956000bb947479de2c3d80fe34be
+---
+ CMakeLists.txt | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
+
+Index: gringo/CMakeLists.txt
+===================================================================
+--- gringo.orig/CMakeLists.txt	2025-10-02 17:35:02.373749111 +0200
++++ gringo/CMakeLists.txt	2025-10-02 17:35:02.372864196 +0200
+@@ -15,6 +15,35 @@
+ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+ include(clingo_functions)
+ 
++# Add libatomic if necessary
++include (CheckCXXSourceCompiles)
++set (OLD_CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS})
++set (OLD_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
++find_package(Threads REQUIRED)
++list(APPEND CMAKE_REQUIRED_FLAGS "-std=c++11")
++list(APPEND CMAKE_REQUIRED_LIBRARIES Threads::Threads)
++check_cxx_source_compiles("
++#include <atomic>
++#include <cstdint>
++std::atomic<uint64_t> x (0);
++int main() {
++	uint64_t i = x.load(std::memory_order_relaxed);
++	return 0;
++}
++" CLINGO_HAS_WORKING_LIBATOMIC)
++set (CMAKE_REQUIRED_FLAGS ${OLD_CMAKE_REQUIRED_FLAGS})
++set (CMAKE_REQUIRED_LIBRARIES ${OLD_CMAKE_REQUIRED_LIBRARIES})
++if (NOT CLINGO_HAS_WORKING_LIBATOMIC)
++	# clingo requires c++11 threads with 64bit __atomic_exchange, we
++	# need to link with libatomic on armel, powerpc, powerpcspe, m68k,
++	# mips, mipsel, and sh4, see also https://gcc.gnu.org/wiki/Atomic
++	# https://gcc.gnu.org/wiki/Atomic/GCCMM/LIbrary
++	check_library_exists(atomic __atomic_fetch_add_4 "" CLINGO_HAS_LIBATOMIC)
++	if (CLINGO_HAS_LIBATOMIC)
++		set_property(TARGET Threads::Threads APPEND PROPERTY INTERFACE_LINK_LIBRARIES "atomic")
++	endif()
++endif()
++
+ # Enable folders in IDEs like Visual Studio
+ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+ 

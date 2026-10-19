@@ -1,0 +1,265 @@
+From: Thomas Krennwallner <tkren@kr.tuwien.ac.at>
+Date: Wed, 7 Dec 2016 07:50:31 +0100
+Subject: Add gringo.1, clingo.1, lpconvert.1, and reify.1 manpages
+
+===================================================================
+---
+ clingo.1    | 58 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ gringo.1    | 60 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ lpconvert.1 | 53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ reify.1     | 54 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 225 insertions(+)
+ create mode 100644 clingo.1
+ create mode 100644 gringo.1
+ create mode 100644 lpconvert.1
+ create mode 100644 reify.1
+
+diff --git a/clingo.1 b/clingo.1
+new file mode 100644
+index 0000000..ba04b34
+--- /dev/null
++++ b/clingo.1
+@@ -0,0 +1,58 @@
++.\"                                      Hey, EMACS: -*- nroff -*-
++.\" First parameter, NAME, should be all caps
++.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
++.\" other parameters are allowed: see man(7), man(1)
++.TH CLINGO 1 "December 11, 2016"
++.\" Please adjust this date whenever revising the manpage.
++.\"
++.\" Some roff macros, for reference:
++.\" .nh        disable hyphenation
++.\" .hy        enable hyphenation
++.\" .ad l      left justify
++.\" .ad b      justify to both left and right margins
++.\" .nf        disable filling
++.\" .fi        enable filling
++.\" .br        insert line break
++.\" .sp <n>    insert n+1 empty lines
++.\" for manpage-specific macros, see man(7)
++.SH NAME
++clingo \- a combination of clasp and gringo
++.SH SYNOPSIS
++.B clingo
++[\fIOPTION\fR]... \fR[\fIFILE\fR]...
++.SH DESCRIPTION
++This manual page documents briefly the
++.B clingo
++command.
++.PP
++.\" TeX users may be more comfortable with the \fB<whatever>\fP and
++.\" \fI<whatever>\fP escape sequences to invode bold face and italics,
++.\" respectively.
++\fBclingo\fP stands for clasp on gringo and combines both systems in a
++monolithic way. Its input language is that of gringo and its output
++corresponds to that of clasp. This way it offers more control over the
++grounding and solving process than gringo and clasp can offer
++individually: multi-shot solving.
++.SH OPTIONS
++These programs follow the usual GNU command line syntax, with long
++options starting with two dashes (`-').
++A summary of options is included below.
++For a complete description, see the potassco-guide at
++https://sourceforge.net/projects/potassco/files/guide/.
++.TP
++.B \-h, \-\-help
++Show summary of options.
++.TP
++.B \-v, \-\-version
++Show version of program.
++.SH SEE ALSO
++.BR clasp (1),
++.BR gringo (1),
++.BR lpconvert (1),
++.BR reify (1)
++.br
++.SH AUTHOR
++clingo was written by Roland Kaminski <kaminski@cs.uni-potsdam.de>
++.PP
++This manual page was written by Thomas Krennwallner <tkren@kr.tuwien.ac.at>,
++for the Debian project (and may be used by others).
+diff --git a/gringo.1 b/gringo.1
+new file mode 100644
+index 0000000..7587e8e
+--- /dev/null
++++ b/gringo.1
+@@ -0,0 +1,60 @@
++.\"                                      Hey, EMACS: -*- nroff -*-
++.\" First parameter, NAME, should be all caps
++.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
++.\" other parameters are allowed: see man(7), man(1)
++.TH GRINGO 1 "December 11, 2016"
++.\" Please adjust this date whenever revising the manpage.
++.\"
++.\" Some roff macros, for reference:
++.\" .nh        disable hyphenation
++.\" .hy        enable hyphenation
++.\" .ad l      left justify
++.\" .ad b      justify to both left and right margins
++.\" .nf        disable filling
++.\" .fi        enable filling
++.\" .br        insert line break
++.\" .sp <n>    insert n+1 empty lines
++.\" for manpage-specific macros, see man(7)
++.SH NAME
++gringo \- a grounder for non-ground logic programs
++.SH SYNOPSIS
++.B gringo
++[\fIOPTION\fR]... \fR[\fIFILE\fR]...
++.SH DESCRIPTION
++This manual page documents briefly the
++.B gringo
++command.
++.PP
++.\" TeX users may be more comfortable with the \fB<whatever>\fP and
++.\" \fI<whatever>\fP escape sequences to invode bold face and italics,
++.\" respectively.
++\fBgringo\fP is a grounder that, given an input program with first-order
++variables, computes an equivalent ground (variable-free) program in
++aspif format. Its output can be processed further with answer set solver
++clasp. Starting with gringo series 5, its output is no longer directly
++compatible with solvers like smodels or cmodels reading smodels format.
++Use the \fBlpconvert\fP converter for translating aspif format to
++smodels format.
++.SH OPTIONS
++These programs follow the usual GNU command line syntax, with long
++options starting with two dashes (`-').
++A summary of options is included below.
++For a complete description, see the potassco-guide at
++https://sourceforge.net/projects/potassco/files/guide/.
++.TP
++.B \-h, \-\-help
++Show summary of options.
++.TP
++.B \-v, \-\-version
++Show version of program.
++.SH SEE ALSO
++.BR clasp (1),
++.BR clingo (1),
++.BR lpconvert (1),
++.BR reify (1)
++.br
++.SH AUTHOR
++gringo was written by Roland Kaminski <kaminski@cs.uni-potsdam.de>
++.PP
++This manual page was written by Thomas Krennwallner <tkren@kr.tuwien.ac.at>,
++for the Debian project (and may be used by others).
+diff --git a/lpconvert.1 b/lpconvert.1
+new file mode 100644
+index 0000000..f5d931e
+--- /dev/null
++++ b/lpconvert.1
+@@ -0,0 +1,53 @@
++.\"                                      Hey, EMACS: -*- nroff -*-
++.\" First parameter, NAME, should be all caps
++.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
++.\" other parameters are allowed: see man(7), man(1)
++.TH LPCONVERT 1 "December 11, 2016"
++.\" Please adjust this date whenever revising the manpage.
++.\"
++.\" Some roff macros, for reference:
++.\" .nh        disable hyphenation
++.\" .hy        enable hyphenation
++.\" .ad l      left justify
++.\" .ad b      justify to both left and right margins
++.\" .nf        disable filling
++.\" .fi        enable filling
++.\" .br        insert line break
++.\" .sp <n>    insert n+1 empty lines
++.\" for manpage-specific macros, see man(7)
++.SH NAME
++lpconvert \- converter between gringo's aspif and smodels format
++.SH SYNOPSIS
++.B lpconvert
++\fR[\fIOPTION\fR]... \fR[\fIFILE\fR]...
++.SH DESCRIPTION
++This manual page documents briefly the
++.B lpconvert
++command.
++.PP
++.\" TeX users may be more comfortable with the \fB<whatever>\fP and
++.\" \fI<whatever>\fP escape sequences to invode bold face and italics,
++.\" respectively.
++\fBlpconvert\fP is a converter between gringo's aspif and smodels
++format.
++.SH OPTIONS
++These programs follow the usual GNU command line syntax, with long
++options starting with two dashes (`-').  A summary of options is
++included below.  For a complete description, see the potassco-guide
++https://sourceforge.net/projects/potassco/files/guide/2.0/.
++.TP
++.B \-h, \-\-help
++Show summary of options.
++.TP
++.B \-v, \-\-version
++Show version of program.
++.SH SEE ALSO
++.BR clasp (1),
++.BR gringo (1),
++.BR reify (1)
++.br
++.SH AUTHOR
++lpconvert was written by Roland Kaminski <kaminski@cs.uni-potsdam.de>
++.PP
++This manual page was written by Thomas Krennwallner <tkren@kr.tuwien.ac.at>,
++for the Debian project (and may be used by others).
+diff --git a/reify.1 b/reify.1
+new file mode 100644
+index 0000000..aea2db7
+--- /dev/null
++++ b/reify.1
+@@ -0,0 +1,54 @@
++.\"                                      Hey, EMACS: -*- nroff -*-
++.\" First parameter, NAME, should be all caps
++.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
++.\" other parameters are allowed: see man(7), man(1)
++.TH REIFY 1 "December 11, 2016"
++.\" Please adjust this date whenever revising the manpage.
++.\"
++.\" Some roff macros, for reference:
++.\" .nh        disable hyphenation
++.\" .hy        enable hyphenation
++.\" .ad l      left justify
++.\" .ad b      justify to both left and right margins
++.\" .nf        disable filling
++.\" .fi        enable filling
++.\" .br        insert line break
++.\" .sp <n>    insert n+1 empty lines
++.\" for manpage-specific macros, see man(7)
++.SH NAME
++reify \- a small utility that reifies logic programs
++.SH SYNOPSIS
++.B reify
++\fR[\fIOPTION\fR]...
++.SH DESCRIPTION
++This manual page documents briefly the
++.B reify
++command.
++.PP
++.\" TeX users may be more comfortable with the \fB<whatever>\fP and
++.\" \fI<whatever>\fP escape sequences to invode bold face and italics,
++.\" respectively.
++\fBreify\fP is a small utility that reifies logic programs given in
++aspif format by reading standard input.  It produces a set of facts,
++which can be processed further with gringo.
++.SH OPTIONS
++These programs follow the usual GNU command line syntax, with long
++options starting with two dashes (`-').  A summary of options is
++included below.  For a complete description, see the potassco-guide
++https://sourceforge.net/projects/potassco/files/guide/2.0/.
++.TP
++.B \-h, \-\-help
++Show summary of options.
++.TP
++.B \-v, \-\-version
++Show version of program.
++.SH SEE ALSO
++.BR clasp (1),
++.BR gringo (1),
++.BR lpconvert (1)
++.br
++.SH AUTHOR
++reify was written by Roland Kaminski <kaminski@cs.uni-potsdam.de>
++.PP
++This manual page was written by Thomas Krennwallner <tkren@kr.tuwien.ac.at>,
++for the Debian project (and may be used by others).

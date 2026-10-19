@@ -71,6 +71,8 @@ NAME_MAP = {
     # Wolfi's rust ships cargo; its clang ships libclang (bindgen)
     "cargo": "rust",
     "tar": "gnutar",
+    "muon": "meson",
+    "gpm-dev": "libgpm-dev",
     "clang-dev": "clang",
 }
 
@@ -391,6 +393,9 @@ ARCHIVE_SUFFIXES = (".tar.gz", ".tar.xz", ".tar.bz2", ".tar.zst", ".tgz", ".zip"
 # abuild's own functions: the steps of the recipe, never helpers to inline.
 STANDARD_FUNCTIONS = {"prepare", "build", "check", "package", "snapshot", "fetch", "unpack"}
 
+# OpenSSL for Rust programs (see map in convert())
+RUST_OPENSSL = "openssl-3.6-dev"
+
 HELPERS = {
     "abuild-meson": (
         "abuild_meson() {\n"
@@ -487,6 +492,10 @@ class Converter:
                 out.append(C(cand, "Alpine: {}".format(base)))
             else:
                 out.append(cand)
+            tool = re.match(r"^py3-(.+)$", cand)
+            if kind == "build" and tool and self.wolfi.has("py{}-{}-bin".format(d2m.DEFAULT_PYTHON, tool.group(1))):
+                # Wolfi puts the commands of py3-foo in py3.X-foo-bin (gpep517, sphinx-build ...)
+                out.append(C("py{}-{}-bin".format(d2m.DEFAULT_PYTHON, tool.group(1)), "commands of Alpine's " + cand))
         return out
 
     # -- function bodies -----------------------------------------------------
@@ -548,6 +557,9 @@ class Converter:
                 used.add("srcdir")
         for code in funcs:  # helpers use abuild variables too ($pkgdir, $subpkgdir)
             used |= refs(code)
+        # muon is a meson implementation in C: Wolfi has meson
+        text = re.sub(r"(^|[\s;(|&])abuild-muon\b", r"\1abuild-meson", text)
+        text = re.sub(r"(^|[\s;(|&])muon\s+-C\s+(\S+)\s+(install|test)\b", r"\1meson \3 -C \2", text)
         text = re.sub(r"(^|[\s;(|&])abuild-meson\b", r"\1abuild_meson", text)
         # musl's iconv leaves usr/lib/charset.alias; glibc builds do not
         text = re.sub(r"\brm\s+(?!-\w*f)([^\n]*charset\.alias)", r"rm -f \1", text)
@@ -661,10 +673,17 @@ class Converter:
                 build_names.append(base)
         if a.with_check:
             build_names += apk.words("checkdepends")
-        env_pkgs = ["build-base", "busybox"] + [
+        # Alpine's builders have bash (abuild needs it); upstream scripts assume it
+        env_pkgs = ["build-base", "busybox", "bash"] + [
             d for d in self.map_deps(build_names, "build")
-            if (d.value if isinstance(d, C) else d) not in ("build-base", "busybox")]
+            if (d.value if isinstance(d, C) else d) not in ("build-base", "busybox", "bash")]
         plain = [d.value if isinstance(d, C) else d for d in env_pkgs]
+        if "rust" in plain and "openssl-dev" in plain and self.wolfi.has(RUST_OPENSSL):
+            # the openssl-sys crate supports a new OpenSSL major only in later
+            # releases than the Cargo.lock of most programs pins
+            env_pkgs = [C(RUST_OPENSSL, "Alpine: openssl-dev; openssl-sys predates OpenSSL 4") if
+                        (d.value if isinstance(d, C) else d) == "openssl-dev" else d for d in env_pkgs]
+            plain = [d.value if isinstance(d, C) else d for d in env_pkgs]
         if "gobject-introspection-dev" in plain and "glib-gir" not in plain:
             # Alpine ships GLib's .gir files in glib-dev; Wolfi splits them out.
             env_pkgs.append(C("glib-gir", "GLib .gir files (part of glib-dev on Alpine)"))
@@ -765,6 +784,14 @@ class Converter:
             if "libtool" not in options:
                 pipeline.append({"name": "Remove libtool archives (abuild does this by default)",
                                  "runs": 'find "${{targets.destdir}}" -name "*.la" -delete\n'})
+            # Alpine still installs into sbin and /lib; Wolfi is usr-merged, sbin in bin
+            pipeline.append({"name": "Usr-merge (sbin into bin)", "runs": (
+                'for s in usr/sbin sbin bin lib; do\n'
+                '  d="${{targets.destdir}}/$s"\n'
+                '  [ -d "$d" ] && [ ! -L "$d" ] || continue\n'
+                '  t=usr/bin; [ "$s" = lib ] && t=usr/lib\n'
+                '  mkdir -p "${{targets.destdir}}/$t" && cp -a "$d"/. "${{targets.destdir}}/$t/" && rm -rf "$d"\n'
+                'done\n')})
             if "!strip" not in options and "noarch" not in apk.words("arch"):
                 pipeline.append({"uses": "strip"})
 

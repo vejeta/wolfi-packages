@@ -7,8 +7,6 @@
 # Debian packaging: https://salsa.debian.org/perl-team/modules/packages/liblist-moreutils-perl
 #
 # Conversion notes:
-# - runtime dependency 'perl-list-moreutils-xs' (Debian 'liblist-moreutils-xs-perl') not found in Wolfi; left out
-# - build dependency 'perl-list-moreutils-xs' (Debian 'liblist-moreutils-xs-perl') not found in Wolfi; left out
 # - upstream tarball from CPAN (List-MoreUtils)
 # - port debian/rules override_dh_auto_install: dh_auto_install && $(RM) --verbose $(TMP)/usr/share/perl5/List/MoreUtils/Contributing.pod  		$(TMP)/usr/share/man/man3/List::MoreUtils::Contributing.3pm
 package:
@@ -31,7 +29,7 @@ package:
   dependencies:
     runtime:
       - perl-exporter-tiny  # Debian: libexporter-tiny-perl
-      # TODO(debian-to-melange): perl-list-moreutils-xs is not in Wolfi (Debian: liblist-moreutils-xs-perl); left out
+      - perl-list-moreutils-xs  # Wolfi Community Packages (Debian: liblist-moreutils-xs-perl)
       - perl
 environment:
   contents:
@@ -43,10 +41,11 @@ environment:
       - build-base
       - busybox
       - perl
+      - perl-dev
       - perl-capture-tiny  # Debian: libcapture-tiny-perl
       - perl-config-autoconf  # Debian: libconfig-autoconf-perl
       - perl-exporter-tiny  # Debian: libexporter-tiny-perl
-      # TODO(debian-to-melange): perl-list-moreutils-xs is not in Wolfi (Debian: liblist-moreutils-xs-perl); left out
+      - perl-list-moreutils-xs  # Wolfi Community Packages (Debian: liblist-moreutils-xs-perl)
       - perl-test-leaktrace  # Wolfi Community Packages (Debian: libtest-leaktrace-perl)
       - coreutils
       - findutils

@@ -14,7 +14,7 @@ package:
   name: py3-pycodestyle
   version: '2.14.0'
   epoch: 0
-  description: ${source:Synopsis} - Python 3.x
+  description: Python style guide checker (formerly called pep8) - Python 3.x
   copyright:
     - license: MIT
   dependencies:
@@ -59,10 +59,6 @@ pipeline:
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/py3-pycodestyle"
       cp -a README.rst "${{targets.destdir}}/usr/share/doc/py3-pycodestyle/"
-  - name: From debian/rules execute_after_dh_auto_install
-    runs: |
-      mkdir -p ${{targets.outdir}}/pycodestyle/usr/bin
-      mv ${{targets.destdir}}/usr/bin/* ${{targets.outdir}}/pycodestyle/usr/bin
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
@@ -84,7 +80,14 @@ subpackages:
         with:
           python: python${{range.key}}
       - runs: |
+          if [ -d "${{targets.contextdir}}"/usr/bin ]; then
+            mkdir -p "${{targets.outdir}}/py${{range.key}}-${{vars.pypi-package}}-bin/usr"
+            cp -a "${{targets.contextdir}}"/usr/bin "${{targets.outdir}}/py${{range.key}}-${{vars.pypi-package}}-bin/usr/"
+          fi
+      - runs: |
           install -Dm644 LICENSE -t "${{targets.contextdir}}"/usr/share/licenses/py${{range.key}}-${{vars.pypi-package}}
+      - runs: |
+          rm -rf "${{targets.contextdir}}"/usr/bin
     test:
       pipeline:
         - uses: python/import
@@ -108,14 +111,26 @@ subpackages:
             - apk-tools
       pipeline:
         - uses: test/metapackage
-  - name: pycodestyle
-    description: ${source:Synopsis}
-    pipeline:
-      - runs: |
-          install -Dm644 .recipe-files/pycodestyle.1 -t "${{targets.contextdir}}/usr/share/man/man1"
+  - range: py-versions
+    name: py${{range.key}}-${{vars.pypi-package}}-bin
+    description: ${{vars.pypi-package}} commands for python${{range.key}}
     dependencies:
       runtime:
-        - py3-pycodestyle
+        - py${{range.key}}-${{vars.pypi-package}}
+      provider-priority: ${{range.value}}
+      provides:
+        - py3-${{vars.pypi-package}}-bin
+    pipeline:
+      - runs: |
+          true
+  - name: pycodestyle
+    description: Python style guide checker (formerly called pep8)
+    pipeline:
+      - runs: |
+          true
+    dependencies:
+      runtime:
+        - py3.13-${{vars.pypi-package}}-bin
 update:
   enabled: true
   github:
@@ -172,10 +187,12 @@ test:
     - name: 'autopkgtest: cd "$AUTOPKGTEST_TMP" ; python3 -c "import pycodestyle; prin'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         cd "$AUTOPKGTEST_TMP" ; python3 -c "import pycodestyle; print(pycodestyle.__version__)"
     - name: 'autopkgtest: python3'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         set -e
 
         cd "$AUTOPKGTEST_TMP"
@@ -188,6 +205,7 @@ test:
     - name: 'autopkgtest: cli'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         set -e
 
         cd "$AUTOPKGTEST_TMP"

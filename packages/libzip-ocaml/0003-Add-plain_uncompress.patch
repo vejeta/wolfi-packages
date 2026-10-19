@@ -1,0 +1,58 @@
+From: Sven Luther <luther@debian.org>
+Date: Tue, 29 Sep 2009 09:43:51 +0200
+Subject: [PATCH] Add plain_uncompress
+
+Add a plain_uncompress function which is a direct binding to zlib's
+uncompress function.
+
+Signed-off-by: Sven Luther <luther@debian.org>
+---
+ zlib.ml     |  2 ++
+ zlib.mli    |  2 ++
+ zlibstubs.c | 10 ++++++++++
+ 3 files changed, 14 insertions(+)
+
+diff --git a/zlib.ml b/zlib.ml
+index 2053536..39abb96 100644
+--- a/zlib.ml
++++ b/zlib.ml
+@@ -99,6 +99,8 @@ let compress_direct  ?(level = 6) ?(header = true) flush =
+   in
+   compr, compr_finish
+ 
++external plain_uncompress: string -> int -> string -> int -> bool = "camlzip_uncompress"
++
+ let uncompress ?(header = true) refill flush =
+   let inbuf = Bytes.create buffer_size
+   and outbuf = Bytes.create buffer_size in
+diff --git a/zlib.mli b/zlib.mli
+index 19658bb..4580212 100644
+--- a/zlib.mli
++++ b/zlib.mli
+@@ -26,6 +26,8 @@ val compress_direct:
+ val uncompress:
+   ?header: bool -> (bytes -> int) -> (bytes -> int -> unit) -> unit
+ 
++val plain_uncompress: string -> int -> string -> int -> bool
++
+ type stream
+ 
+ type flush_command =
+diff --git a/zlibstubs.c b/zlibstubs.c
+index 2cfa175..2f8e815 100644
+--- a/zlibstubs.c
++++ b/zlibstubs.c
+@@ -202,3 +202,13 @@ value camlzip_update_crc32(value crc, value buf, value pos, value len)
+                           Long_val(len)));
+ }
+ 
++
++value camlzip_uncompress(value dest, value destlen, value src, value srclen)
++{
++  unsigned long destlenc = Int_val(destlen);
++  unsigned long srclenc = Int_val(srclen);
++  int status;
++  status = uncompress (String_val(dest), &destlenc, String_val(src), srclenc);
++  if (status == Z_OK) return Val_true;
++  else return Val_false;
++}

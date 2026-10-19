@@ -1,0 +1,18 @@
+From: =?utf-8?q?St=C3=A9phane_Glondu?= <glondu@debian.org>
+Date: Mon, 15 Dec 2025 07:11:39 +0100
+Subject: Mark test_compact_manydomains as multicore
+
+---
+ testsuite/tests/compaction/test_compact_manydomains.ml | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/testsuite/tests/compaction/test_compact_manydomains.ml b/testsuite/tests/compaction/test_compact_manydomains.ml
+index 6d26260..6441fe8 100644
+--- a/testsuite/tests/compaction/test_compact_manydomains.ml
++++ b/testsuite/tests/compaction/test_compact_manydomains.ml
+@@ -1,4 +1,5 @@
+ (* TEST
++ multicore;
+ *)
+ 
+ let num_domains = 20

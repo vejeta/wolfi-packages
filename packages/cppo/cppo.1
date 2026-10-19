@@ -1,0 +1,134 @@
+.\" groff -man -Tascii cppo.1
+.\" ==========================================================================
+.\" ============= Synopsis ===================================================
+.\" ==========================================================================
+.TH CPPO 1 "June 2013" CPPO "User Manuals"
+.SH NAME
+cppo \- lightweight cpp-like preprocessor for OCaml
+.SH SYNOPSIS
+.B cppo \fR[\fIOptions...\fR] \fIfiles\fR...
+.\" ==========================================================================
+.\" ============= Description ================================================
+.\" ==========================================================================
+.SH DESCRIPTION
+.B cppo
+is the equivalent of the C preprocessor for OCaml. It permits the
+definition and expansion of simple (in comparison with 
+.B camlp4\fR)
+macros and file inclusion. 
+.B cppo
+supports functional macros, conditionals, boolean and arithmetic
+expressions, stringification, and calling different, external
+preprocessors. For a precise description of the features, see 
+.I /usr/share/doc/cppo/README.gz\fR.
+.\"
+.\" ==========================================================================
+.\" ================ Options =================================================
+.\" ==========================================================================
+.\"
+.SH OPTIONS
+.\" ===================== -D DEF =============================================
+.TP
+.B "-D IDENT"
+define 
+.I IDENT
+.\" ===================== -U IDENT ===========================================
+.TP
+.B "-U IDENT"
+undefine
+.I IDENT
+.\" ===================== -I DIR =============================================
+.TP
+.B "-I DIR"
+add
+.I DIR
+to the search path for included files
+.\" ===================== -o FILE ============================================
+.TP
+.B "-o FILE"
+write output to
+.I FILE
+.\" ===================== -q  ================================================
+.TP
+.B "-q"
+Identify and preserve camlp4 quotations
+.\" ===================== -s  ================================================
+.TP
+.B "-s"
+Output line directives pointing to the exact source location of
+each token, including those coming from the body of macro
+definitions. This behavior is off by default.
+.\" ===================== -n  ================================================
+.TP
+.B "-n"
+Do not output any line directive other than those found in the 
+input (overrides 
+.B -s\fR).
+.\" ===================== -version  ==========================================
+.TP
+.B "-version "
+print version and exit
+.\" ===================== -x NAME:CMD_TEMPLATE ===============================
+.TP
+.B "-x NAME:CMD_TEMPLATE"
+.RS
+Define a custom preprocessor target section starting with:
+.P
+.RS
+#ext "NAME"
+.RE
+.P
+and ending with:
+.P
+.RS
+#endext
+.RE
+.P
+.I NAME
+must be a lowercase identifier of the form [a-z][A-Za-z0-9_]*
+.P
+.I CMD_TEMPLATE
+is a command template supporting the following special sequences:
+.RS
+.HP
+%F  file name (unescaped; beware of potential scripting attacks)
+.HP
+%B  number of the first line
+.HP
+%E  number of the last line
+.HP
+%%  a single percent sign
+.RE
+.P
+The filename, the first line number and the last line number are
+available to the external preprocessor via the environment
+variables
+.I CPPO_FILE\fR, \fICPPO_FIRST_LINE\fR, \fICPPO_LAST_LINE\fR.
+.P
+The command is expected to read from stdin and to write to
+stdout.
+.RE
+.\" ===================== -help =================================================
+.TP
+.B "-help | --help"
+Display options and exit
+.\"
+.\" ==========================================================================
+.\" ================ SEE ALSO ================================================
+.\" ==========================================================================
+.\"
+.SH SEE ALSO
+.TP
+the \fBcppo\fR web page, \fIhttp://mjambon.com/cppo.html\fR
+.TP
+the text manual in \fI/usr/share/doc/cppo/README.gz
+.\"
+.\" ==========================================================================
+.\" ================ Author ==================================================
+.\" ==========================================================================
+.\"
+.SH AUTHOR
+This manual page was written by Sylvain Le Gall
+<gildor@debian.org> and Hendrik Tews <hendrik@askra.de>,
+specifically for the Debian project (and may be used by others).
+

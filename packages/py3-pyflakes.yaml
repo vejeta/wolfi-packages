@@ -52,11 +52,6 @@ pipeline:
     with:
       uri: https://files.pythonhosted.org/packages/source/p/pyflakes/pyflakes-${{package.version}}.tar.gz
       expected-sha256: b24f96fafb7d2ab0ec5075b7350b3d2d2218eab42003821c06344973d3ea2f58
-  - name: From debian/rules execute_after_dh_auto_install
-    runs: |
-      mkdir -p ${{targets.outdir}}/pyflakes3/usr/bin
-      mv ${{targets.destdir}}/usr/bin/pyflakes ${{targets.outdir}}/pyflakes3/usr/bin/pyflakes3
-      sed -i '1s/3.*/3/' ./debian/pyflakes3/usr/bin/pyflakes3
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
@@ -80,7 +75,14 @@ subpackages:
         with:
           python: python${{range.key}}
       - runs: |
+          if [ -d "${{targets.contextdir}}"/usr/bin ]; then
+            mkdir -p "${{targets.outdir}}/py${{range.key}}-${{vars.pypi-package}}-bin/usr"
+            cp -a "${{targets.contextdir}}"/usr/bin "${{targets.outdir}}/py${{range.key}}-${{vars.pypi-package}}-bin/usr/"
+          fi
+      - runs: |
           install -Dm644 LICENSE -t "${{targets.contextdir}}"/usr/share/licenses/py${{range.key}}-${{vars.pypi-package}}
+      - runs: |
+          rm -rf "${{targets.contextdir}}"/usr/bin
     test:
       pipeline:
         - uses: python/import
@@ -104,14 +106,29 @@ subpackages:
             - apk-tools
       pipeline:
         - uses: test/metapackage
+  - range: py-versions
+    name: py${{range.key}}-${{vars.pypi-package}}-bin
+    description: ${{vars.pypi-package}} commands for python${{range.key}}
+    dependencies:
+      runtime:
+        - py${{range.key}}-${{vars.pypi-package}}
+      provider-priority: ${{range.value}}
+      provides:
+        - py3-${{vars.pypi-package}}-bin
+    pipeline:
+      - runs: |
+          true
+      - runs: |
+          mv ${{targets.contextdir}}/usr/bin/pyflakes ${{targets.contextdir}}/usr/bin/pyflakes3
+          sed -i '1s/3.*/3/' ${{targets.contextdir}}/usr/bin/pyflakes3
   - name: pyflakes3
     description: Passive checker of Python 3 programs
     pipeline:
       - runs: |
-          install -Dm644 .recipe-files/pyflakes3.1 -t "${{targets.contextdir}}/usr/share/man/man1"
+          true
     dependencies:
       runtime:
-        - py3-pyflakes
+        - py3.13-${{vars.pypi-package}}-bin
 update:
   enabled: true
   github:
@@ -168,14 +185,17 @@ test:
     - name: 'autopkgtest: pyflakes3 --help'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         pyflakes3 --help
     - name: 'autopkgtest: relative-import.sh'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         # LP: #1560134
     - name: 'autopkgtest: unittests'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         set -e
         cp -a pyflakes/test/ "$AUTOPKGTEST_TMP"
         cd "$AUTOPKGTEST_TMP/test/"

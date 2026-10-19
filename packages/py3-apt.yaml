@@ -7,23 +7,28 @@
 # Debian packaging: https://salsa.debian.org/apt-team/python-apt
 #
 # Conversion notes:
-# - runtime dependency 'libjs-jquery': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
-# - runtime dependency 'libjs-underscore': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - Debian-native package: source from the Debian archive
 # - dh --with python3,sphinxdoc has no direct melange equivalent; review
 # - port debian/rules override_dh_auto_build: dh_auto_build && PYTHONPATH=$(BUILDDIR3) sphinx-build doc/source build/sphinx/html
+# - runtime dependency 'libjs-jquery': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
+# - runtime dependency 'libjs-underscore': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - autopkgtests converted to the test pipeline (1 steps)
 package:
-  name: python-apt-doc
+  name: py3-apt
   version: '3.1.0'
   epoch: 0
-  description: Python interface to libapt-pkg (API documentation)
+  description: Python 3 interface to libapt-pkg
   copyright:
     - license: GPL-2.0-or-later
     - license: Permissive
       paths:
         - tests/test_all.py
         - tests/test_hashes.py
+  dependencies:
+    runtime:
+      - py3-apt-common
+      - distro-info-data  # Wolfi Community Packages
+      # Debian Recommends (not supported by apk): lsb-release, iso-codes
 environment:
   contents:
     keyring:
@@ -60,8 +65,8 @@ pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
-      for f in copyright; do mv python-apt-doc/$f .recipe-files/; done
-      rmdir python-apt-doc 2>/dev/null || true
+      for f in copyright; do mv py3-apt/$f .recipe-files/; done
+      rmdir py3-apt 2>/dev/null || true
   - uses: fetch
     with:
       uri: https://deb.debian.org/debian/pool/main/p/python-apt/python-apt_${{package.version}}.tar.xz
@@ -70,18 +75,13 @@ pipeline:
   - uses: py/pip-build-install
   - name: Install (from debian/rules override_dh_auto_install)
     runs: |
-      mkdir -p ${{targets.outdir}}/python-apt-common/usr/share/
-      mv ${{targets.outdir}}/python3-apt/usr/share/locale ${{targets.outdir}}/python-apt-common/usr/share/
-      mv ${{targets.outdir}}/python3-apt/usr/share/python-apt ${{targets.outdir}}/python-apt-common/usr/share/
-      rmdir ${{targets.outdir}}/python3-apt/usr/share
+      mkdir -p ${{targets.outdir}}/py3-apt-common/usr/share/
+      mv ${{targets.destdir}}/usr/share/locale ${{targets.outdir}}/py3-apt-common/usr/share/
+      mv ${{targets.destdir}}/usr/share/python-apt ${{targets.outdir}}/py3-apt-common/usr/share/
+      rmdir ${{targets.destdir}}/usr/share
   - name: Install files
     runs: |
-      mkdir -p "${{targets.destdir}}/usr/share/doc/python-apt-doc/examples"
-      cp -a doc/examples/*.py "${{targets.destdir}}/usr/share/doc/python-apt-doc/examples/"
-      cp -a doc/source/examples/*.py "${{targets.destdir}}/usr/share/doc/python-apt-doc/examples/"
-      mkdir -p "${{targets.destdir}}/usr/share/doc/python-apt-doc"
-      cp -a build/sphinx/html/ "${{targets.destdir}}/usr/share/doc/python-apt-doc/"
-      install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/python-apt-doc/copyright
+      install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/py3-apt/copyright
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
@@ -92,33 +92,33 @@ pipeline:
       done
   - uses: strip
 subpackages:
-  - name: python-apt-dev
+  - name: py3-apt-doc
+    description: Python interface to libapt-pkg (API documentation)
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}/usr/share/doc/py3-apt-doc/examples"
+          cp -a doc/examples/*.py "${{targets.contextdir}}/usr/share/doc/py3-apt-doc/examples/"
+          cp -a doc/source/examples/*.py "${{targets.contextdir}}/usr/share/doc/py3-apt-doc/examples/"
+          mkdir -p "${{targets.contextdir}}/usr/share/doc/py3-apt-doc"
+          cp -a build/sphinx/html/ "${{targets.contextdir}}/usr/share/doc/py3-apt-doc/"
+  - name: py3-apt-dev
     description: Python interface to libapt-pkg (development files)
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/include/python-apt"
           mv "${{targets.destdir}}/python/python-apt.h" "${{targets.contextdir}}/usr/include/python-apt/"
           mv "${{targets.destdir}}/python/generic.h" "${{targets.contextdir}}/usr/include/python-apt/"
-          mkdir -p "${{targets.contextdir}}/usr/share/doc/python-apt-dev/examples"
-          cp -a doc/client-example.cc "${{targets.contextdir}}/usr/share/doc/python-apt-dev/examples/"
+          mkdir -p "${{targets.contextdir}}/usr/share/doc/py3-apt-dev/examples"
+          cp -a doc/client-example.cc "${{targets.contextdir}}/usr/share/doc/py3-apt-dev/examples/"
     dependencies:
       runtime:
-        - python3-apt
+        - py3-apt
         - libapt-pkg-dev  # Wolfi Community Packages
-  - name: python-apt-common
+  - name: py3-apt-common
     description: Python interface to libapt-pkg (locales)
     pipeline:
       - runs: |
           true
-  - name: python3-apt
-    description: Python 3 interface to libapt-pkg
-    pipeline:
-      - runs: |
-          true
-    dependencies:
-      runtime:
-        - python-apt-common
-        - distro-info-data  # Wolfi Community Packages
 update:
   enabled: false
   manual: true
@@ -146,7 +146,8 @@ test:
         - sed  # Essential in Debian, so on every testbed
   pipeline:
     - runs: |
-        test -f /usr/share/doc/python-apt-doc/copyright
+        test -f /usr/share/doc/py3-apt/copyright
+    - uses: test/tw/ldd-check
     - uses: python/import
       with:
         imports: import apt
@@ -177,13 +178,14 @@ test:
           /^$/ && pkg != "" { add() }
           END { if (pkg != "") add() }
         ' /lib/apk/db/installed
-        for t in debian/python-apt-doc.templates debian/templates; do
+        for t in debian/python3-apt.templates debian/templates; do
           # po-debconf's translatable fields (_Description, __Choices) in the C locale
-          [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/python-apt-doc.templates" && break
+          [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/python3-apt.templates" && break
         done
     - name: 'autopkgtest: run-tests'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         set -e
 
         # from debian/rules

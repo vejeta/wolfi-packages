@@ -7,16 +7,12 @@
 # Debian packaging: https://salsa.debian.org/python-debian-team/python-debian
 #
 # Conversion notes:
-# - native package: using SETUPTOOLS_SCM_PRETEND_VERSION=$(shell debian/make_pep440_compliant "$(DEB_VERSION)") from debian/rules as the version (Debian version is 1.1.1)
 # - Debian-native package: source from the Debian archive
-# - test dependency 'debian-keyring' (Debian 'debian-keyring') not found in Wolfi; left out
-# - autopkgtest 'python3-debian' left out: it needs packages that are not in Wolfi
-# - test dependency 'debian-keyring' (Debian 'debian-keyring') not found in Wolfi; left out
-# - autopkgtest 'python3-debian-no-apt-pkg' left out: it needs packages that are not in Wolfi
+# - autopkgtests converted to the test pipeline (2 steps)
 # - Wolfi Python layout: py3.X-debian for Python 3.10, 3.11, 3.12, 3.13, 3.14
 package:
   name: py3-debian
-  version: '$(shell debian/make_pep440_compliant "${{package.version}}")'
+  version: '1.1.1'
   epoch: 0
   description: Python 3 modules to work with Debian-related data formats
   copyright:
@@ -63,7 +59,7 @@ environment:
       - dpkg-dev
       - binutils
       - gpgv
-      - python3-apt  # Wolfi Community Packages
+      - py3-apt  # Wolfi Community Packages (Debian: python3-apt)
       - py3-supported-charset-normalizer  # Debian: python3-charset-normalizer
       - py3-supported-pytest  # Debian: python3-pytest
       - py3-supported-setuptools-scm  # Debian: python3-setuptools-scm
@@ -85,7 +81,7 @@ pipeline:
       rmdir py3-debian 2>/dev/null || true
   - uses: fetch
     with:
-      uri: https://deb.debian.org/debian/pool/main/p/python-debian/python-debian_1.1.1.tar.xz
+      uri: https://deb.debian.org/debian/pool/main/p/python-debian/python-debian_${{package.version}}.tar.xz
       expected-sha256: 59cc8a9a6236f6386ae622564e7d13c846e65cfa63948c9a75e02358dfeaac20
   - name: From debian/rules execute_after_dh_auto_build
     runs: |
@@ -145,17 +141,100 @@ subpackages:
 update:
   enabled: false
   manual: true
-  exclude-reason: 'Debian-native package; bump the version (debian/rules SETUPTOOLS_SCM_PRETEND_VERSION) by hand'
+  exclude-reason: 'Debian-native package; bump the version by hand'
 test:
   environment:
     contents:
       packages:
         - busybox
         - python3
+        - binutils
+        - gpgv
+        - py3-apt  # Wolfi Community Packages (Debian: python3-apt)
+        - py3.13-charset-normalizer-bin  # commands of Debian's python3-charset-normalizer
+        - py3-supported-charset-normalizer  # Debian: python3-charset-normalizer
+        - py3-debian
+        - py3.13-pytest-bin  # commands of Debian's python3-pytest
+        - py3-supported-pytest  # Debian: python3-pytest
+        - debian-keyring  # Wolfi Community Packages
+        - debian-archive-keyring  # Wolfi Community Packages
+        - zstd
+        - bash  # Essential in Debian, so on every testbed
+        - coreutils  # Essential in Debian, so on every testbed
+        - diffutils  # Essential in Debian, so on every testbed
+        - dpkg  # Essential in Debian, so on every testbed
+        - findutils  # Essential in Debian, so on every testbed
+        - grep  # Essential in Debian, so on every testbed
+        - sed  # Essential in Debian, so on every testbed
         - py3-supported-debian
   pipeline:
-    # TODO(debian-to-melange): autopkgtest 'python3-debian' left out; it needs packages that are not in Wolfi
-    # TODO(debian-to-melange): autopkgtest 'python3-debian-no-apt-pkg' left out; it needs packages that are not in Wolfi
+    - uses: fetch
+      with:
+        uri: https://deb.debian.org/debian/pool/main/p/python-debian/python-debian_${{package.version}}.tar.xz
+        expected-sha256: 59cc8a9a6236f6386ae622564e7d13c846e65cfa63948c9a75e02358dfeaac20
+    - name: dpkg database (as on a Debian testbed)
+      runs: |
+        db=/var/lib/dpkg
+        mkdir -p "$db/info" && touch "$db/status"
+        awk -v db="$db" -v aliases='libc-bin=glibc libc6=glibc perl-base=perl python3-all=python3 python3-apt=py3-apt python3-charset-normalizer=py3.13-charset-normalizer-bin python3-debian=py3-debian python3-pytest=py3.13-pytest-bin' '
+          BEGIN { n = split(aliases, a, " "); for (i = 1; i <= n; i++) { split(a[i], kv, "="); alias[kv[2]] = alias[kv[2]] " " kv[1] } }
+          function add(   m, j, f) {
+            m = split(pkg alias[pkg], names, " ")
+            for (j = 1; j <= m; j++) {
+              f = db "/info/" names[j] ".list"
+              printf "%s", files > f; close(f)
+              gsub(/_/, "~", ver)
+              printf "Package: %s\nStatus: install ok installed\nPriority: optional\nArchitecture: all\nVersion: %s\nMaintainer: Wolfi\nDescription: %s (apk package %s)\n\n", names[j], ver, names[j], pkg >> (db "/status")
+            }
+            pkg = ""
+          }
+          /^P:/ { pkg = substr($0, 3); files = ""; dir = "" }
+          /^V:/ { ver = substr($0, 3) }
+          /^F:/ { dir = substr($0, 3); files = files "/" dir "\n" }
+          /^R:/ { files = files (dir == "" ? "" : "/" dir) "/" substr($0, 3) "\n" }
+          /^$/ && pkg != "" { add() }
+          END { if (pkg != "") add() }
+        ' /lib/apk/db/installed
+        for t in debian/python3-debian.templates debian/templates; do
+          # po-debconf's translatable fields (_Description, __Choices) in the C locale
+          [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/python3-debian.templates" && break
+        done
+    - name: 'autopkgtest: python3-debian'
+      runs: |
+        export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
+        set -e -u -x
+        cp -r pyproject.toml conftest.py tests/ "$AUTOPKGTEST_TMP"
+        cd "$AUTOPKGTEST_TMP/tests/"
+        export PYTHONWARNINGS=d
+        export FORBID_MISSING_APT_PKG=1
+        export FORBID_MISSING_GPGV=1
+        export FORBID_MISSING_AR=1
+
+        for py in $(py3versions -s); do
+          echo "----------------------------------------------"
+          echo "Testing with $py"
+          echo "----------------------------------------------"
+          # text mode file opening is locale dependent so try both ASCII and UTF-8
+          LC_ALL=C $py -m pytest
+          LC_ALL=C.UTF-8 $py -m pytest
+        done
+    - name: 'autopkgtest: python3-debian-no-apt-pkg'
+      runs: |
+        export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
+        set -e -u -x
+        cp -r pyproject.toml conftest.py tests/ "$AUTOPKGTEST_TMP"
+        cd "$AUTOPKGTEST_TMP/tests/"
+        export PYTHONWARNINGS=d
+        for py in $(py3versions -s); do
+          echo "----------------------------------------------"
+          echo "Testing with $py"
+          echo "----------------------------------------------"
+          # text mode file opening is locale dependent so try both ASCII and UTF-8
+          LC_ALL=C $py -m pytest
+          LC_ALL=C.UTF-8 $py -m pytest
+        done
     - uses: python/import
       with:
         python: python3

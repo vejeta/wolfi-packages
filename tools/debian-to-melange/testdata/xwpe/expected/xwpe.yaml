@@ -142,12 +142,14 @@ test:
     - name: 'autopkgtest: XWPE_TEST_WAIT_SCALE=3 WPE_BIN=/usr/bin/wpe python3 -m pytes'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         (
         XWPE_TEST_WAIT_SCALE=3 WPE_BIN=/usr/bin/wpe python3 -m pytest -q tests --ignore=tests/x11
         ) || echo 'autopkgtest marked flaky failed (ignored)'
     - name: 'autopkgtest: XWPE_TEST_WAIT_SCALE=3 XWPE_BIN=/usr/bin/xwpe python3 -m pyt'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         (
         XWPE_TEST_WAIT_SCALE=3 XWPE_BIN=/usr/bin/xwpe python3 -m pytest -q tests/x11
         ) || echo 'autopkgtest marked flaky failed (ignored)'

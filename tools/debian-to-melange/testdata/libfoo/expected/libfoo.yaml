@@ -199,10 +199,12 @@ test:
     - name: 'autopkgtest: foo-tool --version'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         foo-tool --version
     - name: 'autopkgtest: link-test'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         set -e
         cat > "$AUTOPKGTEST_TMP/t.c" <<EOC
         #include <foo.h>

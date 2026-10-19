@@ -1,0 +1,59 @@
+From: Stefano Zacchiroli <zack@debian.org>
+Date: Sat, 12 Feb 2011 10:21:40 +0100
+Subject: Extra configuration search path
+
+Support for an extra, debian-specific, dir where to look for
+configuration file snippets (namely /usr/share/ocaml-findlib/).
+
+Forwarded: not-needed
+Signed-off-by: Stephane Glondu <steph@glondu.net>
+---
+ src/findlib/findlib.ml         | 9 ++++++++-
+ src/findlib/findlib_config.mlp | 2 ++
+ 2 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/src/findlib/findlib.ml b/src/findlib/findlib.ml
+index 9021561..0f8bc7d 100644
+--- a/src/findlib/findlib.ml
++++ b/src/findlib/findlib.ml
+@@ -155,6 +155,8 @@ let init
+   let configd_file =
+     config_file ^ ".d" in
+ 
++  let extra_configd_file = Findlib_config.extra_configd_file in
++
+   let vars_of_file f =
+     let ch = open_in f in
+     try
+@@ -198,12 +200,17 @@ let init
+ 	  vars_of_file config_file
+ 	else
+ 	  [] in
++      let extra_configd_vars =  (* Debian specific *)
++        if Sys.file_exists extra_configd_file then
++          vars_of_dir extra_configd_file
++        else
++          [] in
+       let configd_vars =
+ 	if Sys.file_exists configd_file then 
+ 	  vars_of_dir configd_file
+ 	else
+ 	  [] in
+-      let vars = config_vars @ configd_vars in
++      let vars = config_vars @ configd_vars @ extra_configd_vars in
+       if vars <> [] then (
+         let found = ref false in
+ 	let lookup name default =
+diff --git a/src/findlib/findlib_config.mlp b/src/findlib/findlib_config.mlp
+index cbcc374..882aa7d 100644
+--- a/src/findlib/findlib_config.mlp
++++ b/src/findlib/findlib_config.mlp
+@@ -94,6 +94,8 @@ let ocaml_has_meta_files =
+     String.sub Sys.ocaml_version 0 (String.index Sys.ocaml_version '.') in
+   int_of_string ocaml_major >= 5;;
+ 
++let extra_configd_file = "/usr/share/ocaml-findlib/";; (* Debian specific *)
++
+ let ocaml_stdlib = "@STDLIB@";;
+ 
+ let ocaml_ldconf = ocaml_stdlib / "ld.conf";;

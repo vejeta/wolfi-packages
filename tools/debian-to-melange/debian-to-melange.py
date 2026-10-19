@@ -55,6 +55,8 @@ DROP = {
     "debhelper", "debhelper-compat", "cdbs", "quilt", "po-debconf", "debconf",
     "debconf-2.0", "lsb-base", "dpkg-dev", "init-system-helpers",
     "sensible-utils", "base-files", "base-passwd", "ucf",
+    # dh addons for Debian's library symbols files
+    "pkg-kde-tools",
     # pybuild plugins: py/pip-build-install builds any PEP 517 project
     "pybuild-plugin-pyproject",
     # Debian-only Java helpers (Maven repository layout, jar symlinks)
@@ -76,6 +78,9 @@ NAME_MAP = {
     "gir1.2-glib-2.0": "gobject-introspection",
     "pyflakes3": "py3-pyflakes",
     "pycodestyle": "py3-pycodestyle",
+    "libgmock-dev": "gtest-dev",  # googletest ships gmock too
+    "libsigc++-2.0-dev": "libsigc++-dev",
+    "libxapian-dev": "xapian-core-dev",
     # dual-life modules that Wolfi's perl ships in its core
     "libscalar-list-utils-perl": "perl",
     "libversion-perl": "perl",
@@ -254,6 +259,8 @@ def dep_candidates(name):
     if name in NAME_MAP:
         return [NAME_MAP[name]]
     cands = [name]
+    if re.match(r"^libboost[\d.]*-[\w-]+-dev$", name):
+        return ["boost-dev"]  # Debian splits Boost per library; Wolfi has one boost-dev
     m = re.match(r"^openjdk-(\d+)-(jdk|jre)(?:-headless)?$", name)
     if m:
         return ["openjdk-{}".format(m.group(1)) if m.group(2) == "jdk" else "openjdk-{}-jre".format(m.group(1))]
@@ -1552,6 +1559,7 @@ class Converter:
                     return None
                 continue  # debhelper bookkeeping (Built-Using, substvars...)
             line = rules.expand(line)
+            line = re.sub(r"(?<![\w/.])\./debian/", "debian/", line)  # ./debian/foo is debian/foo
             m = self.SED_IN.match(line)
             if m and m.group(5) in getattr(self, "generated", {}):
                 continue  # generated now, see generate_from_in()
@@ -1911,8 +1919,9 @@ class Converter:
         self.source_name = src_name
         self.source = source
         main = next((b for b in binaries if b["package"] == src_name), None)
-        py = next((b for b in binaries if b["package"] == "python3-" + (src_name or "")), None)
-        if py is not None and "pybuild" in (self.read("rules") or ""):
+        base = re.sub(r"^python-", "", src_name or "")
+        py = next((b for b in binaries if b["package"] in ("python3-" + (src_name or ""), "python3-" + base)), None)
+        if py is not None and (main is None or "pybuild" in (self.read("rules") or "")):
             # pyflakes: the module (python3-pyflakes) is the package, the CLI a subpackage
             main = py
         if main is None:
@@ -1953,7 +1962,8 @@ class Converter:
         self.version_for_url = None
         version_var = a.version_var
         if not version_var and native and not a.version:
-            cands = [v for v in rules.vars if re.match(r"^[A-Z0-9_]*VERSION$", v) and not v.startswith("DEB_")]
+            cands = [v for v in rules.vars if re.match(r"^[A-Z0-9_]*VERSION$", v) and not v.startswith("DEB_")
+                     and "$(shell" not in rules.vars[v]]  # a version computed by a script is not one
             if len(cands) == 1:
                 version_var = cands[0]
                 self.notes.append("native package: using {}={} from debian/rules as the version "
@@ -1989,6 +1999,8 @@ class Converter:
 
         # ---- package ------------------------------------------------------
         desc = main.get("description", "").split("\n", 1)[0].strip()
+        # dpkg's ${source:Synopsis}: the Description of the source stanza
+        desc = desc.replace("${source:Synopsis}", (source.get("description") or "").split("\n", 1)[0].strip())
         desc = desc[:1].upper() + desc[1:]
         pkg = {"name": name, "version": version, "epoch": 0, "description": desc}
         lics = parse_copyright(self.read("copyright"))
@@ -2092,7 +2104,8 @@ class Converter:
         if bs == "pybuild":
             base += ["python3", "py3-pip", "py3-wheel"]
         if bs == "perl_makemaker":
-            base += ["perl"]
+            # Debian's perl has the headers XS probes look for (List::MoreUtils)
+            base += ["perl", "perl-dev"]
         if native and bs:
             # a Debian-native build assumes what debhelper brings: perl (pod2man)
             # and dpkg-dev (dpkg-parsechangelog)
@@ -2473,6 +2486,46 @@ class Converter:
                      "pipeline": [{"uses": "test/metapackage"}]},
         }
         subpackages[:0] = [sub, meta]
+        clis = [sp for sp in subpackages[2:] if isinstance(sp, dict) and
+                not re.match(r"^(py3|python3?)-|.*-doc$", str(sp.get("name", "")))]
+        if clis:
+            # Debian ships the commands in their own package (pycodestyle, pyflakes3):
+            # Wolfi in py3.X-foo-bin, one per Python, the default one for the Debian name
+            sub["pipeline"].append({"runs": "rm -rf \"${{targets.contextdir}}\"/usr/bin\n"})
+            sub["pipeline"].insert(1, {"runs": (
+                'if [ -d "${{targets.contextdir}}"/usr/bin ]; then\n'
+                '  mkdir -p "${{targets.outdir}}/py${{range.key}}-${{vars.pypi-package}}-bin/usr"\n'
+                '  cp -a "${{targets.contextdir}}"/usr/bin "${{targets.outdir}}/py${{range.key}}-${{vars.pypi-package}}-bin/usr/"\n'
+                'fi\n')})
+            bins = {
+                "range": "py-versions",
+                "name": "py${{range.key}}-${{vars.pypi-package}}-bin",
+                "description": "${{vars.pypi-package}} commands for python${{range.key}}",
+                "dependencies": {"runtime": ["py${{range.key}}-${{vars.pypi-package}}"],
+                                 "provider-priority": "${{range.value}}",
+                                 "provides": ["py3-${{vars.pypi-package}}-bin"]},
+                "pipeline": [{"runs": "true\n"}],
+            }
+            subpackages.insert(2, bins)
+            for cli in clis:
+                cli["pipeline"] = [{"runs": "true\n"}]
+                cli["dependencies"] = {"runtime": ["py{}-${{{{vars.pypi-package}}}}-bin".format(DEFAULT_PYTHON)]}
+                cli.pop("test", None)
+            # steps on the commands (moving them to the Debian CLI package, renaming
+            # them) now work on each py3.X-foo-bin
+            cli_dirs = ["${{{{targets.outdir}}}}/{}".format(c["name"]) for c in clis]
+            keep = []
+            for st in pipeline:
+                runs = st.get("runs", "") if isinstance(st, dict) else ""
+                if "usr/bin" in runs and ("${{targets.destdir}}/usr/bin" in runs or any(d in runs for d in cli_dirs)):
+                    for d in ["${{targets.destdir}}"] + cli_dirs:
+                        runs = runs.replace(d + "/", "${{targets.contextdir}}/")
+                    lines = [l for l in runs.splitlines() if not re.match(r"^mkdir -p \$\{\{targets\.contextdir\}\}/usr/bin$", l)]
+                    lines = [re.sub(r"^mv (\S+) (\S+)/?$", lambda m: "" if m.group(1).rstrip("/*") == m.group(2).rstrip("/") else m.group(0), l) for l in lines]
+                    bins["pipeline"].append({"runs": "\n".join(l for l in lines if l) + "\n"})
+                    continue
+                keep.append(st)
+            pipeline[:] = keep
         # py3-foo resolves to the newest py3.X-foo, not necessarily python3's
         test["environment"]["contents"]["packages"].append("py3-supported-" + pypi)
         test["pipeline"] = [st for st in test["pipeline"] if not isinstance(st, dict) or st.get("uses") != "python/import"]
@@ -2860,6 +2913,9 @@ class Converter:
 
     def subpackage(self, b, name, main):
         desc = b.get("description", "").split("\n", 1)[0].strip()
+        if "${source:Synopsis}" in desc:
+            # dpkg's substvar: the synopsis of the source (its main package here)
+            desc = desc.replace("${source:Synopsis}", (self.source.get("description") or "").split("\n", 1)[0].strip())
         sub = {"name": self.rename.get(b["package"], b["package"]), "description": desc[:1].upper() + desc[1:]}
         cmds = self.install_lines(b, False, False, "${{targets.contextdir}}")
         filled = "${{{{targets.outdir}}}}/{}".format(sub["name"])
@@ -2983,7 +3039,8 @@ class Converter:
                 packages.append("python3")  # py3-supported-* do not provide the python3 command
             if "@builddeps@" in para.get("depends", ""):
                 self.notes.append("autopkgtest uses @builddeps@; add the build dependencies to the test environment")
-            env = 'export AUTOPKGTEST_TMP="$(mktemp -d)"\n'
+            # autopkgtest runs the scripts as written; melange adds pipefail
+            env = 'export AUTOPKGTEST_TMP="$(mktemp -d)"\nset +o pipefail 2>/dev/null || true\n'
             def guard(cmd):
                 if "flaky" not in restrictions:
                     return cmd
