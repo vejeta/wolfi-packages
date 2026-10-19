@@ -1727,13 +1727,20 @@ class Converter:
         """${ocaml:Depends}: dh_ocaml makes libfoo-ocaml-dev depend on its runtime libfoo-ocaml."""
         if "${ocaml:Depends}" not in (binary.get("depends") or "") or not binary["package"].endswith("-dev"):
             return []
+        have = {(d.value if isinstance(d, C) else d) for d in have if not isinstance(d, Comment)}
+        out = []
         rt = binary["package"][:-len("-dev")]
-        if rt not in self.rename:
-            return []
-        target = self.rename[rt]
-        if any((d.value if isinstance(d, C) else d) == target for d in have if not isinstance(d, Comment)):
-            return []
-        return [C(target, "Debian: ${ocaml:Depends}")]
+        if rt in self.rename and self.rename[rt] not in have:
+            out.append(C(self.rename[rt], "Debian: ${ocaml:Depends}"))
+        # dh_ocaml also adds the libraries the META files require: those the build uses
+        libs = [alts for alts in parse_relations(self.source.get("build-depends"), BUILD_PROFILES)
+                if len(alts) == 1 and re.match(r"^lib[\w.+-]+-ocaml-dev$", alts[0]) and alts[0] not in self.rename]
+        for d in self.map_deps(libs, "runtime"):
+            v = d.value if isinstance(d, C) else d
+            if isinstance(d, Comment) or v in have or any(v == (o.value if isinstance(o, C) else o) for o in out):
+                continue
+            out.append(C(v, "Debian: ${ocaml:Depends}"))
+        return out
 
     def essential_used(self, binary):
         """Debian never declares Depends on its Essential packages; a Breaks or Conflicts on
@@ -2234,7 +2241,9 @@ class Converter:
             # Debian's perl has the headers XS probes look for (List::MoreUtils)
             base += ["perl", "perl-dev"]
         if bs == "ocaml_dune":
-            base += [p for p in ("ocaml", "ocaml-dune", "ocaml-findlib", "ocamlfind", "ocaml-findlib-compat") if p not in base]
+            # dune runs (bash ...) actions with bash
+            base += [p for p in ("ocaml", "ocaml-dune", "ocaml-findlib", "ocamlfind", "ocaml-findlib-compat", "bash")
+                     if p not in base]
         if native and bs:
             # a Debian-native build assumes what debhelper brings: perl (pod2man)
             # and dpkg-dev (dpkg-parsechangelog)
@@ -2327,8 +2336,9 @@ class Converter:
             for p in patches:
                 with open(os.path.join(self.deb, "patches", p), "rb") as fh:
                     self.aux[os.path.basename(p)] = fh.read()
-            pipeline.append({"uses": "patch", "with": {"patches": " ".join(
-                "{}/{}".format(name, os.path.basename(p)) for p in patches)}})
+            if patches:  # a series of comments only applies nothing
+                pipeline.append({"uses": "patch", "with": {"patches": " ".join(
+                    "{}/{}".format(name, os.path.basename(p)) for p in patches)}})
 
         overrides = rules.overrides()
         self.bs = bs
@@ -3266,7 +3276,8 @@ class Converter:
             if "@builddeps@" in para.get("depends", ""):
                 self.notes.append("autopkgtest uses @builddeps@; add the build dependencies to the test environment")
             # autopkgtest runs the scripts as written; melange adds pipefail
-            env = 'export AUTOPKGTEST_TMP="$(mktemp -d)"\nset +o pipefail 2>/dev/null || true\n'
+            # Debian's testbeds run in C.UTF-8 (trietool, and any tool that converts text, needs it)
+            env = 'export AUTOPKGTEST_TMP="$(mktemp -d)"\nexport LANG="${LANG:-C.UTF-8}"\nset +o pipefail 2>/dev/null || true\n'
             def guard(cmd):
                 if "flaky" not in restrictions:
                     return cmd
@@ -3511,7 +3522,9 @@ def git_url_checkout_step(url, version, tag_prefix=None, resolve=False, todo=Non
     """A git-checkout step pinned to a commit, the Wolfi convention for git sources.
 
     Returns (steps, notes)."""
-    prefixes = (tag_prefix,) if tag_prefix is not None else ("v", "")
+    repo = re.sub(r"\.git$", "", url.rstrip("/").rsplit("/", 1)[-1])
+    # also the project name (sombok-2.4.0) and release- prefixes, when the usual ones are not tags
+    prefixes = (tag_prefix,) if tag_prefix is not None else ("v", "", repo + "-", "release-", "rel-")
     tag, commit = resolve_tag(url, version, prefixes) if resolve else (None, None)
     prefix = tag[:-len(version)] if tag else prefixes[0]
     step = {"uses": "git-checkout", "with": {

@@ -251,6 +251,7 @@ test:
     - name: 'autopkgtest: smoke'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         # Smoke test: compile and run a small program with the installed Scala 2.13
         # commands (scalac-2.13, scala-2.13), and generate its documentation with
