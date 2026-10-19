@@ -507,6 +507,8 @@ class Converter:
         text = "\n".join(lines)
         text = re.sub(r"(?m)^\s*cd\s+\"?\$\{?builddir\}?\"?\s*$\n?", "", text)
         text = textwrap_dedent(text).strip("\n")
+        # musl needs libintl from gettext; glibc has it built in
+        text = re.sub(r"\s-lintl\b", "", text)
         # muon is a meson implementation in C: Wolfi has meson
         text = re.sub(r"(^|[\s;(|&])abuild-muon\b", r"\1abuild-meson", text)
         text = re.sub(r"(^|[\s;(|&])muon\s+-C\s+(\S+)\s+(install|test)\b", r"\1meson \3 -C \2", text)

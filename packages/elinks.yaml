@@ -57,7 +57,7 @@ pipeline:
       		-Dpython.bytecompile=0 "$@"
       }
 
-      LDFLAGS="$LDFLAGS -lintl" \
+      LDFLAGS="$LDFLAGS" \
       abuild_meson \
       	-Db_lto=true \
       	-Dgettext=true \

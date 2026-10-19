@@ -655,6 +655,9 @@ class Rules:
             if base in self.targets:
                 continue
             tvars, recipe = {}, []
+            if len(ts) == 1 and base.startswith("override_"):
+                # only the -arch (or -indep) packages are overridden: the others still get dh_x
+                recipe.append(base[len("override_"):])
             for t in ts:
                 for k, v in self.target_vars.get(t, {}).items():
                     tvars[k] = v if tvars.get(k, v) == v else tvars[k] + " " + v
@@ -2821,6 +2824,9 @@ class Converter:
                     # Wolfi's perl/make, for one, does not install module man pages
                     cmds.append('if [ -e {2} ]; then\n  mkdir -p "{0}/{1}"\n  mv {2} {3}\nfi'.format(
                         destdir, dst, shell_path("${{targets.destdir}}", src), target))
+                elif not re.match(r"^(usr|etc|lib|lib64|var|opt|bin|sbin|boot|srv)(/|$)", src):
+                    # a path in the source tree, not one the build installed
+                    cmds.append('mkdir -p "{0}/{1}"\ncp -a {2} {3}'.format(destdir, dst, src, target))
                 else:
                     cmds.append('mkdir -p "{0}/{1}"\nmv {2} {3}'.format(
                         destdir, dst, shell_path("${{targets.destdir}}", src), target))
@@ -3071,6 +3077,11 @@ class Converter:
                 if dropped:
                     self.notes.append("autopkgtest '{}': mmdebstrap --mode=fakechroot left out (Wolfi's glibc is newer "
                                       "than the Debian chroot's; host binaries cannot load its libraries)".format(test))
+                shebang = script.split("\n", 1)[0] if script.startswith("#!") else ""
+                if shebang and not re.match(r"^#!\s*/bin/sh\s*$", shebang):
+                    # bash, sh -e, python ...: run the script as written, with its interpreter
+                    body = ('cat > "$AUTOPKGTEST_TMP/{0}" <<\'AUTOPKGTEST_SCRIPT\'\n{1}\n{2}AUTOPKGTEST_SCRIPT\n'
+                            'chmod +x "$AUTOPKGTEST_TMP/{0}"\n"$AUTOPKGTEST_TMP/{0}"\n').format(test, shebang, body)
                 steps.append({"name": "autopkgtest: " + test, "runs": env + guard(body)})
         real = [st for st in steps if not isinstance(st, Comment)]
         for st in real:

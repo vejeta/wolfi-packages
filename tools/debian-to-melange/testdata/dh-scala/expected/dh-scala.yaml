@@ -72,7 +72,7 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/bin"
-          mv "${{targets.destdir}}/dh-make-scala" "${{targets.contextdir}}/usr/bin/"
+          cp -a dh-make-scala "${{targets.contextdir}}/usr/bin/"
           mkdir -p "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala"
           mv "${{targets.destdir}}/lib/Debian/DhScala/Make.pm" "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
           mv "${{targets.destdir}}/lib/Debian/DhScala/Make" "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
