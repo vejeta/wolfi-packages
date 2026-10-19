@@ -26,7 +26,6 @@ environment:
       - cmake
       - linux-headers
       - ninja  # Alpine: samurai
-      - file
 pipeline:
   # TODO(alpine-to-melange): set expected-commit for tag release-3.0.6 (re-run with --download, or git ls-remote)
   - uses: git-checkout
@@ -118,7 +117,14 @@ subpackages:
   - name: zimg-doc
     description: Scaling, colorspace conversion and dithering library (doc)
     pipeline:
-      - uses: split/alldocs
+      - runs: |
+          for d in usr/share/doc usr/share/man usr/share/info usr/share/html usr/share/sgml \
+                   usr/share/licenses usr/share/gtk-doc usr/share/devhelp usr/share/help; do
+            [ "$d" = usr/share/licenses ] && continue  # Wolfi keeps the license in the package
+            [ -d "${{targets.destdir}}/$d" ] || continue
+            mkdir -p "${{targets.contextdir}}/$(dirname $d)"
+            mv "${{targets.destdir}}/$d" "${{targets.contextdir}}/$d"
+          done
   - name: zimg-dev
     description: Scaling, colorspace conversion and dithering library (dev)
     pipeline:

@@ -6,8 +6,6 @@
 # Upstream: https://metacpan.org/release/DateTime-Format-Builder/
 #
 # Conversion notes:
-# - runtime dependency 'perl-datetime-format-strptime' not found in Wolfi
-# - build dependency 'perl-datetime-format-strptime' not found in Wolfi
 # - check() not run (pass --with-check to add it to the build)
 package:
   name: perl-datetime-format-builder
@@ -19,7 +17,7 @@ package:
   dependencies:
     runtime:
       - perl
-      - perl-datetime-format-strptime  # TODO(alpine-to-melange): not in Wolfi
+      - perl-datetime-format-strptime
       - perl-params-validate
 environment:
   contents:
@@ -32,7 +30,7 @@ environment:
       - busybox
       - bash
       - perl
-      - perl-datetime-format-strptime  # TODO(alpine-to-melange): not in Wolfi
+      - perl-datetime-format-strptime
       - perl-params-validate
 pipeline:
   - uses: fetch
@@ -65,7 +63,14 @@ subpackages:
   - name: perl-datetime-format-builder-doc
     description: Create DateTime parser classes and objects. (doc)
     pipeline:
-      - uses: split/alldocs
+      - runs: |
+          for d in usr/share/doc usr/share/man usr/share/info usr/share/html usr/share/sgml \
+                   usr/share/licenses usr/share/gtk-doc usr/share/devhelp usr/share/help; do
+            [ "$d" = usr/share/licenses ] && continue  # Wolfi keeps the license in the package
+            [ -d "${{targets.destdir}}/$d" ] || continue
+            mkdir -p "${{targets.contextdir}}/$(dirname $d)"
+            mv "${{targets.destdir}}/$d" "${{targets.contextdir}}/$d"
+          done
 update:
   enabled: true
   release-monitor:

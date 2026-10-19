@@ -40,7 +40,6 @@ environment:
       - perl-path-tiny
       - perl-capture-tiny
       - perl-ffi-checklib
-      - file
 pipeline:
   - uses: fetch
     with:
@@ -74,7 +73,14 @@ subpackages:
   - name: perl-alien-build-doc
     description: Build external dependencies for use in CPAN (doc)
     pipeline:
-      - uses: split/alldocs
+      - runs: |
+          for d in usr/share/doc usr/share/man usr/share/info usr/share/html usr/share/sgml \
+                   usr/share/licenses usr/share/gtk-doc usr/share/devhelp usr/share/help; do
+            [ "$d" = usr/share/licenses ] && continue  # Wolfi keeps the license in the package
+            [ -d "${{targets.destdir}}/$d" ] || continue
+            mkdir -p "${{targets.contextdir}}/$(dirname $d)"
+            mv "${{targets.destdir}}/$d" "${{targets.contextdir}}/$d"
+          done
       - runs: |
           pkgdir="${{targets.destdir}}"
           subpkgdir="${{targets.contextdir}}"

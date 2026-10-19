@@ -7,9 +7,6 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/dose3
 #
 # Conversion notes:
-# - build dependency 'ocaml-odoc' (Debian 'ocaml-odoc') not found in Wolfi; left out
-# - build dependency 'texmf-dist-latexbase' (Debian 'texlive-latex-base') not found in Wolfi; left out
-# - build dependency 'pandoc' (Debian 'pandoc') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/d/dose3/dose3_7.0.0.orig.tar.gz), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
 # - port debian/rules override_dh_auto_build: dune build -p dose3$(DUNE_EXTRAPROFILE) @install --verbose && make -C doc/manpages man && pod2man --section 8 -release "apt-cudf $(RELEASE)"  		debian/update-cudf-solvers > debian/update-cudf-solvers.
@@ -49,10 +46,10 @@ environment:
       - graphviz
       - hevea  # Wolfi Community Packages
       - texmf-dist-fontsrecommended  # Wolfi Community Packages (Debian: lmodern)
-      # TODO(debian-to-melange): ocaml-odoc is not in Wolfi (Debian: ocaml-odoc); left out
-      # TODO(debian-to-melange): texmf-dist-latexbase is not in Wolfi (Debian: texlive-latex-base); left out
+      - ocaml-odoc  # Wolfi Community Packages
+      - texmf-dist-latex  # Wolfi Community Packages (Debian: texlive-latex-base)
       - texmf-dist-latexextra  # Wolfi Community Packages (Debian: texlive-latex-extra)
-      # TODO(debian-to-melange): pandoc is not in Wolfi (Debian: pandoc); left out
+      - pandoc-cli  # Wolfi Community Packages (Debian: pandoc)
       - dctrl-tools  # Wolfi Community Packages (Debian: grep-dctrl)
       - libounit-ocaml-dev  # Wolfi Community Packages
       - libcamlp-streams-ocaml-dev  # Wolfi Community Packages

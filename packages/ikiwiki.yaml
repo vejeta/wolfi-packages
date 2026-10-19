@@ -54,7 +54,6 @@ environment:
       - perl-uri
       - perl-yaml
       - perl-yaml-libyaml
-      - file
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -99,7 +98,14 @@ subpackages:
   - name: ikiwiki-doc
     description: Ikiwiki is a wiki compiler. It converts wiki pages into HTML pages suitable for publishing on a website. (doc)
     pipeline:
-      - uses: split/alldocs
+      - runs: |
+          for d in usr/share/doc usr/share/man usr/share/info usr/share/html usr/share/sgml \
+                   usr/share/licenses usr/share/gtk-doc usr/share/devhelp usr/share/help; do
+            [ "$d" = usr/share/licenses ] && continue  # Wolfi keeps the license in the package
+            [ -d "${{targets.destdir}}/$d" ] || continue
+            mkdir -p "${{targets.contextdir}}/$(dirname $d)"
+            mv "${{targets.destdir}}/$d" "${{targets.contextdir}}/$d"
+          done
   - name: ikiwiki-lang
     description: Ikiwiki is a wiki compiler. It converts wiki pages into HTML pages suitable for publishing on a website. (lang)
     pipeline:

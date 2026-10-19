@@ -6,8 +6,6 @@
 # Upstream: https://metacpan.org/pod/CGI::Session
 #
 # Conversion notes:
-# - runtime dependency 'perl-crypt-sysrandom' not found in Wolfi
-# - build dependency 'perl-crypt-sysrandom' not found in Wolfi
 # - check() not run (pass --with-check to add it to the build)
 package:
   name: perl-cgi-session
@@ -19,7 +17,7 @@ package:
   dependencies:
     runtime:
       - perl
-      - perl-crypt-sysrandom  # TODO(alpine-to-melange): not in Wolfi
+      - perl-crypt-sysrandom
 environment:
   contents:
     keyring:
@@ -31,7 +29,7 @@ environment:
       - busybox
       - bash
       - perl
-      - perl-crypt-sysrandom  # TODO(alpine-to-melange): not in Wolfi
+      - perl-crypt-sysrandom
 pipeline:
   - uses: fetch
     with:
@@ -63,7 +61,14 @@ subpackages:
   - name: perl-cgi-session-doc
     description: Perl module for persistent session data in CGI applications (doc)
     pipeline:
-      - uses: split/alldocs
+      - runs: |
+          for d in usr/share/doc usr/share/man usr/share/info usr/share/html usr/share/sgml \
+                   usr/share/licenses usr/share/gtk-doc usr/share/devhelp usr/share/help; do
+            [ "$d" = usr/share/licenses ] && continue  # Wolfi keeps the license in the package
+            [ -d "${{targets.destdir}}/$d" ] || continue
+            mkdir -p "${{targets.contextdir}}/$(dirname $d)"
+            mv "${{targets.destdir}}/$d" "${{targets.contextdir}}/$d"
+          done
 update:
   enabled: true
   release-monitor:

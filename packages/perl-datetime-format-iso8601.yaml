@@ -6,8 +6,6 @@
 # Upstream: https://metacpan.org/release/DateTime-Format-ISO8601/
 #
 # Conversion notes:
-# - runtime dependency 'perl-datetime-format-builder' not found in Wolfi
-# - build dependency 'perl-datetime-format-builder' not found in Wolfi
 # - check() not run (pass --with-check to add it to the build)
 package:
   name: perl-datetime-format-iso8601
@@ -20,7 +18,7 @@ package:
     runtime:
       - perl
       - perl-datetime
-      - perl-datetime-format-builder  # TODO(alpine-to-melange): not in Wolfi
+      - perl-datetime-format-builder
       - perl-specio
       - perl-namespace-autoclean
       - perl-params-validationcompiler
@@ -36,7 +34,7 @@ environment:
       - bash
       - perl
       - perl-datetime
-      - perl-datetime-format-builder  # TODO(alpine-to-melange): not in Wolfi
+      - perl-datetime-format-builder
       - perl-specio
       - perl-namespace-autoclean
       - perl-params-validationcompiler
@@ -73,7 +71,14 @@ subpackages:
   - name: perl-datetime-format-iso8601-doc
     description: Parses ISO8601 formats (doc)
     pipeline:
-      - uses: split/alldocs
+      - runs: |
+          for d in usr/share/doc usr/share/man usr/share/info usr/share/html usr/share/sgml \
+                   usr/share/licenses usr/share/gtk-doc usr/share/devhelp usr/share/help; do
+            [ "$d" = usr/share/licenses ] && continue  # Wolfi keeps the license in the package
+            [ -d "${{targets.destdir}}/$d" ] || continue
+            mkdir -p "${{targets.contextdir}}/$(dirname $d)"
+            mv "${{targets.destdir}}/$d" "${{targets.contextdir}}/$d"
+          done
 update:
   enabled: true
   release-monitor:

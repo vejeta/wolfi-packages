@@ -6,8 +6,6 @@
 # Upstream: https://metacpan.org/release/Mail-Sendmail/
 #
 # Conversion notes:
-# - runtime dependency 'perl-sys-hostname-long' not found in Wolfi
-# - build dependency 'perl-sys-hostname-long' not found in Wolfi
 # - check() not run (pass --with-check to add it to the build)
 package:
   name: perl-mail-sendmail
@@ -19,7 +17,7 @@ package:
   dependencies:
     runtime:
       - perl
-      - perl-sys-hostname-long  # TODO(alpine-to-melange): not in Wolfi
+      - perl-sys-hostname-long
 environment:
   contents:
     keyring:
@@ -31,7 +29,7 @@ environment:
       - busybox
       - bash
       - perl
-      - perl-sys-hostname-long  # TODO(alpine-to-melange): not in Wolfi
+      - perl-sys-hostname-long
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -73,7 +71,14 @@ subpackages:
   - name: perl-mail-sendmail-doc
     description: Simple platform independent mailer (doc)
     pipeline:
-      - uses: split/alldocs
+      - runs: |
+          for d in usr/share/doc usr/share/man usr/share/info usr/share/html usr/share/sgml \
+                   usr/share/licenses usr/share/gtk-doc usr/share/devhelp usr/share/help; do
+            [ "$d" = usr/share/licenses ] && continue  # Wolfi keeps the license in the package
+            [ -d "${{targets.destdir}}/$d" ] || continue
+            mkdir -p "${{targets.contextdir}}/$(dirname $d)"
+            mv "${{targets.destdir}}/$d" "${{targets.contextdir}}/$d"
+          done
 update:
   enabled: true
   release-monitor:

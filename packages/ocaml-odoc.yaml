@@ -9,8 +9,6 @@
 # Conversion notes:
 # - runtime dependency 'ocaml-${F' (Debian 'ocaml-${F') not found in Wolfi; left out
 # - runtime dependency 'libjs-highlight.js': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
-# - build dependency 'ocaml-crunch' (Debian 'ocaml-crunch') not found in Wolfi; left out
-# - build dependency 'libtyxml-ocaml-dev' (Debian 'libtyxml-ocaml-dev') not found in Wolfi; left out
 # - build dependency 'libjs-highlight.js': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
 # - unsupported Debian build system 'ocaml_dune'
@@ -41,13 +39,13 @@ environment:
       - ocaml
       - cppo  # Wolfi Community Packages
       - ocaml-dune
-      # TODO(debian-to-melange): ocaml-crunch is not in Wolfi (Debian: ocaml-crunch); left out
+      - ocaml-crunch  # Wolfi Community Packages
       - libcamlp-streams-ocaml-dev  # Wolfi Community Packages
       - libastring-ocaml-dev  # Wolfi Community Packages
       - libfpath-ocaml-dev  # Wolfi Community Packages
       - libcmdliner-ocaml-dev  # Wolfi Community Packages
       - libresult-ocaml-dev  # Wolfi Community Packages
-      # TODO(debian-to-melange): libtyxml-ocaml-dev is not in Wolfi (Debian: libtyxml-ocaml-dev); left out
+      - libtyxml-ocaml-dev  # Wolfi Community Packages
       - libfmt-ocaml-dev  # Wolfi Community Packages
       - libre-ocaml-dev  # Wolfi Community Packages
 pipeline:

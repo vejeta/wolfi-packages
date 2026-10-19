@@ -86,7 +86,15 @@ NAME_MAP = {
 # abuild default subpackage handlers -> melange pipelines
 SPLIT_DEFAULTS = {
     "dev": [{"uses": "split/dev"}],
-    "doc": [{"uses": "split/alldocs"}],
+    # abuild's default_doc: what it moves, without depending on split/alldocs (file(1), versions)
+    "doc": [{"runs": (
+        'for d in usr/share/doc usr/share/man usr/share/info usr/share/html usr/share/sgml \\\n'
+        '         usr/share/licenses usr/share/gtk-doc usr/share/devhelp usr/share/help; do\n'
+        '  [ "$d" = usr/share/licenses ] && continue  # Wolfi keeps the license in the package\n'
+        '  [ -d "${{targets.destdir}}/$d" ] || continue\n'
+        '  mkdir -p "${{targets.contextdir}}/$(dirname $d)"\n'
+        '  mv "${{targets.destdir}}/$d" "${{targets.contextdir}}/$d"\n'
+        'done\n')}],
     "static": [{"uses": "split/static"}],
     "libs": [{"uses": "split/lib"}],
     "lang": [{"uses": "split/locales"}],
@@ -705,6 +713,8 @@ class Converter:
         if "cabal-install-bootstrap" in plain:
             # Hackage directly: the mirrors cabal picks by default may refuse downloads
             extra_env["CABAL_CONFIG"] = "/home/build/.cabal-config"
+            if "curl" not in plain:
+                env_pkgs.append(C("curl", "cabal's https transport"))
         if extra_env:
             environment["environment"] = extra_env
 
@@ -713,6 +723,7 @@ class Converter:
         if extra_env.get("CABAL_CONFIG"):
             pipeline.append({"name": "cabal configuration", "runs": (
                 "cat > /home/build/.cabal-config <<'EOF'\n"
+                "http-transport: curl\n"
                 "repository hackage.haskell.org\n"
                 "  url: https://hackage.haskell.org/\n"
                 "EOF\n")})
@@ -823,10 +834,6 @@ class Converter:
 
         # ---- subpackages -------------------------------------------------
         subpackages = [s for s in (self.subpackage(entry, name) for entry in apk.words("subpackages")) if s]
-        if any(st.get("uses") == "split/alldocs" for sp in subpackages for st in sp.get("pipeline", []) if isinstance(st, dict)) \
-                and "file" not in [d.value if isinstance(d, C) else d for d in environment["contents"]["packages"]]:
-            # some melange versions' split/alldocs tell documentation from programs with file(1)
-            environment["contents"]["packages"].append("file")
 
         # ---- update / test -----------------------------------------------
         if pkg["copyright"][0].get("license", "") in ("Public Domain", "public-domain"):

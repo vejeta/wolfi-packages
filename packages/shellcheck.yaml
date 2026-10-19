@@ -32,7 +32,7 @@ environment:
       - ghc-bootstrap  # Alpine: ghc
       - libffi-dev
       - pandoc-cli  # Alpine: pandoc
-      - file
+      - curl  # cabal's https transport
   environment:
     CABAL_CONFIG: /home/build/.cabal-config
 pipeline:
@@ -44,6 +44,7 @@ pipeline:
   - name: cabal configuration
     runs: |
       cat > /home/build/.cabal-config <<'EOF'
+      http-transport: curl
       repository hackage.haskell.org
         url: https://hackage.haskell.org/
       EOF
@@ -157,7 +158,14 @@ subpackages:
   - name: shellcheck-doc
     description: A static analysis tool for shell scripts (doc)
     pipeline:
-      - uses: split/alldocs
+      - runs: |
+          for d in usr/share/doc usr/share/man usr/share/info usr/share/html usr/share/sgml \
+                   usr/share/licenses usr/share/gtk-doc usr/share/devhelp usr/share/help; do
+            [ "$d" = usr/share/licenses ] && continue  # Wolfi keeps the license in the package
+            [ -d "${{targets.destdir}}/$d" ] || continue
+            mkdir -p "${{targets.contextdir}}/$(dirname $d)"
+            mv "${{targets.destdir}}/$d" "${{targets.contextdir}}/$d"
+          done
 update:
   enabled: true
   github:
