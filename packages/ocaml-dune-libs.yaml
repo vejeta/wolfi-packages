@@ -43,7 +43,7 @@ pipeline:
   - name: Build
     runs: |
       pkgs="${{vars.private}}"
-      dune build --release -p "$(echo $pkgs | tr ' ' ',')" @install
+      dune build -p "$(echo $pkgs | tr ' ' ',')" @install
   - name: Install
     runs: |
       dune install --release --destdir="${{targets.destdir}}" --prefix=/usr \

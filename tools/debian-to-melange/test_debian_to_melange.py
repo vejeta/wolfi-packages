@@ -399,9 +399,14 @@ class HelperTest(unittest.TestCase):
                                             "DYN: @OCamlDllDir@/dllfoo.so\n"),
                          "usr/lib/ocaml/csexp/META\nusr/lib/ocaml/csexp/*.a\nusr/lib/ocaml/stublibs/dllfoo.so\n")
 
+    def test_install_entries_expand_braces(self):
+        self.assertEqual(list(d2m.install_entries("usr/lib/ocaml/optint/*.{cma,cmxs}\n")),
+                         [("usr/lib/ocaml/optint/*.cma", "usr/lib/ocaml/optint", None),
+                          ("usr/lib/ocaml/optint/*.cmxs", "usr/lib/ocaml/optint", None)])
+
     def test_ocaml_names_map_to_wolfi(self):
-        self.assertEqual(d2m.NAME_MAP["libstdlib-ocaml-dev"], "ocaml")
-        self.assertEqual(d2m.NAME_MAP["libfindlib-ocaml-dev"], "ocaml-findlib")
+        self.assertEqual(d2m.NAME_MAP["libstdlib-ocaml-dev"], ["ocaml", "ocaml-findlib-compat"])
+        self.assertEqual(d2m.NAME_MAP["libfindlib-ocaml-dev"], ["ocaml-findlib", "ocamlfind", "ocaml-findlib-compat"])
         self.assertIn(("dune-project", "ocaml_dune"), d2m.BUILDSYSTEM_FILES)
 
 

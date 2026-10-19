@@ -83,8 +83,8 @@ NAME_MAP = {
     "pandoc": "pandoc-cli",
     # OCaml: Wolfi's ocaml is the whole compiler and standard library, which
     # Debian splits; dune and findlib are packaged in Wolfi too
-    "ocaml": ["ocaml", "ocaml-compiler-libs"],
-    "ocaml-nox": ["ocaml", "ocaml-compiler-libs"],
+    "ocaml": ["ocaml", "ocaml-compiler-libs", "ocaml-findlib-compat"],
+    "ocaml-nox": ["ocaml", "ocaml-compiler-libs", "ocaml-findlib-compat"],
     "ocaml-base": "ocaml",
     "ocaml-base-nox": "ocaml",
     "ocaml-interp": "ocaml",
@@ -92,13 +92,14 @@ NAME_MAP = {
     "ocaml-native-compilers": "ocaml",
     "ocaml-best-compilers": "ocaml",
     "libstdlib-ocaml": "ocaml",
-    "libstdlib-ocaml-dev": "ocaml",
-    "libuchar-ocaml-dev": "ocaml",
-    "libseq-ocaml-dev": "ocaml",
+    "libstdlib-ocaml-dev": ["ocaml", "ocaml-findlib-compat"],
+    # findlib packages absorbed by the standard library (a recipe of this repository)
+    "libuchar-ocaml-dev": "ocaml-findlib-compat",
+    "libseq-ocaml-dev": "ocaml-findlib-compat",
     "libcompiler-libs-ocaml-dev": "ocaml-compiler-libs",
-    "ocaml-findlib": "ocaml-findlib",
-    "libfindlib-ocaml": "ocaml-findlib",
-    "libfindlib-ocaml-dev": "ocaml-findlib",
+    "ocaml-findlib": ["ocaml-findlib", "ocamlfind", "ocaml-findlib-compat"],
+    "libfindlib-ocaml": ["ocaml-findlib", "ocamlfind", "ocaml-findlib-compat"],
+    "libfindlib-ocaml-dev": ["ocaml-findlib", "ocamlfind", "ocaml-findlib-compat"],
     "dune": "ocaml-dune",
     "libsigc++-2.0-dev": "libsigc++-dev",
     "libxapian-dev": "xapian-core-dev",
@@ -822,6 +823,13 @@ def install_entries(text, keep_src=False):
         parts = line.split()
         if not parts:
             continue
+        if len(parts) == 1 or (len(parts) == 2 and "=>" not in parts):
+            alts = brace_expand(parts[0])
+            if len(alts) > 1:
+                # dh_install globs with bash, which expands {a,b}; busybox sh does not
+                for alt in alts:
+                    yield from install_entries(" ".join([alt] + parts[1:]), keep_src)
+                continue
         if parts[0].startswith("debian/tmp/"):
             parts[0] = parts[0][len("debian/tmp/"):]  # dh_install --sourcedir default
         src = parts[0] if keep_src else norm_path(parts[0])
@@ -832,6 +840,14 @@ def install_entries(text, keep_src=False):
             yield src, usr_merge(os.path.dirname(norm_path(parts[0]))), None
         else:
             yield src, usr_merge(norm_path(parts[-1])), None
+
+
+def brace_expand(word):
+    """Bash brace expansion of one {a,b,...} group (recursively): *.{cma,cmxs}."""
+    m = re.search(r"\{([^{}]*,[^{}]*)\}", word)
+    if not m:
+        return [word]
+    return [x for alt in m.group(1).split(",") for x in brace_expand(word[:m.start()] + alt + word[m.end():])]
 
 
 def norm_path(path):
@@ -1975,6 +1991,12 @@ class Converter:
                     if b.get(field):
                         b[field] = b[field].replace("${%s}" % k, v)
         self.generate_from_in(rules)
+        if re.search(r"(?m)^-?include\s+/usr/share/ocaml/ocaml(vars|init)\.mk", self.read("rules") or ""):
+            # dh-ocaml's ocamlvars.mk, for Wolfi's OCaml (native code, natdynlink)
+            for var, value in (("OCAML_STDLIB_DIR", "/usr/lib/ocaml"), ("OCAML_DLL_DIR", "/usr/lib/ocaml/stublibs"),
+                               ("OCAML_HAVE_OCAMLOPT", "yes"), ("OCAML_NATDYNLINK", "yes"), ("OCAML_BEST", "opt"),
+                               ("OCAML_OPT_ARCH", "amd64")):
+                rules.vars.setdefault(var, value)
         if deb_version:
             # /usr/share/dpkg/pkg-info.mk
             # a native version is the package version; its mangled form stays as Debian's
@@ -2179,7 +2201,7 @@ class Converter:
             # Debian's perl has the headers XS probes look for (List::MoreUtils)
             base += ["perl", "perl-dev"]
         if bs == "ocaml_dune":
-            base += [p for p in ("ocaml", "ocaml-dune", "ocaml-findlib") if p not in base]
+            base += [p for p in ("ocaml", "ocaml-dune", "ocaml-findlib", "ocamlfind", "ocaml-findlib-compat") if p not in base]
         if native and bs:
             # a Debian-native build assumes what debhelper brings: perl (pod2man)
             # and dpkg-dev (dpkg-parsechangelog)
@@ -2225,12 +2247,12 @@ class Converter:
             if getattr(self, "source_data", None) is None or not is_archive(self.source_data):
                 # Debian's orig tarball (repacked or not) is good enough to scan
                 self.source_data = None
-                name, upver = source.get("source", ""), (self.deb_version or "").split(":", 1)[-1].rsplit("-", 1)[0]
-                prefix = name[:4] if name.startswith("lib") else name[0]
+                srcname, upver = source.get("source", ""), (self.deb_version or "").split(":", 1)[-1].rsplit("-", 1)[0]
+                prefix = srcname[:4] if srcname.startswith("lib") else srcname[0]
                 for ext in ("xz", "gz", "bz2"):
                     try:
                         data = http_get("https://deb.debian.org/debian/pool/{}/{}/{}/{}_{}.orig.tar.{}".format(
-                            DEBIAN_AREA.get(name, "main"), prefix, name, name, upver, ext))
+                            DEBIAN_AREA.get(srcname, "main"), prefix, srcname, srcname, upver, ext))
                     except Exception:
                         continue
                     if is_archive(data):
