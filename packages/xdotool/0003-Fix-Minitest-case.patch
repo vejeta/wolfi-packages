@@ -1,0 +1,260 @@
+From: Margarita Manterola <marga@debian.org>
+Date: Sun, 6 Apr 2025 17:23:37 +0200
+Subject: Fix Minitest case
+
+The Minitest framework is no longer MiniTest.
+---
+ t/test_basic.rb                  | 2 +-
+ t/test_chaining.rb               | 2 +-
+ t/test_cmd_behave_screen_edge.rb | 2 +-
+ t/test_cmd_exec.rb               | 2 +-
+ t/test_cmd_getwindowname.rb      | 2 +-
+ t/test_cmd_getwindowpid.rb       | 2 +-
+ t/test_cmd_key.rb                | 2 +-
+ t/test_cmd_windowfocus.rb        | 2 +-
+ t/test_cmd_windowmap.rb          | 2 +-
+ t/test_cmd_windowminimize.rb     | 2 +-
+ t/test_cmd_windowmove.rb         | 2 +-
+ t/test_cmd_windowsize.rb         | 2 +-
+ t/test_mousemove.rb              | 2 +-
+ t/test_script.rb                 | 2 +-
+ t/test_search.rb                 | 2 +-
+ t/test_typing.rb                 | 2 +-
+ t/test_window.rb                 | 2 +-
+ t/xdo_test_helper.rb             | 2 +-
+ 18 files changed, 18 insertions(+), 18 deletions(-)
+
+diff --git a/t/test_basic.rb b/t/test_basic.rb
+index 04844d6..ad2719d 100644
+--- a/t/test_basic.rb
++++ b/t/test_basic.rb
+@@ -4,7 +4,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolBasicTests < MiniTest::Test
++class XdotoolBasicTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def test_noargs_exit_1
+diff --git a/t/test_chaining.rb b/t/test_chaining.rb
+index c7579f3..1349913 100644
+--- a/t/test_chaining.rb
++++ b/t/test_chaining.rb
+@@ -4,7 +4,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolChainingTests < MiniTest::Test
++class XdotoolChainingTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def setup
+diff --git a/t/test_cmd_behave_screen_edge.rb b/t/test_cmd_behave_screen_edge.rb
+index 5159771..242a49a 100644
+--- a/t/test_cmd_behave_screen_edge.rb
++++ b/t/test_cmd_behave_screen_edge.rb
+@@ -4,7 +4,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolCommandBehaveScreenEdgeTests < MiniTest::Test
++class XdotoolCommandBehaveScreenEdgeTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def test_expected_failures
+diff --git a/t/test_cmd_exec.rb b/t/test_cmd_exec.rb
+index c6c8f3c..5b4fd91 100644
+--- a/t/test_cmd_exec.rb
++++ b/t/test_cmd_exec.rb
+@@ -5,7 +5,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolCommandExecTests < MiniTest::Test
++class XdotoolCommandExecTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def test_expected_failures
+diff --git a/t/test_cmd_getwindowname.rb b/t/test_cmd_getwindowname.rb
+index 466539e..7da8aa9 100644
+--- a/t/test_cmd_getwindowname.rb
++++ b/t/test_cmd_getwindowname.rb
+@@ -4,7 +4,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolCommandGetWindowPidTests < MiniTest::Test
++class XdotoolCommandGetWindowPidTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def assert_is_title(lines)
+diff --git a/t/test_cmd_getwindowpid.rb b/t/test_cmd_getwindowpid.rb
+index bd8a96f..9e6d177 100644
+--- a/t/test_cmd_getwindowpid.rb
++++ b/t/test_cmd_getwindowpid.rb
+@@ -4,7 +4,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolCommandGetWindowPidTests < MiniTest::Test
++class XdotoolCommandGetWindowPidTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def test_succeeds_with_valid_window
+diff --git a/t/test_cmd_key.rb b/t/test_cmd_key.rb
+index 7f9c4de..eafa952 100644
+--- a/t/test_cmd_key.rb
++++ b/t/test_cmd_key.rb
+@@ -4,7 +4,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolCommandKeyTests < MiniTest::Test
++class XdotoolCommandKeyTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def test_flags
+diff --git a/t/test_cmd_windowfocus.rb b/t/test_cmd_windowfocus.rb
+index aa1e099..10788c2 100644
+--- a/t/test_cmd_windowfocus.rb
++++ b/t/test_cmd_windowfocus.rb
+@@ -5,7 +5,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolCommandWindowFocusTests < MiniTest::Test
++class XdotoolCommandWindowFocusTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def test_succeeds_with_valid_window
+diff --git a/t/test_cmd_windowmap.rb b/t/test_cmd_windowmap.rb
+index 978d6a6..d683f2c 100644
+--- a/t/test_cmd_windowmap.rb
++++ b/t/test_cmd_windowmap.rb
+@@ -5,7 +5,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolCommandWindowMapTests < MiniTest::Test
++class XdotoolCommandWindowMapTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def test_succeeds_with_valid_window
+diff --git a/t/test_cmd_windowminimize.rb b/t/test_cmd_windowminimize.rb
+index 6d5aa49..dc59786 100644
+--- a/t/test_cmd_windowminimize.rb
++++ b/t/test_cmd_windowminimize.rb
+@@ -4,7 +4,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolCommandWindowMinimizeTests < MiniTest::Test
++class XdotoolCommandWindowMinimizeTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def test_succeeds_with_valid_window
+diff --git a/t/test_cmd_windowmove.rb b/t/test_cmd_windowmove.rb
+index 57b5825..b8f1b6b 100644
+--- a/t/test_cmd_windowmove.rb
++++ b/t/test_cmd_windowmove.rb
+@@ -5,7 +5,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolCommandWindowMoveTests < MiniTest::Test
++class XdotoolCommandWindowMoveTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def test_succeeds_with_valid_window
+diff --git a/t/test_cmd_windowsize.rb b/t/test_cmd_windowsize.rb
+index b0b3685..f3ede56 100644
+--- a/t/test_cmd_windowsize.rb
++++ b/t/test_cmd_windowsize.rb
+@@ -5,7 +5,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolCommandWindowSizeTests < MiniTest::Test
++class XdotoolCommandWindowSizeTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def test_succeeds_with_valid_window
+diff --git a/t/test_mousemove.rb b/t/test_mousemove.rb
+index 922a1a4..5573844 100644
+--- a/t/test_mousemove.rb
++++ b/t/test_mousemove.rb
+@@ -3,7 +3,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolMouseMoveTests < MiniTest::Test
++class XdotoolMouseMoveTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def test_mousemove_should_have_no_output
+diff --git a/t/test_script.rb b/t/test_script.rb
+index 86e3c59..539b8a9 100644
+--- a/t/test_script.rb
++++ b/t/test_script.rb
+@@ -5,7 +5,7 @@ require "minitest"
+ require "./xdo_test_helper"
+ require "tempfile"
+ 
+-class XdotoolScriptTests < MiniTest::Test
++class XdotoolScriptTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def xdotool_script_ok(commands)
+diff --git a/t/test_search.rb b/t/test_search.rb
+index 30239f7..da95d0d 100644
+--- a/t/test_search.rb
++++ b/t/test_search.rb
+@@ -4,7 +4,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolSearchTests < MiniTest::Test
++class XdotoolSearchTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def test_search_pid
+diff --git a/t/test_typing.rb b/t/test_typing.rb
+index 7db166e..7476390 100644
+--- a/t/test_typing.rb
++++ b/t/test_typing.rb
+@@ -5,7 +5,7 @@ require "minitest"
+ require "tempfile"
+ require "./xdo_test_helper"
+ 
+-class XdotoolTypingTests < MiniTest::Test
++class XdotoolTypingTests < Minitest::Test
+   include XdoTestHelper
+   SYMBOLS = "`12345678990-=~ !@\#$%^&*()_+[]\{}|;':\",./<>?"
+   LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+diff --git a/t/test_window.rb b/t/test_window.rb
+index 4c18a20..99b90ae 100644
+--- a/t/test_window.rb
++++ b/t/test_window.rb
+@@ -3,7 +3,7 @@
+ require "minitest"
+ require "./xdo_test_helper"
+ 
+-class XdotoolWindowTests < MiniTest::Test
++class XdotoolWindowTests < Minitest::Test
+   include XdoTestHelper
+ 
+   def setup
+diff --git a/t/xdo_test_helper.rb b/t/xdo_test_helper.rb
+index 0df4345..2faeebd 100644
+--- a/t/xdo_test_helper.rb
++++ b/t/xdo_test_helper.rb
+@@ -145,7 +145,7 @@ module XdoTestHelper
+     (1 .. times).each do
+       begin
+         yield
+-      rescue MiniTest::Unit::AssertionFailedError => e
++      rescue Minitest::Unit::AssertionFailedError => e
+         $stderr.puts "Retrying..."
+         last_exception = e
+         sleep(delay)

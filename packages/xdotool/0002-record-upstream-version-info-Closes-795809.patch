@@ -1,0 +1,21 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Mon, 17 Aug 2015 14:38:46 +0200
+Subject: record upstream version info (Closes: #795809)
+
+Without this explicit change, "dpkg -l xdotool" and "xdotool version"
+disagre with each other.  This needs to be updated with every new
+upstream release, unfortunately.
+---
+ VERSION | 3 +++
+ 1 file changed, 3 insertions(+)
+ create mode 100644 VERSION
+
+diff --git a/VERSION b/VERSION
+new file mode 100644
+index 0000000..b3d9d86
+--- /dev/null
++++ b/VERSION
+@@ -0,0 +1,3 @@
++MAJOR="3"
++RELEASE="20160805"
++REVISION="1"

@@ -1,0 +1,149 @@
+From: Jakub Wilk <jwilk@jwilk.net>
+Date: Tue, 7 Aug 2018 13:19:07 +0200
+Subject: Fix typos (#49)
+
+Applied-Upstream: https://github.com/astrand/xclip/commit/6a318f35bb5bfc6cb8a3328e370c00175670f0eb
+---
+ ChangeLog | 8 ++++----
+ INSTALL   | 4 ++--
+ xclib.c   | 8 ++++----
+ xclip.1   | 2 +-
+ xcprint.c | 6 +++---
+ 5 files changed, 14 insertions(+), 14 deletions(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index 14fee9d..8673a7f 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -26,7 +26,7 @@ Date:   Thu Mar 10 09:57:54 2016 +0800
+     See https://github.com/astrand/xclip/issues/7
+     
+     Use his patch (but only keep code related to the rmlastnl option).
+-    An new option "-rmlastnl" is added to remove the last newline character if present.
++    A new option "-rmlastnl" is added to remove the last newline character if present.
+ 
+ commit e0828ad502287394f1a9ea40f52b5deb013204ad
+ Author: hwangcc23 <hwangcc@csie.nctu.edu.tw>
+@@ -155,7 +155,7 @@ Version 0.09: (Baruch Even)
+ 
+ 
+ Version 0.08:
+-	Remove all event loops from xclib fuctions, to allow xclib to be
++	Remove all event loops from xclib functions, to allow xclib to be
+ 	integrated into general-purpose event loops of other software more
+ 	easily.
+ 
+@@ -213,7 +213,7 @@ Version 0.06:
+ 	perhaps it xclib.c would be allow people to integrate the code into
+ 	their own projects easily.
+ 
+-	All in all, a general cleanup (as I am now semi-competant with C), and
++	All in all, a general cleanup (as I am now semi-competent with C), and
+ 	complete support for the INCR mechanism.
+ 
+ 
+@@ -244,7 +244,7 @@ Version 0.03:
+ 	Changed use of getopt_long_only to getopt_long, which should work
+ 	better with non-GNU platforms.
+ 	
+-	Fixed segfault when given a non-existant file to read.
++	Fixed segfault when given a non-existent file to read.
+ 
+ 	Made Imakefile for use with xmkmf. This means that xclip should build
+ 	and install fairly nicely on any system with an X Consortium derived
+diff --git a/INSTALL b/INSTALL
+index e6ea697..ef801e8 100644
+--- a/INSTALL
++++ b/INSTALL
+@@ -58,5 +58,5 @@ primarily for my own benefit so that I can quickly test that all xclip features
+ are working correctly after I make a change. However, I have included it to
+ help out anyone who may be modifying the xclip code themselves.
+ 
+-Basically, when you run xctest, you shouln't see any extra output from diff
+-inbetween each test (because the input and output should be identical).
++Basically, when you run xctest, you shouldn't see any extra output from diff
++in between each test (because the input and output should be identical).
+diff --git a/xclib.c b/xclib.c
+index cf55f2e..631bc8c 100644
+--- a/xclib.c
++++ b/xclib.c
+@@ -28,7 +28,7 @@
+ #include "xcprint.h"
+ #include "xclib.h"
+ 
+-/* check a pointer to allocater memory, print an error if it's null */
++/* check a pointer to allocated memory, print an error if it's null */
+ void
+ xcmemcheck(void *ptr)
+ {
+@@ -250,7 +250,7 @@ xcout(Display * dpy,
+ 
+ 	XFree(buffer);
+ 
+-	/* if we have come this far, the propery contains
++	/* if we have come this far, the property contains
+ 	 * text, we know the size.
+ 	 */
+ 	XGetWindowProperty(dpy,
+@@ -290,7 +290,7 @@ xcout(Display * dpy,
+     return (0);
+ }
+ 
+-/* put data into a selection, in response to a SelecionRequest event from
++/* put data into a selection, in response to a SelectionRequest event from
+  * another window (and any subsequent events relating to an INCR transfer).
+  *
+  * Arguments are:
+@@ -360,7 +360,7 @@ xcin(Display * dpy,
+ 	/* reset position to 0 */
+ 	*pos = 0;
+ 
+-	/* put the data into an property */
++	/* put the data into a property */
+ 	if (evt.xselectionrequest.target == targets) {
+ 	    Atom types[2] = { targets, target };
+ 
+diff --git a/xclip.1 b/xclip.1
+index d1d79fb..cd04853 100644
+--- a/xclip.1
++++ b/xclip.1
+@@ -36,7 +36,7 @@ print the selection to standard out (generally for piping to a file or program)
+ when xclip is invoked in the in mode with output level set to silent (the defaults), the filter option will cause xclip to print the text piped to standard in back to standard out unmodified
+ .TP
+ \fB\-r\fR, \fB\-rmlastnl\fR
+-when the last character of the selection is a newline character, remove it. Newline characters that are not the last character in the selection are not affected. If the selection does not end with a newline character, this option has no effect. This option is useful for copying one-line output of programs like \fBpwd\fR to the clipboard to paste it again into the command prompt without executing the line immideately due to the newline character \fBpwd\fR appends.
++when the last character of the selection is a newline character, remove it. Newline characters that are not the last character in the selection are not affected. If the selection does not end with a newline character, this option has no effect. This option is useful for copying one-line output of programs like \fBpwd\fR to the clipboard to paste it again into the command prompt without executing the line immediately due to the newline character \fBpwd\fR appends.
+ .TP
+ \fB\-l\fR, \fB\-loops\fR
+ number of X selection requests (pastes into X applications) to wait for before exiting, with a value of 0 (default) causing xclip to wait for an unlimited number of requests until another application (possibly another invocation of xclip) takes ownership of the selection
+diff --git a/xcprint.c b/xcprint.c
+index e81c79a..6734420 100644
+--- a/xcprint.c
++++ b/xcprint.c
+@@ -48,7 +48,7 @@ prhelp(char *name)
+ 	    "\"secondary\", \"clipboard\" or \"buffer-cut\")\n"
+ 	    "      -noutf8      don't treat text as utf-8, use old unicode\n"
+ 	    "      -target      use the given target atom\n"
+-	    "      -rmlastnl    remove the last newline charater if present\n"
++	    "      -rmlastnl    remove the last newline character if present\n"
+ 	    "      -version     version information\n"
+ 	    "      -silent      errors only, run in background (default)\n"
+ 	    "      -quiet       run in foreground, show what's happening\n"
+@@ -105,7 +105,7 @@ errperror(int prf_tot, ...)
+     /* start off with an empty string */
+     msg_all = xcstrdup("");
+ 
+-    /* start looping through the viariable arguments */
++    /* start looping through the variable arguments */
+     va_start(ap, prf_tot);
+ 
+     /* loop through each of the arguments */
+@@ -119,7 +119,7 @@ errperror(int prf_tot, ...)
+ 	msg_all = (char *) xcrealloc(msg_all, strlen(msg_all) + strlen(msg_cur) + sizeof(char)
+ 	    );
+ 
+-	/* append the current message the the total message */
++	/* append the current message to the total message */
+ 	strcat(msg_all, msg_cur);
+     }
+     va_end(ap);
