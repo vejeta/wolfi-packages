@@ -50,8 +50,13 @@ pipeline:
   - uses: cmake/configure
     with:
       opts: -DLIB_POTASSCO_BUILD_APP=OFF -DCLASP_BUILD_TESTS=ON -DLIB_POTASSCO_BUILD_TESTS=ON -DCLASP_BUILD_EXAMPLES=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.10
+      output-dir: build.dir/hardening_mt
   - uses: cmake/build
+    with:
+      output-dir: build.dir/hardening_mt
   - uses: cmake/install
+    with:
+      output-dir: build.dir/hardening_mt
   - name: Install files
     runs: |
       install -Dm644 clasp.1 -t "${{targets.destdir}}/usr/share/man/man1"
@@ -120,6 +125,8 @@ test:
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
         set +o pipefail 2>/dev/null || true
+        cat > "$AUTOPKGTEST_TMP/clasp2" <<'AUTOPKGTEST_SCRIPT'
+        #!/bin/bash
         # clasp: gbie1.lp unsat_01.lp is unsatisfiable
         # Author: Thomas Krennwallner <tkren@kr.tuwien.ac.at>
         # Date: 2017-05-07
@@ -130,3 +137,6 @@ test:
 
         result=$?
         test $result -eq 20
+        AUTOPKGTEST_SCRIPT
+        chmod +x "$AUTOPKGTEST_TMP/clasp2"
+        "$AUTOPKGTEST_TMP/clasp2"

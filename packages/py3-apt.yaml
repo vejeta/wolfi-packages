@@ -184,6 +184,15 @@ test:
           # po-debconf's translatable fields (_Description, __Choices) in the C locale
           [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/python3-apt.templates" && break
         done
+    - name: py3versions (as on a Debian testbed)
+      runs: |
+        mkdir -p /usr/local/bin
+        cat > /usr/local/bin/py3versions <<'EOF'
+        #!/bin/sh
+        v=$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')
+        case "$*" in *v*) echo "$v";; *) echo "python$v";; esac
+        EOF
+        chmod +x /usr/local/bin/py3versions
     - name: 'autopkgtest: run-tests'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"

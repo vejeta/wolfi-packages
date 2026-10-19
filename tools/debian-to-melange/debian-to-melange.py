@@ -2125,6 +2125,10 @@ class Converter:
             "packages": env_pkgs,
         }}
         exports = self.ported_exports(rules)
+        if any(alt in ("python3-setuptools-scm", "python3-hatch-vcs") for alts in parse_relations(source.get("build-depends"))
+               for alt in alts) and "SETUPTOOLS_SCM_PRETEND_VERSION" not in exports:
+            # the version comes from git metadata, which a release tarball has not
+            exports["SETUPTOOLS_SCM_PRETEND_VERSION"] = "${{package.version}}"
         if exports:
             environment["environment"] = exports
 
@@ -2173,6 +2177,12 @@ class Converter:
                 "  [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h\n"
                 "done\n"
                 "true\n")})
+        for alts in parse_relations(source.get("build-depends")):
+            lua = re.match(r"^liblua(5\.\d)-dev$", alts[0])
+            if lua:
+                # Debian's liblua5.X.so: Wolfi ships the library without a development link
+                pipeline.append({"name": "Debian's liblua{}.so".format(lua.group(1)), "runs": (
+                    "ln -sf liblua-{0}.so.0 /usr/lib/liblua{0}.so\n").format(lua.group(1))})
         for dep in essential_script_tools(getattr(self, "source_data", None)):
             # Debian's Essential packages back these commands everywhere; Wolfi's busybox lacks them
             pkg.setdefault("dependencies", {}).setdefault("runtime", []).append(
@@ -2377,6 +2387,10 @@ class Converter:
             pipeline[-1]["runs"] += 'install -Dm644 {0}/{0}.conf "${{{{targets.destdir}}}}"{1}\n'.format(name, conffile)
         if main_alts:
             pipeline.append(alternatives_step(main_alts, "${{targets.destdir}}"))
+        if bs in ("autoconf", "makefile"):
+            # Debian packages leave libtool archives out; melange's linter rejects them
+            pipeline.append({"name": "Remove libtool archives",
+                             "runs": 'find "${{targets.destdir}}" -name "*.la" -delete\n'})
         if any(b.get("architecture", "any") != "all" for b in binaries) and bs:
             # dh_strip; Wolfi recipes strip with the strip pipeline.
             pipeline.append({"uses": "strip"})
@@ -3106,6 +3120,18 @@ class Converter:
         if real:
             self.notes.append("autopkgtests converted to the test pipeline ({} steps)".format(len(real)))
             steps.insert(0, dpkg_database_step(aliases, self.main_package))
+            if any("py3versions" in st.get("runs", "") for st in real):
+                # Debian's py3versions (python3 package): the Python 3 versions to test with
+                steps.insert(1, {"name": "py3versions (as on a Debian testbed)", "runs": (
+                    "mkdir -p /usr/local/bin\n"
+                    "cat > /usr/local/bin/py3versions <<'EOF'\n"
+                    "#!/bin/sh\n"
+                    "v=$(python3 -c 'import sys; print(\"%d.%d\" % sys.version_info[:2])')\n"
+                    "case \"$*\" in *v*) echo \"$v\";; *) echo \"python$v\";; esac\n"
+                    "EOF\n"
+                    "chmod +x /usr/local/bin/py3versions\n")})
+                if "python3" not in [p.value if isinstance(p, C) else p for p in packages]:
+                    packages.append("python3")
             if self.source_steps:
                 # autopkgtest runs in the unpacked source tree
                 packaging = []

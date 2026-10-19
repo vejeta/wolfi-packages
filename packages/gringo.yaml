@@ -48,6 +48,10 @@ pipeline:
       repository: https://github.com/potassco/gringo
       tag: v${{package.version}}
       expected-commit: 78107e88e69d626daf46a37155510c26e8bb7f2b
+  - name: 'Debian''s liblua5.4.so'
+    runs: |
+      ln -sf liblua-5.4.so.0 /usr/lib/liblua5.4.so
+      ln -sf /usr/include/lua5.4 /usr/include/lua5.4 2>/dev/null || true
   - uses: patch
     with:
       patches: .recipe-files/gringo-manpages.patch .recipe-files/gringo-python3-utf8.patch .recipe-files/link-libatomic-check.patch .recipe-files/use-system-catch-for-glibc-2.34-compat.patch .recipe-files/compilation-with-re2c-4.3.1
