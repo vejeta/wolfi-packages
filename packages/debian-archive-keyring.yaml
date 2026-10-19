@@ -32,12 +32,24 @@ pipeline:
     with:
       uri: https://deb.debian.org/debian/pool/main/d/debian-archive-keyring/debian-archive-keyring_${{package.version}}_all.deb
       expected-sha512: d99dafbe92c40468012d0a95fa4e4dedbdb96e6e96bcc8b8f0fb082eadcbad42f625303ba128257dc7f660d6ba536f5bb27f7d72ded33121bf4679ae60070397
+      extract: false
+  - name: Unpack
+    runs: |
+      srcdir="/home/build/_srcdir"
+      source="https://deb.debian.org/debian/pool/main/d/debian-archive-keyring/debian-archive-keyring_2025.1_all.deb"
+
+      mkdir -p "$srcdir"
+      ln -sf /home/build/debian-archive-keyring_2025.1_all.deb "$srcdir"/debian-archive-keyring_2025.1_all.deb
+      cd "$srcdir"
+      for i in $source; do
+      	case $i in
+      		*.deb) ar x ${i##*/} ;;
+      	esac
+      done
   - name: Install
     runs: |
       pkgdir="${{targets.destdir}}"
       srcdir="/home/build/_srcdir"
-      mkdir -p "$srcdir"
-      [ -e "/home/build/_srcdir" ] || ln -s /home/build "/home/build/_srcdir"
 
       mkdir -p "$pkgdir"
       unxz -c "$srcdir"/data.tar.xz | tar -x -C "$pkgdir"/

@@ -48,13 +48,18 @@ environment:
       - bash
       - ca-certificates-bundle
 pipeline:
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      mv foobar/* .recipe-files/
+      rmdir foobar
   - uses: fetch
     with:
       uri: https://github.com/example/foobar/archive/refs/tags/v${{vars.mangled-pkgver}}.tar.gz
       expected-sha512: '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'
   - uses: patch
     with:
-      patches: foobar/0001-fix-musl.patch
+      patches: .recipe-files/0001-fix-musl.patch
   - name: Build
     runs: |
       pkgver="${{package.version}}"
@@ -71,8 +76,8 @@ pipeline:
       srcdir="/home/build/_srcdir"
       mkdir -p "$srcdir"
       [ -e "/home/build/_srcdir/foobar-2.1.0-rc3" ] || ln -s /home/build "/home/build/_srcdir/foobar-2.1.0-rc3"
-      cp -a /home/build/foobar/foobar.initd "$srcdir"/
-      cp -a /home/build/foobar/foobar.conf "$srcdir"/
+      cp -a /home/build/.recipe-files/foobar.initd "$srcdir"/
+      cp -a /home/build/.recipe-files/foobar.conf "$srcdir"/
 
       DESTDIR="$pkgdir" cmake --install build
       install -Dm644 "$srcdir"/foobar.conf "$pkgdir"/etc/foobar.conf

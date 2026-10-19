@@ -41,9 +41,7 @@ environment:
       - busybox
       - py3-supported-build-base
       - py3-supported-packaging  # Debian: python3-packaging
-      - py3.13-pytest-bin  # commands of Debian's python3-pytest
       - py3-supported-pytest  # Debian: python3-pytest
-      - py3.13-setuptools-scm-bin  # commands of Debian's python3-setuptools-scm
       - py3-supported-setuptools-scm  # Debian: python3-setuptools-scm
 pipeline:
   - name: Move the recipe files out of the build tree

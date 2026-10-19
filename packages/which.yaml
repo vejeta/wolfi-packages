@@ -24,13 +24,18 @@ environment:
       - build-base
       - busybox
 pipeline:
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      mv which/* .recipe-files/
+      rmdir which
   - uses: fetch
     with:
       uri: https://ftp.gnu.org/gnu/which/which-${{package.version}}.tar.gz
       expected-sha512: 0c3dfa54858bd0ff6f9567f8224e0ea2b165ab585724adcce63df042703427c813c71fc0affe45950e45c0aa280f038eb9d1a7218df8372b214f99885ba5f2aa
   - uses: patch
     with:
-      patches: which/gcc15.patch
+      patches: .recipe-files/gcc15.patch
   - name: Build
     runs: |
       CBUILD="${{host.triplet.gnu}}"

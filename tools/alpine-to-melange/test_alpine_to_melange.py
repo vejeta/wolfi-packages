@@ -155,7 +155,7 @@ class RealAportsTest(unittest.TestCase):
 
     def test_local_patch(self):
         text = recipe_text("libplacebo")
-        self.assertIn("patches: libplacebo/glslang-deps.patch", text)
+        self.assertIn("patches: .recipe-files/glslang-deps.patch", text)
 
     def test_synthetic_features(self):
         text = recipe_text("foobar")

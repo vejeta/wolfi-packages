@@ -35,13 +35,18 @@ environment:
       - xz
       - gettext
 pipeline:
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      mv sharutils/* .recipe-files/
+      rmdir sharutils
   - uses: fetch
     with:
       uri: https://ftp.gnu.org/gnu/sharutils/sharutils-${{package.version}}.tar.xz
       expected-sha512: 80d0b804a0617e11e5c23dc0d59b218bbf93e40aaf5e9a5401a18ef9cb700390aab711e2b2e2f26c8fd5b8ef99a91d3405e01d02cadabcba7639979314e59f8d
   - uses: patch
     with:
-      patches: sharutils/format-security.patch sharutils/gcc-10.patch sharutils/Backport-stdbool.m4-from-gnulib-devel-0-52.2.patch sharutils/Port-getcwd.m4-to-ISO-C23.patch sharutils/Port-the-code-to-ISO-C23.patch
+      patches: .recipe-files/format-security.patch .recipe-files/gcc-10.patch .recipe-files/Backport-stdbool.m4-from-gnulib-devel-0-52.2.patch .recipe-files/Port-getcwd.m4-to-ISO-C23.patch .recipe-files/Port-the-code-to-ISO-C23.patch
   - name: Prepare
     runs: |
       autoreconf -vif
@@ -65,7 +70,7 @@ pipeline:
       pkgdir="${{targets.destdir}}"
 
       make DESTDIR="$pkgdir" install
-      rm "$pkgdir"/usr/lib/charset.alias
+      rm -f "$pkgdir"/usr/lib/charset.alias
   - name: Remove libtool archives (abuild does this by default)
     runs: |
       find "${{targets.destdir}}" -name "*.la" -delete

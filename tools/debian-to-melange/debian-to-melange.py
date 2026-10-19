@@ -1288,6 +1288,10 @@ class Converter:
             line = line.replace("${{targets.destdir}}//", "${{targets.destdir}}/")
             if "$(" in line:
                 return None
+            # debhelper has made debian/<pkg>/... and debian/ by now; a redirect here may not have it
+            for target in re.findall(r"(?<![<>&\d])>>?\s*\"?([^\s\"'&|;]+)/[^\s/\"']+", line):
+                if target not in ("/dev",) and "mkdir -p {}".format(target) not in out:
+                    out.append("mkdir -p {}".format(target))
             out.append(line)
         return out
 
@@ -1946,6 +1950,8 @@ class Converter:
             v = None if isinstance(d, Comment) else val(d)
             if v in ("build-base", "python3", "py3-pip", "py3-wheel", "py3-setuptools", "py3-supported-setuptools"):
                 continue
+            if v and re.match(r"^py3\.\d+-.+-bin$", v):
+                continue  # commands of one Python: they clash with the other versions' build-base
             if v and v.startswith("py3-") and not v.startswith("py3-supported-") \
                     and self.wolfi.has("py3-supported-" + v[4:]):
                 d = C("py3-supported-" + v[4:], d.comment if isinstance(d, C) else "Debian: python3-" + v[4:])
@@ -2474,6 +2480,11 @@ class Converter:
                 continue
             tool = os.path.basename(dest) if "=>" in parts else os.path.basename(parts[0])
             path = "/usr/bin/" + tool  # usr-merged, sbin merged into bin
+            if re.search(r"[*?\[]", tool):
+                # a glob: names are only known after the build; usr/bin/* says nothing
+                if tool.strip("*"):
+                    cmds.append("ls {} >/dev/null".format(path))
+                continue
             if re.search(r"(^|/)scripts?/|\.(sh|pl|py|tcl|tk)$", parts[0]) or re.match(r"^(usr/)?sbin", dest):
                 # scripts may need interpreters that are only suggested;
                 # system tools (sbin) often need root, a tty or hardware

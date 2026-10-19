@@ -348,6 +348,11 @@ def template_version(url, apk, transforms):
     return out
 
 
+def apk_source(apk):
+    """source= with the URLs of remote files (what unpack() loops over)."""
+    return " ".join(u or f for f, u in parse_sources(apk))
+
+
 def github_update(url):
     m = re.match(r"https://github\.com/([^/]+)/([^/]+)/(?:archive|releases)/(?:refs/tags/|download/)?([^/]*?)\$\{\{(?:package\.version|vars\.[\w-]+)\}\}", url or "")
     if not m:
@@ -418,6 +423,7 @@ class Converter:
         self.wolfi = wolfi
         self.notes = []
         self.aux = {}
+        self.unpacked = []          # sources left for the APKBUILD's unpack()
         # functions that build subpackages (foo:bar, or the suffix of $pkgname-doc)
         self.subpackage_functions = {e.split(":")[1] if ":" in e else e.rsplit("-", 1)[-1]
                                      for e in apk.words("subpackages")}
@@ -526,10 +532,14 @@ class Converter:
         for code in funcs:  # helpers use abuild variables too ($pkgdir, $subpkgdir)
             used |= refs(code)
         text = re.sub(r"(^|[\s;(|&])abuild-meson\b", r"\1abuild_meson", text)
+        # musl's iconv leaves usr/lib/charset.alias; glibc builds do not
+        text = re.sub(r"\brm\s+(?!-\w*f)([^\n]*charset\.alias)", r"rm -f \1", text)
         pre = ['{}="{}"'.format(n, v) for n, v in PREAMBLE_VARS if n in used]
         pre += ["{}={}".format(n, v) for n, v in helpers if n in used]
         pre += funcs
-        if "srcdir" in used and getattr(self, "abuild_builddir", None):
+        if "source" in used and apk_source(self.apk):
+            pre.append('source="{}"'.format(apk_source(self.apk)))
+        if "srcdir" in used and getattr(self, "abuild_builddir", None) and self.abuild_builddir != SRCDIR:
             # abuild unpacks the main tarball in $srcdir/$pkgname-$pkgver; here it is the workspace
             pre.append('mkdir -p "$srcdir"')
             pre.append('[ -e "{0}" ] || ln -s {1} "{0}"'.format(self.abuild_builddir, WORKSPACE))
@@ -690,9 +700,20 @@ class Converter:
                     pipeline.append({"name": "Create $srcdir", "runs": "mkdir -p {}\n".format(SRCDIR)})
                 if not re.search(r"\.(tar(\.\w+)?|tgz|tbz2|txz|zip)$", fname):
                     step["with"]["extract"] = False
+            if "unpack" in apk.functions or not re.search(r"\.(tar(\.\w+)?|tgz|tbz2|txz|zip)$", fname):
+                # the APKBUILD's unpack() handles it (a .deb with ar ...)
+                step["with"]["extract"] = False
+                step["with"].pop("strip-components", None)
+                step["with"].pop("directory", None)
+                self.unpacked.append(fname)
             pipeline.append(step)
         if not remote:
             pipeline.append(self.todo("APKBUILD has no remote source"))
+        if "unpack" in apk.functions:
+            # abuild links the downloaded sources into $srcdir before unpack()
+            links = ['ln -sf {0}/{1} "$srcdir"/{1}'.format(WORKSPACE, f) for f in self.unpacked]
+            pipeline.append({"name": "Unpack", "runs": self.runs(
+                'mkdir -p "$srcdir"\n' + "\n".join(links) + "\n" + self.body("unpack"))})
 
         patches = [f for f in self.local_files if f.endswith(".patch")]
         if patches:
@@ -772,6 +793,21 @@ class Converter:
                          for st in pipeline if isinstance(st, dict))]
         if used_t:
             recipe["var-transforms"] = used_t
+        if self.local_files:
+            # the files next to the recipe arrive as <name>/, which can clash with
+            # what the sources build (a program called <name>): move them aside first
+            def aside(v):
+                if isinstance(v, str):
+                    v = v.replace("{}/{}/".format(WORKSPACE, name), "{}/.recipe-files/".format(WORKSPACE))
+                    return re.sub(r"(?<![\w/.-]){}/".format(re.escape(name)), ".recipe-files/", v)
+                if isinstance(v, list):
+                    return [aside(x) for x in v]
+                if isinstance(v, dict):
+                    return {k: aside(x) for k, x in v.items()}
+                return v
+            pipeline = [{"name": "Move the recipe files out of the build tree",
+                         "runs": "mkdir -p .recipe-files\nmv {0}/* .recipe-files/\nrmdir {0}\n".format(name)}] + aside(pipeline)
+            subpackages = aside(subpackages)
         recipe.update({"environment": environment, "pipeline": pipeline})
         if re.search(r"/etc/(init\.d|conf\.d)/", "\n".join(apk.functions.get("package", []))):
             self.notes.append("package() installs OpenRC files (/etc/init.d, /etc/conf.d); Wolfi does not use OpenRC")

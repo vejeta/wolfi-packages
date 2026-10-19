@@ -181,6 +181,7 @@ pipeline:
     runs: |
       meson compile -C build-sysv
       meson compile -C build-tcp
+      mkdir -p debian
       sed 's/@FAKEROOT_SYSV_ALTPRIO@/50/;s/@FAKEROOT_TCP_ALTPRIO@/30/;'  		.recipe-files/fakeroot.postinst.in > debian/fakeroot.postinst
   - name: Install (from debian/rules override_dh_auto_install)
     runs: |
