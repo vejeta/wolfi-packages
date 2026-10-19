@@ -77,6 +77,10 @@ NAME_MAP = {
     "python3-gi": "py3-gobject3",
     "gir1.2-glib-2.0": "gobject-introspection",
     "libgmock-dev": "gtest-dev",  # googletest ships gmock too
+    # Haskell: compiler and tools of this repository (Debian packages each library)
+    "ghc": "ghc-bootstrap",
+    "cabal-install": "cabal-install-bootstrap",
+    "pandoc": "pandoc-cli",
     "libsigc++-2.0-dev": "libsigc++-dev",
     "libxapian-dev": "xapian-core-dev",
     # dual-life modules that Wolfi's perl ships in its core
@@ -261,6 +265,7 @@ def dep_candidates(name):
     if tl:
         # Debian splits TeX Live like its collections: texmf-dist-<collection> here
         sub = {"base": "texlive", "binaries": "texlive", "full": "texmf-dist-full", "science": "texmf-dist-mathscience",
+               "latex-base": "texmf-dist-latex", "pictures": "texmf-dist-pictures", "music": "texmf-dist-music",
                "extra-utils": "texmf-dist-binextra", "font-utils": "texmf-dist-fontutils",
                "formats-extra": "texmf-dist-formatsextra", "plain-generic": "texmf-dist-plaingeneric"}.get(tl.group(1))
         return [sub or "texmf-dist-" + tl.group(1).replace("-", "")]
