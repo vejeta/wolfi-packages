@@ -7,7 +7,6 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/ocaml-odoc
 #
 # Conversion notes:
-# - runtime dependency 'ocaml-${F' (Debian 'ocaml-${F') not found in Wolfi; left out
 # - runtime dependency 'libjs-highlight.js': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - build dependency 'libjs-highlight.js': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
@@ -26,7 +25,7 @@ package:
     - license: ISC
   dependencies:
     runtime:
-      # TODO(debian-to-melange): ocaml-${F is not in Wolfi (Debian: ocaml-${F); left out
+      - ocaml
 environment:
   contents:
     keyring:

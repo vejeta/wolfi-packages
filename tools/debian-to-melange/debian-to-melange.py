@@ -450,7 +450,10 @@ def parse_relations(value):
             if formulas and not any(all(t.startswith("!") for t in f.split()) for f in formulas):
                 continue
             alt = re.sub(r"\(.*?\)|\[.*?\]|<.*?>", "", alt).strip()
-            if not alt.startswith("${"):
+            sv = re.match(r"^([a-z0-9][a-z0-9.+]*)-\$\{[^}]*\}$", alt)
+            if sv:
+                alt = sv.group(1)  # ocaml-${F:OCamlABI}: the package of that ABI is ocaml
+            elif not alt.startswith("${"):
                 alt = alt.split(":", 1)[0]      # :any, :native
             if alt:
                 alts.append(alt)
