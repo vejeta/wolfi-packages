@@ -13,7 +13,13 @@
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/c/cwidget/cwidget_0.5.18.orig.tar.xz), which disappears from the pool when Debian updates
 # - runtime dependency 'libjs-jquery': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - autopkgtests converted to the test pipeline (1 steps)
-package: libcwidget-dev
+package:
+  name: libcwidget4
+  version: '0.5.18'
+  epoch: 0
+  description: High-level terminal interface library for C++ (runtime files)
+  copyright:
+    - license: GPL-2.0-or-later
 environment:
   contents:
     keyring:

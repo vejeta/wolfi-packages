@@ -12,7 +12,22 @@
 # - runtime dependency 'libjs-jquery': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - runtime dependency 'libjs-underscore': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - autopkgtests converted to the test pipeline (1 steps)
-package: python3-apt
+package:
+  name: py3-apt
+  version: '3.1.0'
+  epoch: 0
+  description: Python 3 interface to libapt-pkg
+  copyright:
+    - license: GPL-2.0-or-later
+    - license: Permissive
+      paths:
+        - tests/test_all.py
+        - tests/test_hashes.py
+  dependencies:
+    runtime:
+      - py3-apt-common
+      - distro-info-data  # Wolfi Community Packages
+      # Debian Recommends (not supported by apk): lsb-release, iso-codes
 environment:
   contents:
     keyring:

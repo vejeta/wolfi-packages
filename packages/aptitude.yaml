@@ -199,7 +199,8 @@ pipeline:
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/aptitude
   - name: From debian/rules override_dh_installdocs
     runs: |
-      pkgs=`dh_listpackages | grep ^aptitude-doc`;  	for pkg in $pkgs; do  	  echo "  installing html for $pkg";  	  ll=`echo $pkg | sed -e 's/^aptitude-doc-//'`;  	  mkdir -p "debian/$pkg/usr/share/doc/aptitude/html";  	  cp -Rf "${{targets.destdir}}/usr/share/doc/aptitude/html/$ll"  	      "debian/$pkg/usr/share/doc/aptitude/html/$ll";  	done
+      pkgs=`printf '%s
+      ' aptitude aptitude-common aptitude-doc-cs aptitude-doc-en aptitude-doc-es aptitude-doc-fi aptitude-doc-fr aptitude-doc-it aptitude-doc-ja aptitude-doc-nl aptitude-doc-ru | grep ^aptitude-doc`;  	for pkg in $pkgs; do  	  echo "  installing html for $pkg";  	  ll=`echo $pkg | sed -e 's/^aptitude-doc-//'`;  	  mkdir -p "${{targets.outdir}}/$pkg/usr/share/doc/aptitude/html";  	  cp -Rf "${{targets.destdir}}/usr/share/doc/aptitude/html/$ll"  	      "${{targets.outdir}}/$pkg/usr/share/doc/aptitude/html/$ll";  	done
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do

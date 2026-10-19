@@ -1577,6 +1577,9 @@ class Converter:
                 continue  # debhelper bookkeeping (Built-Using, substvars...)
             line = rules.expand(line)
             line = re.sub(r"(?<![\w/.])\./debian/", "debian/", line)  # ./debian/foo is debian/foo
+            # dh_listpackages in the shell: the binary packages; debian/$pkg: their output directory
+            line = re.sub(r"\bdh_listpackages\b", "printf '%s\\n' " + " ".join(sorted(self.rename)), line)
+            line = re.sub(r"(?<![\w/.$])debian/\$", "${{targets.outdir}}/$", line)
             # pybuild's build directory: py/pip-build-install installs straight into destdir
             line = re.sub(r"\$\(shell pybuild --print build_dir[^)]*\)",
                           "${{targets.destdir}}`python3 -c 'import sysconfig; print(sysconfig.get_path(\"platlib\"))'`", line)
@@ -2348,9 +2351,9 @@ class Converter:
                     if not args:
                         continue
                     sub = "/examples" if words[0] == "dh_installexamples" else ""
-                    for pkg in pkgs or [main["package"]]:
-                        name_ = self.rename.get(pkg, pkg)
-                        root = "${{targets.destdir}}" if pkg == main["package"] else "${{{{targets.outdir}}}}/{}".format(name_)
+                    for deb_pkg in pkgs or [main["package"]]:
+                        name_ = self.rename.get(deb_pkg, deb_pkg)
+                        root = "${{targets.destdir}}" if deb_pkg == main["package"] else "${{{{targets.outdir}}}}/{}".format(name_)
                         cmds.append('mkdir -p "{0}/usr/share/doc/{1}{2}"\ncp -a {3} "{0}/usr/share/doc/{1}{2}/"'.format(
                             root, name_, sub, " ".join(args)))
                 if cmds:
