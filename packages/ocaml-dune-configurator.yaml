@@ -31,6 +31,7 @@ environment:
       - ocaml-compiler-libs
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
       - libcsexp-ocaml-dev
 vars:
   # the opam packages of each subpackage, as Debian splits them
@@ -94,6 +95,7 @@ test:
         - busybox
         - ocaml
         - ocaml-findlib
+        - ocamlfind
         - libdune-core-ocaml-dev
         - libdune-configurator-ocaml-dev
   pipeline:

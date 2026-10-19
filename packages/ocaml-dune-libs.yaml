@@ -29,6 +29,7 @@ environment:
       - ocaml-compiler-libs
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
       - libcsexp-ocaml-dev
       - libdune-core-ocaml-dev
       - libpp-ocaml-dev
@@ -89,6 +90,7 @@ test:
         - busybox
         - ocaml
         - ocaml-findlib
+        - ocamlfind
         - libdune-ocaml-dev
   pipeline:
     - name: The libraries are found by ocamlfind

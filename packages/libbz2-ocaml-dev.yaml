@@ -58,13 +58,20 @@ pipeline:
   # TODO(debian-to-melange): port debian/rules override_dh_auto_install: dh_auto_install && dune install --destdir=$(DESTDIR)  		--prefix=/usr --libdir=$(OCAML_STDLIB_DIR)
   - name: Install files
     runs: |
-      mkdir -p "${{targets.destdir}}/usr/lib/ocaml"
-      cp -a usr/lib/ocaml/bz2 "${{targets.destdir}}/usr/lib/ocaml/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/libbz2-ocaml-dev/examples"
       cp -a examples/* "${{targets.destdir}}/usr/share/doc/libbz2-ocaml-dev/examples/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/libbz2-ocaml-dev"
-      cp -a usr/doc/bz2/README "${{targets.destdir}}/usr/share/doc/libbz2-ocaml-dev/"
+      mv "${{targets.destdir}}/usr/doc/bz2/README" "${{targets.destdir}}/usr/share/doc/libbz2-ocaml-dev/"
+      rmdir "${{targets.destdir}}/usr/doc/bz2" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 COPYING LICENSE -t "${{targets.destdir}}"/usr/share/licenses/libbz2-ocaml-dev
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - uses: strip
 subpackages:
   - name: libbz2-ocaml
@@ -72,7 +79,7 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/stublibs"
-          cp -a usr/lib/ocaml/stublibs/*.so "${{targets.contextdir}}/usr/lib/ocaml/stublibs/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/stublibs/*.so "${{targets.contextdir}}/usr/lib/ocaml/stublibs/"
 update:
   enabled: true
   release-monitor:

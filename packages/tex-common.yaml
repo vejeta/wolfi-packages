@@ -1097,8 +1097,8 @@ pipeline:
       expected-sha256: 08f24be2a32094d350153b7d9b2469f8898b31ad470f8df3c201461ce243e620
   - name: Build (from debian/rules override_dh_auto_build)
     runs: |
-      cd scripts; pod2man dh_installtex > dh_installtex.1
-      cd scripts; help2man -n "generate hyphenation configuration for TeX engines" -s 8 -S Debian  -N ./update-language > update-language.8
+      (cd scripts; pod2man dh_installtex > dh_installtex.1)
+      (cd scripts; help2man -n "generate hyphenation configuration for TeX engines" -s 8 -S Debian  -N ./update-language > update-language.8)
   # TODO(debian-to-melange): port debian/rules execute_after_dh_auto_install: # debhelper stuff && # dh_installtex(.1) is already installed via the bin_scripts && grep -v '^[ \t]*# ' scripts/postrm-tex > $(INSTDIR)/usr/share/debhelper/autoscripts/postrm-tex && grep -v '^[ \t]*#
   - name: Install files
     runs: |

@@ -1696,6 +1696,9 @@ class Converter:
             for target in re.findall(r"(?<![<>&\d])>>?\s*\"?([^\s\"'&|;]+)/[^\s/\"']+", line):
                 if target not in ("/dev", ".", "..") and "mkdir -p {}".format(target) not in out:
                     out.append("mkdir -p {}".format(target))
+            if re.match(r"^cd\s", line):
+                # make runs each recipe line in its own shell: a cd does not carry to the next
+                line = "({})".format(line)
             out.append(line)
         return out
 
@@ -2352,7 +2355,9 @@ class Converter:
         self.upstream_installs = bs not in ("cargo", "golang") and (
             "override_dh_auto_install" not in overrides
             or bool(install_override and any("${{targets.destdir}}" in l or l == self.PIPELINE_MARK
-                                             for l in install_override)))
+                                             for l in install_override))
+            # the ocaml_dune steps install into destdir unless an override does it
+            or (bs == "ocaml_dune" and not install_override))
         if ported.get("override_dh_auto_configure"):
             # several build directories: configure each as debian/rules does
             if bs == "autoconf" and self.needs_autoreconf(source):
@@ -2878,7 +2883,9 @@ class Converter:
 
     def ocaml_dune_steps(self, build_override, install_override):
         """dh-ocaml's ocaml_dune build system: dune build/install of the opam packages."""
-        pkgs = sorted(n[:-len(".opam")] for n in self.top if n.endswith(".opam"))
+        # debian/debian-dune names the opam packages dh-ocaml builds; else all of them
+        pkgs = (self.read("debian-dune") or "").split() or \
+            sorted(n[:-len(".opam")] for n in self.top if n.endswith(".opam"))
         p = " ".join(["-p", ",".join(pkgs)]) if pkgs else "--release"
         steps = []
         if not build_override:
