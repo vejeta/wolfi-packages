@@ -52,16 +52,39 @@ GLOBAL_TRIGGERS = (
 )
 
 
+def subpackage_names(data):
+    """Subpackage names with ${{vars.*}}, ${{package.name}} and ranges expanded."""
+    subst = {"package.name": str(data.get("package", {}).get("name", ""))}
+    subst.update({"vars." + k: str(v) for k, v in (data.get("vars") or {}).items()})
+    ranges = {d.get("name"): d.get("items") or {} for d in data.get("data") or []}
+
+    def expand(text, extra):
+        return re.sub(r"\$\{\{\s*([\w.-]+)\s*\}\}", lambda m: dict(subst, **extra).get(m.group(1), m.group(0)), text)
+
+    names = set()
+    for sp in data.get("subpackages") or []:
+        if "name" not in sp:
+            continue
+        if sp.get("range"):
+            for key, value in ranges.get(sp["range"], {}).items():
+                names.add(expand(sp["name"], {"range.key": str(key), "range.value": str(value)}))
+        else:
+            names.add(expand(sp["name"], {}))
+    return names
+
+
 def load_recipes(pkgdir):
     recipes = {}
     for fn in sorted(os.listdir(pkgdir)):
         if not fn.endswith(".yaml"):
             continue
         with open(os.path.join(pkgdir, fn)) as fh:
-            data = yaml.safe_load(fh) or {}
+            text = fh.read()
+        data = yaml.safe_load(text) or {}
         name = fn[:-5]
         provides = {data.get("package", {}).get("name", name)}
-        provides |= {s["name"] for s in data.get("subpackages") or [] if "name" in s}
+        # as strings, the way melange reads them (3.10 is not 3.1)
+        provides |= subpackage_names(yaml.load(text, Loader=yaml.BaseLoader) or {})
         for p in (data.get("package", {}).get("dependencies") or {}).get("provides") or []:
             provides.add(re.split(r"[=<>~]", p, maxsplit=1)[0])
         needs = set()
