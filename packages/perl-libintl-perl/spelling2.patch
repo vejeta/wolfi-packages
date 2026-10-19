@@ -1,0 +1,18 @@
+Description: Spelling corrections
+Bug: https://rt.cpan.org/Ticket/Display.html?id=134973 
+Forwarded: https://rt.cpan.org/Ticket/Display.html?id=134973
+Author: Ken Ibbotson <keni@computer.org>
+Reviewed-by: gregor herrmann <gregoa@debian.org>
+Last-Update: 2022-12-22
+
+--- a/lib/Locale/TextDomain.pm
++++ b/lib/Locale/TextDomain.pm
+@@ -1034,7 +1034,7 @@
+ =item B<options>
+ 
+ Returns a space-separated list of all '--keyword' and all '--flag' options
+-for B<xgettext(1)>, when extracing strings from Perl source files localized
++for B<xgettext(1)>, when extracting strings from Perl source files localized
+ with B<Locale::TextDomain>.
+ 
+ The option should rather be called B<xgettextDefaultOptions>.  With regard

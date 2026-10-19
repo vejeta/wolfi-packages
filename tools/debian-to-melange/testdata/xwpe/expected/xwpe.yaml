@@ -49,17 +49,17 @@ environment:
       - zlib-dev  # Debian: zlib1g-dev
       - rsvg-convert  # Debian: librsvg2-bin
 pipeline:
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      for f in copyright; do mv xwpe/$f .recipe-files/; done
+      rmdir xwpe 2>/dev/null || true
   # TODO(debian-to-melange): set expected-commit for tag v1.6.6 (re-run with --download, or git ls-remote)
   - uses: git-checkout
     with:
       repository: https://codeberg.org/mendezr/xwpe.git
       tag: v${{package.version}}
       expected-commit: '0000000000000000000000000000000000000000'
-  - name: Move the recipe files out of the build tree
-    runs: |
-      mkdir -p .recipe-files
-      for f in copyright; do mv xwpe/$f .recipe-files/; done
-      rmdir xwpe 2>/dev/null || true
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/xwpe"

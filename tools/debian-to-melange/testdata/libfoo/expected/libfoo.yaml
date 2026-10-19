@@ -5,7 +5,6 @@
 # - Debian repacks the upstream tarball (1:2.3.4+dfsg-2); check debian/copyright Files-Excluded before using the pristine upstream source
 # - set expected-commit for tag v2.3.4 (re-run with --download, or git ls-remote)
 # - port debian/rules override_dh_install: dh_install && rm -f debian/tmp/usr/lib/*/libfoo.la
-# - foo-tools.postinst: uses Debian-only tool 'update-alternatives'
 # - autopkgtests converted to the test pipeline (2 steps)
 package:
   name: libfoo
@@ -35,17 +34,17 @@ environment:
       - openssl-dev  # Debian: libssl-dev
       - py3-sphinx  # Debian: python3-sphinx
 pipeline:
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      for f in 0001-fix-build.patch 0002-gcc15.patch copyright; do mv libfoo/$f .recipe-files/; done
+      rmdir libfoo 2>/dev/null || true
   # TODO(debian-to-melange): set expected-commit for tag v2.3.4 (re-run with --download, or git ls-remote)
   - uses: git-checkout
     with:
       repository: https://github.com/example/libfoo
       tag: v${{package.version}}
       expected-commit: '0000000000000000000000000000000000000000'
-  - name: Move the recipe files out of the build tree
-    runs: |
-      mkdir -p .recipe-files
-      for f in 0001-fix-build.patch 0002-gcc15.patch copyright; do mv libfoo/$f .recipe-files/; done
-      rmdir libfoo 2>/dev/null || true
   - uses: patch
     with:
       patches: .recipe-files/0001-fix-build.patch .recipe-files/0002-gcc15.patch
@@ -83,6 +82,7 @@ subpackages:
     dependencies:
       runtime:
         - libfoo
+        - dpkg  # used by the maintainer scripts
     scriptlets:
       post-install: |
         #!/bin/sh
@@ -92,7 +92,6 @@ subpackages:
         debian_foo_tools_postinst() (
         set -e
         if [ "$1" = "configure" ]; then
-        # TODO(debian-to-melange): 'update-alternatives' does not exist on Wolfi
             update-alternatives --install /usr/bin/frob frob /usr/bin/foo 50
         fi
         )
@@ -105,7 +104,6 @@ subpackages:
         debian_foo_tools_postinst() (
         set -e
         if [ "$1" = "configure" ]; then
-        # TODO(debian-to-melange): 'update-alternatives' does not exist on Wolfi
             update-alternatives --install /usr/bin/frob frob /usr/bin/foo 50
         fi
         )

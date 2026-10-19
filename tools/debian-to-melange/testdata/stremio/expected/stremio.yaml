@@ -37,22 +37,24 @@ environment:
       - mesa-dev  # Debian: libegl-dev
       - gettext
       - glib  # Debian: libglib2.0-bin
+      - coreutils
+      - findutils
   environment:
     CARGO_PROFILE_RELEASE_DEBUG: 'true'
     RUSTFLAGS: --remap-path-prefix=/home/build=.
     XDG_DATA_HOME: /home/build/debian/xdg_data_home
 pipeline:
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      for f in 0001-disable-image-exr-feature.patch 0002-pin-crate-versions-to-debian.patch 0003-add-man-page.patch 0004-fix-window-state-typo.patch copyright stremio-wrapper; do mv stremio/$f .recipe-files/; done
+      rmdir stremio 2>/dev/null || true
   # TODO(debian-to-melange): set expected-commit for tag v1.2.0 (re-run with --download, or git ls-remote)
   - uses: git-checkout
     with:
       repository: https://github.com/Stremio/stremio-linux-shell
       tag: v${{package.version}}
       expected-commit: '0000000000000000000000000000000000000000'
-  - name: Move the recipe files out of the build tree
-    runs: |
-      mkdir -p .recipe-files
-      for f in 0001-disable-image-exr-feature.patch 0002-pin-crate-versions-to-debian.patch 0003-add-man-page.patch 0004-fix-window-state-typo.patch copyright stremio-wrapper; do mv stremio/$f .recipe-files/; done
-      rmdir stremio 2>/dev/null || true
   - name: Remove files excluded by Debian (debian/copyright Files-Excluded)
     runs: |
       rm -rf data/server.js

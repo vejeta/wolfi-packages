@@ -41,17 +41,19 @@ environment:
       - py3-pytest  # Debian: python3-pytest
       - py3-pytest-runner  # Debian: python3-pytest-runner
       - py3-sphinx  # Debian: python3-sphinx
+      - coreutils
+      - findutils
 pipeline:
-  # TODO(debian-to-melange): compute expected-sha256 (re-run with --download)
-  - uses: fetch
-    with:
-      uri: https://files.pythonhosted.org/packages/source/p/pyte/pyte-${{package.version}}.tar.gz
-      expected-sha256: '0000000000000000000000000000000000000000000000000000000000000000'
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
       for f in 0001-Revert-Link-to-GitHub-in-the-docs.patch 0002-Fix-intersphinx_mapping.patch copyright; do mv py3-pyte/$f .recipe-files/; done
       rmdir py3-pyte 2>/dev/null || true
+  # TODO(debian-to-melange): compute expected-sha256 (re-run with --download)
+  - uses: fetch
+    with:
+      uri: https://files.pythonhosted.org/packages/source/p/pyte/pyte-${{package.version}}.tar.gz
+      expected-sha256: '0000000000000000000000000000000000000000000000000000000000000000'
   - uses: patch
     with:
       patches: .recipe-files/0001-Revert-Link-to-GitHub-in-the-docs.patch .recipe-files/0002-Fix-intersphinx_mapping.patch

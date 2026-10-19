@@ -164,6 +164,7 @@ NAME_MAP = {
     # Wolfi's Xvfb needs too but does not pull in
     "xvfb": ["xvfb-run", "xkbcomp", "xkeyboard-config"],
     "xkb-data": "xkeyboard-config",
+    "bsdextrautils": "util-linux-misc",  # column, hexdump, col, ...
     # compiled locales (glibc-locales only has their sources)
     "locales-all": "glibc-locale-en",
     "locales": "glibc-locale-en",
@@ -178,6 +179,12 @@ NAME_MAP = {
 def lib_main(binary, source):
     """Is `binary` the shared library package (libfoo1) of source libfoo?"""
     return bool(source) and re.match(r"^{}[\d.]+(t64)?$".format(re.escape(source)), binary) is not None
+
+
+def perl_name(binary):
+    """Wolfi names Perl modules perl-foo, Debian libfoo-perl."""
+    m = re.match(r"^lib(.+)-perl$", binary)
+    return "perl-" + m.group(1) if m else binary
 
 
 def python_name(binary):
@@ -473,6 +480,10 @@ def files_excluded(text):
     return paras[0].get("files-excluded", "").split() if paras else []
 
 
+# Variables GNU make defines by itself.
+MAKE_DEFAULTS = {"RM": "rm -f", "MAKE": "make", "CC": "cc", "CXX": "g++", "INSTALL": "install"}
+
+
 class Rules:
     """Minimal debian/rules (Makefile) model: variables, dh line, overrides."""
 
@@ -528,7 +539,7 @@ class Rules:
             return value
         def repl(m):
             name = m.group(1) or m.group(2)
-            return self.expand(self.vars.get(name, m.group(0)), depth + 1)
+            return self.expand(self.vars.get(name, MAKE_DEFAULTS.get(name, m.group(0))), depth + 1)
         return re.sub(r"\$\((\w+)\)|\$\{(\w+)\}", repl, value)
 
     def buildsystem(self):
@@ -594,8 +605,13 @@ def install_entries(text, keep_src=False):
 def norm_path(path):
     """Debian multiarch paths -> Wolfi paths (usr/lib/<triplet>/ -> usr/lib/)."""
     path = path.strip("/")
-    path = re.sub(r"(^|/)lib/(?:\*|\$[({]DEB_HOST_MULTIARCH[)}]|[a-z0-9_]+-linux-gnu[a-z]*)(/|$)",
+    path = re.sub(r"(^|/)lib/(?:\*(?=/)|\$[({]DEB_HOST_MULTIARCH[)}]|[a-z0-9_]+-linux-gnu[a-z]*)(/|$)",
                   r"\1lib\2", path).rstrip("/")
+    # Perl modules: Debian's vendor directories are Wolfi's vendor_perl, and
+    # Wolfi's man pages of modules end in .3 (Debian: .3pm)
+    path = re.sub(r"^usr/share/perl5(/|$)", r"usr/share/perl5/vendor_perl\1", path)
+    path = re.sub(r"^usr/lib/perl5/[\d.]+(/|$)", r"usr/lib/perl5/vendor_perl\1", path)
+    path = re.sub(r"^(usr/share/man/man3/.*)\.3pm$", r"\1.3", path)
     return path
 
 
@@ -785,11 +801,21 @@ SCRIPT_MAP = {
     "postrm": [("post-deinstall", "remove")],
 }
 
-DEBIAN_ONLY_TOOLS = [
-    "deb-systemd-helper", "deb-systemd-invoke", "update-alternatives",
-    "dpkg-maintscript-helper", "dpkg-divert", "dpkg-statoverride",
-    "update-rc.d", "invoke-rc.d", "ucf", "ucfr", "dpkg-trigger", "py3compile", "py3clean",
-]
+DEBIAN_ONLY_TOOLS = ["py3compile", "py3clean"]
+
+# Debian tools that maintainer scripts call, and the package that has them
+# (Wolfi's dpkg; init-system-helpers and ucf from this repository).
+SCRIPT_TOOLS = {
+    "update-alternatives": "dpkg", "dpkg-maintscript-helper": "dpkg", "dpkg-divert": "dpkg",
+    "dpkg-statoverride": "dpkg", "dpkg-trigger": "dpkg",
+    "invoke-rc.d": "init-system-helpers", "update-rc.d": "init-system-helpers",
+    "deb-systemd-helper": "init-system-helpers", "deb-systemd-invoke": "init-system-helpers",
+    "ucf": "ucf", "ucfr": "ucf", "ucfq": "ucf",
+}
+
+# A command word: at the start of a command, not part of a path or a name.
+def command_re(tool):
+    return r"(?:^|[;&|(`]|\bthen|\bdo|\belse|\bexec|\$\()\s*(?:/usr/s?bin/)?{}(?![\w.-])".format(re.escape(tool))
 
 
 def env_name(pkg, question):
@@ -837,6 +863,9 @@ def render_conffile(pkg, templates):
     return "\n".join(lines).rstrip() + "\n"
 
 
+SCRIPT_DEPS = {}  # script label -> packages its commands come from
+
+
 def convert_script(text, kind, pkg, templates, conffile, notes):
     """Rewrite a Debian maintainer script body for apk."""
     names = {t["name"]: env_name(pkg, t["name"]) for t in templates}
@@ -863,11 +892,15 @@ def convert_script(text, kind, pkg, templates, conffile, notes):
             notes.append("{}: debconf call not converted: {}".format(kind, s))
             body.append("# {}: {}".format(TODO, s))
             continue
+        code = line.split("#", 1)[0]
         for tool in DEBIAN_ONLY_TOOLS:
-            if re.search(r"\b{}\b".format(re.escape(tool)), line):
+            if re.search(command_re(tool), code):
                 notes.append("{}: uses Debian-only tool '{}'".format(kind, tool))
                 body.append("# {}: '{}' does not exist on Wolfi".format(TODO, tool))
                 break
+        for tool, pkg_ in SCRIPT_TOOLS.items():
+            if re.search(command_re(tool), code) or re.search(r"-x\s+\"?/usr/s?bin/{}\b".format(re.escape(tool)), code):
+                SCRIPT_DEPS.setdefault(kind, set()).add(pkg_)
         body.append(line)
     if body and body[0].startswith("#!"):
         body = body[1:]
@@ -991,6 +1024,7 @@ BUILDSYSTEM_FILES = [
     ("setup.py", "pybuild"),
     ("go.mod", "golang"),
     ("Cargo.toml", "cargo"),
+    ("Makefile.PL", "perl_makemaker"),
     ("Makefile", "makefile"),
 ]
 
@@ -999,6 +1033,7 @@ BUILD_PIPELINES = {
     "meson": ["meson/configure", "meson/compile", "meson/install"],
     "autoconf": ["autoconf/configure", "autoconf/make", "autoconf/make-install"],
     "pybuild": ["py/pip-build-install"],
+    "perl_makemaker": ["perl/make", "autoconf/make", "autoconf/make-install", "perl/cleanup"],
     "cargo": ["cargo/build"],
     "golang": ["go/build"],
 }
@@ -1105,6 +1140,7 @@ class Converter:
                 line = re.sub(r"\$\(CURDIR\)/debian/{}(/|\b)".format(re.escape(pkg)), "${{targets.destdir}}/", line)
                 line = re.sub(r"(?<![\w/])debian/{}/".format(re.escape(pkg)), "${{targets.destdir}}/", line)
             line = re.sub(r"target/\$\(DEB_HOST_RUST_TYPE\)/", "target/", line)
+            line = line.replace("usr/share/doc/{}/".format(deb_pkg), "usr/share/doc/{}/".format(self.rename.get(deb_pkg, deb_pkg)))
             line = line.replace("$(CURDIR)/", "").replace("$(CURDIR)", ".")
             def aux(m):
                 rel = m.group(1)
@@ -1281,10 +1317,16 @@ class Converter:
 
         src_name, deb_version = parse_changelog(self.read("changelog") or "")
         self.deb_version = deb_version
+        self.homepage = paras[0].get("homepage", "")
         src_name = src_name or source.get("source")
         fmt = (self.read("source/format") or "").strip()
         native = "native" in fmt or (deb_version is not None and "-" not in deb_version)
         rules = Rules(self.read("rules") or "")
+        for var, value in rules.vars.items():
+            # $(shell dh_listpackages): the binary packages, in debian/control order
+            pkgs = " ".join(p["package"] for p in paras[1:] if "package" in p)
+            value = value.replace("$(firstword $(shell dh_listpackages))", pkgs.split(" ")[0] if pkgs else "")
+            rules.vars[var] = value.replace("$(shell dh_listpackages)", pkgs)
 
         main = next((b for b in binaries if b["package"] == src_name), None)
         if main is None:
@@ -1292,7 +1334,10 @@ class Converter:
             # main package, named after the source as Wolfi does
             lib = [b for b in binaries if re.match(r"^{}[\d.]+(t64)?$".format(re.escape(src_name or "")), b["package"])]
             main = lib[0] if len(lib) == 1 else binaries[0]
-        default_name = src_name if lib_main(main["package"], src_name) else python_name(main["package"])
+        default_name = src_name if lib_main(main["package"], src_name) else perl_name(python_name(main["package"]))
+        dist = re.match(r"https?://metacpan\.org/(?:release|dist)/([\w-]+)", source.get("homepage", ""))
+        if dist and main["package"].endswith("-perl"):
+            default_name = "perl-" + dist.group(1).lower()  # Wolfi names Perl modules after the CPAN distribution
         name = a.name or default_name
         self.rename = {b["package"]: b["package"] for b in binaries}
         if name != main["package"] and name == python_name(main["package"]):
@@ -1302,6 +1347,9 @@ class Converter:
                 m = re.match(r"^python3?-{}(-.+)?$".format(re.escape(base)), b["package"])
                 if m:
                     self.rename[b["package"]] = name + (m.group(1) or "")
+        for b in binaries:
+            if b is not main and re.match(r"^lib.+-perl$", b["package"]):
+                self.rename[b["package"]] = perl_name(b["package"])  # libfoo-xs-perl -> perl-foo-xs
         self.rename[main["package"]] = name
         self.recipe_dir = name
         if deb_version and re.search(r"[+~](dfsg|ds|repack)", deb_version) \
@@ -1310,6 +1358,7 @@ class Converter:
                               "Files-Excluded before using the pristine upstream source".format(deb_version))
 
         # ---- version -----------------------------------------------------
+        self.version_for_url = None
         version_var = a.version_var
         if not version_var and native and not a.version:
             cands = [v for v in rules.vars if re.match(r"^[A-Z0-9_]*VERSION$", v)]
@@ -1326,6 +1375,7 @@ class Converter:
         else:
             version = debian_upstream_version(deb_version or "0")
 
+        self.version_for_url = version
         # ---- rules variables that feed templated files -> melange vars ------
         templated = rules.template_substitutions()
         melange_vars = {}
@@ -1396,7 +1446,16 @@ class Converter:
         # ---- maintainer scripts + debconf ----------------------------------
         templates = parse_templates(self.pkgfile(main["package"], "templates", True))
         conffile = "/etc/{}.conf".format(name)
+        if re.search(r"(^|\s)/?etc/?(\s|$)|etc/{}\.conf".format(re.escape(name)),
+                     self.pkgfile(main["package"], "install", True) or ""):
+            # the package installs its own /etc/<name>.conf
+            conffile = "/etc/{}-debconf.conf".format(name)
         scripts, uses_debconf = self.scriptlets(main, True, name, templates, conffile, templated, var_refs)
+        if self.script_deps:
+            have = pkg.setdefault("dependencies", {}).setdefault("runtime", [])
+            for d in self.script_deps:
+                if not any((r.value if isinstance(r, C) else r) == d for r in have if not isinstance(r, Comment)):
+                    have.insert(0, C(d, "used by the maintainer scripts"))
         config_script = self.pkgfile(main["package"], "config", True)
         if config_script:
             extra = [l.strip() for l in config_script.splitlines()
@@ -1429,6 +1488,12 @@ class Converter:
         base = ["build-base", "busybox"] if bs else ["busybox"]
         if bs == "pybuild":
             base += ["python3", "py3-pip", "py3-wheel"]
+        if bs == "perl_makemaker":
+            base += ["perl"]
+        if native and bs:
+            # a Debian-native build assumes what debhelper brings: perl (pod2man)
+            # and dpkg-dev (dpkg-parsechangelog)
+            base += [p for p in ("perl", "dpkg-dev") if p not in base]
         if bs == "autoconf" and self.needs_autoreconf(source):
             base += self.autoreconf_tools()
         env_pkgs = base + [d for d in build_deps if (d.value if isinstance(d, C) else d) not in base]
@@ -1444,6 +1509,12 @@ class Converter:
         # ---- pipeline -----------------------------------------------------
         pipeline = []
         self.source_steps = []
+        if native and a.from_debian and [n for n in self.top if n != "debian"]:
+            # a Debian-native program (ucf ...): its source is the Debian tarball
+            native_src = self.debian_native_url(source)
+            if native_src:
+                pipeline.append(native_src)
+                self.source_steps = [native_src]
         if not native:
             pipeline += self.fetch_step(source, version)
             self.source_steps = [st for st in pipeline if isinstance(st, dict)]
@@ -1536,12 +1607,15 @@ class Converter:
         elif bs == "makefile":
             cmds = [] if build_override else ["make -j$(nproc)"]
             if not install_override:
-                cmds.append('make install DESTDIR="${{targets.destdir}}" PREFIX=/usr')
+                # dh_auto_install runs "make install" only when the Makefile has it
+                cmds.append('if make -s -n install >/dev/null 2>&1; then\n'
+                            '  make install DESTDIR="${{targets.destdir}}" PREFIX=/usr\nfi')
             if cmds:
                 pipeline.append({"runs": "\n".join(cmds) + "\n"})
         elif bs and bs not in BUILD_PIPELINES:
             pipeline.append(self.todo("unsupported Debian build system '{}'".format(bs)))
 
+        post_install = []
         for with_ in rules.dh_with():
             if with_ in ("autoreconf", "python3", "sphinxdoc", "systemd", "quilt"):
                 continue  # done by the generated steps, or not needed
@@ -1557,7 +1631,9 @@ class Converter:
                 if target == "override_dh_auto_install":
                     pipeline += self.override_steps(ported[target], "Install (from debian/rules override_dh_auto_install)")
                 continue
-            tool = target[len("override_"):]
+            if re.search(r"_dh_(lintian|installchangelogs|compress|fixperms|missing|strip|dwz|shlibdeps|makeshlibs|gencontrol|builddeb|md5sums)$", target):
+                continue  # Debian packaging checks and bookkeeping (execute_before/after_*)
+            tool = re.sub(r"-(indep|arch)$", "", target[len("override_"):])
             calls = [l.strip().lstrip("@-") for l in recipe if l.strip() and not l.strip().startswith("#")]
             if calls and all(re.match(r"^({}|dh_missing)\b".format(re.escape(tool)), c) for c in calls):
                 continue  # only adjusts how the same debhelper tool runs
@@ -1568,10 +1644,20 @@ class Converter:
                                   "override_dh_fixperms", "override_dh_lintian", "override_dh_usrlocal",
                                   "override_dh_installsystemd", "override_dh_installinit")):
                 continue
+            if re.match(r"^(override|execute_after)_dh_", target) and not target.startswith("override_dh_auto_"):
+                # dh_foo plus commands of its own: the commands run on the installed files
+                cmds = self.port_recipe(rules, recipe, name, main["package"])
+                if cmds:
+                    post_install.append({"name": "From debian/rules " + target, "runs": "\n".join(cmds) + "\n"})
+                    continue
             pipeline.append(self.todo("port debian/rules {}: {}".format(
                 target, " && ".join(l.strip() for l in recipe if l.strip())[:200])))
 
         pipeline.append(self.install_step(main, True, native, name))
+        pipeline += post_install
+        if post_install or ported:
+            # commands from debian/rules expect GNU tools (rm --verbose, find -print0 ...)
+            env_pkgs += [p for p in ("coreutils", "findutils") if p not in env_pkgs]
         if templates and uses_debconf:
             pipeline[-1]["runs"] += 'install -Dm644 {0}/{0}.conf "${{{{targets.destdir}}}}"{1}\n'.format(name, conffile)
         if any(b.get("architecture", "any") != "all" for b in binaries) and bs:
@@ -1712,8 +1798,8 @@ class Converter:
                  "items": {v: v.replace(".", "") for v in reversed(versions)}}]
 
     # The files next to the recipe (packages/<name>/) are copied into the
-    # build tree as <name>/, where they can clash with what upstream builds
-    # (a program called <name>), so they are moved aside after the checkout.
+    # build tree as <name>/, where they can clash with the sources (a file
+    # called <name>) or what upstream builds, so they are moved aside first.
     RECIPE_FILES = ".recipe-files"
 
     def rewrite_recipe_paths(self, name, steps):
@@ -1747,11 +1833,8 @@ class Converter:
         move = {"name": "Move the recipe files out of the build tree",
                 "runs": "mkdir -p {d}\nfor f in {files}; do mv {n}/$f {d}/; done\nrmdir {n} 2>/dev/null || true\n".format(
                     d=self.RECIPE_FILES, files=files, n=name)}
-        at = 0
-        for i, st in enumerate(steps):
-            if isinstance(st, dict) and st.get("uses") in ("fetch", "git-checkout"):
-                at = i + 1
-        return steps[:at] + [move] + steps[at:]
+        # first: the sources may contain a file named like the directory
+        return [move] + steps
 
     # -- sections -----------------------------------------------------------
 
@@ -1777,6 +1860,10 @@ class Converter:
             uses_debconf |= dc
             for target, argv in targets:
                 scripts[target] = wrap_script(label, body, argv)
+        # packages whose commands the scripts call (update-alternatives -> dpkg ...)
+        own = self.rename.get(binary["package"], binary["package"])
+        self.script_deps = sorted({d for ds in SCRIPT_DEPS.values() for d in ds} - {own})
+        SCRIPT_DEPS.clear()
         return scripts, uses_debconf
 
     def header(self, src, version, source, native, fmt):
@@ -1835,6 +1922,26 @@ class Converter:
                     self.notes.append("upstream from debian/watch ({}), pinned to the tag's commit".format(
                         "GitHub" if gh else "git"))
                 return steps
+        cpan = re.match(r"https?://metacpan\.org/(?:release|dist)/([\w-]+)", source.get("homepage", ""))
+        if not url and cpan:
+            # CPAN keeps every release under modules/by-module/<top namespace>/
+            dist = cpan.group(1)
+            cands = []
+            if self.args.download:
+                # metacpan knows the author directory of the latest release
+                try:
+                    latest = json.loads(http_get("https://fastapi.metacpan.org/v1/release/" + dist))
+                    cands.append(latest["download_url"].replace(latest["version"], version))
+                    self.cpan_module = latest.get("main_module")
+                except Exception:
+                    pass
+            cands += ["https://www.cpan.org/modules/by-module/{}/{}-{}.{}".format(dist.split("-")[0], dist, version, ext)
+                      for ext in ("tar.gz", "tgz", "tar.bz2")]
+            for cand in cands:
+                if not self.args.download or url_exists(cand):
+                    url = cand
+                    self.notes.append("upstream tarball from CPAN ({})".format(dist))
+                    break
         if not url:
             cands = watch_tarball_urls(self.read("watch") or "", source.get("source", ""), version)
             if cands and self.args.download:
@@ -1859,6 +1966,29 @@ class Converter:
         if not sha:
             return [self.todo("compute expected-sha256 (re-run with --download)"), step]
         return [step]
+
+    def debian_native_url(self, source):
+        """fetch step for the tarball of a Debian-native source package."""
+        ver = (self.deb_version or "").split(":", 1)[-1]
+        name = source.get("source", "")
+        prefix = name[:4] if name.startswith("lib") else name[0]
+        for ext in ("xz", "gz", "bz2"):
+            url = "https://deb.debian.org/debian/pool/{}/{}/{}/{}_{}.tar.{}".format(
+                DEBIAN_AREA.get(name, "main"), prefix, name, name, ver, ext)
+            data = None
+            if self.args.download:
+                try:
+                    data = http_get(url)
+                except Exception:
+                    continue
+                if not is_archive(data):
+                    continue
+            step = {"uses": "fetch", "with": {
+                "uri": url.replace(ver, "${{package.version}}") if ver == self.version_for_url else url,
+                "expected-sha256": hashlib.sha256(data).hexdigest() if data else "0" * 64}}
+            self.notes.append("Debian-native package: source from the Debian archive")
+            return step
+        return None
 
     def debian_orig_url(self, source, version):
         """Debian's copy of the upstream tarball, when upstream cannot be reached."""
@@ -1890,6 +2020,10 @@ class Converter:
                 target = '"{}/{}/{}"'.format(destdir, dst, rename) if rename else '"{}/{}/"'.format(destdir, dst)
                 if from_tree:
                     cmds.append('mkdir -p "{0}/{1}"\ncp -a {2} {3}'.format(destdir, dst, src, target))
+                elif dst.startswith("usr/share/man/") and "*" not in src:
+                    # Wolfi's perl/make, for one, does not install module man pages
+                    cmds.append('if [ -e {2} ]; then\n  mkdir -p "{0}/{1}"\n  mv {2} {3}\nfi'.format(
+                        destdir, dst, shell_path("${{targets.destdir}}", src), target))
                 else:
                     cmds.append('mkdir -p "{0}/{1}"\nmv {2} {3}'.format(
                         destdir, dst, shell_path("${{targets.destdir}}", src), target))
@@ -1920,13 +2054,16 @@ class Converter:
             cmds.append('install -Dm644 {0}/{1}.service "{2}/usr/lib/systemd/system/{1}.service"'.format(
                 self.recipe_dir, pkgname, destdir))
         docdir = "{}/usr/share/doc/{}".format(destdir, self.rename.get(binary["package"], binary["package"]))
+        for line in (self.pkgfile(binary["package"], "examples", main) or "").splitlines():
+            ex = line.split("#", 1)[0].strip()
+            if ex:
+                # dh_installexamples
+                cmds.append('mkdir -p "{0}/examples"\ncp -a {1} "{0}/examples/"'.format(docdir, ex))
         for line in (self.pkgfile(binary["package"], "docs", main) or "").splitlines():
             doc = line.split("#", 1)[0].strip()
-            if doc and native:
-                cmds.append('install -Dm644 {} -t "{}"'.format(doc, docdir))
-            elif doc:
+            if doc:
                 # dh_installdocs takes them from the source tree; may be directories
-                cmds.append('mkdir -p "{0}"\ncp -a {1} "{0}/"'.format(docdir, doc))
+                cmds.append('mkdir -p "{0}"\ncp -a {1} "{0}/"'.format(docdir, self.debian_file(doc)))
         # Drop repeated "mkdir -p" of the same directory.
         out, made = [], set()
         for cmd in cmds:
@@ -1989,6 +2126,9 @@ class Converter:
         if deps:
             sub["dependencies"] = {"runtime": deps}
         scripts, _ = self.scriptlets(b, False, name, [], "", {}, {})
+        if self.script_deps:
+            sub.setdefault("dependencies", {}).setdefault("runtime", [])
+            sub["dependencies"]["runtime"] += [C(d, "used by the maintainer scripts") for d in self.script_deps]
         if scripts:
             sub["scriptlets"] = scripts
         test = self.test_section(b, None, None, main=False)
@@ -2029,7 +2169,14 @@ class Converter:
                 github["strip-prefix"] = prefix
             github["use-tag"] = True
             return {"enabled": True, "github": github}
-        project = release_monitoring_id(source.get("source", ""), self.version) if self.args.download else None
+        project = None
+        if self.args.download:
+            # the Debian name, then the upstream name in the Homepage (metacpan, PyPI, GitHub ...)
+            names = [source.get("source", "")]
+            hm = re.search(r"/([\w.-]+?)/?$", source.get("homepage", ""))
+            if hm and hm.group(1) not in names:
+                names.append(hm.group(1))
+            project = next((p for p in (release_monitoring_id(n, self.version) for n in names) if p), None)
         if project:
             return {"enabled": True, "release-monitor": {"identifier": project}}
         return {"enabled": True,
@@ -2118,6 +2265,13 @@ class Converter:
                 "pipeline": [{"runs": "\n".join(cmds) + "\n"}]}
         if binary.get("architecture", "any") != "all":
             test["pipeline"].append({"uses": "test/tw/ldd-check"})
+        cpan = re.match(r"https?://metacpan\.org/(?:release|dist)/([\w-]+)", getattr(self, "homepage", ""))
+        if main and cpan and getattr(self, "bs", None) == "perl_makemaker":
+            test["environment"]["contents"]["packages"].append("perl")
+            # the Debian Perl team names it for autopkgtest-pkg-perl; else metacpan's main module
+            module = (self.read("tests/pkg-perl/use-name") or "").split("\n")[0].strip() \
+                or getattr(self, "cpan_module", None) or cpan.group(1).replace("-", "::")
+            test["pipeline"].append({"name": "Load the module", "runs": "perl -M{} -e1\n".format(module)})
         if main and getattr(self, "python_module", None):
             test["environment"]["contents"]["packages"].append("python3")
             test["pipeline"].append({"uses": "python/import", "with": {"imports": "import " + self.python_module}})

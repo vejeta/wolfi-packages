@@ -36,6 +36,8 @@ environment:
       - licensecheck
       - perl
       - xz  # Debian: xz-utils
+      - coreutils
+      - findutils
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -47,9 +49,9 @@ pipeline:
     runs: |
       mkdir -p "${{targets.destdir}}/usr/bin"
       cp -a dh_scala "${{targets.destdir}}/usr/bin/"
-      mkdir -p "${{targets.destdir}}/usr/share/perl5/Debian"
-      cp -a lib/Debian/DhScala.pm "${{targets.destdir}}/usr/share/perl5/Debian/"
-      cp -a lib/Debian/Debhelper "${{targets.destdir}}/usr/share/perl5/Debian/"
+      mkdir -p "${{targets.destdir}}/usr/share/perl5/vendor_perl/Debian"
+      cp -a lib/Debian/DhScala.pm "${{targets.destdir}}/usr/share/perl5/vendor_perl/Debian/"
+      cp -a lib/Debian/Debhelper "${{targets.destdir}}/usr/share/perl5/vendor_perl/Debian/"
       mkdir -p "${{targets.destdir}}/usr/share/dh-scala"
       cp -a smoke/smoke-test "${{targets.destdir}}/usr/share/dh-scala/"
       cp -a smoke/Smoke.java "${{targets.destdir}}/usr/share/dh-scala/"
@@ -57,8 +59,11 @@ pipeline:
       install -Dm644 man/scala-build.5 -t "${{targets.destdir}}/usr/share/man/man5"
       install -Dm644 man/Debian::Debhelper::Buildsystem::scala.3pm -t "${{targets.destdir}}/usr/share/man/man3"
       install -Dm644 man/dh-scala.7 -t "${{targets.destdir}}/usr/share/man/man7"
-      install -Dm644 README.md -t "${{targets.destdir}}/usr/share/doc/dh-scala"
-      install -Dm644 doc/guide.md -t "${{targets.destdir}}/usr/share/doc/dh-scala"
+      mkdir -p "${{targets.destdir}}/usr/share/doc/dh-scala/examples"
+      cp -a examples/* "${{targets.destdir}}/usr/share/doc/dh-scala/examples/"
+      mkdir -p "${{targets.destdir}}/usr/share/doc/dh-scala"
+      cp -a README.md "${{targets.destdir}}/usr/share/doc/dh-scala/"
+      cp -a doc/guide.md "${{targets.destdir}}/usr/share/doc/dh-scala/"
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/dh-scala/copyright
 subpackages:
   - name: dh-make-scala
@@ -67,9 +72,9 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/bin"
           mv "${{targets.destdir}}/dh-make-scala" "${{targets.contextdir}}/usr/bin/"
-          mkdir -p "${{targets.contextdir}}/usr/share/perl5/Debian/DhScala"
-          mv "${{targets.destdir}}/lib/Debian/DhScala/Make.pm" "${{targets.contextdir}}/usr/share/perl5/Debian/DhScala/"
-          mv "${{targets.destdir}}/lib/Debian/DhScala/Make" "${{targets.contextdir}}/usr/share/perl5/Debian/DhScala/"
+          mkdir -p "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala"
+          mv "${{targets.destdir}}/lib/Debian/DhScala/Make.pm" "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
+          mv "${{targets.destdir}}/lib/Debian/DhScala/Make" "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
           install -Dm644 man/dh-make-scala.1 -t "${{targets.contextdir}}/usr/share/man/man1"
     dependencies:
       runtime:

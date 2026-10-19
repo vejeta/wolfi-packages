@@ -22,17 +22,17 @@ environment:
       - openjdk-25-default-jdk  # Debian: default-jdk-headless
       - scala-2.12  # Debian: scala
 pipeline:
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      for f in copyright scala-build; do mv libscala-xml-java/$f .recipe-files/; done
+      rmdir libscala-xml-java 2>/dev/null || true
   # TODO(debian-to-melange): set expected-commit for tag v2.3.0 (re-run with --download, or git ls-remote)
   - uses: git-checkout
     with:
       repository: https://github.com/scala/scala-xml
       tag: v${{package.version}}
       expected-commit: '0000000000000000000000000000000000000000'
-  - name: Move the recipe files out of the build tree
-    runs: |
-      mkdir -p .recipe-files
-      for f in copyright scala-build; do mv libscala-xml-java/$f .recipe-files/; done
-      rmdir libscala-xml-java 2>/dev/null || true
   - uses: scala/build
     with:
       config: .recipe-files/scala-build

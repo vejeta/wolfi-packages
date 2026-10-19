@@ -5,8 +5,6 @@
 # Conversion notes:
 # - runtime dependency 'libjline3-java' is a Java library: Wolfi has no packaged jars, the build must fetch it from Maven Central
 # - runtime dependency 'libjs-jquery': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
-# - postinst: uses Debian-only tool 'update-alternatives'
-# - prerm: uses Debian-only tool 'update-alternatives'
 # - maintainer scripts converted; note that apko does not run install scripts
 # - build dependency 'libjline3-java' is a Java library: Wolfi has no packaged jars, the build must fetch it from Maven Central
 # - build-depends on its own binary package(s) scala-2.13 (self-hosting): Wolfi needs a bootstrap first, e.g. a scala-2.13-stage0 recipe from upstream binaries; Debian's build profiles show which dependencies that stage uses
@@ -62,6 +60,7 @@ package:
         - doc/licenses/bsd_jline.txt
   dependencies:
     runtime:
+      - dpkg  # used by the maintainer scripts
       - scala-library-2.13
       - openjdk-25-default-jvm  # Debian: default-jre-headless
       - libjline3-java  # TODO(debian-to-melange): Java library, fetch from Maven Central (Debian: libjline3-java)
@@ -81,7 +80,6 @@ package:
 
       case "$1" in
           configure)
-      # TODO(debian-to-melange): 'update-alternatives' does not exist on Wolfi
               update-alternatives \
                   --install /usr/bin/scala    scala    $bindir/scala $priority \
                   --slave   /usr/bin/scalac   scalac   $bindir/scalac \
@@ -114,7 +112,6 @@ package:
 
       case "$1" in
           configure)
-      # TODO(debian-to-melange): 'update-alternatives' does not exist on Wolfi
               update-alternatives \
                   --install /usr/bin/scala    scala    $bindir/scala $priority \
                   --slave   /usr/bin/scalac   scalac   $bindir/scalac \
@@ -142,7 +139,6 @@ package:
       set -e
 
       if [ "$1" = "remove" ] || [ "$1" = "deconfigure" ]; then
-      # TODO(debian-to-melange): 'update-alternatives' does not exist on Wolfi
           update-alternatives --remove scala /usr/share/scala-2.13/bin/scala
       fi
 
@@ -162,20 +158,22 @@ environment:
       - libjline3-java  # TODO(debian-to-melange): Java library, fetch from Maven Central (Debian: libjline3-java)
       - scala-2.13
       - scala-asm
+      - coreutils
+      - findutils
   environment:
     JAVA_HOME: /usr/lib/jvm/default-jvm
 pipeline:
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      for f in 0001-scaladoc-jquery-from-libjs-jquery.patch 0002-print-trees-diff-without-java-diff-utils.patch copyright; do mv scala-2.13/$f .recipe-files/; done
+      rmdir scala-2.13 2>/dev/null || true
   # TODO(debian-to-melange): set expected-commit for tag v2.13.18 (re-run with --download, or git ls-remote)
   - uses: git-checkout
     with:
       repository: https://github.com/scala/scala
       tag: v${{package.version}}
       expected-commit: '0000000000000000000000000000000000000000'
-  - name: Move the recipe files out of the build tree
-    runs: |
-      mkdir -p .recipe-files
-      for f in 0001-scaladoc-jquery-from-libjs-jquery.patch 0002-print-trees-diff-without-java-diff-utils.patch copyright; do mv scala-2.13/$f .recipe-files/; done
-      rmdir scala-2.13 2>/dev/null || true
   - name: Remove files excluded by Debian (debian/copyright Files-Excluded)
     runs: |
       rm -rf test/files/jvm/libnatives-32.so test/files/jvm/libnatives-64.so test/files/jvm/natives-32.dll test/files/jvm/natives-64.dll test/files/jvm/libnatives-x86.jnilib test/files/jvm/libnatives-arm.jnilib test/sbt-test/source-dependencies/canon/actual/a.jar test/sbt-test/source-dependencies/canon/lib/a.jar spec/public/scripts/highlight.pack.js spec/public/fonts/LuxiMono-*.woff spec/public/fonts/LuxiSans-*.woff admin/files/scala-key.asc.enc spec/id_dsa_travis.enc spec/public/images/classhierarchy.pdf
