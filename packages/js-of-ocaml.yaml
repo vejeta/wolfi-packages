@@ -80,10 +80,10 @@ pipeline:
       patches: .recipe-files/0001-Disable-build-of-toplevel.-bc-.js.patch .recipe-files/0002-Fix-FTBFS-with-dune-3.24.1.patch
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
-      dune build -p js_of_ocaml,js_of_ocaml-compiler,js_of_ocaml-lwt,js_of_ocaml-ppx,js_of_ocaml-ppx_deriving_json,js_of_ocaml-toplevel,js_of_ocaml-tyxml,wasm_of_ocaml-compiler -j $(nproc) @install
+      dune build -p js_of_ocaml-compiler,js_of_ocaml,js_of_ocaml-ppx,js_of_ocaml-ppx_deriving_json,js_of_ocaml-lwt,js_of_ocaml-toplevel,js_of_ocaml-tyxml,wasm_of_ocaml-compiler -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" js_of_ocaml js_of_ocaml-compiler js_of_ocaml-lwt js_of_ocaml-ppx js_of_ocaml-ppx_deriving_json js_of_ocaml-toplevel js_of_ocaml-tyxml wasm_of_ocaml-compiler
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" js_of_ocaml-compiler js_of_ocaml js_of_ocaml-ppx js_of_ocaml-ppx_deriving_json js_of_ocaml-lwt js_of_ocaml-toplevel js_of_ocaml-tyxml wasm_of_ocaml-compiler
   - name: From debian/rules execute_before_dh_auto_build
     runs: |
       rm -f compiler/tests-jsoo/dune         # makes the build fail on amd64
@@ -113,6 +113,9 @@ subpackages:
     description: OCaml bytecode to JavaScript compiler (development files)
     pipeline:
       - uses: split/dev
+    dependencies:
+      runtime:
+        - libjs-of-ocaml  # Debian: ${ocaml:Depends}
   - name: libjs-of-ocaml
     description: OCaml bytecode to JavaScript compiler (runtime)
     pipeline:

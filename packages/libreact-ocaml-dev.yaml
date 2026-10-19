@@ -18,6 +18,7 @@ package:
     - license: ISC
   dependencies:
     runtime:
+      - libreact-ocaml  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -35,6 +36,7 @@ environment:
       - opam  # Debian: opam-installer
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
+      - build-base  # Debian: ocaml
       - coreutils
       - findutils
 pipeline:

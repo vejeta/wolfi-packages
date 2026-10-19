@@ -27,6 +27,7 @@ package:
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib-compat  # Debian: ocaml
+      - build-base  # Debian: ocaml
 environment:
   contents:
     keyring:
@@ -68,10 +69,10 @@ pipeline:
       patches: .recipe-files/0001-Remove-unused-compiler-libs.optcomp-from-loader-depe.patch .recipe-files/0002-Remove-dependency-on-compiler-libs.optcomp.patch
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
-      dune build -p odoc,odoc-bench,odoc-driver,odoc-md,odoc-parser,sherlodoc -j $(nproc) @install
+      dune build -p odoc,odoc,odoc-parser,odoc-parser -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" odoc odoc-bench odoc-driver odoc-md odoc-parser sherlodoc
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" odoc odoc odoc-parser odoc-parser
   - name: Install files
     runs: |
       install -Dm644 .recipe-files/odoc.1 -t "${{targets.destdir}}/usr/share/man/man1"
@@ -93,6 +94,9 @@ subpackages:
     description: Documentation generator for OCaml (development libraries)
     pipeline:
       - uses: split/dev
+    dependencies:
+      runtime:
+        - libodoc-ocaml  # Debian: ${ocaml:Depends}
   - name: libodoc-ocaml
     description: Documentation generator for OCaml (runtime libraries)
     pipeline:
@@ -106,6 +110,9 @@ subpackages:
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libodoc-parser-ocaml-dev"
           mv "${{targets.destdir}}"/usr/doc/odoc-parser/* "${{targets.contextdir}}/usr/share/doc/libodoc-parser-ocaml-dev/"
           rmdir "${{targets.destdir}}/usr/doc/odoc-parser" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
+    dependencies:
+      runtime:
+        - libodoc-parser-ocaml  # Debian: ${ocaml:Depends}
   - name: libodoc-parser-ocaml
     description: Parser for OCaml documentation comments (runtime files)
     pipeline:

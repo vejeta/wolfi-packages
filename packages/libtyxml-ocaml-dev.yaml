@@ -18,6 +18,7 @@ package:
     - license: LGPL-2.1+-exc
   dependencies:
     runtime:
+      - libtyxml-ocaml  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -44,10 +45,10 @@ pipeline:
       expected-commit: d2916535536f2134bad7793a598ba5b7327cae41
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
-      dune build -p tyxml,tyxml-jsx,tyxml-ppx,tyxml-syntax -j $(nproc) @install
+      dune build -p tyxml -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" tyxml tyxml-jsx tyxml-ppx tyxml-syntax
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" tyxml
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libtyxml-ocaml-dev"

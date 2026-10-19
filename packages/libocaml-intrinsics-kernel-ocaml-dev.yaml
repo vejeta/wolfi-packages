@@ -17,6 +17,9 @@ package:
   description: Library of intrinsics for OCaml (dev)
   copyright:
     - license: MIT
+  dependencies:
+    runtime:
+      - libocaml-intrinsics-kernel-ocaml  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:

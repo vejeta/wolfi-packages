@@ -16,6 +16,9 @@ package:
   description: Efficient integer types on 64-bit architectures (dev)
   copyright:
     - license: MIT
+  dependencies:
+    runtime:
+      - liboptint-ocaml  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:

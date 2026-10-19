@@ -81,6 +81,9 @@ subpackages:
           mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.a "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
           mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
           mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+    dependencies:
+      runtime:
+        - libjst-config-ocaml  # Debian: ${ocaml:Depends}
 update:
   enabled: true
   github:

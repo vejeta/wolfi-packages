@@ -100,6 +100,7 @@ subpackages:
         - libppx-enumerate-ocaml-dev  # Wolfi Community Packages
         - libppx-globalize-ocaml-dev  # Wolfi Community Packages
         - libppx-hash-ocaml-dev  # Wolfi Community Packages
+        - libppx-base-ocaml  # Debian: ${ocaml:Depends}
     test:
       environment:
         contents:

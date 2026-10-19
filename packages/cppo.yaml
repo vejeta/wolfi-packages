@@ -48,10 +48,10 @@ pipeline:
       patches: .recipe-files/0001-Use-literal-file-names-in-tests.patch
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
-      dune build --release -j $(nproc) @install
+      dune build -p cppo,cppo_ocamlbuild -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)"
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" cppo cppo_ocamlbuild
   - name: Install files
     runs: |
       install -Dm644 .recipe-files/cppo.1 -t "${{targets.destdir}}/usr/share/man/man1"

@@ -20,6 +20,7 @@ package:
     runtime:
       - libx11-dev
       - libxft-dev
+      - libgraphics-ocaml  # Debian: ${ocaml:Depends}
       - ttf-dejavu  # Debian: fontconfig-config depends on fonts-dejavu-core
 environment:
   contents:

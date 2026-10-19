@@ -19,6 +19,7 @@ package:
     - license: LGPL-2.0-or-later WITH OCaml-linking exception
   dependencies:
     runtime:
+      - libextlib-ocaml  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -85,6 +86,7 @@ test:
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
+        - build-base  # Debian: ocaml
         - ocaml-findlib  # Debian: ocaml-findlib
         - ocamlfind  # Debian: ocaml-findlib
         - bash  # Essential in Debian, so on every testbed

@@ -18,6 +18,7 @@ package:
     - license: MIT
   dependencies:
     runtime:
+      - libppxlib-jane-ocaml  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:

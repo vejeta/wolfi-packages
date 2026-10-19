@@ -63,6 +63,9 @@ subpackages:
     description: Convert a filesystem into a static OCaml module (dev files)
     pipeline:
       - uses: split/dev
+    dependencies:
+      runtime:
+        - libcrunch-ocaml  # Debian: ${ocaml:Depends}
   - name: libcrunch-ocaml
     description: Convert a filesystem into a static OCaml module (runtime files)
     pipeline:

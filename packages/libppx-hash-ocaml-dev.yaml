@@ -21,6 +21,7 @@ package:
         - 'runtime-lib/siphash/siphash.c*'
   dependencies:
     runtime:
+      - libppx-hash-ocaml  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:

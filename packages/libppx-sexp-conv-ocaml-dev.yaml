@@ -18,6 +18,7 @@ package:
     - license: Apache-2.0
   dependencies:
     runtime:
+      - libppx-sexp-conv-ocaml  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:

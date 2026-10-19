@@ -122,6 +122,9 @@ subpackages:
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libppx-expect-ocaml-dev"
           mv "${{targets.destdir}}"/usr/doc/ppx_expect/* "${{targets.contextdir}}/usr/share/doc/libppx-expect-ocaml-dev/"
           rmdir "${{targets.destdir}}/usr/doc/ppx_expect" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
+    dependencies:
+      runtime:
+        - libppx-expect-ocaml  # Debian: ${ocaml:Depends}
 update:
   enabled: true
   github:

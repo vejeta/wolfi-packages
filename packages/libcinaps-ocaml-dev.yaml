@@ -21,6 +21,7 @@ package:
       - ocaml-findlib  # Debian: ocaml-findlib
       - ocamlfind  # Debian: ocaml-findlib
       - ocaml-findlib-compat  # Debian: ocaml-findlib
+      - libcinaps-ocaml  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:

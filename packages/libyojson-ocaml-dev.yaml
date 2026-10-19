@@ -18,6 +18,7 @@ package:
     - license: BSD-3-Clause
   dependencies:
     runtime:
+      - libyojson-ocaml  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -49,10 +50,10 @@ pipeline:
       expected-commit: b2193e8e0c88c6501710d08b836b3219673383f3
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
-      dune build -p yojson,yojson-bench,yojson-five -j $(nproc) @install
+      dune build -p yojson -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" yojson yojson-bench yojson-five
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" yojson
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libyojson-ocaml-dev"

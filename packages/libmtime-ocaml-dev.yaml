@@ -17,6 +17,9 @@ package:
   description: Monotonic wall-clock time for OCaml (development)
   copyright:
     - license: ISC
+  dependencies:
+    runtime:
+      - libmtime-ocaml  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:
@@ -28,6 +31,7 @@ environment:
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib-compat  # Debian: ocaml
+      - build-base  # Debian: ocaml
       - ocaml-findlib  # Debian: ocaml-findlib
       - ocamlfind  # Debian: ocaml-findlib
       - ocamlbuild

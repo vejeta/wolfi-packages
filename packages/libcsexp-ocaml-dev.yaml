@@ -16,6 +16,9 @@ package:
   description: Parsing and printing of S-expressions in Canonical form (dev)
   copyright:
     - license: MIT
+  dependencies:
+    runtime:
+      - libcsexp-ocaml  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:

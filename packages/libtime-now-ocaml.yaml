@@ -98,6 +98,7 @@ subpackages:
         - libppx-enumerate-ocaml-dev  # Wolfi Community Packages
         - libppx-sexp-conv-ocaml-dev  # Wolfi Community Packages
         - libjane-street-headers-ocaml-dev  # Wolfi Community Packages
+        - libtime-now-ocaml  # Debian: ${ocaml:Depends}
 update:
   enabled: true
   github:

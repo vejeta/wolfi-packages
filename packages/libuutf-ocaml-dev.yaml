@@ -16,6 +16,9 @@ package:
   description: Non-blocking streaming Unicode codec for OCaml (development files)
   copyright:
     - license: ISC
+  dependencies:
+    runtime:
+      - libuutf-ocaml  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:
@@ -27,6 +30,7 @@ environment:
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib-compat  # Debian: ocaml
+      - build-base  # Debian: ocaml
       - ocaml-findlib  # Debian: ocaml-findlib
       - ocamlfind  # Debian: ocaml-findlib
       - ocamlbuild

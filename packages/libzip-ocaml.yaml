@@ -95,6 +95,7 @@ subpackages:
     dependencies:
       runtime:
         - zlib-dev  # Debian: zlib1g-dev
+        - libzip-ocaml  # Debian: ${ocaml:Depends}
 update:
   enabled: true
   github:
@@ -109,6 +110,7 @@ test:
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
+        - build-base  # Debian: ocaml
         - libzip-ocaml-dev
         - bash  # Essential in Debian, so on every testbed
         - coreutils  # Essential in Debian, so on every testbed

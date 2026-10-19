@@ -78,6 +78,9 @@ subpackages:
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libsedlex-ocaml-dev/examples"
           cp -a examples/dune* "${{targets.contextdir}}/usr/share/doc/libsedlex-ocaml-dev/examples/"
           cp -a examples/*.ml "${{targets.contextdir}}/usr/share/doc/libsedlex-ocaml-dev/examples/"
+    dependencies:
+      runtime:
+        - libsedlex-ocaml  # Debian: ${ocaml:Depends}
 update:
   enabled: true
   github:
@@ -92,6 +95,7 @@ test:
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
+        - build-base  # Debian: ocaml
         - ocaml-findlib  # Debian: ocaml-findlib
         - ocamlfind  # Debian: ocaml-findlib
         - ocaml-dune

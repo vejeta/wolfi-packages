@@ -60,10 +60,10 @@ pipeline:
       patches: .recipe-files/0001-Do-not-call-Unix.create_process-with-empty-args.patch
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
-      dune build -p alcotest,alcotest-async,alcotest-js,alcotest-lwt,alcotest-mirage -j $(nproc) @install
+      dune build -p alcotest,alcotest-lwt -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" alcotest alcotest-async alcotest-js alcotest-lwt alcotest-mirage
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" alcotest alcotest-lwt
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libalcotest-ocaml-dev/examples"

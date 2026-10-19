@@ -24,6 +24,7 @@ package:
   dependencies:
     runtime:
       - libev-dev
+      - liblwt-ocaml  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -64,10 +65,10 @@ pipeline:
       patches: .recipe-files/Comment-out-unix_mcast-tests.patch .recipe-files/Disable-page_size-test.patch
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
-      dune build -p lwt,lwt_direct,lwt_ppx,lwt_ppx__ppx_let_tests,lwt_react,lwt_retry,lwt_runtime_events -j $(nproc) @install
+      dune build -p lwt_direct,lwt,lwt_ppx,lwt_react,lwt_retry,lwt_runtime_events -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" lwt lwt_direct lwt_ppx lwt_ppx__ppx_let_tests lwt_react lwt_retry lwt_runtime_events
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" lwt_direct lwt lwt_ppx lwt_react lwt_retry lwt_runtime_events
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/liblwt-ocaml-dev"

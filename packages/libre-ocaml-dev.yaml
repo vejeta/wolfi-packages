@@ -74,6 +74,7 @@ test:
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
+        - build-base  # Debian: ocaml
         - ocaml-dune
         - libounit-ocaml-dev  # Wolfi Community Packages
         - libppx-inline-test-ocaml-dev  # Wolfi Community Packages

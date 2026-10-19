@@ -64,10 +64,10 @@ pipeline:
       patches: .recipe-files/menhirLib
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
-      dune build --release -j $(nproc) @install
+      dune build -p menhirLib,menhirSdk,menhir,menhirCST,menhirGLR -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)"
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" menhirLib menhirSdk menhir menhirCST menhirGLR
   - name: From debian/rules execute_before_dh_auto_build
     runs: |
       make -C doc
@@ -114,6 +114,7 @@ test:
         - ocaml-findlib-compat  # Debian: ocaml-findlib
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
+        - build-base  # Debian: ocaml
         - ocamlbuild
         - bash  # Essential in Debian, so on every testbed
         - coreutils  # Essential in Debian, so on every testbed

@@ -18,6 +18,7 @@ package:
     - license: LGPL-2.2+-with-linking-exception
   dependencies:
     runtime:
+      - libocplib-endian-ocaml  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:

@@ -53,10 +53,10 @@ pipeline:
       recurse-submodules: true
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
-      dune build -p ppx_deriving_qcheck,qcheck,qcheck-alcotest,qcheck-core,qcheck-ounit -j $(nproc) @install
+      dune build -p qcheck,qcheck-core,qcheck-ounit,qcheck-alcotest -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ppx_deriving_qcheck qcheck qcheck-alcotest qcheck-core qcheck-ounit
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" qcheck qcheck-core qcheck-ounit qcheck-alcotest
   # TODO(debian-to-melange): port debian/rules execute_after_dh_auto_build: dune build -p "$(shell xargs echo < debian/debian-dune | tr ' ' ',')" @doc
   - name: Install files
     runs: |
@@ -94,6 +94,9 @@ subpackages:
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libqcheck-ocaml-dev"
           mv "${{targets.destdir}}"/usr/doc/qcheck/* "${{targets.contextdir}}/usr/share/doc/libqcheck-ocaml-dev/"
           rmdir "${{targets.destdir}}/usr/doc/qcheck" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
+    dependencies:
+      runtime:
+        - libqcheck-ocaml  # Debian: ${ocaml:Depends}
   - name: libqcheck-core-ocaml
     description: QuickCheck inspired property-based testing for OCaml (Runtime library)
     pipeline:
@@ -187,6 +190,9 @@ subpackages:
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libqcheck-core-ocaml-dev/examples"
           cp -a example/dune "${{targets.contextdir}}/usr/share/doc/libqcheck-core-ocaml-dev/examples/"
           cp -a example/*.ml "${{targets.contextdir}}/usr/share/doc/libqcheck-core-ocaml-dev/examples/"
+    dependencies:
+      runtime:
+        - libqcheck-core-ocaml  # Debian: ${ocaml:Depends}
   - name: libqcheck-ounit-ocaml
     description: QCheck integration with OUnit (Runtime library)
     pipeline:
@@ -214,6 +220,9 @@ subpackages:
           mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libqcheck-ounit-ocaml-dev/examples"
           cp -a example/ounit "${{targets.contextdir}}/usr/share/doc/libqcheck-ounit-ocaml-dev/examples/"
+    dependencies:
+      runtime:
+        - libqcheck-ounit-ocaml  # Debian: ${ocaml:Depends}
   - name: libqcheck-ocaml-doc
     description: Documentation for ocaml-qcheck
     pipeline:
@@ -234,6 +243,7 @@ test:
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
+        - build-base  # Debian: ocaml
         - ocaml-findlib  # Debian: ocaml-findlib
         - ocamlfind  # Debian: ocaml-findlib
         - ocaml-dune

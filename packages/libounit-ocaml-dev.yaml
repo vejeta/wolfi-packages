@@ -42,10 +42,10 @@ pipeline:
       expected-commit: 3c0464871690562b93bd2501811d5a4b9821a5aa
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
-      dune build -p ounit,ounit-lwt,ounit2,ounit2-lwt -j $(nproc) @install
+      dune build -p ounit2 -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ounit ounit-lwt ounit2 ounit2-lwt
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ounit2
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libounit-ocaml-dev/examples"

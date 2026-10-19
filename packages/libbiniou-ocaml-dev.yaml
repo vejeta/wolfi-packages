@@ -18,6 +18,7 @@ package:
     - license: BSD-3-Clause
   dependencies:
     runtime:
+      - libbiniou-ocaml  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:

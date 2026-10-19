@@ -79,10 +79,10 @@ pipeline:
       patches: .recipe-files/0002-avoid-referencing-non-existent-icon-ed_icon.xpm.patch
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
-      dune build -p ocamlgraph,ocamlgraph_gtk -j $(nproc) @install
+      dune build -p ocamlgraph -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ocamlgraph ocamlgraph_gtk
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ocamlgraph
   - name: From debian/rules execute_after_dh_auto_build
     runs: |
       dune build -pocamlgraph @doc

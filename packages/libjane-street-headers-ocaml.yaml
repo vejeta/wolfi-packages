@@ -76,6 +76,9 @@ subpackages:
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libjane-street-headers-ocaml-dev"
           mv "${{targets.destdir}}"/usr/doc/jane-street-headers/* "${{targets.contextdir}}/usr/share/doc/libjane-street-headers-ocaml-dev/"
           rmdir "${{targets.destdir}}/usr/doc/jane-street-headers" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
+    dependencies:
+      runtime:
+        - libjane-street-headers-ocaml  # Debian: ${ocaml:Depends}
 update:
   enabled: true
   github:

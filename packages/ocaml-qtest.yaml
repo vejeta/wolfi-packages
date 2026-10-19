@@ -90,6 +90,9 @@ subpackages:
           mv "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.a "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
           mv "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
           mv "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
+    dependencies:
+      runtime:
+        - libqtest-ocaml  # Debian: ${ocaml:Depends}
   - name: libqtest-ocaml-doc
     description: Documentation for ocaml-qtest
     pipeline:
@@ -108,6 +111,7 @@ test:
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
+        - build-base  # Debian: ocaml
         - ocamlbuild
         - ocaml-findlib  # Debian: ocaml-findlib
         - ocamlfind  # Debian: ocaml-findlib
