@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+
+export PYBUILD_DESTDIR_python3=debian/python3-pyte/
+export PYBUILD_DISABLE_python3=test
+
+%:
+	dh $@ --with sphinxdoc --buildsystem=pybuild
+
+override_dh_auto_build:
+	dh_auto_build
+	python3 -m sphinx -b html -d docs/build/doctrees docs docs/build/html
+
+override_dh_auto_clean:
+	rm -rf docs/build/*
+	dh_auto_clean
+
+.PHONY: override_dh_auto_build override_dh_auto_clean

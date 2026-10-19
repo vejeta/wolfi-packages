@@ -1,0 +1,74 @@
+From 2e32f8bce91628377c430a6d9bc5f1005326c46f Mon Sep 17 00:00:00 2001
+From: Adrian Bunk <bunk@stusta.de>
+Date: Sat, 20 Jun 2020 11:41:27 +0300
+Subject: Revert "Link to GitHub in the docs"
+
+This reverts commit 51327215ccbe542eafaa621285c24f658d696a41.
+
+It accessed the internet during the build.
+---
+ docs/conf.py | 41 +----------------------------------------
+ 1 file changed, 1 insertion(+), 40 deletions(-)
+
+diff --git a/docs/conf.py b/docs/conf.py
+index 4e6a44d..4b9eeed 100644
+--- a/docs/conf.py
++++ b/docs/conf.py
+@@ -29,7 +29,7 @@ extensions = ['sphinx.ext.autodoc',
+               'sphinx.ext.todo',
+               'sphinx.ext.intersphinx',
+               'sphinx.ext.doctest',
+-              'sphinx.ext.linkcode']
++              'sphinx.ext.viewcode']
+ 
+ # Add any paths that contain templates here, relative to this directory.
+ templates_path = ['_templates']
+@@ -90,45 +90,6 @@ pygments_style = 'sphinx'
+ # A list of ignored prefixes for module index sorting.
+ #modindex_common_prefix = []
+ 
+-linkcode_base_url = "https://github.com/selectel/pyte/tree/"
+-
+-def resolve_tag():
+-    from urllib.request import urlopen
+-    from urllib.error import HTTPError
+-    try:
+-        urlopen(linkcode_base_url + release)
+-    except HTTPError:
+-        return "master"
+-    else:
+-        return release
+-
+-
+-tag = resolve_tag()
+-
+-
+-# Resolve function for the linkcode extension.
+-def linkcode_resolve(domain, info):
+-    def find_source():
+-        # try to find the file and line number, based on code from numpy:
+-        # https://github.com/numpy/numpy/blob/master/doc/source/conf.py#L286
+-        obj = sys.modules[info['module']]
+-        for part in info['fullname'].split('.'):
+-            obj = getattr(obj, part)
+-
+-        import inspect
+-        import os
+-        import pyte
+-        fn = inspect.getsourcefile(obj)
+-        fn = os.path.relpath(fn, os.path.dirname(pyte.__file__))
+-        source, lineno = inspect.getsourcelines(obj)
+-        return fn, lineno, lineno + len(source) - 1
+-
+-    try:
+-        filename = 'pyte/%s#L%d-L%d' % find_source()
+-    except Exception:
+-        return None  # Failed to resolve source or line numbers.
+-
+-    return linkcode_base_url + "%s/%s" % (tag, filename)
+ 
+ # -- Options for HTML output ---------------------------------------------------
+ 
+-- 
+2.20.1
+

@@ -50,9 +50,16 @@ pipeline:
       repository: https://codeberg.org/mendezr/xwpe.git
       tag: v${{package.version}}
       expected-commit: '0000000000000000000000000000000000000000'
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      for f in copyright; do mv xwpe/$f .recipe-files/; done
+      rmdir xwpe 2>/dev/null || true
   - name: Install files
     runs: |
-      install -Dm644 xwpe/copyright "${{targets.destdir}}"/usr/share/doc/xwpe/copyright
+      mkdir -p "${{targets.destdir}}/usr/share/doc/xwpe"
+      cp -a README "${{targets.destdir}}/usr/share/doc/xwpe/"
+      install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/xwpe/copyright
 update:
   enabled: true
   git:

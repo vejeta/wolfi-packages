@@ -14,7 +14,6 @@
 # - port debian/rules override_dh_auto_build: # Stage the pass-1 STARR (build-time only, never shipped). The three && # jars are copied under the names the driver expects. && rm -rf $(SEED) && mkdir -p $(SEED)/lib && set -e; for j in $(STARR0_JAR
 # - port debian/rules override_dh_auto_install: # scala-library, scala-reflect and scala-compiler are installed by && # maven-repo-helper (debian/*.poms) as /usr/share/java/<name>-$(VERSION).jar && # and in /usr/share/maven-repo; no unversioned nam
 # - port debian/rules execute_after_dh_link: # Series links (<name>-2.13.jar), and the commands as <cmd>-2.13. && dh_link -pscala-library-2.13  	  usr/share/java/scala-library-$(VERSION).jar usr/share/java/scala-library-$(SERIES).jar  	  usr/sha
-# - no debian/scala-library-2.13.install; define which files go to this subpackage
 # - autopkgtests converted to the test pipeline (1 steps)
 package:
   name: scala-2.13
@@ -172,30 +171,38 @@ pipeline:
       repository: https://github.com/scala/scala
       tag: v${{package.version}}
       expected-commit: '0000000000000000000000000000000000000000'
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      for f in 0001-scaladoc-jquery-from-libjs-jquery.patch 0002-print-trees-diff-without-java-diff-utils.patch copyright; do mv scala-2.13/$f .recipe-files/; done
+      rmdir scala-2.13 2>/dev/null || true
   - name: Remove files excluded by Debian (debian/copyright Files-Excluded)
     runs: |
       rm -rf test/files/jvm/libnatives-32.so test/files/jvm/libnatives-64.so test/files/jvm/natives-32.dll test/files/jvm/natives-64.dll test/files/jvm/libnatives-x86.jnilib test/files/jvm/libnatives-arm.jnilib test/sbt-test/source-dependencies/canon/actual/a.jar test/sbt-test/source-dependencies/canon/lib/a.jar spec/public/scripts/highlight.pack.js spec/public/fonts/LuxiMono-*.woff spec/public/fonts/LuxiSans-*.woff admin/files/scala-key.asc.enc spec/id_dsa_travis.enc spec/public/images/classhierarchy.pdf
   - uses: patch
     with:
-      patches: scala-2.13/0001-scaladoc-jquery-from-libjs-jquery.patch scala-2.13/0002-print-trees-diff-without-java-diff-utils.patch
+      patches: .recipe-files/0001-scaladoc-jquery-from-libjs-jquery.patch .recipe-files/0002-print-trees-diff-without-java-diff-utils.patch
   # TODO(debian-to-melange): port debian/rules override_dh_auto_build: # Stage the pass-1 STARR (build-time only, never shipped). The three && # jars are copied under the names the driver expects. && rm -rf $(SEED) && mkdir -p $(SEED)/lib && set -e; for j in $(STARR0_JAR
   # TODO(debian-to-melange): port debian/rules override_dh_auto_install: # scala-library, scala-reflect and scala-compiler are installed by && # maven-repo-helper (debian/*.poms) as /usr/share/java/<name>-$(VERSION).jar && # and in /usr/share/maven-repo; no unversioned nam
   # TODO(debian-to-melange): port debian/rules execute_after_dh_link: # Series links (<name>-2.13.jar), and the commands as <cmd>-2.13. && dh_link -pscala-library-2.13  	  usr/share/java/scala-library-$(VERSION).jar usr/share/java/scala-library-$(SERIES).jar  	  usr/sha
   - name: Install files
     runs: |
-      install -Dm644 scala-2.13/copyright "${{targets.destdir}}"/usr/share/doc/scala-2.13/copyright
+      mkdir -p "${{targets.destdir}}/usr/share/doc/scala-2.13"
+      cp -a NOTICE "${{targets.destdir}}/usr/share/doc/scala-2.13/"
+      install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/scala-2.13/copyright
 subpackages:
   - name: scala-library-2.13
     description: Scala 2.13 standard library
     pipeline:
-      # TODO(debian-to-melange): no debian/scala-library-2.13.install; define which files go to this subpackage
       - runs: |
-          true
+          mkdir -p "${{targets.contextdir}}/usr/share/doc/scala-library-2.13"
+          cp -a NOTICE "${{targets.contextdir}}/usr/share/doc/scala-library-2.13/"
 update:
   enabled: true
   github:
     identifier: scala/scala
     strip-prefix: v
+    use-tag: true
 test:
   environment:
     contents:

@@ -156,7 +156,7 @@ class StremioTest(unittest.TestCase):
         self.assertIn("cargo build --release --features offline-build", self.text)
         self.assertIn("install -D -m755 target/release/stremio-linux-shell "
                       "${{targets.destdir}}/usr/libexec/stremio/stremio-bin", self.text)
-        self.assertIn("stremio/stremio-wrapper ${{targets.destdir}}/usr/bin/stremio", self.text)
+        self.assertIn(".recipe-files/stremio-wrapper ${{targets.destdir}}/usr/bin/stremio", self.text)
         self.assertNotIn("dh-cargo-built-using", self.text)
         self.assertTrue(os.path.isfile(os.path.join(self.tmp, "stremio", "stremio-wrapper")))
 
@@ -176,7 +176,11 @@ class StremioTest(unittest.TestCase):
         self.assertIn("TODO(debian-to-melange): set expected-commit", self.text)
 
     def test_patches_live_in_package_directory(self):
-        self.assertIn("patches: stremio/0001-disable-image-exr-feature.patch", self.text)
+        # copied next to the recipe, then moved out of the build tree
+        self.assertTrue(os.path.isfile(os.path.join(self.tmp, "stremio", "0001-disable-image-exr-feature.patch")))
+        self.assertIn("for f in 0001-disable-image-exr-feature.patch", self.text)
+        self.assertIn("patches: .recipe-files/0001-disable-image-exr-feature.patch", self.text)
+        self.assertIn('"${{targets.destdir}}"/usr/share/doc/stremio/copyright', self.text)
 
 
 class JvmPackagesTest(unittest.TestCase):

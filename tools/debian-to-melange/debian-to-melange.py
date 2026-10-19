@@ -157,6 +157,12 @@ NAME_MAP = {
 }
 
 
+def python_name(binary):
+    """Wolfi names Python modules py3-foo, Debian python3-foo."""
+    m = re.match(r"^python3-(.+)$", binary)
+    return "py3-" + m.group(1) if m and not binary.endswith("-dev") else binary
+
+
 def dep_candidates(name):
     """Ordered Wolfi name candidates for a Debian package name."""
     if name in NAME_MAP:
@@ -329,7 +335,9 @@ def to_spdx(expr):
         elif low in ("(", ")", ","):
             out.append(low)
         elif low:
-            out.append(SPDX_MAP.get(low, tok.strip()))
+            # "GPL-2.0+" style: the deprecated SPDX "+" suffix
+            norm = re.sub(r"^((?:a|l)?gpl-\d)\.0(\+?)$", r"\1\2", low)
+            out.append(SPDX_MAP.get(low) or SPDX_MAP.get(norm, tok.strip()))
     return "".join(out)
 
 
@@ -477,6 +485,56 @@ def http_get(url):
         return resp.read()
 
 
+def binary_to_source(binary):
+    """Source package of a Debian binary package (unstable), or None."""
+    try:
+        page = http_get("https://packages.debian.org/sid/{}".format(binary)).decode("utf-8", "replace")
+    except Exception:
+        return None
+    m = re.search(r'href="/source/sid/([a-z0-9][a-z0-9.+-]+)"', page)
+    return m.group(1) if m else None
+
+
+# Upstream files the converter reads (build tool detection, Python metadata).
+UPSTREAM_FILES = ("configure.ac", "pyproject.toml", "setup.cfg", "setup.py")
+
+
+def python_requirements(tree):
+    """Runtime requirements declared by upstream (what dh_python3 puts in ${python3:Depends})."""
+    def read(f):
+        try:
+            with open(os.path.join(tree, f), encoding="utf-8", errors="replace") as fh:
+                return fh.read()
+        except OSError:
+            return None
+    reqs = []
+    text = read("pyproject.toml")
+    if text:
+        try:
+            import tomllib
+            reqs += tomllib.loads(text).get("project", {}).get("dependencies", [])
+        except (ImportError, ValueError):
+            pass
+    text = read("setup.cfg")
+    m = re.search(r"(?ms)^install_requires\s*=\s*\n?(.*?)(?=^\S|\Z)", text or "")
+    if m:
+        reqs += [l.strip() for l in m.group(1).splitlines() if l.strip() and not l.strip().startswith("#")]
+    m = re.search(r"install_requires\s*=\s*\[([^\]]*)\]", read("setup.py") or "")
+    if m:
+        reqs += re.findall(r"[\"']([^\"']+)[\"']", m.group(1))
+    names = []
+    for req in reqs:
+        req, _, marker = req.partition(";")
+        if "extra" in marker:
+            continue
+        n = re.match(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)", req)
+        if n:
+            n = re.sub(r"[._]+", "-", n.group(1)).lower()
+            if n not in names:
+                names.append(n)
+    return names
+
+
 def fetch_from_debian(spec, dest):
     """Download debian/ of a source package from sources.debian.org into dest.
 
@@ -484,6 +542,13 @@ def fetch_from_debian(spec, dest):
     """
     name, _, version = spec.partition("=")
     info = json.loads(http_get("https://sources.debian.org/api/src/{}/".format(name)))
+    if "versions" not in info:
+        # a binary package name: find its source package
+        source = binary_to_source(name)
+        if source and source != name:
+            print("note: {} is built from the source package {}".format(name, source), file=sys.stderr)
+            name = source
+            info = json.loads(http_get("https://sources.debian.org/api/src/{}/".format(name)))
     if "versions" not in info:
         raise SystemExit("error: '{}' not found on sources.debian.org".format(name))
     versions = info["versions"]
@@ -511,6 +576,11 @@ def fetch_from_debian(spec, dest):
     top = json.loads(http_get("https://sources.debian.org/api/src/{}/{}/".format(name, version)))
     top_names = [c["name"] for c in top.get("content", [])]
     walk("debian")
+    for f in UPSTREAM_FILES:
+        if f in top_names:
+            with open(os.path.join(tree, f), "wb") as fh:
+                fh.write(http_get(SOURCES_RAW.format(area=area, prefix=prefix, name=name,
+                                                     version=version, path=f)))
     return tree, top_names, version
 
 
@@ -797,6 +867,10 @@ class Converter:
                 continue
             line = line.lstrip("@-")
             if re.match(r"^dh[_-]", line):
+                auto = self.dh_auto_command(rules.expand(line))
+                if auto:
+                    out.append(auto)
+                    continue
                 if re.match(r"^dh_auto_|^dh_(install|link)\b", line):
                     return None
                 continue  # debhelper bookkeeping (Built-Using, substvars...)
@@ -821,13 +895,43 @@ class Converter:
             out.append(line)
         return out
 
+    def dh_auto_command(self, line):
+        """dh_auto_build/dh_auto_install [-- ARGS] for make-based builds, as shell."""
+        m = re.match(r"^dh_auto_(build|install)(?:\s+(?:-\S+\s*)*)?(?:--\s+(.*))?$", line)
+        if m and getattr(self, "bs", None) == "pybuild":
+            return self.PIPELINE_MARK
+        if not m or getattr(self, "bs", None) not in ("makefile", "autoconf"):
+            return None
+        args = (" " + m.group(2).strip()) if m.group(2) else ""
+        if m.group(1) == "build":
+            return "make -j$(nproc)" + args
+        return 'make install DESTDIR="${{targets.destdir}}"' + (" PREFIX=/usr" if self.bs == "makefile" else "") + args
+
+    # Stands for the build system's melange pipeline inside a ported override.
+    PIPELINE_MARK = "\0pipeline"
+
+    def override_steps(self, lines, label):
+        """Steps for a ported override, with PIPELINE_MARK as the pipeline (once)."""
+        steps, chunk = [], []
+        for line in lines + [None]:
+            if line is not None and line != self.PIPELINE_MARK:
+                chunk.append(line)
+                continue
+            if chunk:
+                steps.append({"name": label, "runs": "\n".join(chunk) + "\n"})
+                chunk = []
+            if line == self.PIPELINE_MARK and not self.pipeline_used:
+                steps += [{"uses": st} for st in BUILD_PIPELINES[self.bs]]
+                self.pipeline_used = True
+        return steps
+
     SKIP_EXPORTS = {"PATH", "CARGO_HOME", "CFLAGS", "CXXFLAGS", "CPPFLAGS", "LDFLAGS",
                     "DH_VERBOSE", "PYBUILD_NAME", "GOCACHE", "GOPATH", "HOME"}
 
     def ported_exports(self, rules):
         env = {}
         for var in rules.exports:
-            if var.startswith(("DEB_", "DH_")) or var in self.SKIP_EXPORTS or var not in rules.vars:
+            if var.startswith(("DEB_", "DH_", "PYBUILD_")) or var in self.SKIP_EXPORTS or var not in rules.vars:
                 continue
             value = rules.expand(rules.vars[var]).replace("$(CURDIR)", "/home/build")
             value = value.replace("/usr/lib/jvm/default-java", "/usr/lib/jvm/default-jvm")  # Wolfi's default JDK
@@ -847,7 +951,12 @@ class Converter:
                 if alt in self.rename:
                     chosen = (self.rename[alt], self.rename[alt], True)
                     break
-                for cand in dep_candidates(alt):
+                cands = dep_candidates(alt)
+                if alt.startswith("python3-") and cands[0].startswith("py3-") and self.wolfi.names is not None:
+                    # Wolfi's py3-foo may be an empty package or follow the newest
+                    # Python; py3-supported-foo works with any python3.
+                    cands.insert(0, "py3-supported-" + cands[0][4:])
+                for cand in cands:
                     found = self.wolfi.has(cand)
                     if found or (found is None and chosen is None):
                         chosen = (cand, alt, found)
@@ -905,8 +1014,15 @@ class Converter:
         rules = Rules(self.read("rules") or "")
 
         main = next((b for b in binaries if b["package"] == src_name), binaries[0])
-        name = a.name or main["package"]
+        name = a.name or python_name(main["package"])
         self.rename = {b["package"]: b["package"] for b in binaries}
+        if name != main["package"] and name == python_name(main["package"]):
+            # python3-foo -> py3-foo, and python-foo-doc -> py3-foo-doc
+            base = main["package"][len("python3-"):]
+            for b in binaries:
+                m = re.match(r"^python3?-{}(-.+)?$".format(re.escape(base)), b["package"])
+                if m:
+                    self.rename[b["package"]] = name + (m.group(1) or "")
         self.rename[main["package"]] = name
         if deb_version and re.search(r"[+~](dfsg|ds|repack)", deb_version) \
                 and not files_excluded(self.read("copyright")):
@@ -970,6 +1086,11 @@ class Converter:
             pkg["copyright"].insert(0, self.todo("debian/copyright is not machine-readable (DEP-5); set the SPDX license"))
 
         runtime = self.map_deps(parse_relations(main.get("depends")) + parse_relations(main.get("pre-depends")), "runtime")
+        if "${python3:Depends}" in (main.get("depends") or ""):
+            reqs = python_requirements(self.tree)
+            if reqs:
+                self.notes.append("${python3:Depends} from upstream's requirements: " + ", ".join(reqs))
+                runtime += self.map_deps([["python3-" + r] for r in reqs], "runtime")
         recommends = [x[0] for x in parse_relations(main.get("recommends"))]
         if runtime or recommends:
             deps = {"runtime": runtime} if runtime else {}
@@ -1013,6 +1134,8 @@ class Converter:
         if not bs:
             bs = next((b for f, b in BUILDSYSTEM_FILES if f in self.top), None)
         base = ["build-base", "busybox"] if bs else ["busybox"]
+        if bs == "pybuild":
+            base += ["python3", "py3-pip", "py3-wheel"]
         if bs == "autoconf" and self.needs_autoreconf(source):
             base += self.autoreconf_tools()
         env_pkgs = base + [d for d in build_deps if (d.value if isinstance(d, C) else d) not in base]
@@ -1043,18 +1166,38 @@ class Converter:
                 "{}/{}".format(name, os.path.basename(p)) for p in patches)}})
 
         overrides = rules.overrides()
-        # cargo and go builds install nothing into debian/tmp, and an
-        # override_dh_auto_install replaces upstream's install step.
-        self.upstream_installs = bs not in ("cargo", "golang") and "override_dh_auto_install" not in overrides
+        self.bs = bs
+        self.pipeline_used = False
+        self.python_module = rules.vars.get("PYBUILD_NAME") if bs == "pybuild" else None
+        if bs == "pybuild" and not self.python_module:
+            self.python_module = re.sub(r"^(py3|python3?)-", "", name).replace("-", "_")
         ported = {}
         for target in ("override_dh_auto_build", "override_dh_auto_install"):
             if target in overrides:
                 ported[target] = self.port_recipe(rules, overrides[target], name, main["package"])
         build_override = ported.get("override_dh_auto_build")
+        install_override = ported.get("override_dh_auto_install")
+        # cargo and go builds install nothing into debian/tmp; an
+        # override_dh_auto_install replaces upstream's install step, and when
+        # it installs into destdir the *.install files are already satisfied.
+        self.upstream_installs = bs not in ("cargo", "golang") and (
+            "override_dh_auto_install" not in overrides
+            or bool(install_override and any("${{targets.destdir}}" in l or l == self.PIPELINE_MARK
+                                             for l in install_override)))
+        if bs in BUILD_PIPELINES and (build_override or install_override) and bs in ("cmake", "meson", "autoconf"):
+            # configure as dh_auto_configure would, then the overrides
+            if bs == "autoconf" and self.needs_autoreconf(source):
+                pipeline.append({"runs": "autoreconf -fi\n"})
+            opts = rules.configure_opts()
+            entry = {"uses": BUILD_PIPELINES[bs][0]}
+            if opts:
+                entry["with"] = {"opts": " ".join(opts)}
+            pipeline.append(entry)
+            if not build_override:
+                pipeline.append({"uses": BUILD_PIPELINES[bs][1]})
         if build_override:
-            pipeline.append({"name": "Build (from debian/rules override_dh_auto_build)",
-                             "runs": "\n".join(build_override) + "\n"})
-        elif bs in BUILD_PIPELINES:
+            pipeline += self.override_steps(build_override, "Build (from debian/rules override_dh_auto_build)")
+        elif bs in BUILD_PIPELINES and not install_override:
             if bs == "autoconf" and self.needs_autoreconf(source):
                 pipeline.append({"runs": "autoreconf -fi\n"})
             opts = rules.configure_opts()
@@ -1063,7 +1206,7 @@ class Converter:
                 if i == 0 and opts:
                     entry["with"] = {"opts": " ".join(opts)}
                 pipeline.append(entry)
-            if bs in ("pybuild", "golang", "cargo") and "override_dh_auto_build" not in overrides:
+            if bs in ("golang", "cargo") and "override_dh_auto_build" not in overrides:
                 pipeline.append(self.todo("review the {} pipeline inputs (Debian used dh --buildsystem={})".format(BUILD_PIPELINES[bs][0], bs)))
         elif bs == "scala":
             # dh-scala: the scala/build pipeline of this repository reads the
@@ -1075,8 +1218,12 @@ class Converter:
                 pipeline.append(self.todo("the Package fields of scala-build name Debian packages; "
                                           "use melange package names, or remove them"))
         elif bs == "makefile":
-            pipeline.append({"runs": 'make -j$(nproc)\nmake install DESTDIR="${{targets.destdir}}" PREFIX=/usr\n'})
-        elif bs:
+            cmds = [] if build_override else ["make -j$(nproc)"]
+            if not install_override:
+                cmds.append('make install DESTDIR="${{targets.destdir}}" PREFIX=/usr')
+            if cmds:
+                pipeline.append({"runs": "\n".join(cmds) + "\n"})
+        elif bs and bs not in BUILD_PIPELINES:
             pipeline.append(self.todo("unsupported Debian build system '{}'".format(bs)))
 
         for with_ in rules.dh_with():
@@ -1088,12 +1235,13 @@ class Converter:
                 continue
             if ported.get(target):
                 if target == "override_dh_auto_install":
-                    pipeline.append({"name": "Install (from debian/rules override_dh_auto_install)",
-                                     "runs": "\n".join(ported[target]) + "\n"})
+                    pipeline += self.override_steps(ported[target], "Install (from debian/rules override_dh_auto_install)")
                 continue
             if target.startswith(("override_dh_auto_test", "override_dh_strip", "override_dh_shlibdeps",
                                   "override_dh_makeshlibs", "override_dh_gencontrol", "override_dh_builddeb",
-                                  "override_dh_dwz")):
+                                  "override_dh_dwz", "override_dh_installchangelogs", "override_dh_compress",
+                                  "override_dh_missing", "override_dh_update_autotools_config",
+                                  "override_dh_fixperms", "override_dh_lintian", "override_dh_usrlocal")):
                 continue
             pipeline.append(self.todo("port debian/rules {}: {}".format(
                 target, " && ".join(l.strip() for l in recipe if l.strip())[:200])))
@@ -1117,14 +1265,26 @@ class Converter:
             self.aux["copyright"] = self.read("copyright")
 
         # ---- update -------------------------------------------------------
+        self.version = version
         update = self.update_section(source, native, version_var)
 
         # ---- test ---------------------------------------------------------
         test = self.test_section(main, name, conffile if (templates and uses_debconf) else None)
 
+        pipeline = self.move_recipe_files(name, [p for p in pipeline if p])
+        for sp in subpackages:
+            sp["pipeline"] = self.rewrite_recipe_paths(name, sp.get("pipeline", []))
+
+        data = None
+        if self.python_module and name.startswith("py3-") and all(
+                b.get("architecture", "any") == "all" for b in binaries):
+            data = self.python_versions(name, pkg, environment, pipeline, subpackages, test, melange_vars)
+
         recipe = {"package": pkg}
         if melange_vars:
             recipe["vars"] = melange_vars
+        if data:
+            recipe["data"] = data
         recipe["environment"] = environment
         recipe["pipeline"] = [p for p in pipeline if p]
         if subpackages:
@@ -1132,6 +1292,141 @@ class Converter:
         recipe["update"] = update
         recipe["test"] = test
         return name, recipe, self.header(src_name, deb_version, source, native, fmt)
+
+    # Python versions built when the Wolfi index cannot be read.
+    PYTHON_VERSIONS = ("3.12", "3.13")
+
+    def python_versions(self, name, pkg, environment, pipeline, subpackages, test, melange_vars):
+        """Rewrite a pure Python recipe in the Wolfi layout: one py3.X-foo
+        subpackage per supported Python, py3-supported-foo, and an empty
+        py3-foo resolved through provides."""
+        def val(d):
+            return d.value if isinstance(d, C) else d
+        runtime = pkg.get("dependencies", {}).get("runtime", [])
+        py_deps = [re.sub(r"^py3-(supported-)?", "", val(d)) for d in runtime
+                   if not isinstance(d, Comment) and val(d).startswith("py3-")]
+        others = [d for d in runtime if isinstance(d, Comment) or not val(d).startswith("py3-")]
+        if self.wolfi.names is None:
+            versions = list(self.PYTHON_VERSIONS)
+        else:
+            # every supported Python that has all the dependencies
+            versions = ["3.{}".format(n) for n in range(8, 30)
+                        if self.wolfi.has("py3.{}-build-base".format(n))
+                        and all(self.wolfi.has("py3.{}-{}".format(n, d)) for d in py_deps)]
+            if not versions:
+                versions = list(self.PYTHON_VERSIONS)
+                self.notes.append("no Python version in Wolfi has all of: " + ", ".join(py_deps))
+        pypi = name[len("py3-"):]
+        melange_vars["pypi-package"] = pypi
+        melange_vars["import"] = self.python_module
+        pkg["dependencies"] = {"provider-priority": 0}
+
+        env = environment["contents"]["packages"]
+        keep = []
+        for d in env:
+            v = None if isinstance(d, Comment) else val(d)
+            if v in ("build-base", "python3", "py3-pip", "py3-wheel", "py3-setuptools", "py3-supported-setuptools"):
+                continue
+            if v and v.startswith("py3-") and not v.startswith("py3-supported-") \
+                    and self.wolfi.has("py3-supported-" + v[4:]):
+                d = C("py3-supported-" + v[4:], d.comment if isinstance(d, C) else "Debian: python3-" + v[4:])
+            keep.append(d)
+        uses_python = any("python3 " in st.get("runs", "") for st in pipeline if isinstance(st, dict))
+        env[:] = [keep[0], "py3-supported-build-base"] + (["python3"] if uses_python else []) + keep[1:]
+
+        pipeline[:] = [st for st in pipeline if not (isinstance(st, dict) and st.get("uses") == "py/pip-build-install")]
+        # py3-foo is never installed (provides pick py3.X-foo): the license
+        # goes with each py3.X-foo.
+        dest = '"${{targets.destdir}}"/usr/share/'
+        lic_dirs = (dest + "licenses/" + name, dest + "doc/" + name + "/")
+        lic = []
+        for st in pipeline:
+            if isinstance(st, dict) and any(d in st.get("runs", "") for d in lic_dirs):
+                lines = st["runs"].rstrip("\n").split("\n")
+                sub_name = "py${{range.key}}-${{vars.pypi-package}}"
+                for l in lines:
+                    if any(d in l for d in lic_dirs):
+                        l = l.replace(lic_dirs[0], '"${{targets.contextdir}}"/usr/share/licenses/' + sub_name)
+                        lic.append(l.replace(lic_dirs[1], '"${{targets.contextdir}}"/usr/share/doc/' + sub_name + "/"))
+                st["runs"] = "".join(l + "\n" for l in lines if not any(d in l for d in lic_dirs))
+        pipeline[:] = [st for st in pipeline if not (isinstance(st, dict) and "runs" in st and not st["runs"])]
+        for st in test["pipeline"]:
+            if "runs" in st:
+                st["runs"] = "".join(l + "\n" for l in st["runs"].splitlines()
+                                     if not l.startswith(("test -f /usr/share/licenses/",
+                                                          "test -f /usr/share/doc/{}/".format(name))))
+        test["pipeline"] = [st for st in test["pipeline"] if st.get("runs", True)]
+        sub = {
+            "range": "py-versions",
+            "name": "py${{range.key}}-${{vars.pypi-package}}",
+            "description": "${{vars.pypi-package}} installed for python${{range.key}}",
+            "dependencies": {"provider-priority": "${{range.value}}",
+                             "provides": ["py3-${{vars.pypi-package}}"]},
+            "pipeline": [{"uses": "py/pip-build-install", "with": {"python": "python${{range.key}}"}}]
+            + ([{"runs": "\n".join(lic) + "\n"}] if lic else []),
+            "test": {"pipeline": [{"uses": "python/import",
+                                   "with": {"python": "python${{range.key}}", "import": "${{vars.import}}"}}]},
+        }
+        deps = ["py${{range.key}}-" + d for d in py_deps] + others
+        if deps:
+            sub["dependencies"]["runtime"] = deps
+        meta = {
+            "name": "py3-supported-${{vars.pypi-package}}",
+            "description": "meta package providing ${{vars.pypi-package}} for supported python versions.",
+            "dependencies": {"runtime": ["py{}-${{{{vars.pypi-package}}}}".format(v) for v in versions]},
+            "test": {"environment": {"contents": {"packages": ["busybox", "apk-tools"]}},
+                     "pipeline": [{"uses": "test/metapackage"}]},
+        }
+        subpackages[:0] = [sub, meta]
+        # py3-foo resolves to the newest py3.X-foo, not necessarily python3's
+        test["environment"]["contents"]["packages"].append("py3-supported-" + pypi)
+        test["pipeline"] = [st for st in test["pipeline"] if st.get("uses") != "python/import"]
+        test["pipeline"].append({"uses": "python/import", "with": {"python": "python3", "imports": "import ${{vars.import}}"}})
+        self.notes.append("Wolfi Python layout: py3.X-{} for Python {}".format(pypi, ", ".join(versions)))
+        return [{"name": "py-versions",
+                 "items": {v: v.replace(".", "") for v in reversed(versions)}}]
+
+    # The files next to the recipe (packages/<name>/) are copied into the
+    # build tree as <name>/, where they can clash with what upstream builds
+    # (a program called <name>), so they are moved aside after the checkout.
+    RECIPE_FILES = ".recipe-files"
+
+    def rewrite_recipe_paths(self, name, steps):
+        if not self.aux:
+            return steps
+        def fix(v):
+            if isinstance(v, str):
+                for fname in self.aux:
+                    # relative paths only: not .../usr/share/doc/<name>/copyright
+                    v = re.sub(r"(?<![\w/.-]){}/{}\b".format(re.escape(name), re.escape(fname)),
+                               "{}/{}".format(self.RECIPE_FILES, fname), v)
+                return v
+            if isinstance(v, list):
+                return [fix(x) for x in v]
+            if isinstance(v, dict):
+                return {k: fix(x) for k, x in v.items()}
+            return v
+        out = []
+        for st in steps:
+            st = fix(st)
+            if isinstance(st, dict) and st.get("uses") == "scala/build":
+                st = dict(st, **{"with": dict(st.get("with") or {}, config=self.RECIPE_FILES + "/scala-build")})
+            out.append(st)
+        return out
+
+    def move_recipe_files(self, name, steps):
+        if not self.aux:
+            return steps
+        steps = self.rewrite_recipe_paths(name, steps)
+        files = " ".join(sorted(self.aux))
+        move = {"name": "Move the recipe files out of the build tree",
+                "runs": "mkdir -p {d}\nfor f in {files}; do mv {n}/$f {d}/; done\nrmdir {n} 2>/dev/null || true\n".format(
+                    d=self.RECIPE_FILES, files=files, n=name)}
+        at = 0
+        for i, st in enumerate(steps):
+            if isinstance(st, dict) and st.get("uses") in ("fetch", "git-checkout"):
+                at = i + 1
+        return steps[:at] + [move] + steps[at:]
 
     # -- sections -----------------------------------------------------------
 
@@ -1193,13 +1488,18 @@ class Converter:
                 gh = re.match(r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?$", repo)
                 if gh:
                     repo = "https://github.com/{}/{}".format(gh.group(1), gh.group(2))
-                self.git_source = (repo, prefix if prefix is not None else "v")
                 steps, notes = git_url_checkout_step(repo, version, prefix, resolve=self.args.download)
+                tag = next(st["with"]["tag"] for st in steps if isinstance(st, dict))
+                self.git_source = (repo, tag.replace("${{package.version}}", ""))
                 self.notes += notes
                 if not notes:
                     self.notes.append("upstream from debian/watch ({}), pinned to the tag's commit".format(
                         "GitHub" if gh else "git"))
                 return steps
+        if not url:
+            url = watch_tarball_url(self.read("watch") or "", source.get("source", ""), version)
+            if url:
+                self.notes.append("upstream tarball from debian/watch")
         if not url:
             return [self.todo("set the upstream tarball URL (see debian/watch or {})".format(source.get("homepage", "Homepage"))),
                     {"uses": "fetch", "with": {"uri": "https://example.invalid/${{package.name}}-${{package.version}}.tar.gz",
@@ -1247,6 +1547,10 @@ class Converter:
                         destdir, dst, shell_path("${{targets.destdir}}", src)))
         for line in (self.pkgfile(binary["package"], "manpages", main) or "").splitlines():
             page = line.split("#", 1)[0].strip()
+            if page.startswith("debian/tmp/"):
+                page = page[len("debian/tmp/"):]
+            if page.startswith("usr/") and self.upstream_installs:
+                continue  # installed by the build into destdir already
             m = re.search(r"\.(\d)\w*(\.gz)?$", page)
             if page and m:
                 cmds.append('install -Dm644 {0} -t "{1}/usr/share/man/man{2}"'.format(page, destdir, m.group(1)))
@@ -1259,9 +1563,14 @@ class Converter:
                 target, link = norm_path(parts[0]), norm_path(parts[1])
                 cmds.append('mkdir -p "{0}/{2}"\nln -sf /{1} "{0}/{3}"'.format(
                     destdir, target, os.path.dirname(link), link))
+        docdir = "{}/usr/share/doc/{}".format(destdir, self.rename.get(binary["package"], binary["package"]))
         for line in (self.pkgfile(binary["package"], "docs", main) or "").splitlines():
-            if line.strip() and native:
-                cmds.append('install -Dm644 {} -t "{}/usr/share/doc/{}"'.format(line.strip(), destdir, binary["package"]))
+            doc = line.split("#", 1)[0].strip()
+            if doc and native:
+                cmds.append('install -Dm644 {} -t "{}"'.format(doc, docdir))
+            elif doc:
+                # dh_installdocs takes them from the source tree; may be directories
+                cmds.append('mkdir -p "{0}"\ncp -a {1} "{0}/"'.format(docdir, doc))
         # Drop repeated "mkdir -p" of the same directory.
         out, made = [], set()
         for cmd in cmds:
@@ -1307,13 +1616,13 @@ class Converter:
 
     def subpackage(self, b, name, main):
         desc = b.get("description", "").split("\n", 1)[0].strip()
-        sub = {"name": b["package"], "description": desc[:1].upper() + desc[1:]}
+        sub = {"name": self.rename.get(b["package"], b["package"]), "description": desc[:1].upper() + desc[1:]}
         cmds = self.install_lines(b, False, False, "${{targets.contextdir}}")
         if cmds:
             sub["pipeline"] = [{"runs": "\n".join(cmds) + "\n"}]
         elif b["package"].endswith("-dev"):
             sub["pipeline"] = [{"uses": "split/dev"}]
-        elif b["package"].endswith("-doc"):
+        elif b["package"].endswith("-doc") and self.bs not in ("pybuild",):
             sub["pipeline"] = [{"uses": "split/manpages"}]
         else:
             sub["pipeline"] = [self.todo("no debian/{}.install; define which files go to this subpackage".format(b["package"])),
@@ -1340,11 +1649,28 @@ class Converter:
         if not m and getattr(self, "git_source", None):
             m = re.match(r"https://github\.com/([^/]+)/([^/]+)$", self.git_source[0])
         if m:
-            return {"enabled": True, "github": {"identifier": "{}/{}".format(m.group(1), m.group(2)),
-                                                "strip-prefix": "v"}}
+            github = {"identifier": "{}/{}".format(m.group(1), m.group(2))}
+            prefix = self.git_source[1] if self.git_source else "v"
+            if prefix:
+                github["strip-prefix"] = prefix
+            if self.git_source:
+                github["use-tag"] = True
+            return {"enabled": True, "github": github}
         if getattr(self, "git_source", None):
             git = {"strip-prefix": self.git_source[1]} if self.git_source[1] else {}
             return {"enabled": True, "git": git}
+        m = re.match(r"https?://github\.com/([^/\s]+)/([^/\s]+?)(?:\.git)?/?$", source.get("homepage", ""))
+        if m:
+            # A tarball (e.g. from PyPI) with its sources on GitHub: follow the tags.
+            github = {"identifier": "{}/{}".format(m.group(1), m.group(2))}
+            tag = resolve_tag(m.group(0).rstrip("/"), self.version)[0] if self.args.download else None
+            if tag is None:
+                self.notes.append("update: check the tag format of {} (assumed v{})".format(m.group(0), self.version))
+            prefix = tag[:-len(self.version)] if tag else "v"
+            if prefix:
+                github["strip-prefix"] = prefix
+            github["use-tag"] = True
+            return {"enabled": True, "github": github}
         return {"enabled": True,
                 "release-monitor": {"identifier": C(0, "{}: set the release-monitoring.org project id".format(TODO))}}
 
@@ -1410,6 +1736,9 @@ class Converter:
                 "pipeline": [{"runs": "\n".join(cmds) + "\n"}]}
         if binary.get("architecture", "any") != "all":
             test["pipeline"].append({"uses": "test/tw/ldd-check"})
+        if main and getattr(self, "python_module", None):
+            test["environment"]["contents"]["packages"].append("python3")
+            test["pipeline"].append({"uses": "python/import", "with": {"imports": "import " + self.python_module}})
         if main:
             steps, packages = self.autopkgtests(name)
             have = list(test["environment"]["contents"]["packages"])
@@ -1420,6 +1749,37 @@ class Converter:
             test["environment"]["contents"]["packages"] = have
             test["pipeline"] += steps
         return test
+
+
+def watch_tarball_url(watch, source, version):
+    """The tarball URL for `version` from a debian/watch (v3/v4) line, or None.
+
+    Only plain URLs whose file name holds the version group are handled
+    (no page scraping)."""
+    body = re.sub(r"\\\n", " ", watch)
+    for line in body.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or line.startswith("version="):
+            continue
+        toks = [t for t in line.split() if not t.startswith("opts=")]
+        toks = [t for t in toks if t not in ("debian", "uupdate", "same", "ignore")]
+        if not toks or not toks[0].startswith("http"):
+            continue
+        url = toks[0].rstrip("/") + "/" + toks[1] if len(toks) > 1 and "/" not in toks[1] else toks[0]
+        url = url.replace("@PACKAGE@", source).replace("@ANY_VERSION@", "(VERSION)")
+        url = url.replace("@ARCHIVE_EXT@", ".tar.gz")
+        url = re.sub(r"\\\.\(\?:.*\)$", ".tar.gz", url)  # \.(?:zip|tgz|tar\.(?:gz|xz)...)
+        url, n = re.subn(r"\((?!\?)[^)]*\)", version, url, count=1)
+        url = url.replace("\\.", ".")
+        if n != 1 or re.search(r"[()\[\]*+?|^$\\]", url):
+            continue
+        # pypi.python.org/packages/source is an alias of files.pythonhosted.org
+        url = url.replace("://pypi.python.org/packages/source/", "://files.pythonhosted.org/packages/source/")
+        m = re.match(r"https?://pypi\.debian\.net/([^/]+)/(.+)$", url)
+        if m:
+            url = "https://files.pythonhosted.org/packages/source/{}/{}/{}".format(m.group(1)[0], m.group(1), m.group(2))
+        return url
+    return None
 
 
 def resolve_tag(url, version, prefixes=("v", "")):
