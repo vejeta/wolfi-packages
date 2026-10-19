@@ -82,7 +82,6 @@ test:
         - gfortran
         - gdb
         - perl
-        - ncurses-terminfo  # on every Debian system (ncurses-base: xterm-256color and other terminals)
         - python3
         - py3-pillow  # Debian: python3-pil
         - xvfb-run  # Debian: xvfb
@@ -94,6 +93,7 @@ test:
         - x11-xserver-utils  # TODO(debian-to-melange): a Debian bundle; list the programs used (iceauth, sessreg, showrgb...)
         - xclip
         - imagemagick-7  # Debian: imagemagick
+        - netpbm  # Debian: imagemagick
   pipeline:
     - runs: |
         test -f /usr/share/doc/xwpe/copyright

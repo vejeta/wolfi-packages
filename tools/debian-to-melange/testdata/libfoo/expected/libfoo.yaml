@@ -131,7 +131,6 @@ test:
       packages:
         - busybox
         - foo-tools
-        - ncurses-terminfo  # on every Debian system (ncurses-base: xterm-256color and other terminals)
         - libfoo-dev
         - build-base  # Debian: build-essential
         - pkgconf-dev  # Debian: pkgconf

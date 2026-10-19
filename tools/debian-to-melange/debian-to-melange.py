@@ -163,7 +163,9 @@ NAME_MAP = {
     # compiled locales (glibc-locales only has their sources)
     "locales-all": "glibc-locale-en",
     "locales": "glibc-locale-en",
-    "imagemagick": "imagemagick-7",
+    # Wolfi has ImageMagick 7 only, which lost the XWD reader that Debian's
+    # ImageMagick 6 has; netpbm's xwdtopnm fills the gap
+    "imagemagick": ["imagemagick-7", "netpbm"],
     "libc6-dev": "glibc-dev",
     "npm": "npm",
 }
@@ -1944,9 +1946,6 @@ class Converter:
         return {"enabled": True,
                 "release-monitor": {"identifier": C(0, "{}: set the release-monitoring.org project id".format(TODO))}}
 
-    # Packages every Debian testbed has, split differently in Wolfi.
-    TESTBED = {"ncurses-terminfo": "ncurses-base: xterm-256color and other terminals"}
-
     def autopkgtests(self, name):
         """debian/tests/control -> melange test pipeline steps and packages."""
         control = self.read("tests/control")
@@ -1969,9 +1968,6 @@ class Converter:
             for d in mapped:
                 if d not in packages:
                     packages.append(d)
-            for implicit in self.TESTBED:
-                if implicit not in [d.value if isinstance(d, C) else d for d in packages]:
-                    packages.append(C(implicit, "on every Debian system ({})".format(self.TESTBED[implicit])))
             if any((d.value if isinstance(d, C) else d).startswith("py3-") for d in mapped) and "python3" not in packages:
                 packages.append("python3")  # py3-supported-* do not provide the python3 command
             if "@builddeps@" in para.get("depends", ""):
