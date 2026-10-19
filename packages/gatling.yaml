@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# Gatling, a load testing tool, built from source with sbt; dependencies
+# come from Maven Central. Upstream no longer ships a standalone bundle:
+# "gatling" runs compiled simulations from a class path, and
+# "gatling-recorder" records them from a browser session or a HAR file.
+package:
+  name: gatling
+  version: '3.16.0'
+  epoch: 0
+  description: Load testing tool for web applications and APIs
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - openjdk-21-default-jvm
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - bash
+      - busybox
+      - git
+      - openjdk-21-default-jdk
+      - sbt
+  environment:
+    JAVA_HOME: /usr/lib/jvm/default-jvm
+    LANG: C.UTF-8
+    LC_ALL: C.UTF-8
+    SBT_OPTS: -Xmx4g -Xss8m
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/gatling/gatling
+      tag: v${{package.version}}
+      expected-commit: 5c1c07f5192aeab2d0b82d95e48d8dfaf43dbd1d
+
+  - name: Build
+    runs: |
+      # The version is computed from git history, which a shallow checkout
+      # lacks; version.sbt is read after build.sbt and overrides it.
+      echo 'ThisBuild / version := "${{package.version}}"' > version.sbt
+      sbt -batch -Dsbt.supershell=false gatling-app/compile gatling-recorder/compile \
+        'export gatling-app/Runtime/fullClasspath' 'export gatling-recorder/Runtime/fullClasspath' > export.log
+      grep -v '^\[' export.log | tail -2 | tr '\n' ':' > classpath.txt
+
+  - name: Install
+    runs: |
+      NAME=gatling
+      L=${{targets.destdir}}/usr/share/gatling/lib
+      # The jars of the runtime class path; the build's own modules are
+      # class directories, which are packed into jars here.
+      mkdir -p "$L"
+      n=0
+      tr ':' '\n' < classpath.txt | sort -u | while read -r e; do
+        if [ -f "$e" ]; then
+          cp "$e" "$L/"
+        elif [ -d "$e" ]; then
+          n=$((n + 1))
+          "$JAVA_HOME"/bin/jar cf "$L/$NAME-module-$n.jar" -C "$e" .
+        fi
+      done
+      mkdir -p ${{targets.destdir}}/usr/bin
+      for c in gatling:io.gatling.app.Gatling gatling-recorder:io.gatling.recorder.GatlingRecorder; do
+        printf '#!/bin/sh\nexec java $JAVA_OPTS -cp "${GATLING_CLASSPATH:+$GATLING_CLASSPATH:}/usr/share/gatling/lib/*" %s "$@"\n' "${c#*:}" \
+          > ${{targets.destdir}}/usr/bin/${c%%:*}
+        chmod 755 ${{targets.destdir}}/usr/bin/${c%%:*}
+      done
+      install -Dm644 LICENSE.txt NOTICE.md -t ${{targets.destdir}}/usr/share/licenses/gatling
+
+update:
+  enabled: true
+  github:
+    identifier: gatling/gatling
+    strip-prefix: v
+    use-tag: true
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+    environment:
+      JAVA_HOME: /usr/lib/jvm/default-jvm
+  pipeline:
+    - name: Help and version
+      runs: |
+        gatling --help > help.txt 2>&1 || true
+        grep -qi 'simulation' help.txt
+        cd "$(mktemp -d)"
+        for j in /usr/share/gatling/lib/*.jar; do
+          unzip -o -q "$j" gatling-version.properties 2>/dev/null && break
+        done
+        grep -q '${{package.version}}' gatling-version.properties
