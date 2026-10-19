@@ -52,7 +52,7 @@ PKG_CHECK = os.path.join(HERE, "..", "pkg-check", "pkg-check.py")
 DROP = {
     "debhelper", "debhelper-compat", "cdbs", "quilt", "po-debconf", "debconf",
     "debconf-2.0", "lsb-base", "dpkg-dev", "init-system-helpers",
-    "sensible-utils", "base-files", "base-passwd",
+    "sensible-utils", "base-files", "base-passwd", "ucf",
     # Debian-only Java helpers (Maven repository layout, jar symlinks)
     "maven-repo-helper", "maven-debian-helper", "javahelper",
 }
@@ -66,6 +66,8 @@ NAME_MAP = {
     "make": "make",
     "ninja-build": "ninja",
     "pkg-config": "pkgconf-dev",
+    "mawk": "gawk",
+    "awk": "gawk",
     "pkgconf": "pkgconf-dev",
     "ca-certificates": "ca-certificates-bundle",
     "golang-go": "go",
@@ -381,9 +383,9 @@ class Rules:
                 if target is not None:
                     self.targets[target].append(line[1:])
                 continue
-            target = None
             if not line.strip() or line.lstrip().startswith("#"):
-                continue
+                continue  # blank lines and comments do not end a recipe
+            target = None
             m = re.match(r"^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*([:?+]?=)\s*(.*)$", line)
             if m:
                 name, op, val = m.groups()
@@ -461,11 +463,36 @@ class Rules:
         return found
 
 
+def install_entries(text, keep_src=False):
+    """(source, destination dir, new name or None) for each line of a
+    debian/*.install file, including dh-exec's "src => dest" renames."""
+    for line in (text or "").splitlines():
+        if line.lstrip().startswith("#"):
+            continue  # comments, #!/usr/bin/dh-exec
+        parts = line.split()
+        if not parts:
+            continue
+        src = parts[0] if keep_src else norm_path(parts[0])
+        if "=>" in parts and parts.index("=>") == 1 and len(parts) == 3:
+            dst = usr_merge(norm_path(parts[2]))
+            yield src, os.path.dirname(dst), os.path.basename(dst)
+        elif len(parts) == 1:
+            yield src, usr_merge(os.path.dirname(norm_path(parts[0]))), None
+        else:
+            yield src, usr_merge(norm_path(parts[-1])), None
+
+
 def norm_path(path):
     """Debian multiarch paths -> Wolfi paths (usr/lib/<triplet>/ -> usr/lib/)."""
     path = path.strip("/")
-    return re.sub(r"(^|/)lib/(?:\*|\$[({]DEB_HOST_MULTIARCH[)}]|[a-z0-9_]+-linux-gnu[a-z]*)(/|$)",
+    path = re.sub(r"(^|/)lib/(?:\*|\$[({]DEB_HOST_MULTIARCH[)}]|[a-z0-9_]+-linux-gnu[a-z]*)(/|$)",
                   r"\1lib\2", path).rstrip("/")
+    return path
+
+
+def usr_merge(path):
+    """Installation paths on Wolfi: usr-merged, with sbin merged into bin."""
+    return re.sub(r"^(?:usr/)?s?bin(/|$)", r"usr/bin\1", re.sub(r"^lib(/|$)", r"usr/lib\1", path))
 
 
 def shell_path(prefix, rel):
@@ -485,6 +512,29 @@ def http_get(url):
         return resp.read()
 
 
+def release_monitoring_id(name, version):
+    """The release-monitoring.org project named `name` that knows `version`."""
+    try:
+        data = json.loads(http_get("https://release-monitoring.org/api/v2/projects/?name="
+                                   + urllib.parse.quote(name)))
+    except Exception:
+        return None
+    items = [p for p in data.get("items", []) if version in p.get("versions", [])]
+    return items[0]["id"] if len(items) == 1 else None
+
+
+def url_exists(url, tries=2):
+    for _ in range(tries):
+        try:
+            http_get(url)
+            return True
+        except urllib.error.HTTPError:
+            return False
+        except Exception:
+            continue  # connection reset and the like: retry
+    return False
+
+
 def binary_to_source(binary):
     """Source package of a Debian binary package (unstable), or None."""
     try:
@@ -496,7 +546,7 @@ def binary_to_source(binary):
 
 
 # Upstream files the converter reads (build tool detection, Python metadata).
-UPSTREAM_FILES = ("configure.ac", "pyproject.toml", "setup.cfg", "setup.py")
+UPSTREAM_FILES = ("configure.ac", "autogen.sh", "pyproject.toml", "setup.cfg", "setup.py")
 
 
 def python_requirements(tree):
@@ -797,6 +847,7 @@ BUILDSYSTEM_FILES = [
     ("CMakeLists.txt", "cmake"),
     ("configure.ac", "autoconf"),
     ("configure", "autoconf"),
+    ("autogen.sh", "autoconf"),
     ("pyproject.toml", "pybuild"),
     ("setup.py", "pybuild"),
     ("go.mod", "golang"),
@@ -851,6 +902,18 @@ class Converter:
             text = self.read(suffix)
         return text
 
+    def debian_file(self, path):
+        """debian/<file> named by a packaging file: copied next to the recipe."""
+        if not path.startswith("debian/"):
+            return path
+        rel = path[len("debian/"):]
+        full = os.path.join(self.deb, rel)
+        if not os.path.isfile(full):
+            return path
+        with open(full, "rb") as fh:
+            self.aux[os.path.basename(rel)] = fh.read()
+        return "{}/{}".format(self.recipe_dir, os.path.basename(rel))
+
     def todo(self, msg):
         self.notes.append(msg)
         return Comment("{}: {}".format(TODO, msg))
@@ -875,6 +938,12 @@ class Converter:
                     return None
                 continue  # debhelper bookkeeping (Built-Using, substvars...)
             line = rules.expand(line)
+            line = re.sub(r"(^|/|\s)(usr/lib)/\$[({]DEB_HOST_MULTIARCH[)}]", r"\1\2", line)
+            for pkg, target in self.rename.items():
+                if pkg != deb_pkg:
+                    # files for another binary package: its melange output directory
+                    line = re.sub(r"(?<![\w/])debian/{}/".format(re.escape(pkg)),
+                                  "${{{{targets.outdir}}}}/{}/".format(target), line)
             for pkg in (deb_pkg, "tmp"):
                 line = re.sub(r"\$\(CURDIR\)/debian/{}(/|\b)".format(re.escape(pkg)), "${{targets.destdir}}/", line)
                 line = re.sub(r"(?<![\w/])debian/{}/".format(re.escape(pkg)), "${{targets.destdir}}/", line)
@@ -897,12 +966,17 @@ class Converter:
 
     def dh_auto_command(self, line):
         """dh_auto_build/dh_auto_install [-- ARGS] for make-based builds, as shell."""
+        sub = re.search(r"\s(?:-D\s*|--sourcedir(?:ectory)?[= ])(\S+)", line)
+        if sub:
+            line = line[:sub.start()] + line[sub.end():]
         m = re.match(r"^dh_auto_(build|install)(?:\s+(?:-\S+\s*)*)?(?:--\s+(.*))?$", line)
         if m and getattr(self, "bs", None) == "pybuild":
             return self.PIPELINE_MARK
         if not m or getattr(self, "bs", None) not in ("makefile", "autoconf"):
             return None
         args = (" " + m.group(2).strip()) if m.group(2) else ""
+        if sub:
+            args = " -C " + sub.group(1) + args
         if m.group(1) == "build":
             return "make -j$(nproc)" + args
         return 'make install DESTDIR="${{targets.destdir}}"' + (" PREFIX=/usr" if self.bs == "makefile" else "") + args
@@ -1024,6 +1098,7 @@ class Converter:
                 if m:
                     self.rename[b["package"]] = name + (m.group(1) or "")
         self.rename[main["package"]] = name
+        self.recipe_dir = name
         if deb_version and re.search(r"[+~](dfsg|ds|repack)", deb_version) \
                 and not files_excluded(self.read("copyright")):
             self.notes.append("Debian repacks the upstream tarball ({}); check debian/copyright "
@@ -1101,7 +1176,7 @@ class Converter:
             pkg["dependencies"] = deps
 
         # ---- maintainer scripts + debconf ----------------------------------
-        templates = parse_templates(self.read("templates"))
+        templates = parse_templates(self.pkgfile(main["package"], "templates", True))
         conffile = "/etc/{}.conf".format(name)
         scripts, uses_debconf = self.scriptlets(main, True, name, templates, conffile, templated, var_refs)
         config_script = self.pkgfile(main["package"], "config", True)
@@ -1175,6 +1250,18 @@ class Converter:
         for target in ("override_dh_auto_build", "override_dh_auto_install"):
             if target in overrides:
                 ported[target] = self.port_recipe(rules, overrides[target], name, main["package"])
+        # Overrides that generate the build system (./autogen.sh) run before configure.
+        prepare = []
+        for target in ("override_dh_update_autotools_config", "override_dh_autoreconf"):
+            if target in overrides:
+                cmds = self.port_recipe(rules, overrides[target], name, main["package"])
+                if cmds:
+                    ported[target] = cmds
+                    prepare.append({"name": "Prepare the build system (from debian/rules {})".format(target),
+                                    "runs": "\n".join(cmds) + "\n"})
+        if prepare and bs == "autoconf":
+            env_pkgs += [t for t in self.autoreconf_tools() if t not in env_pkgs]
+        pipeline += prepare
         build_override = ported.get("override_dh_auto_build")
         install_override = ported.get("override_dh_auto_install")
         # cargo and go builds install nothing into debian/tmp; an
@@ -1233,6 +1320,8 @@ class Converter:
         for target, recipe in overrides.items():
             if target in skip_overrides and (target != "override_dh_installdeb" or templated):
                 continue
+            if target in ("override_dh_update_autotools_config", "override_dh_autoreconf") and ported.get(target):
+                continue
             if ported.get(target):
                 if target == "override_dh_auto_install":
                     pipeline += self.override_steps(ported[target], "Install (from debian/rules override_dh_auto_install)")
@@ -1241,7 +1330,8 @@ class Converter:
                                   "override_dh_makeshlibs", "override_dh_gencontrol", "override_dh_builddeb",
                                   "override_dh_dwz", "override_dh_installchangelogs", "override_dh_compress",
                                   "override_dh_missing", "override_dh_update_autotools_config",
-                                  "override_dh_fixperms", "override_dh_lintian", "override_dh_usrlocal")):
+                                  "override_dh_fixperms", "override_dh_lintian", "override_dh_usrlocal",
+                                  "override_dh_installsystemd", "override_dh_installinit")):
                 continue
             pipeline.append(self.todo("port debian/rules {}: {}".format(
                 target, " && ".join(l.strip() for l in recipe if l.strip())[:200])))
@@ -1497,7 +1587,12 @@ class Converter:
                         "GitHub" if gh else "git"))
                 return steps
         if not url:
-            url = watch_tarball_url(self.read("watch") or "", source.get("source", ""), version)
+            cands = watch_tarball_urls(self.read("watch") or "", source.get("source", ""), version)
+            if cands and self.args.download:
+                # the first that exists
+                url = next((c for c in cands if url_exists(c)), None)
+            elif cands:
+                url = cands[0]
             if url:
                 self.notes.append("upstream tarball from debian/watch")
         if not url:
@@ -1517,34 +1612,20 @@ class Converter:
     def install_lines(self, binary, main, native, destdir):
         cmds = []
         inst = self.pkgfile(binary["package"], "install", main)
-        if inst and main and not native and not self.upstream_installs:
-            # Nothing was installed by the upstream build system, so dh_install
-            # takes these paths from the source tree.
-            for line in inst.splitlines():
-                parts = line.split("#", 1)[0].split()
-                if not parts:
-                    continue
-                src = norm_path(parts[0])
-                dst = os.path.dirname(src) if len(parts) == 1 else norm_path(parts[-1])
-                cmds.append('mkdir -p "{0}/{1}"\ncp -a {2} "{0}/{1}/"'.format(destdir, dst, src))
-            inst = None
-        # Upstream builds install straight into destdir; only subpackages
-        # (and native packages, which copy from the source tree) move files.
-        if inst and (native or not main):
-            for line in inst.splitlines():
-                parts = line.split("#", 1)[0].split()
-                if not parts:
-                    continue
-                if len(parts) == 1:
-                    src = norm_path(parts[0])
-                    dst = os.path.dirname(src)
+        # Nothing installed by the upstream build system (native packages,
+        # cargo, overridden dh_auto_install): dh_install takes the paths
+        # from the source tree. Otherwise upstream installs straight into
+        # destdir, and only subpackages move files out of it.
+        from_tree = native or not self.upstream_installs
+        if inst and (from_tree or not main):
+            for src, dst, rename in install_entries(inst, keep_src=native):
+                src = self.debian_file(src)
+                target = '"{}/{}/{}"'.format(destdir, dst, rename) if rename else '"{}/{}/"'.format(destdir, dst)
+                if from_tree:
+                    cmds.append('mkdir -p "{0}/{1}"\ncp -a {2} {3}'.format(destdir, dst, src, target))
                 else:
-                    src, dst = (parts[0] if native else norm_path(parts[0])), norm_path(parts[-1])
-                if native:
-                    cmds.append('mkdir -p "{0}/{1}"\ncp -a {2} "{0}/{1}/"'.format(destdir, dst, src))
-                else:
-                    cmds.append('mkdir -p "{0}/{1}"\nmv {2} "{0}/{1}/"'.format(
-                        destdir, dst, shell_path("${{targets.destdir}}", src)))
+                    cmds.append('mkdir -p "{0}/{1}"\nmv {2} {3}'.format(
+                        destdir, dst, shell_path("${{targets.destdir}}", src), target))
         for line in (self.pkgfile(binary["package"], "manpages", main) or "").splitlines():
             page = line.split("#", 1)[0].strip()
             if page.startswith("debian/tmp/"):
@@ -1553,16 +1634,24 @@ class Converter:
                 continue  # installed by the build into destdir already
             m = re.search(r"\.(\d)\w*(\.gz)?$", page)
             if page and m:
-                cmds.append('install -Dm644 {0} -t "{1}/usr/share/man/man{2}"'.format(page, destdir, m.group(1)))
+                cmds.append('install -Dm644 {0} -t "{1}/usr/share/man/man{2}"'.format(
+                    self.debian_file(page), destdir, m.group(1)))
         for line in (self.pkgfile(binary["package"], "dirs", main) or "").splitlines():
             if line.strip():
-                cmds.append('mkdir -p "{}/{}"'.format(destdir, norm_path(line)))
+                cmds.append('mkdir -p "{}/{}"'.format(destdir, usr_merge(norm_path(line))))
         for line in (self.pkgfile(binary["package"], "links", main) or "").splitlines():
             parts = line.split()
             if len(parts) == 2:
-                target, link = norm_path(parts[0]), norm_path(parts[1])
+                target, link = usr_merge(norm_path(parts[0])), usr_merge(norm_path(parts[1]))
                 cmds.append('mkdir -p "{0}/{2}"\nln -sf /{1} "{0}/{3}"'.format(
                     destdir, target, os.path.dirname(link), link))
+        unit = self.read("{}.service".format(binary["package"])) or (self.read("service") if main else None)
+        if unit is not None:
+            # dh_installsystemd
+            pkgname = self.rename.get(binary["package"], binary["package"])
+            self.aux[pkgname + ".service"] = unit
+            cmds.append('install -Dm644 {0}/{1}.service "{2}/usr/lib/systemd/system/{1}.service"'.format(
+                self.recipe_dir, pkgname, destdir))
         docdir = "{}/usr/share/doc/{}".format(destdir, self.rename.get(binary["package"], binary["package"]))
         for line in (self.pkgfile(binary["package"], "docs", main) or "").splitlines():
             doc = line.split("#", 1)[0].strip()
@@ -1590,12 +1679,14 @@ class Converter:
 
     def autoreconf_tools(self):
         tools = ["autoconf", "automake"]
-        try:
-            with open(os.path.join(self.tree, "configure.ac"), errors="replace") as fh:
-                ac = fh.read()
-        except OSError:
-            ac = ""
-        if re.search(r"\b(LT_INIT|AC_PROG_LIBTOOL)\b", ac):
+        ac = ""
+        for f in ("configure.ac", "autogen.sh"):
+            try:
+                with open(os.path.join(self.tree, f), errors="replace") as fh:
+                    ac += fh.read()
+            except OSError:
+                pass
+        if re.search(r"\b(LT_INIT|AC_PROG_LIBTOOL|libtoolize|LIBTOOLIZE)\b", ac):
             tools.append("libtool")
         if re.search(r"\bAM_GNU_GETTEXT\b", ac):
             tools.append("gettext-dev")
@@ -1671,6 +1762,9 @@ class Converter:
                 github["strip-prefix"] = prefix
             github["use-tag"] = True
             return {"enabled": True, "github": github}
+        project = release_monitoring_id(source.get("source", ""), self.version) if self.args.download else None
+        if project:
+            return {"enabled": True, "release-monitor": {"identifier": project}}
         return {"enabled": True,
                 "release-monitor": {"identifier": C(0, "{}: set the release-monitoring.org project id".format(TODO))}}
 
@@ -1721,9 +1815,20 @@ class Converter:
         inst = self.pkgfile(binary["package"], "install", main) or ""
         for line in inst.splitlines():
             parts = line.split()
-            if parts and ("usr/bin/" in line or "usr/sbin/" in line):
-                tool = os.path.basename(parts[0])
-                cmds.append("{0} --version || {0} --help".format(tool))
+            if line.lstrip().startswith("#") or not parts:
+                continue
+            dest = (parts[-1] if len(parts) > 1 else os.path.dirname(parts[0])).strip("/")
+            if not re.match(r"^(usr/)?s?bin(/|$)", dest):
+                continue
+            tool = os.path.basename(dest) if "=>" in parts else os.path.basename(parts[0])
+            path = "/usr/bin/" + tool  # usr-merged, sbin merged into bin
+            if re.search(r"(^|/)scripts?/|\.(sh|pl|py|tcl|tk)$", parts[0]) or re.match(r"^(usr/)?sbin", dest):
+                # scripts may need interpreters that are only suggested;
+                # system tools (sbin) often need root, a tty or hardware
+                cmds.append("test -x " + path)
+            else:
+                # some tools print their usage with a non-zero status
+                cmds.append("{0} --version || ({0} --help 2>&1 || true) | grep -qi -e usage -e {0}".format(tool))
         if not main and not cmds:
             return None
         if main and self.license_files():
@@ -1751,11 +1856,28 @@ class Converter:
         return test
 
 
-def watch_tarball_url(watch, source, version):
-    """The tarball URL for `version` from a debian/watch (v3/v4) line, or None.
+ARCHIVE_EXTS = (".tar.gz", ".tar.xz", ".tar.bz2", ".tgz", ".zip")
+
+
+def regex_group(text, start):
+    """End index (exclusive) of the parenthesised group opening at text[start]."""
+    depth, i = 0, start
+    while i < len(text):
+        if text[i] == "\\":
+            i += 2
+            continue
+        depth += {"(": 1, ")": -1}.get(text[i], 0)
+        if depth == 0:
+            return i + 1
+        i += 1
+    return None
+
+
+def watch_tarball_urls(watch, source, version):
+    """Candidate tarball URLs for `version` from a debian/watch (v3/v4) line.
 
     Only plain URLs whose file name holds the version group are handled
-    (no page scraping)."""
+    (no page scraping). Several candidates when the extension is a pattern."""
     body = re.sub(r"\\\n", " ", watch)
     for line in body.splitlines():
         line = line.strip()
@@ -1767,19 +1889,27 @@ def watch_tarball_url(watch, source, version):
             continue
         url = toks[0].rstrip("/") + "/" + toks[1] if len(toks) > 1 and "/" not in toks[1] else toks[0]
         url = url.replace("@PACKAGE@", source).replace("@ANY_VERSION@", "(VERSION)")
-        url = url.replace("@ARCHIVE_EXT@", ".tar.gz")
-        url = re.sub(r"\\\.\(\?:.*\)$", ".tar.gz", url)  # \.(?:zip|tgz|tar\.(?:gz|xz)...)
-        url, n = re.subn(r"\((?!\?)[^)]*\)", version, url, count=1)
+        exts = [""]
+        if url.endswith("@ARCHIVE_EXT@"):
+            url, exts = url[:-len("@ARCHIVE_EXT@")], list(ARCHIVE_EXTS)
+        m = re.search(r"\\\.\(\?:", url)
+        if m and regex_group(url, m.start() + 2) == len(url):
+            url, exts = url[:m.start()], list(ARCHIVE_EXTS)  # \.(?:zip|tgz|tar\.(?:gz|xz)...)
+        m = re.search(r"(?<!\\)\((?!\?)", url)
+        end = regex_group(url, m.start()) if m else None
+        if not end:
+            continue
+        url = url[:m.start()] + version + url[end:]
         url = url.replace("\\.", ".")
-        if n != 1 or re.search(r"[()\[\]*+?|^$\\]", url):
+        if re.search(r"[()\[\]*+?|^$\\]", url):
             continue
         # pypi.python.org/packages/source is an alias of files.pythonhosted.org
         url = url.replace("://pypi.python.org/packages/source/", "://files.pythonhosted.org/packages/source/")
         m = re.match(r"https?://pypi\.debian\.net/([^/]+)/(.+)$", url)
         if m:
             url = "https://files.pythonhosted.org/packages/source/{}/{}/{}".format(m.group(1)[0], m.group(1), m.group(2))
-        return url
-    return None
+        return [url + e for e in exts]
+    return []
 
 
 def resolve_tag(url, version, prefixes=("v", "")):

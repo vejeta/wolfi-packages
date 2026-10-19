@@ -117,7 +117,7 @@ subpackages:
             - busybox
       pipeline:
         - runs: |
-            foo --version || foo --help
+            foo --version || (foo --help 2>&1 || true) | grep -qi -e usage -e foo
         - uses: test/tw/ldd-check
 update:
   enabled: true

@@ -81,6 +81,14 @@ subpackages:
         - perl-xml-libxml  # Debian: libxml-libxml-perl
         - licensecheck
         - xz  # Debian: xz-utils
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            dh-make-scala --version || (dh-make-scala --help 2>&1 || true) | grep -qi -e usage -e dh-make-scala
 update:
   enabled: false
   manual: true
@@ -96,6 +104,7 @@ test:
         - scala-3.8  # Debian: scala3
   pipeline:
     - runs: |
+        dh_scala --version || (dh_scala --help 2>&1 || true) | grep -qi -e usage -e dh_scala
         test -f /usr/share/doc/dh-scala/copyright
     - name: 'autopkgtest: debian/tests/build-library 2.12'
       runs: |
