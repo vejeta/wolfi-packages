@@ -156,7 +156,7 @@ NAME_MAP = {
     "bzip2": "bzip2",
     "openssl": "openssl",
     "nodejs": "nodejs",
-    "xvfb": "xorg-server",
+    "xvfb": "xvfb-run",  # Debian's xvfb ships Xvfb and xvfb-run
     "locales-all": "glibc-locales",
     "imagemagick": "imagemagick-7",
     "libc6-dev": "glibc-dev",
@@ -1182,7 +1182,7 @@ class Converter:
                 # are then disabled by the build, required ones fail there.
                 self.notes.append("{} dependency '{}' (Debian '{}') not found in Wolfi; left out".format(kind, cand, alt))
                 out.append(Comment("{}: {} is not in Wolfi (Debian: {}); left out".format(TODO, cand, alt)))
-            elif self.wolfi.community_only(cand):
+            elif self.wolfi.community_only(cand) and cand not in self.rename.values():
                 out.append(C(cand, "Wolfi Community Packages" + ("" if cand == alt else " (Debian: {})".format(alt))))
             elif cand != alt:
                 out.append(C(cand, "Debian: {}".format(alt)))

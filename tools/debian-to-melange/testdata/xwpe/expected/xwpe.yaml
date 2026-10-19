@@ -81,7 +81,7 @@ test:
         - perl
         - python3
         - py3-pillow  # Debian: python3-pil
-        - xorg-server  # Debian: xvfb
+        - xvfb-run  # Debian: xvfb
         - matchbox-window-manager
         - xdotool
         - x11-apps  # TODO(debian-to-melange): a Debian bundle; list the programs used (atobm, bitmap, bmtoa...)
