@@ -1,0 +1,11 @@
+Index: libmatchbox-1.12+git20170224/libmb/hash.h
+===================================================================
+--- libmatchbox-1.12+git20170224.orig/libmb/hash.h	2020-05-15 16:50:56.000000000 +0100
++++ libmatchbox-1.12+git20170224/libmb/hash.h	2025-03-12 16:25:40.142556213 +0000
+@@ -38,5 +38,5 @@
+ unsigned int hashfunc(struct hash *h, char *s);
+ struct nlist *hash_lookup(struct hash *h, char *s);
+ struct nlist *hash_add(struct hash *h, char *key, char *val);
+-void hash_empty();
++void hash_empty(struct hash *h);
+ void hash_destroy(struct hash *h);

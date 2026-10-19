@@ -1,0 +1,19 @@
+Description: Fix libmb.pc.in pkg-config file
+ The upstream pkg-config file makes anything which uses the library get
+ unnecessary dependencies.  We trim it to distinguish between things that
+ libmatchbox uses for building, and things that its dependencies need.
+Author: Moray Allan <moray@debian.org>
+Index: libmatchbox-1.12+git20170224/libmb.pc.in
+===================================================================
+--- libmatchbox-1.12+git20170224.orig/libmb.pc.in	2020-06-15 14:32:52.434458567 +0100
++++ libmatchbox-1.12+git20170224/libmb.pc.in	2020-06-15 14:32:52.430458561 +0100
+@@ -7,6 +7,7 @@
+ Description: Utility Library used by Matchbox utilities.
+ Version: @VERSION@
+ 
+-Requires: @XLIBS_REQUIRED@ @PANGO_REQUIRED@ @PNG_REQUIRED@ @XFT_REQUIRED@
+-Libs: -L${libdir} -lmb @MB_EXTRA_LIBS@
++Requires.private: @XLIBS_REQUIRED@ @PANGO_REQUIRED@ @PNG_REQUIRED@ @XFT_REQUIRED@
++Libs: -L${libdir} -lmb
++Libs.private: @MB_EXTRA_LIBS@
+ Cflags: -I${includedir} @MB_EXTRA_CFLAGS@

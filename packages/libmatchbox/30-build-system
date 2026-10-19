@@ -1,0 +1,14 @@
+Description: Fix build
+Author: Moray Allan <moray@debian.org>
+Index: libmatchbox-1.12+git20170224/tests/Makefile.am
+===================================================================
+--- libmatchbox-1.12+git20170224.orig/tests/Makefile.am	2020-06-15 14:34:26.302574041 +0100
++++ libmatchbox-1.12+git20170224/tests/Makefile.am	2020-06-15 14:34:26.298574037 +0100
+@@ -26,6 +26,7 @@
+ 
+ noinst_PROGRAMS = dump-image
+ dump_image_SOURCES=dump-image.c
++dump_image_LDADD= @CHECK_LIBS@ -lX11
+ 
+ EXTRA_DIST = oh-overlayed.png oh.png oh-scaled.png overlay.png oh.jpg oh.xpm \
+              dot-desktop.c pixbuf.c oh.h
