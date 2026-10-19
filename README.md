@@ -1,6 +1,6 @@
 # Wolfi Community Packages
 
-[![Packages](https://img.shields.io/badge/packages-43-brightgreen)](#available-packages)
+[![Packages](https://img.shields.io/badge/packages-45-brightgreen)](#available-packages)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
@@ -22,6 +22,7 @@ packages and `APKINDEX` are published on SourceForge.
 |---------|---------|-------------|---------|
 | appstream | 1.2.1 | AppStream metadata library (library only; needed by libadwaita) | LGPL-2.1-or-later |
 | coursier | 2.1.26 | Scala artifact fetcher and application installer (`cs`), JVM launcher | Apache-2.0 |
+| gatling | 3.16.0 | Load testing tool for web applications and APIs (`gatling`, `gatling-recorder`) | Apache-2.0 |
 | glib-networking | 2.90.0 | Network extensions for GLib: TLS support (GnuTLS) | LGPL-2.0-or-later |
 | jbang | 0.142.0 | Run Java source files as scripts, with their dependencies | MIT |
 | joern | 4.0.656 | Code property graph platform for vulnerability analysis of source code and binaries | Apache-2.0 |
@@ -39,6 +40,7 @@ packages and `APKINDEX` are published on SourceForge.
 | libsoup3 | 3.6.6 | GNOME HTTP client/server library, version 3 | LGPL-2.0-or-later |
 | libxmlb | 0.3.29 | Library to create and query binary XML blobs (needed by appstream) | LGPL-2.1-or-later |
 | libxpresent | 1.0.2 | X11 Present extension library | MIT |
+| metals | 1.6.9 | Scala language server (LSP) | Apache-2.0 |
 | mill | 1.3.0 | Build tool for Java, Scala and Kotlin | MIT |
 | mpv | 0.40.0 | Free, open source, and cross-platform media player | GPL-2.0-or-later AND LGPL-2.1-or-later |
 | mujs | 1.3.7 | Lightweight JavaScript interpreter | ISC |

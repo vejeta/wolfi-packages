@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# Metals, the language server for Scala (LSP), built from source with sbt;
+# dependencies come from Maven Central. Editors start it with "metals"; it
+# downloads the presentation compiler (mtags) for each Scala version a
+# project uses.
+package:
+  name: metals
+  version: '1.6.9'
+  epoch: 0
+  description: Scala language server with rich IDE features
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - openjdk-21-default-jvm
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - bash
+      - busybox
+      - git
+      - openjdk-21-default-jdk
+      - sbt
+  environment:
+    JAVA_HOME: /usr/lib/jvm/default-jvm
+    LANG: C.UTF-8
+    LC_ALL: C.UTF-8
+    SBT_OPTS: -Xmx4g -Xss8m
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/scalameta/metals
+      tag: v${{package.version}}
+      expected-commit: e3fa307454984d7891e1cd874cdab2afeb0bb257
+
+  - name: Build
+    runs: |
+      # The version is computed from git history, which a shallow checkout
+      # lacks; version.sbt is read after build.sbt and overrides it.
+      echo 'ThisBuild / version := "${{package.version}}"' > version.sbt
+      sbt -batch -Dsbt.supershell=false metals/compile 'export metals/Runtime/fullClasspath' > export.log
+      grep -v '^\[' export.log | tail -1 > classpath.txt
+
+  - name: Install
+    runs: |
+      NAME=metals
+      L=${{targets.destdir}}/usr/share/metals/lib
+      # The jars of the runtime class path; the build's own modules are
+      # class directories, which are packed into jars here.
+      mkdir -p "$L"
+      n=0
+      tr ':' '\n' < classpath.txt | sort -u | while read -r e; do
+        if [ -f "$e" ]; then
+          cp "$e" "$L/"
+        elif [ -d "$e" ]; then
+          n=$((n + 1))
+          "$JAVA_HOME"/bin/jar cf "$L/$NAME-module-$n.jar" -C "$e" .
+        fi
+      done
+      mkdir -p ${{targets.destdir}}/usr/bin
+      cat > ${{targets.destdir}}/usr/bin/metals <<'SH'
+      #!/bin/sh
+      exec java $JAVA_OPTS -cp '/usr/share/metals/lib/*' scala.meta.metals.Main "$@"
+      SH
+      chmod 755 ${{targets.destdir}}/usr/bin/metals
+      install -Dm644 LICENSE -t ${{targets.destdir}}/usr/share/licenses/metals
+
+update:
+  enabled: true
+  github:
+    identifier: scalameta/metals
+    strip-prefix: v
+    use-tag: true
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+    environment:
+      JAVA_HOME: /usr/lib/jvm/default-jvm
+  pipeline:
+    - name: Version
+      runs: |
+        metals --version > version.txt
+        grep -q 'metals ${{package.version}}' version.txt

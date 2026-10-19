@@ -114,8 +114,12 @@ which downloads the dependencies from Maven Central, as Wolfi does for its
 Java applications. Libraries are built without a build tool instead (see
 scala/build). jbang is built with Gradle 8 on Java 21, as Gradle 9 cannot
 read its build; coursier is the JVM launcher, not the native-image binary.
-Joern is built the same way with sbt; its frontends download the parsers
+Joern, Gatling and Metals are built the same way with sbt; Joern's frontends download the parsers
 they wrap (astgen and similar) during the build, as upstream's does.
+Gatling and Metals have no distribution layout in their builds, so the
+recipes install the runtime class path that sbt exports, with a launcher
+script. Gatling no longer ships a standalone bundle: `gatling` runs
+compiled simulations given in `GATLING_CLASSPATH`.
 
 ## Scala libraries: scala/build
 
