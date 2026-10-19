@@ -35,8 +35,6 @@ environment:
       - ocaml-findlib-compat
       - ocaml-compiler-libs  # Debian: ocaml
       - libdune-ocaml-dev  # Wolfi Community Packages
-      - libbos-ocaml-dev  # Wolfi Community Packages
-      - libalcotest-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - uses: git-checkout
     with:

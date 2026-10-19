@@ -41,8 +41,6 @@ environment:
       - libocaml-compiler-libs-ocaml-dev  # Wolfi Community Packages
       - libppx-derivers-ocaml-dev  # Wolfi Community Packages
       - libsexplib0-ocaml-dev  # Wolfi Community Packages
-      - libre-ocaml-dev  # Wolfi Community Packages
-      - libcinaps-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - uses: fetch
     with:

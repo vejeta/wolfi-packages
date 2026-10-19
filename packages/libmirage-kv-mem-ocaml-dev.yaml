@@ -39,7 +39,6 @@ environment:
       - libptime-ocaml-dev  # Wolfi Community Packages
       - libmirage-ptime-ocaml-dev  # Wolfi Community Packages
       - libmirage-kv-ocaml-dev  # Wolfi Community Packages
-      - libalcotest-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - uses: fetch
     with:

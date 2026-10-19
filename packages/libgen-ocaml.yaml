@@ -35,9 +35,6 @@ environment:
       - ocamlfind
       - ocaml-findlib-compat
       - ocaml-compiler-libs  # Debian: ocaml
-      - ocaml-qtest  # Wolfi Community Packages
-      - libqtest-ocaml-dev  # Wolfi Community Packages
-      - libqcheck-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - uses: fetch
     with:

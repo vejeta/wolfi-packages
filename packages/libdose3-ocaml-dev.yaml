@@ -53,13 +53,8 @@ environment:
       - texmf-dist-latex  # Wolfi Community Packages (Debian: texlive-latex-base)
       - texmf-dist-latexextra  # Wolfi Community Packages (Debian: texlive-latex-extra)
       - pandoc-cli  # Wolfi Community Packages (Debian: pandoc)
-      - dctrl-tools  # Wolfi Community Packages (Debian: grep-dctrl)
-      - libounit-ocaml-dev  # Wolfi Community Packages
-      - libcamlp-streams-ocaml-dev  # Wolfi Community Packages
       - libparmap-ocaml-dev  # Wolfi Community Packages
       - perl
-      - py3-yaml  # Debian: python3-yaml
-      - xz  # Debian: xz-utils
       - coreutils
       - findutils
 pipeline:

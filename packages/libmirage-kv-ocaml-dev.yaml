@@ -38,7 +38,6 @@ environment:
       - liblwt-ocaml-dev  # Wolfi Community Packages
       - liboptint-ocaml-dev  # Wolfi Community Packages
       - libptime-ocaml-dev  # Wolfi Community Packages
-      - libalcotest-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - uses: git-checkout
     with:

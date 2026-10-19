@@ -34,10 +34,6 @@ environment:
       - ocaml-compiler-libs  # Debian: ocaml
       - libcmdliner-ocaml-dev  # Wolfi Community Packages
       - libptime-ocaml-dev  # Wolfi Community Packages
-      - liblwt-ocaml-dev  # Wolfi Community Packages
-      - libmirage-kv-ocaml-dev  # Wolfi Community Packages
-      - libmirage-kv-mem-ocaml-dev  # Wolfi Community Packages
-      - libfmt-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - uses: git-checkout
     with:

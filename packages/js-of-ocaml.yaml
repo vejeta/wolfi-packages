@@ -7,6 +7,7 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/js-of-ocaml
 #
 # Conversion notes:
+# - built with the Debian build profiles nocheck,nodoc
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
 # - dh --with ocaml has no direct melange equivalent; review
 # - no debian/libjs-of-ocaml.install; define which files go to this subpackage
@@ -61,7 +62,6 @@ environment:
       - libmenhir-ocaml-dev  # Wolfi Community Packages
       - rsync
       - binaryen
-      - ocaml-odoc  # Wolfi Community Packages
       - coreutils
       - findutils
 pipeline:

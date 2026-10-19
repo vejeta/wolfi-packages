@@ -47,7 +47,6 @@ environment:
       - libmmap-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
       - libocplib-endian-ocaml-dev  # Wolfi Community Packages
-      - libppx-let-ocaml-dev  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: libcompiler-libs-ocaml-dev
 pipeline:
   - name: Move the recipe files out of the build tree

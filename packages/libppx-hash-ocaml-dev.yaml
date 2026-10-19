@@ -36,7 +36,6 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
-      - libounit-ocaml-dev  # Wolfi Community Packages
       - libppx-compare-ocaml-dev  # Wolfi Community Packages
       - libppx-sexp-conv-ocaml-dev  # Wolfi Community Packages
       - libppxlib-jane-ocaml-dev  # Wolfi Community Packages

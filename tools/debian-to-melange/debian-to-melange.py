@@ -453,7 +453,8 @@ def parse_deb822(text):
     return paras
 
 
-# The build profiles of the builds the recipes do (no build-time test suite).
+# The build profiles of the builds the recipes do (no build-time test suite);
+# --build-profiles adds others, e.g. nodoc to break a cycle through a doc tool.
 BUILD_PROFILES = frozenset({"nocheck"})
 
 
@@ -2185,9 +2186,12 @@ class Converter:
 
         # ---- environment ---------------------------------------------------
         # the recipe does not run the upstream tests at build time: Debian's nocheck profile
-        build_deps = self.map_deps(parse_relations(source.get("build-depends"), BUILD_PROFILES) +
-                                   parse_relations(source.get("build-depends-indep"), BUILD_PROFILES) +
-                                   parse_relations(source.get("build-depends-arch"), BUILD_PROFILES), "build")
+        profiles = frozenset(p for p in (a.build_profiles or "").split(",") if p) or BUILD_PROFILES
+        if profiles != BUILD_PROFILES:
+            self.notes.append("built with the Debian build profiles " + ",".join(sorted(profiles)))
+        build_deps = self.map_deps(parse_relations(source.get("build-depends"), profiles) +
+                                   parse_relations(source.get("build-depends-indep"), profiles) +
+                                   parse_relations(source.get("build-depends-arch"), profiles), "build")
         own = {b["package"] for b in binaries}
         self_deps = sorted(own & {alt for alts in parse_relations(source.get("build-depends")) for alt in alts})
         if self_deps:
@@ -3576,6 +3580,8 @@ def main(argv=None):
     p.add_argument("--out", default="packages", help="output directory (default: packages)")
     p.add_argument("--stdout", action="store_true", help="print the recipe instead of writing files")
     p.add_argument("--name", help="override the package name")
+    p.add_argument("--build-profiles", help="comma-separated Debian build profiles for the build "
+                   "dependencies (default: nocheck)")
     p.add_argument("--version", help="override the package version")
     p.add_argument("--version-var", help="debian/rules variable holding the version (native packages)")
     p.add_argument("--upstream-url", help="upstream tarball URL (the version is templated automatically)")
