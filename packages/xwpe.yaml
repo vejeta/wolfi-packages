@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# Converted with tools/debian-to-melange from the Debian package
+# (https://salsa.debian.org/debian/xwpe), which has the same maintainer as
+# upstream. Changes from the conversion: GPM mouse support is left out
+# (no libgpm in Wolfi), and the autopkgtests are replaced by smoke tests
+# because their terminal emulator (python3-pyte) and X11 tools are not in
+# Wolfi.
+package:
+  name: xwpe
+  version: '1.6.6'
+  epoch: 0
+  description: Programming environment and editor for console and X11
+  copyright:
+    - license: GPL-2.0-only
+    - license: FSFAP
+      paths:
+        - io.codeberg.mendezr.xwpe.metainfo.xml
+    - license: MIT
+      paths:
+        - icons/xwpe.svg
+        - icons/xwpe-small.svg
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - autoconf
+      - automake
+      - build-base
+      - busybox
+      - cairo-dev
+      - fontconfig-dev
+      - freetype-dev
+      - json-c-dev
+      - libvterm-dev
+      - libx11-dev
+      - libxext-dev
+      - libxft-dev
+      - ncurses-dev
+      - pango-dev
+      - pkgconf-dev
+      - rsvg-convert
+      - texinfo
+      - xorgproto
+      - zlib-dev
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://codeberg.org/mendezr/xwpe.git
+      tag: v${{package.version}}
+      expected-commit: 163ba2ff997f88b54470d477bff2379517c13008
+
+  - runs: autoreconf -fi
+
+  - uses: autoconf/configure
+    with:
+      opts: --without-gpm
+
+  - uses: autoconf/make
+
+  - uses: autoconf/make-install
+
+  - runs: |
+      install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/xwpe
+
+  - uses: strip
+
+subpackages:
+  - name: xwpe-doc
+    description: xwpe manual pages and info documentation
+    pipeline:
+      - uses: split/manpages
+      - uses: split/infodir
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - uses: test/docs
+
+update:
+  enabled: true
+  git:
+    strip-prefix: v
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - name: Commands
+      runs: |
+        for c in we wpe xwe xwpe; do test -x /usr/bin/$c; done
+        test -f /usr/share/licenses/xwpe/COPYING
+    - uses: test/tw/ldd-check
