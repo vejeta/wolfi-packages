@@ -7,11 +7,9 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/ocaml-rresult
 #
 # Conversion notes:
-# - build dependency 'libtopkg-ocaml-dev' (Debian 'libtopkg-ocaml-dev') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/o/ocaml-rresult/ocaml-rresult_0.7.0.orig.tar.bz2), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
 # - port debian/rules override_dh_auto_install: opam-installer --prefix=$(DESTDIR)/usr --libdir=..$(OCAML_STDLIB_DIR) rresult.install && rm -f $(DESTDIR)/usr/doc/rresult/LICENSE.md
-# - no debian/librresult-ocaml.install; define which files go to this subpackage
 package:
   name: librresult-ocaml-dev
   version: '0.7.0'
@@ -30,10 +28,11 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - busybox
-      - ocaml
+      - ocaml  # Debian: ocaml
+      - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib
       - ocamlbuild
-      # TODO(debian-to-melange): libtopkg-ocaml-dev is not in Wolfi (Debian: libtopkg-ocaml-dev); left out
+      - libtopkg-ocaml-dev  # Wolfi Community Packages
       - opam  # Debian: opam-installer
       - coreutils
       - findutils
@@ -48,6 +47,14 @@ pipeline:
   # TODO(debian-to-melange): port debian/rules override_dh_auto_install: opam-installer --prefix=$(DESTDIR)/usr --libdir=..$(OCAML_STDLIB_DIR) rresult.install && rm -f $(DESTDIR)/usr/doc/rresult/LICENSE.md
   - name: Install files
     runs: |
+      mkdir -p "${{targets.destdir}}/usr/lib/ocaml/rresult"
+      cp -a usr/lib/ocaml/rresult/*opam* "${{targets.destdir}}/usr/lib/ocaml/rresult/"
+      cp -a usr/lib/ocaml/rresult/*.cmi "${{targets.destdir}}/usr/lib/ocaml/rresult/"
+      cp -a usr/lib/ocaml/rresult/*.cmt* "${{targets.destdir}}/usr/lib/ocaml/rresult/"
+      cp -a usr/lib/ocaml/rresult/*.ml* "${{targets.destdir}}/usr/lib/ocaml/rresult/"
+      cp -a usr/lib/ocaml/rresult/*.cmx "${{targets.destdir}}/usr/lib/ocaml/rresult/"
+      cp -a usr/lib/ocaml/rresult/*.cmxa "${{targets.destdir}}/usr/lib/ocaml/rresult/"
+      cp -a usr/lib/ocaml/rresult/*.a "${{targets.destdir}}/usr/lib/ocaml/rresult/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/librresult-ocaml-dev"
       cp -a usr/doc/rresult/* "${{targets.destdir}}/usr/share/doc/librresult-ocaml-dev/"
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/librresult-ocaml-dev
@@ -55,9 +62,11 @@ subpackages:
   - name: librresult-ocaml
     description: Result value combinators for OCaml (runtime)
     pipeline:
-      # TODO(debian-to-melange): no debian/librresult-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/rresult"
+          cp -a usr/lib/ocaml/rresult/META "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
+          cp -a usr/lib/ocaml/rresult/*.cma "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
+          cp -a usr/lib/ocaml/rresult/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
 update:
   enabled: true
   release-monitor:

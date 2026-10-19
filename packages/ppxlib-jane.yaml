@@ -8,9 +8,7 @@
 #
 # Conversion notes:
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
-# - no debian/libppxlib-jane-ocaml.install; define which files go to this subpackage
 package:
   name: libppxlib-jane-ocaml-dev
   version: '0.17.4'
@@ -31,19 +29,27 @@ environment:
       - build-base
       - busybox
       - ocaml
-      - libppxlib-ocaml-dev  # Wolfi Community Packages
       - ocaml-dune
+      - ocaml-findlib
+      - ocaml-compiler-libs  # Debian: ocaml
+      - libppxlib-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - uses: git-checkout
     with:
       repository: https://github.com/janestreet/ppxlib_jane
       tag: v${{package.version}}
       expected-commit: 7614fc7d9bef1b69a74c417c3df5eb3a9ed61719
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p ppxlib_jane -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ppxlib_jane
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libppxlib-jane-ocaml-dev"
-      cp -a usr/doc/ppxlib_jane/* "${{targets.destdir}}/usr/share/doc/libppxlib-jane-ocaml-dev/"
+      mv "${{targets.destdir}}"/usr/doc/ppxlib_jane/* "${{targets.destdir}}/usr/share/doc/libppxlib-jane-ocaml-dev/"
+      rmdir "${{targets.destdir}}/usr/doc/ppxlib_jane" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/ppxlib-jane
   - name: Usr-merge (sbin into bin)
     runs: |
@@ -58,9 +64,11 @@ subpackages:
   - name: libppxlib-jane-ocaml
     description: Utilities to work on AST of the Jane Street OCaml compiler (runtime)
     pipeline:
-      # TODO(debian-to-melange): no debian/libppxlib-jane-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppxlib_jane"
+          mv "${{targets.destdir}}/usr/lib/ocaml/ppxlib_jane/META" "${{targets.contextdir}}/usr/lib/ocaml/ppxlib_jane/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppxlib_jane/*.cma "${{targets.contextdir}}/usr/lib/ocaml/ppxlib_jane/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppxlib_jane/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/ppxlib_jane/"
 update:
   enabled: true
   github:

@@ -34,6 +34,9 @@ environment:
     packages:
       - build-base
       - busybox
+      - ocaml
+      - ocaml-dune
+      - ocaml-findlib
       - libbase64-ocaml-dev  # Wolfi Community Packages
       - libbz2-ocaml-dev  # Wolfi Community Packages
       - libcudf-ocaml-dev  # Wolfi Community Packages
@@ -41,8 +44,7 @@ environment:
       - libocamlgraph-ocaml-dev  # Wolfi Community Packages
       - libre-ocaml-dev  # Wolfi Community Packages
       - libzip-ocaml-dev  # Wolfi Community Packages
-      - ocaml-dune
-      - ocaml
+      - ocaml-compiler-libs  # Debian: ocaml
       - graphviz
       - hevea  # Wolfi Community Packages
       - texmf-dist-fontsrecommended  # Wolfi Community Packages (Debian: lmodern)
@@ -72,17 +74,21 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/0001-Fix-expected-test-outputs-following-update-of-ocamlg.patch .recipe-files/0002-Add-camlp-streams-to-debGrep-dependencies.patch
-  - uses: autoconf/configure
-  - uses: autoconf/make
-  - uses: autoconf/make-install
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p dose3,dose3-extra -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" dose3 dose3-extra
   # TODO(debian-to-melange): port debian/rules override_dh_auto_build: dune build -p dose3$(DUNE_EXTRAPROFILE) @install --verbose && make -C doc/manpages man && pod2man --section 8 -release "apt-cudf $(RELEASE)"  		debian/update-cudf-solvers > debian/update-cudf-solvers.
   # TODO(debian-to-melange): port debian/rules override_dh_auto_install: dune install -p dose3$(DUNE_EXTRAPROFILE) --destdir=$(DESTDIR) --prefix=/usr --libdir=$(OCAML_STDLIB_DIR) --docdir=/usr/share/ocaml-dune/doc
   - name: Install files
     runs: |
+      mkdir -p "${{targets.destdir}}/usr/share"
+      cp -a usr/share/ocaml-dune "${{targets.destdir}}/usr/share/"
+      mkdir -p "${{targets.destdir}}/usr/lib"
+      cp -a usr/lib/ocaml "${{targets.destdir}}/usr/lib/"
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/libdose3-ocaml-dev
-  - name: Remove libtool archives
-    runs: |
-      find "${{targets.destdir}}" -name "*.la" -delete
   - uses: strip
 subpackages:
   - name: dose-distcheck

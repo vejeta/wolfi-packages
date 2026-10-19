@@ -7,11 +7,9 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/ocaml-fmt
 #
 # Conversion notes:
-# - build dependency 'libtopkg-ocaml-dev' (Debian 'libtopkg-ocaml-dev') not found in Wolfi; left out
 # - upstream tarball from debian/watch
 # - dh --with ocaml has no direct melange equivalent; review
 # - port debian/rules override_dh_auto_install: opam-installer --prefix=$(DESTDIR) --libdir=.$(OCAML_STDLIB_DIR) fmt.install && rm -f $(DESTDIR)/doc/fmt/LICENSE.md
-# - no debian/libfmt-ocaml.install; define which files go to this subpackage
 package:
   name: libfmt-ocaml-dev
   version: '0.11.0'
@@ -27,10 +25,11 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - busybox
-      - ocaml
+      - ocaml  # Debian: ocaml
+      - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib
       - ocamlbuild
-      # TODO(debian-to-melange): libtopkg-ocaml-dev is not in Wolfi (Debian: libtopkg-ocaml-dev); left out
+      - libtopkg-ocaml-dev  # Wolfi Community Packages
       - opam  # Debian: opam-installer
       - libcmdliner-ocaml-dev  # Wolfi Community Packages
       - coreutils
@@ -54,6 +53,44 @@ pipeline:
   # TODO(debian-to-melange): port debian/rules override_dh_auto_install: opam-installer --prefix=$(DESTDIR) --libdir=.$(OCAML_STDLIB_DIR) fmt.install && rm -f $(DESTDIR)/doc/fmt/LICENSE.md
   - name: Install files
     runs: |
+      mkdir -p "${{targets.destdir}}/usr/lib/ocaml/fmt"
+      cp -a usr/lib/ocaml/fmt/opam "${{targets.destdir}}/usr/lib/ocaml/fmt/"
+      cp -a usr/lib/ocaml/fmt/*.ml* "${{targets.destdir}}/usr/lib/ocaml/fmt/"
+      cp -a usr/lib/ocaml/fmt/*.cmi "${{targets.destdir}}/usr/lib/ocaml/fmt/"
+      cp -a usr/lib/ocaml/fmt/*.cmt* "${{targets.destdir}}/usr/lib/ocaml/fmt/"
+      cp -a usr/lib/ocaml/fmt/*.cmx "${{targets.destdir}}/usr/lib/ocaml/fmt/"
+      cp -a usr/lib/ocaml/fmt/*.cmxa "${{targets.destdir}}/usr/lib/ocaml/fmt/"
+      cp -a usr/lib/ocaml/fmt/*.a "${{targets.destdir}}/usr/lib/ocaml/fmt/"
+      for f in "."/usr/lib/ocaml/fmt/*/*.ml*; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/fmt/*/*.cmi; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/fmt/*/*.cmt*; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/fmt/*/*.cmx; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/fmt/*/*.cmxa; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/fmt/*/*.a; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
       mkdir -p "${{targets.destdir}}/usr/share/doc/libfmt-ocaml-dev"
       cp -a doc/fmt/* "${{targets.destdir}}/usr/share/doc/libfmt-ocaml-dev/"
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libfmt-ocaml-dev
@@ -61,9 +98,21 @@ subpackages:
   - name: libfmt-ocaml
     description: OCaml Format pretty-printer combinators (runtime)
     pipeline:
-      # TODO(debian-to-melange): no debian/libfmt-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/fmt"
+          cp -a usr/lib/ocaml/fmt/META "${{targets.contextdir}}/usr/lib/ocaml/fmt/"
+          cp -a usr/lib/ocaml/fmt/fmt.cma "${{targets.contextdir}}/usr/lib/ocaml/fmt/"
+          cp -a usr/lib/ocaml/fmt/fmt.cmxs "${{targets.contextdir}}/usr/lib/ocaml/fmt/"
+          for f in "."/usr/lib/ocaml/fmt/*/*.cma; do
+            [ -e "$f" ] || continue
+            r="${f#./}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "."/usr/lib/ocaml/fmt/*/*.cmxs; do
+            [ -e "$f" ] || continue
+            r="${f#./}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.contextdir}}/$r"
+          done
 update:
   enabled: true
   release-monitor:

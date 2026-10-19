@@ -394,6 +394,16 @@ class HelperTest(unittest.TestCase):
         self.assertEqual(d2m.scalar("it's: x"), "'it''s: x'")
         self.assertEqual(d2m.scalar("plain-value"), "plain-value")
 
+    def test_dh_ocaml_subst(self):
+        self.assertEqual(d2m.dh_ocaml_subst("@OCamlStdlibDir@/csexp/META\nOPT: @OCamlStdlibDir@/csexp/*.a\n"
+                                            "DYN: @OCamlDllDir@/dllfoo.so\n"),
+                         "usr/lib/ocaml/csexp/META\nusr/lib/ocaml/csexp/*.a\nusr/lib/ocaml/stublibs/dllfoo.so\n")
+
+    def test_ocaml_names_map_to_wolfi(self):
+        self.assertEqual(d2m.NAME_MAP["libstdlib-ocaml-dev"], "ocaml")
+        self.assertEqual(d2m.NAME_MAP["libfindlib-ocaml-dev"], "ocaml-findlib")
+        self.assertIn(("dune-project", "ocaml_dune"), d2m.BUILDSYSTEM_FILES)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,9 +7,6 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/ocaml-topkg
 #
 # Conversion notes:
-# - runtime dependency 'libfindlib-ocaml-dev' (Debian 'libfindlib-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libfindlib-ocaml-dev' (Debian 'libfindlib-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libopam-file-format-ocaml-dev' (Debian 'libopam-file-format-ocaml-dev') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/o/ocaml-topkg/ocaml-topkg_1.1.1.orig.tar.bz2), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
 # - port debian/rules override_dh_auto_install: for a in bytecode native; do  	  mv debian/install_$$a.sh debian/install_$$a.sh.old;  	done && debian/rules debian/install_bytecode.sh && diff -u debian/install_bytecode.sh.old debian/install_bytecode
@@ -22,7 +19,7 @@ package:
     - license: ISC
   dependencies:
     runtime:
-      # TODO(debian-to-melange): libfindlib-ocaml-dev is not in Wolfi (Debian: libfindlib-ocaml-dev); left out
+      - ocaml-findlib  # Debian: libfindlib-ocaml-dev
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -32,11 +29,11 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - busybox
-      - ocaml
+      - ocaml  # Debian: ocaml
+      - ocaml-compiler-libs  # Debian: ocaml
       - ocamlbuild
       - ocaml-findlib
-      # TODO(debian-to-melange): libfindlib-ocaml-dev is not in Wolfi (Debian: libfindlib-ocaml-dev); left out
-      # TODO(debian-to-melange): libopam-file-format-ocaml-dev is not in Wolfi (Debian: libopam-file-format-ocaml-dev); left out
+      - libopam-file-format-ocaml-dev  # Wolfi Community Packages
       - coreutils
       - findutils
 pipeline:
@@ -55,6 +52,18 @@ pipeline:
   # TODO(debian-to-melange): port debian/rules override_dh_auto_install: for a in bytecode native; do  	  mv debian/install_$$a.sh debian/install_$$a.sh.old;  	done && debian/rules debian/install_bytecode.sh && diff -u debian/install_bytecode.sh.old debian/install_bytecode
   - name: Install files
     runs: |
+      mkdir -p "${{targets.destdir}}/usr/lib/ocaml/topkg"
+      cp -a usr/lib/ocaml/topkg/opam "${{targets.destdir}}/usr/lib/ocaml/topkg/"
+      cp -a usr/lib/ocaml/topkg/META "${{targets.destdir}}/usr/lib/ocaml/topkg/"
+      cp -a usr/lib/ocaml/topkg/*.ml* "${{targets.destdir}}/usr/lib/ocaml/topkg/"
+      cp -a usr/lib/ocaml/topkg/*.cmt* "${{targets.destdir}}/usr/lib/ocaml/topkg/"
+      cp -a usr/lib/ocaml/topkg/*.cmi "${{targets.destdir}}/usr/lib/ocaml/topkg/"
+      cp -a usr/lib/ocaml/topkg/*.cma "${{targets.destdir}}/usr/lib/ocaml/topkg/"
+      cp -a usr/lib/ocaml/topkg/*.cmxs "${{targets.destdir}}/usr/lib/ocaml/topkg/"
+      cp -a usr/lib/ocaml/topkg/*.cmti "${{targets.destdir}}/usr/lib/ocaml/topkg/"
+      cp -a usr/lib/ocaml/topkg/*.a "${{targets.destdir}}/usr/lib/ocaml/topkg/"
+      cp -a usr/lib/ocaml/topkg/*.cmx "${{targets.destdir}}/usr/lib/ocaml/topkg/"
+      cp -a usr/lib/ocaml/topkg/*.cmxa "${{targets.destdir}}/usr/lib/ocaml/topkg/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/libtopkg-ocaml-dev"
       cp -a usr/doc/topkg/* "${{targets.destdir}}/usr/share/doc/libtopkg-ocaml-dev/"
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libtopkg-ocaml-dev

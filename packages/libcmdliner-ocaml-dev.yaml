@@ -7,7 +7,6 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/cmdliner
 #
 # Conversion notes:
-# - build dependency 'libresult-ocaml-dev' (Debian 'libresult-ocaml-dev') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/c/cmdliner/cmdliner_2.1.1.orig.tar.bz2), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
 # - port debian/rules override_dh_auto_install: make DESTDIR=$(DESTDIR) LIBDIR=$(DESTDIR)$(OCAML_STDLIB_DIR)/cmdliner install
@@ -27,10 +26,11 @@ environment:
     packages:
       - build-base
       - busybox
-      - ocaml
+      - ocaml  # Debian: ocaml
+      - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib
       - ocamlbuild
-      # TODO(debian-to-melange): libresult-ocaml-dev is not in Wolfi (Debian: libresult-ocaml-dev); left out
+      - libresult-ocaml-dev  # Wolfi Community Packages
       - coreutils
       - findutils
 pipeline:
@@ -54,6 +54,9 @@ pipeline:
       mkdir -p "${{targets.destdir}}/usr/share/doc/libcmdliner-ocaml-dev"
       cp -a README.md "${{targets.destdir}}/usr/share/doc/libcmdliner-ocaml-dev/"
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libcmdliner-ocaml-dev
+  - name: Remove libtool archives
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
   - uses: strip
 update:
   enabled: true

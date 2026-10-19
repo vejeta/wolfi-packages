@@ -10,7 +10,6 @@
 # - runtime dependency 'libjs-highlight.js': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - build dependency 'libjs-highlight.js': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
 # - no debian/libodoc-ocaml.install; define which files go to this subpackage
 # - no debian/libodoc-parser-ocaml.install; define which files go to this subpackage
@@ -25,7 +24,8 @@ package:
     - license: ISC
   dependencies:
     runtime:
-      - ocaml
+      - ocaml  # Debian: ocaml
+      - ocaml-compiler-libs  # Debian: ocaml
 environment:
   contents:
     keyring:
@@ -36,8 +36,10 @@ environment:
       - build-base
       - busybox
       - ocaml
-      - cppo  # Wolfi Community Packages
       - ocaml-dune
+      - ocaml-findlib
+      - ocaml-compiler-libs  # Debian: ocaml
+      - cppo  # Wolfi Community Packages
       - ocaml-crunch  # Wolfi Community Packages
       - libcamlp-streams-ocaml-dev  # Wolfi Community Packages
       - libastring-ocaml-dev  # Wolfi Community Packages
@@ -61,12 +63,18 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/0001-Remove-unused-compiler-libs.optcomp-from-loader-depe.patch .recipe-files/0002-Remove-dependency-on-compiler-libs.optcomp.patch
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p odoc,odoc-bench,odoc-driver,odoc-md,odoc-parser,sherlodoc -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" odoc odoc-bench odoc-driver odoc-md odoc-parser sherlodoc
   - name: Install files
     runs: |
       install -Dm644 .recipe-files/odoc.1 -t "${{targets.destdir}}/usr/share/man/man1"
       mkdir -p "${{targets.destdir}}/usr/share/doc/ocaml-odoc"
-      cp -a usr/doc/odoc/* "${{targets.destdir}}/usr/share/doc/ocaml-odoc/"
+      mv "${{targets.destdir}}"/usr/doc/odoc/* "${{targets.destdir}}/usr/share/doc/ocaml-odoc/"
+      rmdir "${{targets.destdir}}/usr/doc/odoc" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/ocaml-odoc
   - name: Usr-merge (sbin into bin)
     runs: |
@@ -93,7 +101,8 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libodoc-parser-ocaml-dev"
-          cp -a usr/doc/odoc-parser/* "${{targets.contextdir}}/usr/share/doc/libodoc-parser-ocaml-dev/"
+          mv "${{targets.destdir}}"/usr/doc/odoc-parser/* "${{targets.contextdir}}/usr/share/doc/libodoc-parser-ocaml-dev/"
+          rmdir "${{targets.destdir}}/usr/doc/odoc-parser" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
   - name: libodoc-parser-ocaml
     description: Parser for OCaml documentation comments (runtime files)
     pipeline:

@@ -8,10 +8,7 @@
 #
 # Conversion notes:
 # - build dependency 'libjs-highlight.js': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
-# - build dependency 'libgraphics-ocaml-dev' (Debian 'libgraphics-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'ocaml-odoc' (Debian 'ocaml-odoc') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/o/ocamlgraph/ocamlgraph_2.2.0.orig.tar.bz2), which disappears from the pool when Debian updates
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
 package:
   name: libocamlgraph-ocaml-dev
@@ -53,15 +50,16 @@ environment:
       - build-base
       - busybox
       - ocaml
-      - ocaml-findlib
       - ocaml-dune
-      # TODO(debian-to-melange): libgraphics-ocaml-dev is not in Wolfi (Debian: libgraphics-ocaml-dev); left out
+      - ocaml-findlib
+      - ocaml-compiler-libs  # Debian: ocaml
+      - libgraphics-ocaml-dev  # Wolfi Community Packages
       - libx11-dev
       - docbook-xml
       - libxml2-utils
       - libxslt  # Debian: xsltproc
       - po4a  # Wolfi Community Packages
-      # TODO(debian-to-melange): ocaml-odoc is not in Wolfi (Debian: ocaml-odoc); left out
+      - ocaml-odoc  # Wolfi Community Packages
       - coreutils
       - findutils
 pipeline:
@@ -77,19 +75,27 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/0002-avoid-referencing-non-existent-icon-ed_icon.xpm.patch
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p ocamlgraph,ocamlgraph_gtk -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ocamlgraph ocamlgraph_gtk
   - name: From debian/rules execute_after_dh_auto_build
     runs: |
       dune build -pocamlgraph @doc
       find _build/default/_doc/_html -name "*.dune-keep" -delete
   - name: Install files
     runs: |
+      mkdir -p "${{targets.destdir}}/usr/lib/ocaml"
       mkdir -p "${{targets.destdir}}/usr/share/doc/libocamlgraph-ocaml-dev/examples"
       cp -a examples/* "${{targets.destdir}}/usr/share/doc/libocamlgraph-ocaml-dev/examples/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/libocamlgraph-ocaml-dev"
       cp -a CREDITS "${{targets.destdir}}/usr/share/doc/libocamlgraph-ocaml-dev/"
-      cp -a usr/doc/ocamlgraph/CHANGES.md "${{targets.destdir}}/usr/share/doc/libocamlgraph-ocaml-dev/"
-      cp -a usr/doc/ocamlgraph/README.md "${{targets.destdir}}/usr/share/doc/libocamlgraph-ocaml-dev/"
+      mv "${{targets.destdir}}/usr/doc/ocamlgraph/CHANGES.md" "${{targets.destdir}}/usr/share/doc/libocamlgraph-ocaml-dev/"
+      rmdir "${{targets.destdir}}/usr/doc/ocamlgraph" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
+      mv "${{targets.destdir}}/usr/doc/ocamlgraph/README.md" "${{targets.destdir}}/usr/share/doc/libocamlgraph-ocaml-dev/"
+      rmdir "${{targets.destdir}}/usr/doc/ocamlgraph" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 COPYING LICENSE -t "${{targets.destdir}}"/usr/share/licenses/libocamlgraph-ocaml-dev
   - name: Usr-merge (sbin into bin)
     runs: |
@@ -106,7 +112,7 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libocamlgraph-ocaml-doc/html"
-          mv "${{targets.destdir}}"/_build/default/_doc/_html/* "${{targets.contextdir}}/usr/share/doc/libocamlgraph-ocaml-doc/html/"
+          cp -a _build/default/_doc/_html/* "${{targets.contextdir}}/usr/share/doc/libocamlgraph-ocaml-doc/html/"
 update:
   enabled: true
   release-monitor:

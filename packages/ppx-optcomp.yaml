@@ -8,9 +8,7 @@
 #
 # Conversion notes:
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
-# - no debian/libppx-optcomp-ocaml.install; define which files go to this subpackage
 package:
   name: libppx-optcomp-ocaml-dev
   version: '0.17.1'
@@ -31,8 +29,9 @@ environment:
       - build-base
       - busybox
       - ocaml
-      - ocaml-findlib
       - ocaml-dune
+      - ocaml-findlib
+      - ocaml-compiler-libs  # Debian: ocaml
       - libbase-ocaml-dev  # Wolfi Community Packages
       - libstdio-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
@@ -42,11 +41,17 @@ pipeline:
       repository: https://github.com/janestreet/ppx_optcomp
       tag: v${{package.version}}
       expected-commit: b37b49acf8c9b934251ce04c78a9ea509d79b3c8
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p ppx_optcomp -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ppx_optcomp
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libppx-optcomp-ocaml-dev"
-      cp -a usr/doc/ppx_optcomp/* "${{targets.destdir}}/usr/share/doc/libppx-optcomp-ocaml-dev/"
+      mv "${{targets.destdir}}"/usr/doc/ppx_optcomp/* "${{targets.destdir}}/usr/share/doc/libppx-optcomp-ocaml-dev/"
+      rmdir "${{targets.destdir}}/usr/doc/ppx_optcomp" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/ppx-optcomp
   - name: Usr-merge (sbin into bin)
     runs: |
@@ -61,9 +66,11 @@ subpackages:
   - name: libppx-optcomp-ocaml
     description: Optional compilation for OCaml (runtime files)
     pipeline:
-      # TODO(debian-to-melange): no debian/libppx-optcomp-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_optcomp"
+          mv "${{targets.destdir}}/usr/lib/ocaml/ppx_optcomp/META" "${{targets.contextdir}}/usr/lib/ocaml/ppx_optcomp/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_optcomp/*.cma "${{targets.contextdir}}/usr/lib/ocaml/ppx_optcomp/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_optcomp/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/ppx_optcomp/"
 update:
   enabled: true
   github:

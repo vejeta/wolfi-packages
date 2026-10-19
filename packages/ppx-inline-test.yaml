@@ -8,7 +8,6 @@
 #
 # Conversion notes:
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
 package:
   name: libppx-inline-test-ocaml
@@ -29,6 +28,9 @@ environment:
     packages:
       - build-base
       - busybox
+      - ocaml
+      - ocaml-dune
+      - ocaml-findlib
       - libbase-ocaml-dev  # Wolfi Community Packages
       - libjane-street-headers-ocaml-dev  # Wolfi Community Packages
       - libppx-enumerate-ocaml-dev  # Wolfi Community Packages
@@ -36,15 +38,19 @@ environment:
       - libppx-sexp-conv-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
       - libtime-now-ocaml-dev  # Wolfi Community Packages
-      - ocaml-dune
-      - ocaml
+      - ocaml-compiler-libs  # Debian: ocaml
 pipeline:
   - uses: git-checkout
     with:
       repository: https://github.com/janestreet/ppx_inline_test
       tag: v${{package.version}}
       expected-commit: b0cfd25c40c23014465a37680579850fd425e35d
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p ppx_inline_test -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ppx_inline_test
   - name: Install files
     runs: |
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/ppx-inline-test
@@ -62,8 +68,68 @@ subpackages:
     description: Syntax extension for in-line tests in OCaml (dev files)
     pipeline:
       - runs: |
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/*opam* "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/*dune* "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/"
+          mv "${{targets.destdir}}/usr/lib/ocaml/ppx_inline_test/ppx.exe" "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/*.mli "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/"
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/config"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/config/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/config/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/config/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/config/*.mli "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/config/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/config/"
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/drop"
+          mv "${{targets.destdir}}/usr/lib/ocaml/ppx_inline_test/drop/ppx.exe" "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/drop/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/drop/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/drop/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/drop/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/drop/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/drop/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/drop/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/drop/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/drop/"
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/libname"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/libname/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/libname/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/libname/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/libname/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/libname/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/libname/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/libname/*.mli "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/libname/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/libname/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/libname/"
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/lib"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runner/lib/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/lib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runner/lib/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/lib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runner/lib/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/lib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runner/lib/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/lib/"
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runner/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runner/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runner/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runner/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runner/*.mli "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/"
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runtime-lib"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runtime-lib/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runtime-lib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runtime-lib/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runtime-lib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runtime-lib/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runtime-lib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runtime-lib/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runtime-lib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runtime-lib/*.mli "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runtime-lib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runtime-lib/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runtime-lib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/config/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/config/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/drop/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/drop/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/drop/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/drop/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/libname/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/libname/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/libname/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/libname/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runner/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runner/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runner/lib/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/lib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runner/lib/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runner/lib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runtime-lib/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runtime-lib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_inline_test/runtime-lib/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_inline_test/runtime-lib/"
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libppx-inline-test-ocaml-dev"
-          cp -a usr/doc/ppx_inline_test/* "${{targets.contextdir}}/usr/share/doc/libppx-inline-test-ocaml-dev/"
+          mv "${{targets.destdir}}"/usr/doc/ppx_inline_test/* "${{targets.contextdir}}/usr/share/doc/libppx-inline-test-ocaml-dev/"
+          rmdir "${{targets.destdir}}/usr/doc/ppx_inline_test" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
 update:
   enabled: true
   github:

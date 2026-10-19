@@ -8,7 +8,6 @@
 #
 # Conversion notes:
 # - build dependency 'libjs-of-ocaml-dev': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
-# - build dependency 'libtopkg-ocaml-dev' (Debian 'libtopkg-ocaml-dev') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/o/ocaml-mtime/ocaml-mtime_2.2.0.orig.tar.bz2), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
 # - port debian/rules override_dh_auto_install: opam-installer  	  --prefix=$(DESTDIR)  	  --libdir=.$(OCAML_STDLIB_DIR)  	  --docdir=./usr/share/ocaml-dune/doc  	  mtime.install
@@ -28,10 +27,11 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - busybox
-      - ocaml
+      - ocaml  # Debian: ocaml
+      - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib
       - ocamlbuild
-      # TODO(debian-to-melange): libtopkg-ocaml-dev is not in Wolfi (Debian: libtopkg-ocaml-dev); left out
+      - libtopkg-ocaml-dev  # Wolfi Community Packages
       - opam  # Debian: opam-installer
       - coreutils
       - findutils

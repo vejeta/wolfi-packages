@@ -8,9 +8,7 @@
 #
 # Conversion notes:
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
-# - no debian/libcamlp-streams-ocaml.install; define which files go to this subpackage
 package:
   name: libcamlp-streams-ocaml-dev
   version: '5.0.1'
@@ -32,17 +30,25 @@ environment:
       - busybox
       - ocaml
       - ocaml-dune
+      - ocaml-findlib
+      - ocaml-compiler-libs  # Debian: ocaml
 pipeline:
   - uses: git-checkout
     with:
       repository: https://github.com/ocaml/camlp-streams
       tag: v${{package.version}}
       expected-commit: 567fa15f32192a6a7cd12e6c9e804fec43460126
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p camlp-streams -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" camlp-streams
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libcamlp-streams-ocaml-dev"
-      cp -a usr/doc/*/* "${{targets.destdir}}/usr/share/doc/libcamlp-streams-ocaml-dev/"
+      mv "${{targets.destdir}}"/usr/doc/*/* "${{targets.destdir}}/usr/share/doc/libcamlp-streams-ocaml-dev/"
+      rmdir "${{targets.destdir}}/usr/doc/*" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/camlp-streams
   - name: Usr-merge (sbin into bin)
     runs: |
@@ -57,9 +63,22 @@ subpackages:
   - name: libcamlp-streams-ocaml
     description: Stream and Genlex libraries for use with Camlp4 and Camlp5 (runtime files)
     pipeline:
-      # TODO(debian-to-melange): no debian/libcamlp-streams-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/*/META; do
+            [ -e "$f" ] || continue
+            r="${f#${{targets.destdir}}/}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/*/*.cma; do
+            [ -e "$f" ] || continue
+            r="${f#${{targets.destdir}}/}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/*/*.cmxs; do
+            [ -e "$f" ] || continue
+            r="${f#${{targets.destdir}}/}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
+          done
 update:
   enabled: true
   github:

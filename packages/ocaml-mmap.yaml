@@ -7,11 +7,8 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/ocaml-mmap
 #
 # Conversion notes:
-# - build dependency 'libbigarray-compat-ocaml-dev' (Debian 'libbigarray-compat-ocaml-dev') not found in Wolfi; left out
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
-# - no debian/libmmap-ocaml.install; define which files go to this subpackage
 package:
   name: libmmap-ocaml-dev
   version: '1.2.0'
@@ -33,18 +30,26 @@ environment:
       - busybox
       - ocaml
       - ocaml-dune
-      # TODO(debian-to-melange): libbigarray-compat-ocaml-dev is not in Wolfi (Debian: libbigarray-compat-ocaml-dev); left out
+      - ocaml-findlib
+      - ocaml-compiler-libs  # Debian: ocaml
+      - libbigarray-compat-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - uses: git-checkout
     with:
       repository: https://github.com/mirage/mmap
       tag: v${{package.version}}
       expected-commit: b5efb79871d290072a17f755566c8288cf069e4f
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p mmap -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" mmap
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libmmap-ocaml-dev"
-      cp -a usr/doc/mmap/* "${{targets.destdir}}/usr/share/doc/libmmap-ocaml-dev/"
+      mv "${{targets.destdir}}"/usr/doc/mmap/* "${{targets.destdir}}/usr/share/doc/libmmap-ocaml-dev/"
+      rmdir "${{targets.destdir}}/usr/doc/mmap" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/ocaml-mmap
   - name: Usr-merge (sbin into bin)
     runs: |
@@ -59,9 +64,11 @@ subpackages:
   - name: libmmap-ocaml
     description: File mapping functionality in OCaml (runtime)
     pipeline:
-      # TODO(debian-to-melange): no debian/libmmap-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/mmap"
+          mv "${{targets.destdir}}/usr/lib/ocaml/mmap/META" "${{targets.contextdir}}/usr/lib/ocaml/mmap/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/mmap/*.cma "${{targets.contextdir}}/usr/lib/ocaml/mmap/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/mmap/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/mmap/"
 update:
   enabled: true
   github:

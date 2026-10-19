@@ -95,6 +95,7 @@ NAME_MAP = {
     "libstdlib-ocaml-dev": "ocaml",
     "libuchar-ocaml-dev": "ocaml",
     "libseq-ocaml-dev": "ocaml",
+    "libcompiler-libs-ocaml-dev": "ocaml-compiler-libs",
     "ocaml-findlib": "ocaml-findlib",
     "libfindlib-ocaml": "ocaml-findlib",
     "libfindlib-ocaml-dev": "ocaml-findlib",
@@ -1454,7 +1455,15 @@ def dh_compat(source, read):
     return int(text) if text.isdigit() else 0
 
 
+def dh_ocaml_subst(text):
+    """What dh_ocamlinit makes of debian/*.in: Wolfi's OCaml has native code and natdynlink."""
+    for var, val in (("@OCamlStdlibDir@", "usr/lib/ocaml"), ("@OCamlDllDir@", "usr/lib/ocaml/stublibs")):
+        text = text.replace(var, val)
+    return re.sub(r"(?m)^(?:OPT|DYN):\s*", "", text)
+
+
 BUILDSYSTEM_FILES = [
+    ("dune-project", "ocaml_dune"),  # dh-ocaml picks it for dune projects
     ("meson.build", "meson"),
     ("CMakeLists.txt", "cmake"),
     ("configure.ac", "autoconf"),
@@ -1517,6 +1526,10 @@ class Converter:
         text = self.read("{}.{}".format(binary, suffix))
         if text is None and main:
             text = self.read(suffix)
+        if text is None:
+            text = self.read("{}.{}.in".format(binary, suffix))
+            if text is not None:
+                text = dh_ocaml_subst(text)
         return text
 
     def patch_imports(self):
@@ -2165,6 +2178,8 @@ class Converter:
         if bs == "perl_makemaker":
             # Debian's perl has the headers XS probes look for (List::MoreUtils)
             base += ["perl", "perl-dev"]
+        if bs == "ocaml_dune":
+            base += [p for p in ("ocaml", "ocaml-dune", "ocaml-findlib") if p not in base]
         if native and bs:
             # a Debian-native build assumes what debhelper brings: perl (pod2man)
             # and dpkg-dev (dpkg-parsechangelog)
@@ -2325,6 +2340,10 @@ class Converter:
                 pipeline.append({"uses": BUILD_PIPELINES[bs][1]})
         if build_override:
             pipeline += self.override_steps(build_override, "Build (from debian/rules override_dh_auto_build)")
+        if bs == "ocaml_dune":
+            pipeline += self.ocaml_dune_steps(build_override, install_override)
+        elif build_override:
+            pass
         elif bs in BUILD_PIPELINES and not install_override:
             if bs == "autoconf" and self.needs_autoreconf(source):
                 pipeline.append({"runs": "autoreconf -fi\n"})
@@ -2825,6 +2844,21 @@ class Converter:
             return [self.todo("compute expected-sha256 (re-run with --download)"), step]
         return [step]
 
+    def ocaml_dune_steps(self, build_override, install_override):
+        """dh-ocaml's ocaml_dune build system: dune build/install of the opam packages."""
+        pkgs = sorted(n[:-len(".opam")] for n in self.top if n.endswith(".opam"))
+        p = " ".join(["-p", ",".join(pkgs)]) if pkgs else "--release"
+        steps = []
+        if not build_override:
+            steps.append({"name": "Build (dh-ocaml's ocaml_dune build system)",
+                          "runs": "dune build {} -j $(nproc) @install\n".format(p)})
+        if not install_override:
+            # the libraries go to the standard library directory, where ocamlfind looks
+            steps.append({"name": "Install", "runs": (
+                'dune install --destdir="${{{{targets.destdir}}}}" --prefix=/usr --libdir="$(ocamlc -where)" '
+                '{}\n').format(" ".join(pkgs)).replace(" \n", "\n")})
+        return steps
+
     def debian_native_url(self, source):
         """fetch step for the tarball of a Debian-native source package."""
         ver = (self.deb_version or "").split(":", 1)[-1]
@@ -2976,7 +3010,16 @@ class Converter:
                 cmds.append('mkdir -p "{0}/examples"\ncp -a {1} "{0}/examples/"'.format(docdir, ex))
         for line in (self.pkgfile(binary["package"], "docs", main) or "").splitlines():
             doc = line.split("#", 1)[0].strip()
-            if doc:
+            if doc.startswith(("usr/", "debian/tmp/usr/")) and self.upstream_installs:
+                # dh_installdocs finds it in debian/tmp (dune installs usr/doc/<package>)
+                doc = doc[len("debian/tmp/"):] if doc.startswith("debian/tmp/") else doc
+                # usr/doc is not where docs go: move them out of it
+                cmds.append('mkdir -p "{0}"\n{2} {1} "{0}/"'.format(
+                    docdir, shell_path("${{targets.destdir}}", doc), "mv" if doc.startswith("usr/doc/") else "cp -a"))
+                if doc.startswith("usr/doc/"):
+                    cmds.append('rmdir "${{{{targets.destdir}}}}/{}" "${{{{targets.destdir}}}}/usr/doc" '
+                                '2>/dev/null || true'.format(os.path.dirname(doc.rstrip("/"))))
+            elif doc:
                 # dh_installdocs takes them from the source tree; may be directories
                 cmds.append('mkdir -p "{0}"\ncp -a {1} "{0}/"'.format(docdir, self.debian_file(doc)))
         # Drop repeated "mkdir -p" of the same directory.

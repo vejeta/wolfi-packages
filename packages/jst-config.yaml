@@ -7,9 +7,7 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/jst-config
 #
 # Conversion notes:
-# - build dependency 'libppx-assert-ocaml-dev' (Debian 'libppx-assert-ocaml-dev') not found in Wolfi; left out
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
 package:
   name: libjst-config-ocaml
@@ -30,11 +28,13 @@ environment:
     packages:
       - build-base
       - busybox
+      - ocaml
+      - ocaml-dune
+      - ocaml-findlib
       - libbase-ocaml-dev  # Wolfi Community Packages
       - libdune-configurator-ocaml-dev  # Wolfi Community Packages
-      # TODO(debian-to-melange): libppx-assert-ocaml-dev is not in Wolfi (Debian: libppx-assert-ocaml-dev); left out
-      - ocaml-dune
-      - ocaml
+      - libppx-assert-ocaml-dev  # Wolfi Community Packages
+      - ocaml-compiler-libs  # Debian: ocaml
       - coreutils
       - findutils
 pipeline:
@@ -43,7 +43,12 @@ pipeline:
       repository: https://github.com/janestreet/jst-config
       tag: v${{package.version}}
       expected-commit: 2487727655bfb8d6a511eb7886fb65bba4cfbbc7
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p jst-config -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" jst-config
   - name: Install files
     runs: |
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/jst-config
@@ -63,7 +68,17 @@ subpackages:
   - name: libjst-config-ocaml-dev
     description: Compile-time configuration for Jane Street packages (dev files)
     pipeline:
-      - uses: split/dev
+      - runs: |
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/jst-config"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*opam* "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*dune* "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.ml "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.h "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.a "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
 update:
   enabled: true
   github:

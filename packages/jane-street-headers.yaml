@@ -8,7 +8,6 @@
 #
 # Conversion notes:
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
 package:
   name: libjane-street-headers-ocaml
@@ -29,15 +28,22 @@ environment:
     packages:
       - build-base
       - busybox
-      - ocaml-dune
       - ocaml
+      - ocaml-dune
+      - ocaml-findlib
+      - ocaml-compiler-libs  # Debian: ocaml
 pipeline:
   - uses: git-checkout
     with:
       repository: https://github.com/janestreet/jane-street-headers
       tag: v${{package.version}}
       expected-commit: 7c166660dd6470e28a64cb4c453fd8b791c02724
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p jane-street-headers -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" jane-street-headers
   - name: Install files
     runs: |
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/jane-street-headers
@@ -55,8 +61,19 @@ subpackages:
     description: Common header files for Jane Street projects (dev files)
     pipeline:
       - runs: |
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/jane-street-headers"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jane-street-headers/*opam* "${{targets.contextdir}}/usr/lib/ocaml/jane-street-headers/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jane-street-headers/*dune* "${{targets.contextdir}}/usr/lib/ocaml/jane-street-headers/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jane-street-headers/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/jane-street-headers/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jane-street-headers/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/jane-street-headers/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jane-street-headers/*.ml "${{targets.contextdir}}/usr/lib/ocaml/jane-street-headers/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jane-street-headers/*.h "${{targets.contextdir}}/usr/lib/ocaml/jane-street-headers/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jane-street-headers/*.a "${{targets.contextdir}}/usr/lib/ocaml/jane-street-headers/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jane-street-headers/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/jane-street-headers/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/jane-street-headers/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/jane-street-headers/"
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libjane-street-headers-ocaml-dev"
-          cp -a usr/doc/jane-street-headers/* "${{targets.contextdir}}/usr/share/doc/libjane-street-headers-ocaml-dev/"
+          mv "${{targets.destdir}}"/usr/doc/jane-street-headers/* "${{targets.contextdir}}/usr/share/doc/libjane-street-headers-ocaml-dev/"
+          rmdir "${{targets.destdir}}/usr/doc/jane-street-headers" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
 update:
   enabled: true
   github:

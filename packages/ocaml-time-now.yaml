@@ -7,14 +7,7 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/ocaml-time-now
 #
 # Conversion notes:
-# - build dependency 'libbase-ocaml-dev' (Debian 'libbase-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libjst-config-ocaml-dev' (Debian 'libjst-config-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libppx-base-ocaml-dev' (Debian 'libppx-base-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libppx-cold-ocaml-dev' (Debian 'libppx-cold-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libppx-globalize-ocaml-dev' (Debian 'libppx-globalize-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libppx-optcomp-ocaml-dev' (Debian 'libppx-optcomp-ocaml-dev') not found in Wolfi; left out
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
 package:
   name: libtime-now-ocaml
@@ -35,19 +28,21 @@ environment:
     packages:
       - build-base
       - busybox
-      # TODO(debian-to-melange): libbase-ocaml-dev is not in Wolfi (Debian: libbase-ocaml-dev); left out
+      - ocaml
+      - ocaml-dune
+      - ocaml-findlib
+      - libbase-ocaml-dev  # Wolfi Community Packages
       - libjane-street-headers-ocaml-dev  # Wolfi Community Packages
-      # TODO(debian-to-melange): libjst-config-ocaml-dev is not in Wolfi (Debian: libjst-config-ocaml-dev); left out
-      # TODO(debian-to-melange): libppx-base-ocaml-dev is not in Wolfi (Debian: libppx-base-ocaml-dev); left out
-      # TODO(debian-to-melange): libppx-cold-ocaml-dev is not in Wolfi (Debian: libppx-cold-ocaml-dev); left out
+      - libjst-config-ocaml-dev  # Wolfi Community Packages
+      - libppx-base-ocaml-dev  # Wolfi Community Packages
+      - libppx-cold-ocaml-dev  # Wolfi Community Packages
       - libppx-enumerate-ocaml-dev  # Wolfi Community Packages
-      # TODO(debian-to-melange): libppx-globalize-ocaml-dev is not in Wolfi (Debian: libppx-globalize-ocaml-dev); left out
+      - libppx-globalize-ocaml-dev  # Wolfi Community Packages
       - libppx-hash-ocaml-dev  # Wolfi Community Packages
-      # TODO(debian-to-melange): libppx-optcomp-ocaml-dev is not in Wolfi (Debian: libppx-optcomp-ocaml-dev); left out
+      - libppx-optcomp-ocaml-dev  # Wolfi Community Packages
       - libppx-sexp-conv-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
-      - ocaml-dune
-      - ocaml
+      - ocaml-compiler-libs  # Debian: ocaml
       - coreutils
       - findutils
 pipeline:
@@ -56,11 +51,17 @@ pipeline:
       repository: https://github.com/janestreet/time_now
       tag: v${{package.version}}
       expected-commit: 112f3885262b236a36c0dce1b6790c0561ded7ca
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p time_now -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" time_now
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libtime-now-ocaml"
-      cp -a usr/doc/time_now/CHANGES.md "${{targets.destdir}}/usr/share/doc/libtime-now-ocaml/"
+      mv "${{targets.destdir}}/usr/doc/time_now/CHANGES.md" "${{targets.destdir}}/usr/share/doc/libtime-now-ocaml/"
+      rmdir "${{targets.destdir}}/usr/doc/time_now" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/ocaml-time-now
   - name: From debian/rules execute_after_dh_auto_install
     runs: |
@@ -78,7 +79,17 @@ subpackages:
   - name: libtime-now-ocaml-dev
     description: Current time for OCaml (dev files)
     pipeline:
-      - uses: split/dev
+      - runs: |
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/time_now"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*opam* "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*dune* "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.ml "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.mli "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.a "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
     dependencies:
       runtime:
         - libppx-hash-ocaml-dev  # Wolfi Community Packages

@@ -7,11 +7,9 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/ocaml-astring
 #
 # Conversion notes:
-# - build dependency 'libtopkg-ocaml-dev' (Debian 'libtopkg-ocaml-dev') not found in Wolfi; left out
 # - upstream tarball from debian/watch
 # - dh --with ocaml has no direct melange equivalent; review
 # - port debian/rules override_dh_auto_install: opam-installer --prefix=$(DESTDIR) --libdir=.$(OCAML_STDLIB_DIR) astring.install && rm -f $(DESTDIR)/doc/astring/LICENSE.md
-# - no debian/libastring-ocaml.install; define which files go to this subpackage
 package:
   name: libastring-ocaml-dev
   version: '0.8.5'
@@ -27,10 +25,11 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - busybox
-      - ocaml
+      - ocaml  # Debian: ocaml
+      - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib
       - ocamlbuild
-      # TODO(debian-to-melange): libtopkg-ocaml-dev is not in Wolfi (Debian: libtopkg-ocaml-dev); left out
+      - libtopkg-ocaml-dev  # Wolfi Community Packages
       - opam  # Debian: opam-installer
       - coreutils
       - findutils
@@ -45,6 +44,15 @@ pipeline:
   # TODO(debian-to-melange): port debian/rules override_dh_auto_install: opam-installer --prefix=$(DESTDIR) --libdir=.$(OCAML_STDLIB_DIR) astring.install && rm -f $(DESTDIR)/doc/astring/LICENSE.md
   - name: Install files
     runs: |
+      mkdir -p "${{targets.destdir}}/usr/lib/ocaml/astring"
+      cp -a usr/lib/ocaml/astring/opam "${{targets.destdir}}/usr/lib/ocaml/astring/"
+      cp -a usr/lib/ocaml/astring/*.ml* "${{targets.destdir}}/usr/lib/ocaml/astring/"
+      cp -a usr/lib/ocaml/astring/*.cmi "${{targets.destdir}}/usr/lib/ocaml/astring/"
+      cp -a usr/lib/ocaml/astring/*.cmt* "${{targets.destdir}}/usr/lib/ocaml/astring/"
+      cp -a usr/lib/ocaml/astring/astring_top* "${{targets.destdir}}/usr/lib/ocaml/astring/"
+      cp -a usr/lib/ocaml/astring/*.cmx "${{targets.destdir}}/usr/lib/ocaml/astring/"
+      cp -a usr/lib/ocaml/astring/*.cmxa "${{targets.destdir}}/usr/lib/ocaml/astring/"
+      cp -a usr/lib/ocaml/astring/*.a "${{targets.destdir}}/usr/lib/ocaml/astring/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/libastring-ocaml-dev"
       cp -a doc/astring/* "${{targets.destdir}}/usr/share/doc/libastring-ocaml-dev/"
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libastring-ocaml-dev
@@ -52,9 +60,11 @@ subpackages:
   - name: libastring-ocaml
     description: Alternative String module for OCaml (runtime)
     pipeline:
-      # TODO(debian-to-melange): no debian/libastring-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/astring"
+          cp -a usr/lib/ocaml/astring/META "${{targets.contextdir}}/usr/lib/ocaml/astring/"
+          cp -a usr/lib/ocaml/astring/astring.cma "${{targets.contextdir}}/usr/lib/ocaml/astring/"
+          cp -a usr/lib/ocaml/astring/astring.cmxs "${{targets.contextdir}}/usr/lib/ocaml/astring/"
 update:
   enabled: true
   release-monitor:

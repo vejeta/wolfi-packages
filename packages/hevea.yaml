@@ -9,8 +9,7 @@
 # Conversion notes:
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/h/hevea/hevea_2.38.orig.tar.gz), which disappears from the pool when Debian updates
 # - dh --with ocaml,tex has no direct melange equivalent; review
-# - test dependency 'texmf-dist-latexbase' (Debian 'texlive-latex-base') not found in Wolfi; left out
-# - autopkgtest 'examples source-date-epoch' left out: it needs packages that are not in Wolfi
+# - autopkgtests converted to the test pipeline (1 steps)
 package:
   name: hevea
   version: '2.38'
@@ -34,7 +33,8 @@ environment:
       - build-base
       - busybox
       - tex-common  # Wolfi Community Packages
-      - ocaml
+      - ocaml  # Debian: ocaml
+      - ocaml-compiler-libs  # Debian: ocaml
       - ocamlbuild
       - coreutils
       - findutils
@@ -87,8 +87,72 @@ test:
     contents:
       packages:
         - busybox
+        - texmf-dist-latex  # Wolfi Community Packages (Debian: texlive-latex-base)
+        - bash  # Essential in Debian, so on every testbed
+        - coreutils  # Essential in Debian, so on every testbed
+        - diffutils  # Essential in Debian, so on every testbed
+        - dpkg  # Essential in Debian, so on every testbed
+        - findutils  # Essential in Debian, so on every testbed
+        - grep  # Essential in Debian, so on every testbed
+        - sed  # Essential in Debian, so on every testbed
   pipeline:
     - runs: |
         test -f /usr/share/licenses/hevea/LICENSE
     - uses: test/tw/ldd-check
-    # TODO(debian-to-melange): autopkgtest 'examples source-date-epoch' left out; it needs packages that are not in Wolfi
+    - uses: fetch
+      with:
+        uri: https://deb.debian.org/debian/pool/main/h/hevea/hevea_${{package.version}}.orig.tar.gz
+        expected-sha256: 722038065007226f0fa3de4629127294d2e29bfbbc41042c83a570fa0c455a47
+    - name: dpkg database (as on a Debian testbed)
+      runs: |
+        db=/var/lib/dpkg
+        mkdir -p "$db/info" && touch "$db/status"
+        awk -v db="$db" -v aliases='libc-bin=glibc libc6=glibc perl-base=perl texlive-latex-base=texmf-dist-latex' '
+          BEGIN { n = split(aliases, a, " "); for (i = 1; i <= n; i++) { split(a[i], kv, "="); alias[kv[2]] = alias[kv[2]] " " kv[1] } }
+          function add(   m, j, f) {
+            m = split(pkg alias[pkg], names, " ")
+            for (j = 1; j <= m; j++) {
+              f = db "/info/" names[j] ".list"
+              printf "%s", files > f; close(f)
+              gsub(/_/, "~", ver)
+              printf "Package: %s\nStatus: install ok installed\nPriority: optional\nArchitecture: all\nVersion: %s\nMaintainer: Wolfi\nDescription: %s (apk package %s)\n\n", names[j], ver, names[j], pkg >> (db "/status")
+            }
+            pkg = ""
+          }
+          /^P:/ { pkg = substr($0, 3); files = ""; dir = "" }
+          /^V:/ { ver = substr($0, 3) }
+          /^F:/ { dir = substr($0, 3); files = files "/" dir "\n" }
+          /^R:/ { files = files (dir == "" ? "" : "/" dir) "/" substr($0, 3) "\n" }
+          /^$/ && pkg != "" { add() }
+          END { if (pkg != "") add() }
+        ' /lib/apk/db/installed
+        for t in debian/hevea.templates debian/templates; do
+          # po-debconf's translatable fields (_Description, __Choices) in the C locale
+          [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/hevea.templates" && break
+        done
+    - name: 'autopkgtest: source-date-epoch'
+      runs: |
+        export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
+        set -e
+
+        rundir=${AUTOPKGTEST_TMP:-/tmp}
+
+        cd ${rundir}
+
+        cat > in.tex << EOF
+        \documentclass{article}
+        \usepackage{hevea}
+        \begin{document}
+        \heveadate
+        \end{document}
+        EOF
+
+        SOURCE_DATE_EPOCH=0 hevea -exec xxdate.exe -text in.tex 2> /dev/null
+        gotdate=`sed  -n -e "1 s/^ *//p" < in.txt`
+        if [ "$gotdate" != "Thu Jan 1 00:00:00 UTC 1970" ]; then
+           echo got date $gotdate with SOURCE_DATE_EPOCH set  to 0
+           exit 1
+        else
+           echo ok
+        fi

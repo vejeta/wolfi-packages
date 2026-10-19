@@ -1,0 +1,22 @@
+From: =?utf-8?q?St=C3=A9phane_Glondu?= <glondu@debian.org>
+Date: Tue, 28 Jul 2026 09:01:56 +0200
+Subject: Fix FTBFS with dune 3.24.1
+
+Bug-Debian: https://bugs.debian.org/1142897
+---
+ examples/boulderdash/dune | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/examples/boulderdash/dune b/examples/boulderdash/dune
+index 87d2ea3..1c99dc3 100644
+--- a/examples/boulderdash/dune
++++ b/examples/boulderdash/dune
+@@ -4,7 +4,7 @@
+  (modes js wasm)
+  (js_of_ocaml
+   (compilation_mode separate)
+-  (build_runtime_flags :standard --file %{dep:maps.txt} --file maps))
++  (build_runtime_flags :standard --file %{dep:maps.txt}))
+  (link_deps
+   (glob_files maps/*.map))
+  (preprocess

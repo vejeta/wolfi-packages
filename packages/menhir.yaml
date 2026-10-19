@@ -7,12 +7,7 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/menhir
 #
 # Conversion notes:
-# - build dependency 'hevea' (Debian 'hevea') not found in Wolfi; left out
-# - build dependency 'texlive-fonts-recommended' (Debian 'texlive-fonts-recommended') not found in Wolfi; left out
-# - build dependency 'texlive-science' (Debian 'texlive-science') not found in Wolfi; left out
-# - build dependency 'texlive-latex-extra' (Debian 'texlive-latex-extra') not found in Wolfi; left out
 # - set the upstream tarball URL (see debian/watch or https://gallium.inria.fr/~fpottier/menhir/)
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
 # - autopkgtests converted to the test pipeline (1 steps)
 package:
@@ -36,14 +31,16 @@ environment:
     packages:
       - build-base
       - busybox
-      # TODO(debian-to-melange): hevea is not in Wolfi (Debian: hevea); left out
+      - ocaml
+      - ocaml-dune
+      - ocaml-findlib
+      - hevea  # Wolfi Community Packages
       - imagemagick-7  # Debian: imagemagick
       - netpbm  # Debian: imagemagick
-      - ocaml-dune
-      - ocaml
-      # TODO(debian-to-melange): texlive-fonts-recommended is not in Wolfi (Debian: texlive-fonts-recommended); left out
-      # TODO(debian-to-melange): texlive-science is not in Wolfi (Debian: texlive-science); left out
-      # TODO(debian-to-melange): texlive-latex-extra is not in Wolfi (Debian: texlive-latex-extra); left out
+      - ocaml-compiler-libs  # Debian: ocaml
+      - texmf-dist-fontsrecommended  # Wolfi Community Packages (Debian: texlive-fonts-recommended)
+      - texmf-dist-mathscience  # Wolfi Community Packages (Debian: texlive-science)
+      - texmf-dist-latexextra  # Wolfi Community Packages (Debian: texlive-latex-extra)
       - coreutils
       - findutils
 pipeline:
@@ -63,7 +60,12 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/menhirLib
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build --release -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)"
   - name: From debian/rules execute_before_dh_auto_build
     runs: |
       make -C doc
@@ -87,7 +89,8 @@ subpackages:
   - name: libmenhir-ocaml-dev
     description: Menhir library for OCaml
     pipeline:
-      - uses: split/dev
+      - runs: |
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/menhirLib"
   - name: menhir-doc
     description: Documentation of the Menhir parser generator for OCaml
     pipeline:
@@ -105,7 +108,8 @@ test:
         - busybox
         - menhir
         - ocaml-findlib
-        - ocaml
+        - ocaml  # Debian: ocaml
+        - ocaml-compiler-libs  # Debian: ocaml
         - ocamlbuild
         - bash  # Essential in Debian, so on every testbed
         - coreutils  # Essential in Debian, so on every testbed
@@ -158,6 +162,9 @@ test:
     - name: 'autopkgtest: standalone'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
+        cat > "$AUTOPKGTEST_TMP/standalone" <<'AUTOPKGTEST_SCRIPT'
+        #!/bin/sh -e
         this=standalone
         indir=debian/tests/calc
         outdir=${ADT_ARTIFACTS:-/tmp}/${this}
@@ -177,3 +184,6 @@ test:
             echo "* running native code"
             [ $(echo "(1 + 2 * 10) * 2" | ./calc.native) -eq '42' ]
         fi
+        AUTOPKGTEST_SCRIPT
+        chmod +x "$AUTOPKGTEST_TMP/standalone"
+        "$AUTOPKGTEST_TMP/standalone"

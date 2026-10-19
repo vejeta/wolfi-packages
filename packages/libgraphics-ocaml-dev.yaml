@@ -8,9 +8,7 @@
 #
 # Conversion notes:
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/o/ocaml-graphics/ocaml-graphics_5.2.0.orig.tar.gz), which disappears from the pool when Debian updates
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
-# - no debian/libgraphics-ocaml.install; define which files go to this subpackage
 package:
   name: libgraphics-ocaml-dev
   version: '5.2.0'
@@ -34,6 +32,8 @@ environment:
       - busybox
       - ocaml
       - ocaml-dune
+      - ocaml-findlib
+      - ocaml-compiler-libs  # Debian: ocaml
       - libdune-ocaml-dev  # Wolfi Community Packages
       - libx11-dev
       - libxft-dev
@@ -43,11 +43,17 @@ pipeline:
     with:
       uri: https://deb.debian.org/debian/pool/main/o/ocaml-graphics/ocaml-graphics_${{package.version}}.orig.tar.gz
       expected-sha256: 365fa08f67233aa54bf95da6ba2d69c7449c0ff179d3bcf065571e7980aff1c5
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p graphics -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" graphics
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libgraphics-ocaml-dev"
-      cp -a usr/doc/graphics/* "${{targets.destdir}}/usr/share/doc/libgraphics-ocaml-dev/"
+      mv "${{targets.destdir}}"/usr/doc/graphics/* "${{targets.destdir}}/usr/share/doc/libgraphics-ocaml-dev/"
+      rmdir "${{targets.destdir}}/usr/doc/graphics" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/libgraphics-ocaml-dev
   - name: Usr-merge (sbin into bin)
     runs: |
@@ -62,9 +68,13 @@ subpackages:
   - name: libgraphics-ocaml
     description: OCaml graphics library (runtime)
     pipeline:
-      # TODO(debian-to-melange): no debian/libgraphics-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/stublibs"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll*.so "${{targets.contextdir}}/usr/lib/ocaml/stublibs/"
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/graphics"
+          mv "${{targets.destdir}}/usr/lib/ocaml/graphics/META" "${{targets.contextdir}}/usr/lib/ocaml/graphics/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/graphics/*.cma "${{targets.contextdir}}/usr/lib/ocaml/graphics/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/graphics/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/graphics/"
 update:
   enabled: true
   github:

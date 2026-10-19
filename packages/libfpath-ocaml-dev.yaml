@@ -7,13 +7,10 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/ocaml-fpath
 #
 # Conversion notes:
-# - build dependency 'libtopkg-ocaml-dev' (Debian 'libtopkg-ocaml-dev') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/o/ocaml-fpath/ocaml-fpath_0.7.3.orig.tar.xz), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
 # - port debian/rules override_dh_auto_install: opam-installer  		--prefix=$(DESTDIR)  		--libdir=.$(OCAML_STDLIB_DIR) fpath.install
-# - no debian/libfpath-ocaml.install; define which files go to this subpackage
-# - test dependency 'libfindlib-ocaml' (Debian 'libfindlib-ocaml') not found in Wolfi; left out
-# - autopkgtest 'pathtest' left out: it needs packages that are not in Wolfi
+# - autopkgtests converted to the test pipeline (1 steps)
 package:
   name: libfpath-ocaml-dev
   version: '0.7.3'
@@ -29,11 +26,12 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - busybox
-      - ocaml
+      - ocaml  # Debian: ocaml
+      - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib
       - ocamlbuild
       - opam  # Debian: opam-installer
-      # TODO(debian-to-melange): libtopkg-ocaml-dev is not in Wolfi (Debian: libtopkg-ocaml-dev); left out
+      - libtopkg-ocaml-dev  # Wolfi Community Packages
       - libastring-ocaml-dev  # Wolfi Community Packages
       - coreutils
       - findutils
@@ -48,6 +46,15 @@ pipeline:
   # TODO(debian-to-melange): port debian/rules override_dh_auto_install: opam-installer  		--prefix=$(DESTDIR)  		--libdir=.$(OCAML_STDLIB_DIR) fpath.install
   - name: Install files
     runs: |
+      mkdir -p "${{targets.destdir}}/usr/lib/ocaml/fpath"
+      cp -a usr/lib/ocaml/fpath/opam "${{targets.destdir}}/usr/lib/ocaml/fpath/"
+      cp -a usr/lib/ocaml/fpath/*.ml* "${{targets.destdir}}/usr/lib/ocaml/fpath/"
+      cp -a usr/lib/ocaml/fpath/*.cmi "${{targets.destdir}}/usr/lib/ocaml/fpath/"
+      cp -a usr/lib/ocaml/fpath/*.cmt* "${{targets.destdir}}/usr/lib/ocaml/fpath/"
+      cp -a usr/lib/ocaml/fpath/fpath_top* "${{targets.destdir}}/usr/lib/ocaml/fpath/"
+      cp -a usr/lib/ocaml/fpath/*.cmx "${{targets.destdir}}/usr/lib/ocaml/fpath/"
+      cp -a usr/lib/ocaml/fpath/*.cmxa "${{targets.destdir}}/usr/lib/ocaml/fpath/"
+      cp -a usr/lib/ocaml/fpath/*.a "${{targets.destdir}}/usr/lib/ocaml/fpath/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/libfpath-ocaml-dev"
       cp -a doc/fpath/CHANGES.md "${{targets.destdir}}/usr/share/doc/libfpath-ocaml-dev/"
       cp -a doc/fpath/README.md "${{targets.destdir}}/usr/share/doc/libfpath-ocaml-dev/"
@@ -56,9 +63,11 @@ subpackages:
   - name: libfpath-ocaml
     description: OCaml library for handling file system paths (runtime)
     pipeline:
-      # TODO(debian-to-melange): no debian/libfpath-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/fpath"
+          cp -a usr/lib/ocaml/fpath/META "${{targets.contextdir}}/usr/lib/ocaml/fpath/"
+          cp -a usr/lib/ocaml/fpath/fpath.cma "${{targets.contextdir}}/usr/lib/ocaml/fpath/"
+          cp -a usr/lib/ocaml/fpath/fpath.cmxs "${{targets.contextdir}}/usr/lib/ocaml/fpath/"
 update:
   enabled: true
   release-monitor:
@@ -68,8 +77,84 @@ test:
     contents:
       packages:
         - busybox
+        - ocaml  # Debian: ocaml
+        - ocaml-compiler-libs  # Debian: ocaml
+        - ocaml-findlib
+        - ocamlbuild
+        - bash  # Essential in Debian, so on every testbed
+        - coreutils  # Essential in Debian, so on every testbed
+        - diffutils  # Essential in Debian, so on every testbed
+        - dpkg  # Essential in Debian, so on every testbed
+        - findutils  # Essential in Debian, so on every testbed
+        - grep  # Essential in Debian, so on every testbed
+        - sed  # Essential in Debian, so on every testbed
   pipeline:
     - runs: |
         test -f /usr/share/licenses/libfpath-ocaml-dev/LICENSE.md
     - uses: test/tw/ldd-check
-    # TODO(debian-to-melange): autopkgtest 'pathtest' left out; it needs packages that are not in Wolfi
+    - uses: fetch
+      with:
+        uri: https://deb.debian.org/debian/pool/main/o/ocaml-fpath/ocaml-fpath_${{package.version}}.orig.tar.xz
+        expected-sha256: 48127addd3b6944fbd09083f0ace23ab1ae531e307d1e528711b6d71ffc62067
+    - uses: fetch
+      with:
+        uri: https://deb.debian.org/debian/pool/main/o/ocaml-fpath/ocaml-fpath_0.7.3-4.debian.tar.xz
+        strip-components: 0
+        expected-sha256: 120f63a6afce8d94baaa389fcef7a6482af367e12c83b9410e6a93e07c9bd201
+    - name: dpkg database (as on a Debian testbed)
+      runs: |
+        db=/var/lib/dpkg
+        mkdir -p "$db/info" && touch "$db/status"
+        awk -v db="$db" -v aliases='libc-bin=glibc libc6=glibc libfindlib-ocaml=ocaml-findlib perl-base=perl' '
+          BEGIN { n = split(aliases, a, " "); for (i = 1; i <= n; i++) { split(a[i], kv, "="); alias[kv[2]] = alias[kv[2]] " " kv[1] } }
+          function add(   m, j, f) {
+            m = split(pkg alias[pkg], names, " ")
+            for (j = 1; j <= m; j++) {
+              f = db "/info/" names[j] ".list"
+              printf "%s", files > f; close(f)
+              gsub(/_/, "~", ver)
+              printf "Package: %s\nStatus: install ok installed\nPriority: optional\nArchitecture: all\nVersion: %s\nMaintainer: Wolfi\nDescription: %s (apk package %s)\n\n", names[j], ver, names[j], pkg >> (db "/status")
+            }
+            pkg = ""
+          }
+          /^P:/ { pkg = substr($0, 3); files = ""; dir = "" }
+          /^V:/ { ver = substr($0, 3) }
+          /^F:/ { dir = substr($0, 3); files = files "/" dir "\n" }
+          /^R:/ { files = files (dir == "" ? "" : "/" dir) "/" substr($0, 3) "\n" }
+          /^$/ && pkg != "" { add() }
+          END { if (pkg != "") add() }
+        ' /lib/apk/db/installed
+        for t in debian/libfpath-ocaml-dev.templates debian/templates; do
+          # po-debconf's translatable fields (_Description, __Choices) in the C locale
+          [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/libfpath-ocaml-dev.templates" && break
+        done
+    - name: 'autopkgtest: pathtest'
+      runs: |
+        export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
+        cat > "$AUTOPKGTEST_TMP/pathtest" <<'AUTOPKGTEST_SCRIPT'
+        #!/bin/sh -e
+        this=pathtest
+        indir=debian/tests
+        outdir=${ADT_ARTIFACTS:-/tmp}/${this}
+        mkdir -p ${outdir}
+
+        cp ${indir}/${this}.ml ${outdir}
+        cd ${outdir}
+        echo "* Compile to bytecode:"
+        ocamlbuild -use-ocamlfind -pkgs fpath ${this}.byte
+        echo -n "* Run bytecode ... "
+        ./${this}.byte
+        echo "OK."
+
+        if [ -x /usr/bin/ocamlopt ]
+        then
+            echo "* Compile to native code:"
+            ocamlbuild -use-ocamlfind -pkgs fpath ${this}.native;
+            echo -n "* Run native code ... "
+            ./${this}.native
+            echo "OK."
+        fi
+        AUTOPKGTEST_SCRIPT
+        chmod +x "$AUTOPKGTEST_TMP/pathtest"
+        "$AUTOPKGTEST_TMP/pathtest"

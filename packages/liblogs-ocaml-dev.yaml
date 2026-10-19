@@ -7,13 +7,10 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/ocaml-logs
 #
 # Conversion notes:
-# - build dependency 'libtopkg-ocaml-dev' (Debian 'libtopkg-ocaml-dev') not found in Wolfi; left out
 # - build dependency 'libjs-of-ocaml-dev': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
-# - build dependency 'liblwt-ocaml-dev' (Debian 'liblwt-ocaml-dev') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/o/ocaml-logs/ocaml-logs_0.10.0.orig.tar.bz2), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
 # - port debian/rules override_dh_auto_install: opam-installer --prefix=$(DESTDIR) --libdir=.$(OCAML_STDLIB_DIR) logs.install && rm -f $(DESTDIR)/doc/*/LICENSE*
-# - no debian/liblogs-ocaml.install; define which files go to this subpackage
 package:
   name: liblogs-ocaml-dev
   version: '0.10.0'
@@ -32,12 +29,13 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - busybox
-      - ocaml
+      - ocaml  # Debian: ocaml
+      - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib
       - ocamlbuild
-      # TODO(debian-to-melange): libtopkg-ocaml-dev is not in Wolfi (Debian: libtopkg-ocaml-dev); left out
+      - libtopkg-ocaml-dev  # Wolfi Community Packages
       - opam  # Debian: opam-installer
-      # TODO(debian-to-melange): liblwt-ocaml-dev is not in Wolfi (Debian: liblwt-ocaml-dev); left out
+      - liblwt-ocaml-dev  # Wolfi Community Packages
       - libcmdliner-ocaml-dev  # Wolfi Community Packages
       - libfmt-ocaml-dev  # Wolfi Community Packages
       - coreutils
@@ -53,6 +51,76 @@ pipeline:
   # TODO(debian-to-melange): port debian/rules override_dh_auto_install: opam-installer --prefix=$(DESTDIR) --libdir=.$(OCAML_STDLIB_DIR) logs.install && rm -f $(DESTDIR)/doc/*/LICENSE*
   - name: Install files
     runs: |
+      for f in "."/usr/lib/ocaml/*/opam; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/*/*.ml*; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/*/*.cmi; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/*/*.cmt*; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/*/*.cmx; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/*/*.cmxa; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/*/*.a; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/*/*/*.ml*; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/*/*/*_ml; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/*/*/*.cmi; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/*/*/*.cmt*; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/*/*/*.cmx; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/*/*/*.cmxa; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
+      for f in "."/usr/lib/ocaml/*/*/*.a; do
+        [ -e "$f" ] || continue
+        r="${f#./}"
+        mkdir -p "${{targets.destdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.destdir}}/$r"
+      done
       mkdir -p "${{targets.destdir}}/usr/share/doc/liblogs-ocaml-dev"
       cp -a doc/*/* "${{targets.destdir}}/usr/share/doc/liblogs-ocaml-dev/"
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/liblogs-ocaml-dev
@@ -60,9 +128,32 @@ subpackages:
   - name: liblogs-ocaml
     description: Logging infrastructure for OCaml (runtime)
     pipeline:
-      # TODO(debian-to-melange): no debian/liblogs-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          for f in "."/usr/lib/ocaml/*/META; do
+            [ -e "$f" ] || continue
+            r="${f#./}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "."/usr/lib/ocaml/*/*.cma; do
+            [ -e "$f" ] || continue
+            r="${f#./}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "."/usr/lib/ocaml/*/*.cmxs; do
+            [ -e "$f" ] || continue
+            r="${f#./}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "."/usr/lib/ocaml/*/*/*.cma; do
+            [ -e "$f" ] || continue
+            r="${f#./}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "."/usr/lib/ocaml/*/*/*.cmxs; do
+            [ -e "$f" ] || continue
+            r="${f#./}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && cp -a "$f" "${{targets.contextdir}}/$r"
+          done
 update:
   enabled: true
   release-monitor:

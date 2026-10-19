@@ -7,11 +7,8 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/extlib
 #
 # Conversion notes:
-# - build dependency 'cppo' (Debian 'cppo') not found in Wolfi; left out
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
-# - no debian/libextlib-ocaml.install; define which files go to this subpackage
 # - autopkgtests converted to the test pipeline (1 steps)
 package:
   name: libextlib-ocaml-dev
@@ -33,19 +30,27 @@ environment:
       - build-base
       - busybox
       - ocaml
-      # TODO(debian-to-melange): cppo is not in Wolfi (Debian: cppo); left out
       - ocaml-dune
+      - ocaml-findlib
+      - ocaml-compiler-libs  # Debian: ocaml
+      - cppo  # Wolfi Community Packages
 pipeline:
   - uses: git-checkout
     with:
       repository: https://github.com/ygrek/ocaml-extlib
       tag: ${{package.version}}
       expected-commit: 037e18fd59575fd7cebae5887348c7ca320d91fe
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p extlib -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" extlib
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libextlib-ocaml-dev"
-      cp -a usr/doc/extlib/* "${{targets.destdir}}/usr/share/doc/libextlib-ocaml-dev/"
+      mv "${{targets.destdir}}"/usr/doc/extlib/* "${{targets.destdir}}/usr/share/doc/libextlib-ocaml-dev/"
+      rmdir "${{targets.destdir}}/usr/doc/extlib" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/extlib
   - name: Usr-merge (sbin into bin)
     runs: |
@@ -60,9 +65,11 @@ subpackages:
   - name: libextlib-ocaml
     description: Extended standard library for OCaml (plugins)
     pipeline:
-      # TODO(debian-to-melange): no debian/libextlib-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/extlib"
+          mv "${{targets.destdir}}/usr/lib/ocaml/extlib/META" "${{targets.contextdir}}/usr/lib/ocaml/extlib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/extlib/*.cma "${{targets.contextdir}}/usr/lib/ocaml/extlib/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/extlib/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/extlib/"
 update:
   enabled: true
   github:
@@ -73,7 +80,8 @@ test:
     contents:
       packages:
         - busybox
-        - ocaml
+        - ocaml  # Debian: ocaml
+        - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib
         - bash  # Essential in Debian, so on every testbed
         - coreutils  # Essential in Debian, so on every testbed
@@ -121,6 +129,7 @@ test:
     - name: 'autopkgtest: native-code'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         set -e
 
         testdir=$(mktemp -d)

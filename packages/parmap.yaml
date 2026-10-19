@@ -7,9 +7,7 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/parmap
 #
 # Conversion notes:
-# - build dependency 'libdune-ocaml-dev' (Debian 'libdune-ocaml-dev') not found in Wolfi; left out
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
 package:
   name: libparmap-ocaml
@@ -35,7 +33,9 @@ environment:
       - busybox
       - ocaml
       - ocaml-dune
-      # TODO(debian-to-melange): libdune-ocaml-dev is not in Wolfi (Debian: libdune-ocaml-dev); left out
+      - ocaml-findlib
+      - ocaml-compiler-libs  # Debian: ocaml
+      - libdune-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -50,7 +50,12 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/0001-Do-not-run-tests-that-are-too-heavy-for-buildds.patch
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p parmap -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" parmap
   - name: Install files
     runs: |
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/parmap
@@ -68,8 +73,49 @@ subpackages:
     description: Small OCaml library allowing to exploit multicore architectures (development)
     pipeline:
       - runs: |
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/*/*opam*; do
+            [ -e "$f" ] || continue
+            r="${f#${{targets.destdir}}/}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/*/*dune*; do
+            [ -e "$f" ] || continue
+            r="${f#${{targets.destdir}}/}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/*/*.ml*; do
+            [ -e "$f" ] || continue
+            r="${f#${{targets.destdir}}/}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/*/*.cmi; do
+            [ -e "$f" ] || continue
+            r="${f#${{targets.destdir}}/}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/*/*.cmt*; do
+            [ -e "$f" ] || continue
+            r="${f#${{targets.destdir}}/}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/*/*.a; do
+            [ -e "$f" ] || continue
+            r="${f#${{targets.destdir}}/}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/*/*.cmx; do
+            [ -e "$f" ] || continue
+            r="${f#${{targets.destdir}}/}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
+          done
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/*/*.cmxa; do
+            [ -e "$f" ] || continue
+            r="${f#${{targets.destdir}}/}"
+            mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
+          done
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libparmap-ocaml-dev"
-          cp -a usr/doc/parmap/* "${{targets.contextdir}}/usr/share/doc/libparmap-ocaml-dev/"
+          mv "${{targets.destdir}}"/usr/doc/parmap/* "${{targets.contextdir}}/usr/share/doc/libparmap-ocaml-dev/"
+          rmdir "${{targets.destdir}}/usr/doc/parmap" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
 update:
   enabled: true
   github:

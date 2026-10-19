@@ -7,12 +7,7 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/ppxlib
 #
 # Conversion notes:
-# - build dependency 'libocaml-compiler-libs-ocaml-dev' (Debian 'libocaml-compiler-libs-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libppx-derivers-ocaml-dev' (Debian 'libppx-derivers-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libsexplib0-ocaml-dev' (Debian 'libsexplib0-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libcinaps-ocaml-dev' (Debian 'libcinaps-ocaml-dev') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/p/ppxlib/ppxlib_0.39.0.orig.tar.bz2), which disappears from the pool when Debian updates
-# - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
 package:
   name: libppxlib-ocaml-dev
@@ -39,18 +34,24 @@ environment:
       - busybox
       - ocaml
       - ocaml-dune
-      # TODO(debian-to-melange): libocaml-compiler-libs-ocaml-dev is not in Wolfi (Debian: libocaml-compiler-libs-ocaml-dev); left out
-      # TODO(debian-to-melange): libppx-derivers-ocaml-dev is not in Wolfi (Debian: libppx-derivers-ocaml-dev); left out
-      # TODO(debian-to-melange): libsexplib0-ocaml-dev is not in Wolfi (Debian: libsexplib0-ocaml-dev); left out
-      - libfindlib-ocaml-dev  # Wolfi Community Packages
+      - ocaml-findlib
+      - ocaml-compiler-libs  # Debian: ocaml
+      - libocaml-compiler-libs-ocaml-dev  # Wolfi Community Packages
+      - libppx-derivers-ocaml-dev  # Wolfi Community Packages
+      - libsexplib0-ocaml-dev  # Wolfi Community Packages
       - libre-ocaml-dev  # Wolfi Community Packages
-      # TODO(debian-to-melange): libcinaps-ocaml-dev is not in Wolfi (Debian: libcinaps-ocaml-dev); left out
+      - libcinaps-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - uses: fetch
     with:
       uri: https://deb.debian.org/debian/pool/main/p/ppxlib/ppxlib_${{package.version}}.orig.tar.bz2
       expected-sha256: 441a2814dbac3f5dc0c8dcefca263548e9b4d6dda1ef2990ce6a4999e108be3c
-  # TODO(debian-to-melange): unsupported Debian build system 'ocaml_dune'
+  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+    runs: |
+      dune build -p ppxlib,ppxlib-bench,ppxlib-tools -j $(nproc) @install
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ppxlib ppxlib-bench ppxlib-tools
   - name: Install files
     runs: |
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libppxlib-ocaml-dev
