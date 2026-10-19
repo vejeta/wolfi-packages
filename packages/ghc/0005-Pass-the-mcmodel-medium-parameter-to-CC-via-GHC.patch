@@ -1,0 +1,32 @@
+Origin: https://github.com/ghc/ghc/commit/1a3f11314cc7b8dbf9af03dd2ae2cb066a998d63
+From 1a3f11314cc7b8dbf9af03dd2ae2cb066a998d63 Mon Sep 17 00:00:00 2001
+From: Peng Fan <fanpeng@loongson.cn>
+Date: Thu, 13 Mar 2025 02:45:13 +0000
+Subject: [PATCH] Pass the mcmodel=medium parameter to CC via GHC
+
+Ensure that GHC-driver builds default to mcmodel=medium, so that GHC
+passes this default parameter to CC without having to add it to the
+compiled project.
+
+Commit e70d41406b5d5638b42c4d8222cd03e76bbfeb86 does not ensure that all
+GHC-built object files have a default model of medium, and will raise an
+R_LARCH_B26 overflow error.
+---
+ m4/fptools_set_c_ld_flags.m4 | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+Index: b/m4/fptools_set_c_ld_flags.m4
+===================================================================
+--- a/m4/fptools_set_c_ld_flags.m4
++++ b/m4/fptools_set_c_ld_flags.m4
+@@ -108,6 +108,10 @@ AC_DEFUN([FPTOOLS_SET_C_LD_FLAGS],
+         $5="$$5 -D_THREAD_SAFE"
+         ;;
+ 
++    loongarch64*linux*)
++        $2="$$2 -mcmodel=medium"
++        ;;
++
+     esac
+ 
+     AC_MSG_RESULT([done])

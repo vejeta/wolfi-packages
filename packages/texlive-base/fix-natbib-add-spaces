@@ -1,0 +1,33 @@
+natbib \defcitealias adds spurious spaces, see bug #628044
+fix this by adding some %
+---
+ texmf-dist/source/latex/natbib/natbib.dtx |    4 ++--
+ texmf-dist/tex/latex/natbib/natbib.sty    |    4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+--- texlive-base-2013.20130509.orig/texmf-dist/source/latex/natbib/natbib.dtx
++++ texlive-base-2013.20130509/texmf-dist/source/latex/natbib/natbib.dtx
+@@ -3992,8 +3992,8 @@
+ % indexing can be achieved.
+ %    \begin{macrocode}
+ \newcommand\defcitealias[2]{%
+-   \@ifundefined{al@#1\@extra@b@citeb}{}
+-   {\PackageWarning{natbib}{Overwriting existing alias for citation #1}}
++   \@ifundefined{al@#1\@extra@b@citeb}{}%
++   {\PackageWarning{natbib}{Overwriting existing alias for citation #1}}%
+    \@namedef{al@#1\@extra@b@citeb}{#2}}
+ \DeclareRobustCommand\citetalias{\begingroup
+    \NAT@swafalse\let\NAT@ctype\thr@@\NAT@parfalse\NAT@citetp}
+--- texlive-base-2013.20130509.orig/texmf-dist/tex/latex/natbib/natbib.sty
++++ texlive-base-2013.20130509/texmf-dist/tex/latex/natbib/natbib.sty
+@@ -740,8 +740,8 @@
+ \DeclareRobustCommand\citefullauthor
+    {\citeauthor*}
+ \newcommand\defcitealias[2]{%
+-   \@ifundefined{al@#1\@extra@b@citeb}{}
+-   {\PackageWarning{natbib}{Overwriting existing alias for citation #1}}
++   \@ifundefined{al@#1\@extra@b@citeb}{}%
++   {\PackageWarning{natbib}{Overwriting existing alias for citation #1}}%
+    \@namedef{al@#1\@extra@b@citeb}{#2}}
+ \DeclareRobustCommand\citetalias{\begingroup
+    \NAT@swafalse\let\NAT@ctype\thr@@\NAT@parfalse\NAT@citetp}

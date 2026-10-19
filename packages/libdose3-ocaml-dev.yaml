@@ -7,22 +7,9 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/dose3
 #
 # Conversion notes:
-# - build dependency 'libbase64-ocaml-dev' (Debian 'libbase64-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libbz2-ocaml-dev' (Debian 'libbz2-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libcudf-ocaml-dev' (Debian 'libcudf-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libextlib-ocaml-dev' (Debian 'libextlib-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libocamlgraph-ocaml-dev' (Debian 'libocamlgraph-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libre-ocaml-dev' (Debian 'libre-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libzip-ocaml-dev' (Debian 'libzip-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'hevea' (Debian 'hevea') not found in Wolfi; left out
-# - build dependency 'lmodern' (Debian 'lmodern') not found in Wolfi; left out
 # - build dependency 'ocaml-odoc' (Debian 'ocaml-odoc') not found in Wolfi; left out
-# - build dependency 'texlive-latex-base' (Debian 'texlive-latex-base') not found in Wolfi; left out
-# - build dependency 'texlive-latex-extra' (Debian 'texlive-latex-extra') not found in Wolfi; left out
+# - build dependency 'texmf-dist-latexbase' (Debian 'texlive-latex-base') not found in Wolfi; left out
 # - build dependency 'pandoc' (Debian 'pandoc') not found in Wolfi; left out
-# - build dependency 'libounit-ocaml-dev' (Debian 'libounit-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libcamlp-streams-ocaml-dev' (Debian 'libcamlp-streams-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libparmap-ocaml-dev' (Debian 'libparmap-ocaml-dev') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/d/dose3/dose3_7.0.0.orig.tar.gz), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
 # - port debian/rules override_dh_auto_build: dune build -p dose3$(DUNE_EXTRAPROFILE) @install --verbose && make -C doc/manpages man && pod2man --section 8 -release "apt-cudf $(RELEASE)"  		debian/update-cudf-solvers > debian/update-cudf-solvers.
@@ -50,26 +37,26 @@ environment:
     packages:
       - build-base
       - busybox
-      # TODO(debian-to-melange): libbase64-ocaml-dev is not in Wolfi (Debian: libbase64-ocaml-dev); left out
-      # TODO(debian-to-melange): libbz2-ocaml-dev is not in Wolfi (Debian: libbz2-ocaml-dev); left out
-      # TODO(debian-to-melange): libcudf-ocaml-dev is not in Wolfi (Debian: libcudf-ocaml-dev); left out
-      # TODO(debian-to-melange): libextlib-ocaml-dev is not in Wolfi (Debian: libextlib-ocaml-dev); left out
-      # TODO(debian-to-melange): libocamlgraph-ocaml-dev is not in Wolfi (Debian: libocamlgraph-ocaml-dev); left out
-      # TODO(debian-to-melange): libre-ocaml-dev is not in Wolfi (Debian: libre-ocaml-dev); left out
-      # TODO(debian-to-melange): libzip-ocaml-dev is not in Wolfi (Debian: libzip-ocaml-dev); left out
+      - libbase64-ocaml-dev  # Wolfi Community Packages
+      - libbz2-ocaml-dev  # Wolfi Community Packages
+      - libcudf-ocaml-dev  # Wolfi Community Packages
+      - libextlib-ocaml-dev  # Wolfi Community Packages
+      - libocamlgraph-ocaml-dev  # Wolfi Community Packages
+      - libre-ocaml-dev  # Wolfi Community Packages
+      - libzip-ocaml-dev  # Wolfi Community Packages
       - ocaml-dune
       - ocaml
       - graphviz
-      # TODO(debian-to-melange): hevea is not in Wolfi (Debian: hevea); left out
-      # TODO(debian-to-melange): lmodern is not in Wolfi (Debian: lmodern); left out
+      - hevea  # Wolfi Community Packages
+      - texmf-dist-fontsrecommended  # Wolfi Community Packages (Debian: lmodern)
       # TODO(debian-to-melange): ocaml-odoc is not in Wolfi (Debian: ocaml-odoc); left out
-      # TODO(debian-to-melange): texlive-latex-base is not in Wolfi (Debian: texlive-latex-base); left out
-      # TODO(debian-to-melange): texlive-latex-extra is not in Wolfi (Debian: texlive-latex-extra); left out
+      # TODO(debian-to-melange): texmf-dist-latexbase is not in Wolfi (Debian: texlive-latex-base); left out
+      - texmf-dist-latexextra  # Wolfi Community Packages (Debian: texlive-latex-extra)
       # TODO(debian-to-melange): pandoc is not in Wolfi (Debian: pandoc); left out
       - dctrl-tools  # Wolfi Community Packages (Debian: grep-dctrl)
-      # TODO(debian-to-melange): libounit-ocaml-dev is not in Wolfi (Debian: libounit-ocaml-dev); left out
-      # TODO(debian-to-melange): libcamlp-streams-ocaml-dev is not in Wolfi (Debian: libcamlp-streams-ocaml-dev); left out
-      # TODO(debian-to-melange): libparmap-ocaml-dev is not in Wolfi (Debian: libparmap-ocaml-dev); left out
+      - libounit-ocaml-dev  # Wolfi Community Packages
+      - libcamlp-streams-ocaml-dev  # Wolfi Community Packages
+      - libparmap-ocaml-dev  # Wolfi Community Packages
       - perl
       - py3-yaml  # Debian: python3-yaml
       - xz  # Debian: xz-utils
@@ -96,6 +83,9 @@ pipeline:
   - name: Install files
     runs: |
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/libdose3-ocaml-dev
+  - name: Remove libtool archives
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
   - uses: strip
 subpackages:
   - name: dose-distcheck
@@ -324,6 +314,7 @@ test:
     - name: 'autopkgtest: dose-debcheck'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         set -e
 
         this=dose-debcheck
@@ -340,6 +331,7 @@ test:
     - name: 'autopkgtest: bug811569'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         # debian bug 811569: accept weird characters in debian field names
 
         set -e
@@ -358,6 +350,7 @@ test:
     - name: 'autopkgtest: bug790422'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         # debian bug 790422: accept empty input file
 
         set -e
@@ -376,6 +369,7 @@ test:
     - name: 'autopkgtest: bug867104'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         # debian bug 867104: wanna-build issue with src:perl versioned Provides
 
         set -e
@@ -394,6 +388,7 @@ test:
     - name: 'autopkgtest: dose-builddebcheck'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         set -e
 
         this=dose-builddebcheck
@@ -411,6 +406,7 @@ test:
     - name: 'autopkgtest: bug896084'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         # debian bug 896084: versioned provides and versioned build-dependency
 
         set -e
@@ -427,6 +423,7 @@ test:
     - name: 'autopkgtest: dose-outdated'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         set -e
 
         this=dose-outdated

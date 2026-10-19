@@ -6,12 +6,6 @@
 # Upstream: https://metacpan.org/release/CGI-FormBuilder/
 #
 # Conversion notes:
-# - runtime dependency 'perl-cgi' not found in Wolfi
-# - runtime dependency 'perl-html-template' not found in Wolfi
-# - runtime dependency 'perl-cgi-session' not found in Wolfi
-# - build dependency 'perl-cgi' not found in Wolfi
-# - build dependency 'perl-html-template' not found in Wolfi
-# - build dependency 'perl-cgi-session' not found in Wolfi
 # - check() not run (pass --with-check to add it to the build)
 # - abuild helper default_doc in doc()
 package:
@@ -24,11 +18,11 @@ package:
   dependencies:
     runtime:
       - perl
-      - perl-cgi  # TODO(alpine-to-melange): not in Wolfi
-      - perl-html-template  # TODO(alpine-to-melange): not in Wolfi
+      - perl-cgi
+      - perl-html-template
       - perl-text-template
       - perl-template-toolkit
-      - perl-cgi-session  # TODO(alpine-to-melange): not in Wolfi
+      - perl-cgi-session
 environment:
   contents:
     keyring:
@@ -40,11 +34,12 @@ environment:
       - busybox
       - bash
       - perl
-      - perl-cgi  # TODO(alpine-to-melange): not in Wolfi
-      - perl-html-template  # TODO(alpine-to-melange): not in Wolfi
+      - perl-cgi
+      - perl-html-template
       - perl-text-template
       - perl-template-toolkit
-      - perl-cgi-session  # TODO(alpine-to-melange): not in Wolfi
+      - perl-cgi-session
+      - file
 pipeline:
   - uses: fetch
     with:

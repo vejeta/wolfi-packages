@@ -1,0 +1,15 @@
+Description: Use Python 3 for filters
+Author: Scott Talbert <swt@techie.net>
+Forwarded: not-needed
+
+--- a/src/Text/Pandoc/Filter/JSON.hs
++++ b/src/Text/Pandoc/Filter/JSON.hs
+@@ -50,7 +50,7 @@ externalFilter fenv f args' d = liftIO $
+   let (f', args'') = if exists
+                         then case map toLower (takeExtension f) of
+                                   _      | isExecutable -> ("." </> f, args')
+-                                  ".py"  -> ("python", f:args')
++                                  ".py"  -> ("python3", f:args')
+                                   ".hs"  -> ("runhaskell", f:args')
+                                   ".pl"  -> ("perl", f:args')
+                                   ".rb"  -> ("ruby", f:args')

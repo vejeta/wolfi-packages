@@ -7,9 +7,6 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/cudf
 #
 # Conversion notes:
-# - runtime dependency 'libextlib-ocaml-dev' (Debian 'libextlib-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libextlib-ocaml-dev' (Debian 'libextlib-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libounit-ocaml-dev' (Debian 'libounit-ocaml-dev') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/c/cudf/cudf_0.10.orig.tar.gz), which disappears from the pool when Debian updates
 # - unsupported Debian build system 'ocaml_dune'
 # - dh --with ocaml has no direct melange equivalent; review
@@ -25,7 +22,7 @@ package:
   dependencies:
     runtime:
       - ocaml-findlib
-      # TODO(debian-to-melange): libextlib-ocaml-dev is not in Wolfi (Debian: libextlib-ocaml-dev); left out
+      - libextlib-ocaml-dev  # Wolfi Community Packages
 environment:
   contents:
     keyring:
@@ -39,8 +36,8 @@ environment:
       - ocaml-findlib
       - ocaml-dune
       - ocamlbuild
-      # TODO(debian-to-melange): libextlib-ocaml-dev is not in Wolfi (Debian: libextlib-ocaml-dev); left out
-      # TODO(debian-to-melange): libounit-ocaml-dev is not in Wolfi (Debian: libounit-ocaml-dev); left out
+      - libextlib-ocaml-dev  # Wolfi Community Packages
+      - libounit-ocaml-dev  # Wolfi Community Packages
       - glib-dev  # Debian: libglib2.0-dev
       - perl
       - coreutils
@@ -107,7 +104,7 @@ subpackages:
           cp -a examples/*.cudf "${{targets.contextdir}}/usr/share/doc/cudf-tools/examples/"
     dependencies:
       runtime:
-        - ocaml  # Debian: ocaml-base
+        - ocaml-base  # Wolfi Community Packages
 update:
   enabled: true
   release-monitor:
@@ -167,12 +164,16 @@ test:
     - name: 'autopkgtest: cudf-check-universe'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         set -e
 
         cudf-check -univ examples/universe.cudf 2> /dev/null
     - name: 'autopkgtest: api-ocaml'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
+        cat > "$AUTOPKGTEST_TMP/api-ocaml" <<'AUTOPKGTEST_SCRIPT'
+        #!/bin/sh -e
         indir=${PWD}/debian/tests/
         exdir=${PWD}/examples
         outdir=${AUTOPKGTEST_ARTIFACTS-/tmp/cudf-package-test}/ocaml-api
@@ -191,3 +192,6 @@ test:
             echo "* Run the native code"
             ./parse.native ${exdir}/universe.cudf
         fi
+        AUTOPKGTEST_SCRIPT
+        chmod +x "$AUTOPKGTEST_TMP/api-ocaml"
+        "$AUTOPKGTEST_TMP/api-ocaml"

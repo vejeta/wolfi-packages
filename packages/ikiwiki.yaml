@@ -6,26 +6,6 @@
 # Upstream: https://ikiwiki.info
 #
 # Conversion notes:
-# - runtime dependency 'perl-cgi-formbuilder' not found in Wolfi
-# - runtime dependency 'perl-cgi-session' not found in Wolfi
-# - runtime dependency 'perl-html-scrubber' not found in Wolfi
-# - runtime dependency 'perl-html-template' not found in Wolfi
-# - runtime dependency 'perl-mail-sendmail' not found in Wolfi
-# - runtime dependency 'perl-rpc-xml' not found in Wolfi
-# - runtime dependency 'perl-text-markdown' not found in Wolfi
-# - runtime dependency 'perl-time-duration' not found in Wolfi
-# - runtime dependency 'perl-yaml' not found in Wolfi
-# - runtime dependency 'perl-yaml-libyaml' not found in Wolfi
-# - build dependency 'perl-cgi-formbuilder' not found in Wolfi
-# - build dependency 'perl-cgi-session' not found in Wolfi
-# - build dependency 'perl-html-scrubber' not found in Wolfi
-# - build dependency 'perl-html-template' not found in Wolfi
-# - build dependency 'perl-mail-sendmail' not found in Wolfi
-# - build dependency 'perl-rpc-xml' not found in Wolfi
-# - build dependency 'perl-text-markdown' not found in Wolfi
-# - build dependency 'perl-time-duration' not found in Wolfi
-# - build dependency 'perl-yaml' not found in Wolfi
-# - build dependency 'perl-yaml-libyaml' not found in Wolfi
 # - check() not run (pass --with-check to add it to the build)
 package:
   name: ikiwiki
@@ -36,20 +16,20 @@ package:
     - license: GPL-2.0-or-later
   dependencies:
     runtime:
-      - perl-cgi-formbuilder  # TODO(alpine-to-melange): not in Wolfi
-      - perl-cgi-session  # TODO(alpine-to-melange): not in Wolfi
+      - perl-cgi-formbuilder
+      - perl-cgi-session
       - perl-html-parser
-      - perl-html-scrubber  # TODO(alpine-to-melange): not in Wolfi
-      - perl-html-template  # TODO(alpine-to-melange): not in Wolfi
+      - perl-html-scrubber
+      - perl-html-template
       - perl-locale-gettext
-      - perl-mail-sendmail  # TODO(alpine-to-melange): not in Wolfi
-      - perl-rpc-xml  # TODO(alpine-to-melange): not in Wolfi
-      - perl-text-markdown  # TODO(alpine-to-melange): not in Wolfi
+      - perl-mail-sendmail
+      - perl-rpc-xml
+      - perl-text-markdown
       - perl-timedate
-      - perl-time-duration  # TODO(alpine-to-melange): not in Wolfi
+      - perl-time-duration
       - perl-uri
-      - perl-yaml  # TODO(alpine-to-melange): not in Wolfi
-      - perl-yaml-libyaml  # TODO(alpine-to-melange): not in Wolfi
+      - perl-yaml
+      - perl-yaml-libyaml
 environment:
   contents:
     keyring:
@@ -60,20 +40,21 @@ environment:
       - build-base
       - busybox
       - bash
-      - perl-cgi-formbuilder  # TODO(alpine-to-melange): not in Wolfi
-      - perl-cgi-session  # TODO(alpine-to-melange): not in Wolfi
+      - perl-cgi-formbuilder
+      - perl-cgi-session
       - perl-html-parser
-      - perl-html-scrubber  # TODO(alpine-to-melange): not in Wolfi
-      - perl-html-template  # TODO(alpine-to-melange): not in Wolfi
+      - perl-html-scrubber
+      - perl-html-template
       - perl-locale-gettext
-      - perl-mail-sendmail  # TODO(alpine-to-melange): not in Wolfi
-      - perl-rpc-xml  # TODO(alpine-to-melange): not in Wolfi
-      - perl-text-markdown  # TODO(alpine-to-melange): not in Wolfi
+      - perl-mail-sendmail
+      - perl-rpc-xml
+      - perl-text-markdown
       - perl-timedate
-      - perl-time-duration  # TODO(alpine-to-melange): not in Wolfi
+      - perl-time-duration
       - perl-uri
-      - perl-yaml  # TODO(alpine-to-melange): not in Wolfi
-      - perl-yaml-libyaml  # TODO(alpine-to-melange): not in Wolfi
+      - perl-yaml
+      - perl-yaml-libyaml
+      - file
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |

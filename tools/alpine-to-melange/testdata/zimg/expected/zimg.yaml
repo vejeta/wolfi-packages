@@ -26,6 +26,7 @@ environment:
       - cmake
       - linux-headers
       - ninja  # Alpine: samurai
+      - file
 pipeline:
   # TODO(alpine-to-melange): set expected-commit for tag release-3.0.6 (re-run with --download, or git ls-remote)
   - uses: git-checkout

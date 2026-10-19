@@ -1,0 +1,23 @@
+---
+ texmf-dist/scripts/context/perl/mptopdf.pl |    3 +--
+ texmf-dist/scripts/thumbpdf/thumbpdf.pl    |    3 +--
+ 2 files changed, 2 insertions(+), 4 deletions(-)
+
+--- texlive-base-2013.20130509.orig/texmf-dist/scripts/context/perl/mptopdf.pl
++++ texlive-base-2013.20130509/texmf-dist/scripts/context/perl/mptopdf.pl
+@@ -1,5 +1,4 @@
+-eval '(exit $?0)' && eval 'exec perl -S $0 ${1+"$@"}' && eval 'exec perl -S $0 $argv:q'
+-        if 0;
++#! /usr/bin/perl -w
+ 
+ # MikTeX users can set environment variable TEXSYSTEM to "miktex".
+ 
+--- texlive-base-2013.20130509.orig/texmf-dist/scripts/thumbpdf/thumbpdf.pl
++++ texlive-base-2013.20130509/texmf-dist/scripts/thumbpdf/thumbpdf.pl
+@@ -1,5 +1,4 @@
+-eval '(exit $?0)' && eval 'exec perl -S $0 ${1+"$@"}' && eval 'exec perl -S $0 $argv:q'
+-  if 0;
++#! /usr/bin/perl -w
+ use strict;
+ $^W=1; # turn warning on
+ #

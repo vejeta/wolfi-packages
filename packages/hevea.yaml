@@ -7,10 +7,9 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/hevea
 #
 # Conversion notes:
-# - runtime dependency 'texlive-base' (Debian 'texlive-base') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/h/hevea/hevea_2.38.orig.tar.gz), which disappears from the pool when Debian updates
 # - dh --with ocaml,tex has no direct melange equivalent; review
-# - test dependency 'texlive-latex-base' (Debian 'texlive-latex-base') not found in Wolfi; left out
+# - test dependency 'texmf-dist-latexbase' (Debian 'texlive-latex-base') not found in Wolfi; left out
 # - autopkgtest 'examples source-date-epoch' left out: it needs packages that are not in Wolfi
 package:
   name: hevea
@@ -23,7 +22,7 @@ package:
     runtime:
       - ghostscript
       - netpbm  # Wolfi Community Packages
-      # TODO(debian-to-melange): texlive-base is not in Wolfi (Debian: texlive-base); left out
+      - texlive  # Wolfi Community Packages (Debian: texlive-base)
       - imagemagick-7  # Debian: imagemagick
 environment:
   contents:

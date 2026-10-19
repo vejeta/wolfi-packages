@@ -6,8 +6,6 @@
 # Upstream: https://metacpan.org/release/XML-LibXML/
 #
 # Conversion notes:
-# - build dependency 'perl-alien-libxml2' not found in Wolfi
-# - build dependency 'perl-alien-build' not found in Wolfi
 # - check() not run (pass --with-check to add it to the build)
 package:
   name: perl-xml-libxml
@@ -33,13 +31,14 @@ environment:
       - busybox
       - bash
       - perl-dev
-      - perl-alien-libxml2  # TODO(alpine-to-melange): not in Wolfi
-      - perl-alien-build  # TODO(alpine-to-melange): not in Wolfi
+      - perl-alien-libxml2
+      - perl-alien-build
       - libxml2-dev
       - perl
       - perl-xml-sax
       - perl-xml-sax-base
       - perl-xml-namespacesupport
+      - file
 pipeline:
   - uses: fetch
     with:

@@ -34,6 +34,7 @@ environment:
       - perl-alien-build
       - perl-uri
       - perl-path-tiny
+      - file
 pipeline:
   - uses: fetch
     with:

@@ -6,7 +6,6 @@
 # Upstream: https://metacpan.org/release/HTML-Template/
 #
 # Conversion notes:
-# - build dependency 'perl-cgi' not found in Wolfi
 # - check() not run (pass --with-check to add it to the build)
 package:
   name: perl-html-template
@@ -28,8 +27,9 @@ environment:
       - build-base
       - busybox
       - bash
-      - perl-cgi  # TODO(alpine-to-melange): not in Wolfi
+      - perl-cgi
       - perl
+      - file
 pipeline:
   - uses: fetch
     with:

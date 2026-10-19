@@ -1,0 +1,20 @@
+From: Stephane Glondu <glondu@debian.org>
+Date: Sun, 23 Mar 2025 10:49:49 +0100
+Subject: Remove unused compiler-libs.optcomp from loader dependencies
+
+This library does not exist on bytecode architectures.
+---
+ src/loader/dune | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/src/loader/dune b/src/loader/dune
+index 055da90..33ecf26 100644
+--- a/src/loader/dune
++++ b/src/loader/dune
+@@ -26,5 +26,4 @@
+   odoc-parser
+   syntax_highlighter
+   odoc_document
+-  odoc_utils
+-  compiler-libs.optcomp))
++  odoc_utils))

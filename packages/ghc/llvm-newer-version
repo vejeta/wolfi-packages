@@ -1,0 +1,19 @@
+Subject: [PATCH] Bump max LLVM version to 19
+
+---
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: b/configure.ac
+===================================================================
+--- a/configure.ac
++++ b/configure.ac
+@@ -513,7 +513,7 @@ AC_SUBST(InstallNameToolCmd)
+ # versions of LLVM simultaneously, but that stopped working around
+ # 3.5/3.6 release of LLVM.
+ LlvmMinVersion=13  # inclusive
+-LlvmMaxVersion=16 # not inclusive
++LlvmMaxVersion=22 # not inclusive
+ AC_SUBST([LlvmMinVersion])
+ AC_SUBST([LlvmMaxVersion])
+ 

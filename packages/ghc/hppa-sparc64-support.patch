@@ -1,0 +1,84 @@
+Index: b/compiler/GHC/CmmToC.hs
+===================================================================
+--- a/compiler/GHC/CmmToC.hs
++++ b/compiler/GHC/CmmToC.hs
+@@ -1350,6 +1350,7 @@ cLoad platform expr rep
+           bewareLoadStoreAlignment ArchMipsel   = True
+           bewareLoadStoreAlignment (ArchARM {}) = True
+           bewareLoadStoreAlignment ArchAArch64  = True
++          bewareLoadStoreAlignment ArchSPARC64  = True
+           -- Pessimistically assume that they will also cause problems
+           -- on unknown arches
+           bewareLoadStoreAlignment ArchUnknown  = True
+Index: b/libraries/ghc-platform/src/GHC/Platform/ArchOS.hs
+===================================================================
+--- a/libraries/ghc-platform/src/GHC/Platform/ArchOS.hs
++++ b/libraries/ghc-platform/src/GHC/Platform/ArchOS.hs
+@@ -42,9 +42,11 @@ data Arch
+    | ArchARM ArmISA [ArmISAExt] ArmABI
+    | ArchAArch64
+    | ArchAlpha
++   | ArchHPPA
+    | ArchMipseb
+    | ArchMipsel
+    | ArchRISCV64
++   | ArchSPARC64
+    | ArchLoongArch64
+    | ArchJavaScript
+    | ArchWasm32
+@@ -134,10 +136,12 @@ stringEncodeArch = \case
+   ArchARM ARMv7 _ _ -> "armv7"
+   ArchAArch64       -> "aarch64"
+   ArchAlpha         -> "alpha"
++  ArchHPPA          -> "hppa"
+   ArchMipseb        -> "mipseb"
+   ArchMipsel        -> "mipsel"
+   ArchRISCV64       -> "riscv64"
+   ArchLoongArch64   -> "loongarch64"
++  ArchSPARC64       -> "sparc64"
+   ArchJavaScript    -> "javascript"
+   ArchWasm32        -> "wasm32"
+ 
+Index: b/m4/fptools_set_haskell_platform_vars.m4
+===================================================================
+--- a/m4/fptools_set_haskell_platform_vars.m4
++++ b/m4/fptools_set_haskell_platform_vars.m4
+@@ -33,6 +33,9 @@ AC_DEFUN([FPTOOLS_SET_HASKELL_PLATFORM_V
+         alpha)
+             test -z "[$]2" || eval "[$]2=ArchAlpha"
+             ;;
++        hppa|hppa1_1)
++            test -z "[$]2" || eval "[$]2=ArchHPPA"
++            ;;
+         mips|mipseb)
+             test -z "[$]2" || eval "[$]2=ArchMipseb"
+             ;;
+@@ -48,7 +51,10 @@ AC_DEFUN([FPTOOLS_SET_HASKELL_PLATFORM_V
+         loongarch64)
+             test -z "[$]2" || eval "[$]2=ArchLoongArch64"
+             ;;
+-        hppa|hppa1_1|ia64|m68k|nios2|riscv32|loongarch32|rs6000|s390|sh4|sparc|sparc64|vax)
++        sparc64)
++            test -z "[$]2" || eval "[$]2=ArchSPARC64"
++            ;;
++        ia64|m68k|nios2|riscv32|loongarch32|rs6000|s390|sh4|sparc|vax)
+             test -z "[$]2" || eval "[$]2=ArchUnknown"
+             ;;
+         javascript)
+Index: b/utils/ghc-toolchain/src/GHC/Toolchain/ParseTriple.hs
+===================================================================
+--- a/utils/ghc-toolchain/src/GHC/Toolchain/ParseTriple.hs
++++ b/utils/ghc-toolchain/src/GHC/Toolchain/ParseTriple.hs
+@@ -51,10 +51,11 @@ parseArch cc arch =
+       "mipseb" -> pure ArchMipseb
+       "mipsel" -> pure ArchMipsel
+       "riscv64" -> pure ArchRISCV64
+-      "hppa" -> pure ArchUnknown
++      "hppa" -> pure ArchHPPA
+       "wasm32" -> pure ArchWasm32
+       "javascript" -> pure ArchJavaScript
+       "loongarch64" -> pure ArchLoongArch64
++      "sparc64" -> pure ArchSPARC64
+       _ -> throwE $ "Unknown architecture " ++ arch
+ 
+ parseOs :: String -> M OS

@@ -6,7 +6,6 @@
 # Upstream: https://metacpan.org/release/Alien-Libxml2/
 #
 # Conversion notes:
-# - build dependency 'perl-alien-build-plugin-download-gitlab' not found in Wolfi
 # - check() not run (pass --with-check to add it to the build)
 package:
   name: perl-alien-libxml2
@@ -32,8 +31,9 @@ environment:
       - perl-dev
       - libxml2-dev
       - perl-alien-build
-      - perl-alien-build-plugin-download-gitlab  # TODO(alpine-to-melange): not in Wolfi
+      - perl-alien-build-plugin-download-gitlab
       - perl
+      - file
 pipeline:
   - uses: fetch
     with:

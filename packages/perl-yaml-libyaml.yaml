@@ -32,6 +32,7 @@ environment:
       - bash
       - perl-dev
       - perl
+      - file
 pipeline:
   - uses: fetch
     with:

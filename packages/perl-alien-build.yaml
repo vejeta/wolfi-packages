@@ -6,10 +6,6 @@
 # Upstream: https://metacpan.org/release/Alien-Build/
 #
 # Conversion notes:
-# - runtime dependency 'perl-file-chdir' not found in Wolfi
-# - runtime dependency 'perl-ffi-checklib' not found in Wolfi
-# - build dependency 'perl-file-chdir' not found in Wolfi
-# - build dependency 'perl-ffi-checklib' not found in Wolfi
 # - check() not run (pass --with-check to add it to the build)
 # - abuild helper default_doc in doc()
 package:
@@ -22,10 +18,10 @@ package:
   dependencies:
     runtime:
       - perl
-      - perl-file-chdir  # TODO(alpine-to-melange): not in Wolfi
+      - perl-file-chdir
       - perl-path-tiny
       - perl-capture-tiny
-      - perl-ffi-checklib  # TODO(alpine-to-melange): not in Wolfi
+      - perl-ffi-checklib
       - perl-file-which
 environment:
   contents:
@@ -40,10 +36,11 @@ environment:
       - perl-dev
       - perl-file-which
       - perl
-      - perl-file-chdir  # TODO(alpine-to-melange): not in Wolfi
+      - perl-file-chdir
       - perl-path-tiny
       - perl-capture-tiny
-      - perl-ffi-checklib  # TODO(alpine-to-melange): not in Wolfi
+      - perl-ffi-checklib
+      - file
 pipeline:
   - uses: fetch
     with:

@@ -1,0 +1,22 @@
+commit 702f7964373d9ffb1d550ee714bd723d8bb0c1a3
+Author: Matthew Pickering <matthewtpickering@gmail.com>
+Date:   Mon Apr 29 12:13:00 2024 +0100
+
+    Make interface files and object files depend on inplace .conf file
+    
+    A potential fix for #24737
+
+Index: b/hadrian/src/Rules/Compile.hs
+===================================================================
+--- a/hadrian/src/Rules/Compile.hs
++++ b/hadrian/src/Rules/Compile.hs
+@@ -218,6 +218,9 @@ compileHsObjectAndHi rs objpath = do
+   ctxPath <- contextPath ctx
+   (src, deps) <- lookupDependencies (ctxPath -/- ".dependencies") objpath
+   need (src:deps)
++  -- The .conf file is needed when template-haskell is implicitly added as a dependency
++  -- when a module in the template-haskell package is compiled. (See #24737)
++  when  (isLibrary (C.package ctx)) (need . (:[]) =<< pkgConfFile ctx)
+ 
+   -- The .dependencies file lists indicating inputs. ghc will
+   -- generally read more *.hi and *.hi-boot files (direct inputs).

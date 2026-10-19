@@ -1,0 +1,39 @@
+commit bf4694e9d10b7d9898ed1e3cd7ae115fd33ac725
+Author: Samuel Thibault <samuel.thibault@ens-lyon.org>
+Date:   Sat Jan 10 15:53:10 2026 +0100
+
+    Fix linking against libm by moving the -lm option
+    
+    For those systems that need -lm for getting math functions, this is
+    currently added on the link line very early, before the object files being
+    linked together. Newer toolchains enable --as-needed by default, which means
+    -lm is ignored at that point because no object requires a math function
+    yet. With such toolchains, we thus have to add -lm after the objects, so the
+    linker actually includes libm in the link.
+
+---
+ compiler/GHC/Linker/Dynamic.hs |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+https://gitlab.haskell.org/ghc/ghc/-/merge_requests/15319
+
+Index: b/compiler/GHC/Linker/Dynamic.hs
+===================================================================
+--- a/compiler/GHC/Linker/Dynamic.hs
++++ b/compiler/GHC/Linker/Dynamic.hs
+@@ -223,7 +223,6 @@ linkDynLib logger tmpfs dflags0 unit_env
+ 
+             runLink logger tmpfs linker_config (
+                     map Option verbFlags
+-                 ++ libmLinkOpts platform
+                  ++ [ Option "-o"
+                     , FileOption "" output_fn
+                     ]
+@@ -234,6 +233,7 @@ linkDynLib logger tmpfs dflags0 unit_env
+                     -- Solaris 10 doesn't support the latter:
+                  ++ [ Option ("-Wl,-h," ++ takeFileName output_fn) ]
+                  ++ extra_ld_inputs
++                 ++ libmLinkOpts platform
+                  ++ map Option lib_path_opts
+                  ++ map Option pkg_lib_path_opts
+                  ++ map Option pkg_link_opts

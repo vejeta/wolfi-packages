@@ -6,14 +6,6 @@
 # Upstream: https://metacpan.org/release/RPC-XML/
 #
 # Conversion notes:
-# - runtime dependency 'perl-http-daemon' not found in Wolfi
-# - runtime dependency 'perl-xml-libxml' not found in Wolfi
-# - runtime dependency 'perl-net-server' not found in Wolfi
-# - runtime dependency 'perl-datetime-format-iso8601' not found in Wolfi
-# - build dependency 'perl-http-daemon' not found in Wolfi
-# - build dependency 'perl-xml-libxml' not found in Wolfi
-# - build dependency 'perl-net-server' not found in Wolfi
-# - build dependency 'perl-datetime-format-iso8601' not found in Wolfi
 # - check() not run (pass --with-check to add it to the build)
 package:
   name: perl-rpc-xml
@@ -27,11 +19,11 @@ package:
       - perl
       - perl-http-message
       - perl-xml-parser
-      - perl-http-daemon  # TODO(alpine-to-melange): not in Wolfi
+      - perl-http-daemon
       - perl-libwww
-      - perl-xml-libxml  # TODO(alpine-to-melange): not in Wolfi
-      - perl-net-server  # TODO(alpine-to-melange): not in Wolfi
-      - perl-datetime-format-iso8601  # TODO(alpine-to-melange): not in Wolfi
+      - perl-xml-libxml
+      - perl-net-server
+      - perl-datetime-format-iso8601
 environment:
   contents:
     keyring:
@@ -46,11 +38,12 @@ environment:
       - perl
       - perl-http-message
       - perl-xml-parser
-      - perl-http-daemon  # TODO(alpine-to-melange): not in Wolfi
+      - perl-http-daemon
       - perl-libwww
-      - perl-xml-libxml  # TODO(alpine-to-melange): not in Wolfi
-      - perl-net-server  # TODO(alpine-to-melange): not in Wolfi
-      - perl-datetime-format-iso8601  # TODO(alpine-to-melange): not in Wolfi
+      - perl-xml-libxml
+      - perl-net-server
+      - perl-datetime-format-iso8601
+      - file
 pipeline:
   - uses: fetch
     with:

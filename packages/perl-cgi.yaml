@@ -33,6 +33,7 @@ environment:
       - perl
       - perl-html-parser
       - perl-uri
+      - file
 pipeline:
   - uses: fetch
     with:

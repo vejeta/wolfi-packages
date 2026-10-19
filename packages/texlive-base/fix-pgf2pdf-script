@@ -1,0 +1,21 @@
+---
+ texmf-dist/scripts/pgfplots/pgf2pdf.sh |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- texlive-base-2013.20130509.orig/texmf-dist/scripts/pgfplots/pgf2pdf.sh
++++ texlive-base-2013.20130509/texmf-dist/scripts/pgfplots/pgf2pdf.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ #
+ # ATTENTION: this file is more or less deprecated.
+ # Please take a look at the 'external' library which has been added to pgf.
+@@ -82,7 +82,7 @@
+ 		--warnonly)		shift; WARN_ONLY_IF_TEXFILE_DOESNOT_INCLUDE_TARGET=1;;
+ 		-v)				shift; VERBOSE_LEVEL=$((VERBOSE_LEVEL+1));;
+ 		--)				shift; break;;
+-		--help)			dumpHelp();;
++		--help)			dumpHelp;;
+ 		*)				break;
+ 	esac
+ done

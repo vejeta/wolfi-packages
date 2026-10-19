@@ -1,0 +1,43 @@
+From a0afb3ad44c1ecc8ac8125c1ac882580b28bf9bc Mon Sep 17 00:00:00 2001
+From: Ilias Tsitsimpis <iliastsi@debian.org>
+Date: Thu, 29 Jan 2026 21:34:53 +0200
+Subject: [PATCH] Fix determinism of linker arguments
+
+The switch from Data.Map to UniqMap in 3b5be05ac29 introduced
+non-determinism in the order of packages passed to the linker.
+
+This resulted in non-reproducible builds where the DT_NEEDED entries in
+dynamic libraries were ordered differently across builds.
+
+Fix the regression by explicitly sorting the package list derived from
+UniqMap.
+
+Fixes #26838
+---
+ compiler/GHC/Unit/State.hs | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+Index: b/compiler/GHC/Unit/State.hs
+===================================================================
+--- a/compiler/GHC/Unit/State.hs
++++ b/compiler/GHC/Unit/State.hs
+@@ -111,7 +111,7 @@ import System.FilePath as FilePath
+ import Control.Monad
+ import Data.Graph (stronglyConnComp, SCC(..))
+ import Data.Char ( toUpper )
+-import Data.List ( intersperse, partition, sortBy, isSuffixOf, sortOn )
++import Data.List ( intersperse, partition, sortBy, isSuffixOf, sortOn, sort )
+ import Data.Set (Set)
+ import Data.Monoid (First(..))
+ import qualified Data.Semigroup as Semigroup
+@@ -1676,7 +1676,9 @@ mkUnitState logger cfg = do
+   -- NB: preload IS important even for type-checking, because we
+   -- need the correct include path to be set.
+   --
+-  let preload1 = nonDetKeysUniqMap (filterUniqMap (isJust . uv_explicit) vis_map)
++  -- NB: Sorting keys here to ensure a deterministic order for the linker.
++  --
++  let preload1 = sort $ nonDetKeysUniqMap (filterUniqMap (isJust . uv_explicit) vis_map)
+ 
+       -- add default preload units if they can be found in the db
+       basicLinkedUnits = fmap (RealUnit . Definite)

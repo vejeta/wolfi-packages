@@ -1,0 +1,39 @@
+commit 95773d289c62373772f676df91c1278b7d382e30
+Author: Samuel Thibault <samuel.thibault@ens-lyon.org>
+Date:   Sat Jan 10 15:59:18 2026 +0100
+
+    Fix the OS string encoding for GNU/Hurd
+    
+    Following https://github.com/haskell/cabal/pull/9434/files , and as seen
+    in the various gnu_HOST_OS usages in the source code, it is expected that
+    GNU/Hurd is advertised as "gnu", like the autotools do.
+
+https://gitlab.haskell.org/ghc/ghc/-/merge_requests/15320
+https://github.com/haskell/cabal/pull/11401
+
+Index: b/libraries/Cabal/Cabal/src/Distribution/Simple/PreProcess.hs
+===================================================================
+--- a/libraries/Cabal/Cabal/src/Distribution/Simple/PreProcess.hs
++++ b/libraries/Cabal/Cabal/src/Distribution/Simple/PreProcess.hs
+@@ -780,7 +780,7 @@ platformDefines lbi =
+       Android -> ["android"]
+       Ghcjs -> ["ghcjs"]
+       Wasi -> ["wasi"]
+-      Hurd -> ["hurd"]
++      Hurd -> ["gnu"]
+       Haiku -> ["haiku"]
+       OtherOS _ -> []
+     archStr = case hostArch of
+Index: b/libraries/ghc-platform/src/GHC/Platform/ArchOS.hs
+===================================================================
+--- a/libraries/ghc-platform/src/GHC/Platform/ArchOS.hs
++++ b/libraries/ghc-platform/src/GHC/Platform/ArchOS.hs
+@@ -161,7 +161,7 @@ stringEncodeOS = \case
+   OSHaiku     -> "haiku"
+   OSQNXNTO    -> "nto-qnx"
+   OSAIX       -> "aix"
+-  OSHurd      -> "hurd"
++  OSHurd      -> "gnu"
+   OSWasi      -> "wasi"
+   OSGhcjs     -> "ghcjs"
+ 

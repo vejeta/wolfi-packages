@@ -1,0 +1,54 @@
+From e70d41406b5d5638b42c4d8222cd03e76bbfeb86 Mon Sep 17 00:00:00 2001
+From: Wang Xin <wangxin03@loongson.cn>
+Date: Tue, 19 Nov 2024 11:10:11 +0000
+Subject: [PATCH] Add -mcmodel=medium moduleflag to generated LLVM IR on
+ LoongArch platform
+
+With the Medium code model, the jump range of the generated jump
+instruction is larger than that of the Small code model. It's a
+temporary fix of the problem descriped in https://gitlab.haskell
+.org/ghc/ghc/-/issues/25495. This commit requires that the LLVM
+used contains the code of commit 9dd1d451d9719aa91b3bdd59c0c6679
+83e1baf05, i.e., version 8.0 and later. Actually we should not
+rely on LLVM, so the only way to solve this problem is to implement
+the LoongArch backend.
+
+Add new type for codemodel
+---
+ compiler/GHC/CmmToLlvm.hs | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+Index: b/compiler/GHC/CmmToLlvm.hs
+===================================================================
+--- a/compiler/GHC/CmmToLlvm.hs
++++ b/compiler/GHC/CmmToLlvm.hs
+@@ -218,7 +218,12 @@ cmmMetaLlvmPrelude = do
+           case platformArch platform of
+             ArchX86_64 | llvmCgAvxEnabled cfg -> [mkStackAlignmentMeta 32]
+             _                                 -> []
+-  module_flags_metas <- mkModuleFlagsMeta stack_alignment_metas
++  let codel_model_metas =
++          case platformArch platform of
++            -- FIXME: We should not rely on LLVM
++            ArchLoongArch64 -> [mkCodeModelMeta CMMedium]
++            _                                 -> []
++  module_flags_metas <- mkModuleFlagsMeta (stack_alignment_metas ++ codel_model_metas)
+   let metas = tbaa_metas ++ module_flags_metas
+   cfg <- getConfig
+   renderLlvm (ppLlvmMetas cfg metas)
+@@ -241,6 +246,15 @@ mkStackAlignmentMeta :: Integer -> Modul
+ mkStackAlignmentMeta alignment =
+     ModuleFlag MFBError "override-stack-alignment" (MetaLit $ LMIntLit alignment i32)
+ 
++-- LLVM's @LLVM::CodeModel::Model@ enumeration
++data CodeModel = CMMedium
++
++-- Pass -mcmodel=medium option to LLVM on LoongArch64
++mkCodeModelMeta :: CodeModel -> ModuleFlag
++mkCodeModelMeta codemodel =
++    ModuleFlag MFBError "Code Model" (MetaLit $ LMIntLit n i32)
++  where
++    n = case codemodel of CMMedium -> 3 -- as of LLVM 8
+ 
+ -- -----------------------------------------------------------------------------
+ -- | Marks variables as used where necessary

@@ -1,0 +1,35 @@
+From 3939a8bf93e27d8151aa1d92bf3ce10bbbc96a72 Mon Sep 17 00:00:00 2001
+From: Samuel Thibault <samuel.thibault@ens-lyon.org>
+Date: Sun, 15 Sep 2024 15:57:52 +0200
+Subject: [PATCH] GNU/Hurd: Add getExecutablePath support
+
+GNU/Hurd exposes it as /proc/self/exe just like on Linux.
+---
+ .../src/GHC/Internal/System/Environment/ExecutablePath.hsc  | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+Index: b/libraries/ghc-internal/src/GHC/Internal/System/Environment/ExecutablePath.hsc
+===================================================================
+--- a/libraries/ghc-internal/src/GHC/Internal/System/Environment/ExecutablePath.hsc
++++ b/libraries/ghc-internal/src/GHC/Internal/System/Environment/ExecutablePath.hsc
+@@ -200,9 +200,9 @@ executablePath = Just (fmap Just getExec
+       | otherwise             = throw e
+ 
+ --------------------------------------------------------------------------------
+--- Linux / Solaris
++-- Linux / Solaris / Hurd
+ 
+-#elif defined(linux_HOST_OS) || defined(solaris2_HOST_OS)
++#elif defined(linux_HOST_OS) || defined(solaris2_HOST_OS) || defined(gnu_HOST_OS)
+ 
+ foreign import ccall unsafe "readlink"
+     c_readlink :: CString -> CString -> CSize -> IO CInt
+@@ -219,7 +219,7 @@ readSymbolicLink file =
+                    c_readlink s buf 4096
+             peekFilePathLen (buf,fromIntegral len)
+ 
+-#  if defined(linux_HOST_OS)
++#  if defined(linux_HOST_OS) || defined(gnu_HOST_OS)
+ getExecutablePath = readSymbolicLink $ "/proc/self/exe"
+ 
+ executablePath = Just (check <$> getExecutablePath) where
