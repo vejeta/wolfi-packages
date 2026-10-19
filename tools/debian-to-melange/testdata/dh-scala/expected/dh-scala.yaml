@@ -12,13 +12,6 @@ package:
   description: Debhelper build system for Scala libraries
   copyright:
     - license: GPL-3.0-or-later
-    - license: GPL-3.0-or-later
-      paths:
-        - lib/Debian/DhScala/Make/Copyright.pm
-        - t/lib.pl
-        - t/make-copyright.t
-        - t/make-package.t
-        - t/make.expected/debian/copyright
     - license: FSFAP
       paths:
         - .perltidyrc
@@ -94,14 +87,8 @@ test:
         - busybox
         - build-base  # Debian: build-essential
         - scala-2.12  # Debian: scala
-        - build-base  # Debian: build-essential
         - scala-2.13
-        - build-base  # Debian: build-essential
         - scala-3.8  # Debian: scala3
-        - build-base  # Debian: build-essential
-        - scala-3.8  # Debian: scala3
-        - build-base  # Debian: build-essential
-        - scala-2.12  # Debian: scala
   pipeline:
     - runs: |
         test -f /usr/share/doc/dh-scala/copyright

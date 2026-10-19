@@ -68,6 +68,12 @@ NAME_MAP = {
     "pkgconf": "pkgconf-dev",
     "ca-certificates": "ca-certificates-bundle",
     "golang-go": "go",
+    "x11proto-core-dev": "xorgproto",
+    "x11proto-dev": "xorgproto",
+    "librsvg2-bin": "rsvg-convert",
+    "python3-pil": "py3-pillow",
+    "libc6-dev": "glibc-dev",
+    "locales-all": "glibc-locales",
     # Scala compilers (dh-scala's table): scala is Debian's 2.12 series
     "scala": "scala-2.12",
     "scala3": "scala-3.8",
@@ -725,6 +731,7 @@ class Converter:
         self.args = args
         self.wolfi = wolfi
         self.notes = []
+        self.git_source = None  # (repository URL, tag prefix) from debian/watch
         self.aux = {}          # filename -> content (bytes or str) for <out>/<name>/
         self.rename = {}       # Debian binary package name -> melange package name
         self.upstream_installs = True  # does the build system install into destdir?
@@ -925,7 +932,11 @@ class Converter:
         lics = parse_copyright(self.read("copyright"))
         if lics:
             pkg["copyright"] = []
+            main_lic = next((lic for lic, files in lics if files == ["*"]), None)
             for lic, files in lics:
+                # Files under the main license need no entry of their own.
+                if files != ["*"] and lic == main_lic:
+                    continue
                 entry = {"license": lic}
                 if files != ["*"]:
                     entry["paths"] = files
@@ -1137,18 +1148,26 @@ class Converter:
         if not url:
             watch = self.read("watch") or ""
             m = re.search(r"https?://github\.com/([^/\s]+)/([^/\s]+?)(?:\.git)?/(?:tags|releases)", watch)
-            prefix = None
-            if not m and re.search(r"(?mi)^Mode:\s*git\b", watch):
-                # debian/watch v5, git mode: Source: <repo> + Matching-Pattern: refs/tags/<prefix>(...)
-                m = re.search(r"(?mi)^Source:\s*https?://github\.com/([^/\s]+)/([^/\s]+?)(?:\.git)?/?\s*$", watch)
-                pm = re.search(r"(?mi)^Matching-Pattern:\s*refs/tags/([^(\s]*)\(", watch)
-                prefix = pm.group(1).replace("\\", "") if pm else None
+            repo, prefix = None, None
             if m:
-                # Wolfi pins GitHub sources with git-checkout + expected-commit.
-                steps, notes = git_checkout_step(m.group(1), m.group(2), version, prefix, resolve=self.args.download)
+                repo = "https://github.com/{}/{}".format(m.group(1), m.group(2))
+            elif re.search(r"(?mi)^Mode:\s*git\b", watch):
+                # debian/watch v5, git mode: Source: <repo> + Matching-Pattern: refs/tags/<prefix>(...)
+                sm = re.search(r"(?mi)^Source:\s*(https?://\S+?)/?\s*$", watch)
+                repo = sm.group(1) if sm else None
+                pm = re.search(r"(?mi)^Matching-Pattern:\s*refs/tags/([^(@\s]*)(?:\(|@)", watch)
+                prefix = pm.group(1).replace("\\", "") if pm else None
+            if repo:
+                # Wolfi pins git sources with git-checkout + expected-commit.
+                gh = re.match(r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?$", repo)
+                if gh:
+                    repo = "https://github.com/{}/{}".format(gh.group(1), gh.group(2))
+                self.git_source = (repo, prefix if prefix is not None else "v")
+                steps, notes = git_url_checkout_step(repo, version, prefix, resolve=self.args.download)
                 self.notes += notes
                 if not notes:
-                    self.notes.append("upstream from debian/watch (GitHub), pinned to the tag's commit")
+                    self.notes.append("upstream from debian/watch ({}), pinned to the tag's commit".format(
+                        "GitHub" if gh else "git"))
                 return steps
         if not url:
             return [self.todo("set the upstream tarball URL (see debian/watch or {})".format(source.get("homepage", "Homepage"))),
@@ -1261,9 +1280,14 @@ class Converter:
                         "the version (debian/rules {})".format(version_var) if version_var else "the version")}
         watch = self.read("watch") or ""
         m = re.search(r"github\.com/([^/\s]+)/([^/\s]+?)(?:\.git)?/(?:tags|releases)", watch)
+        if not m and getattr(self, "git_source", None):
+            m = re.match(r"https://github\.com/([^/]+)/([^/]+)$", self.git_source[0])
         if m:
             return {"enabled": True, "github": {"identifier": "{}/{}".format(m.group(1), m.group(2)),
                                                 "strip-prefix": "v"}}
+        if getattr(self, "git_source", None):
+            git = {"strip-prefix": self.git_source[1]} if self.git_source[1] else {}
+            return {"enabled": True, "git": git}
         return {"enabled": True,
                 "release-monitor": {"identifier": C(0, "{}: set the release-monitoring.org project id".format(TODO))}}
 
@@ -1319,18 +1343,23 @@ class Converter:
                 "pipeline": [{"runs": "\n".join(cmds) + "\n"}]}
         if main:
             steps, packages = self.autopkgtests(name)
-            test["environment"]["contents"]["packages"] += [p for p in packages if p != "busybox"]
+            have = list(test["environment"]["contents"]["packages"])
+            for p in packages:
+                key = p.value if isinstance(p, C) else p
+                if key != "busybox" and key not in [h.value if isinstance(h, C) else h for h in have]:
+                    have.append(p)
+            test["environment"]["contents"]["packages"] = have
             test["pipeline"] += steps
         return test
 
 
-def resolve_github_tag(owner, repo, version, prefixes=("v", "")):
-    """Return (tag, commit) for the first existing tag, or (None, None)."""
+def resolve_tag(url, version, prefixes=("v", "")):
+    """Return (tag, commit) for the first existing tag of a git repository, or (None, None)."""
     for prefix in prefixes:
         tag = prefix + version
         try:
             out = subprocess.run(
-                ["git", "ls-remote", "https://github.com/{}/{}".format(owner, repo),
+                ["git", "ls-remote", url,
                  "refs/tags/{0}".format(tag), "refs/tags/{0}^{{}}".format(tag)],
                 capture_output=True, text=True, timeout=60).stdout
         except (OSError, subprocess.TimeoutExpired):
@@ -1342,21 +1371,31 @@ def resolve_github_tag(owner, repo, version, prefixes=("v", "")):
     return None, None
 
 
-def git_checkout_step(owner, repo, version, tag_prefix=None, resolve=False, todo=None):
-    """A git-checkout step pinned to a commit, the Wolfi convention for GitHub.
+def resolve_github_tag(owner, repo, version, prefixes=("v", "")):
+    return resolve_tag("https://github.com/{}/{}".format(owner, repo), version, prefixes)
+
+
+def git_url_checkout_step(url, version, tag_prefix=None, resolve=False, todo=None):
+    """A git-checkout step pinned to a commit, the Wolfi convention for git sources.
 
     Returns (steps, notes)."""
     prefixes = (tag_prefix,) if tag_prefix is not None else ("v", "")
-    tag, commit = resolve_github_tag(owner, repo, version, prefixes) if resolve else (None, None)
+    tag, commit = resolve_tag(url, version, prefixes) if resolve else (None, None)
     prefix = tag[:-len(version)] if tag else prefixes[0]
     step = {"uses": "git-checkout", "with": {
-        "repository": "https://github.com/{}/{}".format(owner, repo),
+        "repository": url,
         "tag": prefix + "${{package.version}}",
         "expected-commit": commit or "0" * 40}}
     if commit:
         return [step], []
     msg = "set expected-commit for tag {}{} (re-run with --download, or git ls-remote)".format(prefix, version)
     return [Comment("{}: {}".format(todo or TODO, msg)), step], [msg]
+
+
+def git_checkout_step(owner, repo, version, tag_prefix=None, resolve=False, todo=None):
+    """git_url_checkout_step for a GitHub repository."""
+    return git_url_checkout_step("https://github.com/{}/{}".format(owner, repo), version,
+                                 tag_prefix, resolve, todo)
 
 
 def verify_build(recipe_path, source_dir, melange="melange", arch=None, keep=False, extra=()):

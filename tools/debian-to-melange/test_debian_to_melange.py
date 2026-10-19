@@ -227,6 +227,23 @@ class JvmPackagesTest(unittest.TestCase):
         self.assertIn("autopkgtest: debian/tests/build-library 2.13", text)
 
 
+class GitWatchTest(unittest.TestCase):
+    """debian/watch v5 in git mode on a forge other than GitHub (xwpe, Codeberg)."""
+
+    def test_codeberg_git_checkout(self):
+        with tempfile.TemporaryDirectory() as out:
+            convert("xwpe", out)
+            with open(os.path.join(out, "xwpe.yaml")) as fh:
+                text = fh.read()
+        self.assertIn("repository: https://codeberg.org/mendezr/xwpe.git", text)
+        self.assertIn("tag: v${{package.version}}", text)
+        self.assertIn("update:\n  enabled: true\n  git:\n    strip-prefix: v", text)
+        self.assertNotIn("example.invalid", text)
+        self.assertIn("- xorgproto  # Debian: x11proto-core-dev", text)
+        test_env = text.split("\ntest:", 1)[1]
+        self.assertEqual(test_env.count("- glibc-locales"), 1)
+
+
 class ScalaBuildTest(unittest.TestCase):
     """dh --buildsystem=scala becomes the scala/build pipeline."""
 

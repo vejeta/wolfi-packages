@@ -1,0 +1,70 @@
+# autopkgtest: run the upstream test suite against the INSTALLED binaries.
+#
+# The scenarios live upstream in tests/ (shipped in the source tree, which
+# autopkgtest unpacks for the test).  The pyte tests honour $WPE_BIN and the
+# X11 GUI tests honour $XWPE_BIN, so the same scenarios that run in-tree run
+# here against /usr/bin/wpe and /usr/bin/xwpe.  Tests whose helper tool is
+# absent (a given compiler, the ASan build) skip themselves via shutil.which,
+# so the Test-Depends below stay modest.
+#
+# Only list compilers that exist on ALL release architectures.  A Test-Depends
+# that is unsatisfiable on a port (e.g. fp-compiler / Free Pascal is not built
+# on s390x or riscv64) makes autopkgtest fail the whole run as "badpkg" before
+# any test starts -- it does NOT skip.  The suite has no Pascal scenario, so
+# fp-compiler is intentionally omitted; add a compiler here only if a test uses
+# it AND it is available everywhere.
+#
+# allow-stderr: the curses/Xft TUI writes escape sequences and diagnostics to
+# stderr during a normal run.
+#
+# flaky + XWPE_TEST_WAIT_SCALE: these are GUI/timing suites. On a loaded CI
+# runner (3-5x slower than a dev box) a fixed settle between a synthetic
+# keystroke and the screen check can elapse before the dialog renders, so a
+# handful of assertions flake intermittently. Two mitigations:
+#   - XWPE_TEST_WAIT_SCALE=3 tells the upstream harness to stretch every
+#     wait/timeout by 3x (default 1.0 in-tree), which removes almost all of it;
+#   - Restrictions: flaky records a residual failure but does not fail the
+#     run, so an occasional timing flake under CI load never blocks migration.
+# The deterministic coverage (the C unit tests) runs at build time via
+# `make check`, which is the hard gate; these suites are the extra GUI layer.
+
+# -- Console front-end (wpe), driven through a pyte VT100 --------------------
+# locales-all: the pyte harness forces LC_ALL=en_US.UTF-8, so ncurses draws
+# UTF-8 box/scrollbar glyphs (without it they fall back to the ASCII lqk ACS).
+Test-Command: XWPE_TEST_WAIT_SCALE=3 WPE_BIN=/usr/bin/wpe python3 -m pytest -q tests --ignore=tests/x11
+Depends: @,
+ python3-pyte,
+ python3-pytest,
+ locales-all,
+ gcc,
+ libc6-dev,
+ g++,
+ gfortran,
+ gdb,
+ perl
+Restrictions: allow-stderr flaky
+
+# -- X11 front-end (xwpe), driven headless under Xvfb + matchbox -------------
+# Covers the Xft/Cairo rendering and the X11 key/mouse path that pyte cannot
+# reach (e.g. the overlapping-window scrollbar-clip regression).  The suite
+# starts its own Xvfb + matchbox; matchbox is REQUIRED (without a window
+# manager xwpe's X11 size handling oscillates under bare Xvfb).  It skips
+# cleanly if any X tool is missing, so it is safe on text-only CI.
+# No core-font package is needed: xwpe falls back to Xft when the legacy
+# "8x13" core font is absent (WeXterm.c), so it starts on a bare X server.
+# locales-all: keep UTF-8 input/rendering deterministic in the GUI suite too.
+Test-Command: XWPE_TEST_WAIT_SCALE=3 XWPE_BIN=/usr/bin/xwpe python3 -m pytest -q tests/x11
+Depends: @,
+ python3-pytest,
+ python3-pil,
+ locales-all,
+ gcc,
+ libc6-dev,
+ xvfb,
+ matchbox-window-manager,
+ xdotool,
+ x11-apps,
+ x11-xserver-utils,
+ xclip,
+ imagemagick
+Restrictions: allow-stderr flaky

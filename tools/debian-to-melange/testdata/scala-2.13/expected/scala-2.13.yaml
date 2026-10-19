@@ -23,18 +23,6 @@ package:
   description: Compiler and tools for the Scala 2.13 programming language
   copyright:
     - license: Apache-2.0
-    - license: Apache-2.0
-      paths:
-        - src/reflect/scala/reflect/internal/util/AlmostFinalValue.java
-    - license: Apache-2.0
-      paths:
-        - src/library/scala/math/BigInt.scala
-    - license: Apache-2.0
-      paths:
-        - 'src/sbt-bridge/*'
-    - license: Apache-2.0
-      paths:
-        - test/tasty/neg/src-3/intent/Position.scala
     - license: GPL-2.0-only WITH Classpath exception
       paths:
         - test/jcstress/src/test/scala/example/APISample_01_Simple.scala
@@ -51,12 +39,6 @@ package:
     - license: OFL-1.1
       paths:
         - 'src/scaladoc/scala/tools/nsc/doc/html/resource/lib/source-code-pro-v6-latin-*'
-    - license: Apache-2.0
-      paths:
-        - 'src/scaladoc/scala/tools/nsc/doc/html/resource/lib/open-sans-v13-latin-*'
-    - license: Apache-2.0
-      paths:
-        - 'src/scaladoc/scala/tools/nsc/doc/html/resource/lib/MaterialIcons-Regular.*'
     - license: OFL-1.1
       paths:
         - 'spec/public/fonts/Heuristica-*.woff'
@@ -211,8 +193,9 @@ subpackages:
           true
 update:
   enabled: true
-  release-monitor:
-    identifier: 0  # TODO(debian-to-melange): set the release-monitoring.org project id
+  github:
+    identifier: scala/scala
+    strip-prefix: v
 test:
   environment:
     contents:

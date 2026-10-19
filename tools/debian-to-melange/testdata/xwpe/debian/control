@@ -1,0 +1,49 @@
+Source: xwpe
+Section: editors
+Maintainer: Debian Commons <xwpe@packages.debian.org>
+Uploaders:
+ Francesco Paolo Lovergine <frankie@debian.org>,
+ Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+Standards-Version: 4.7.4
+Build-Depends: debhelper-compat (=13)
+ ,pkgconf
+ ,texinfo
+ ,libgpmg1-dev [linux-any]
+ ,libncurses-dev
+ ,libx11-dev
+ ,libxext-dev
+ ,libxft-dev
+ ,libfontconfig-dev
+ ,libfreetype-dev
+ ,libcairo2-dev
+ ,libpango1.0-dev
+ ,libvterm-dev
+ ,libjson-c-dev
+ ,x11proto-core-dev
+ ,zlib1g-dev
+ ,librsvg2-bin
+Vcs-Browser: https://salsa.debian.org/debian/xwpe
+Vcs-Git: https://salsa.debian.org/debian/xwpe.git
+Homepage: https://codeberg.org/mendezr/xwpe
+
+Package: xwpe
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Suggests: gdb, lldb, ga68, algol68g, golang-go, delve, rustc, gpm [linux-any],
+ info, python3, texlive-latex-base, fonts-noto-color-emoji, fonts-terminus
+Description: Programming environment and editor for console and X11
+ Xwpe is an integrated programming and debugging environment similar to
+ Borland's Turbo C and Pascal family. It has many features including
+ the ability to start many compilers, linkers and debuggers from a
+ menu-based interface or using keystrokes.
+ .
+ Syntax highlighting is included for many programming languages, and
+ any compiler and debugger can easily be used by the program. When
+ compiling from within xwpe, errors in the source code can be jumped to
+ and swiftly corrected. Variables and the stack can be easily displayed.
+ Setting and unsetting breakpoints can be done directly within the
+ source code.
+ .
+ Although it is designed to be a tool for programmers (when invoked as
+ wpe or xwpe), it can also be used as an easy to learn text editor
+ (when invoked as program 'we' or 'xwe').

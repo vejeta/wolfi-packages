@@ -69,7 +69,7 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | `override_dh_auto_build`, `override_dh_auto_install` | `runs` steps with the same commands (`debian/<pkg>/` → `${{targets.destdir}}/`, `debian/<file>` copied next to the recipe, `target/$(DEB_HOST_RUST_TYPE)/` → `target/`); TODO if make or debhelper constructs remain |
 | `export VAR = value` in `rules` | `environment.environment` (`$(CURDIR)` → `/home/build`; `DEB_*`, `PATH`, `CARGO_HOME`, compiler flags skipped) |
 | `Files-Excluded` in `debian/copyright` | `rm -rf` step after `fetch`, so the pristine tarball matches Debian's repack |
-| `debian/watch` (GitHub) | `git-checkout` with `tag` and `expected-commit` (resolved with `git ls-remote` when `--download` is given), and `update.github` |
+| `debian/watch` (GitHub, or v5 git mode on any forge) | `git-checkout` with `tag` and `expected-commit` (resolved with `git ls-remote` when `--download` is given), and `update.github` or `update.git` |
 | `debian/tests/control` (autopkgtest) | `test:` steps: `Test-Command` and `Tests` scripts (inlined, run in `$AUTOPKGTEST_TMP`); `Depends` mapped to Wolfi names |
 | `debian/patches/series` | Patches copied next to the recipe + `uses: patch` |
 | Extra binary packages + `*.install` | `subpackages` that move their files from `destdir` |
@@ -114,7 +114,7 @@ before installing to change the behaviour non-interactively.
   the original commands.
 - Package name mapping is a curated table plus heuristics; use `--check-wolfi`
   to confirm names exist.
-- Non-GitHub `debian/watch` files are not interpreted; pass `--upstream-url`.
+- Tarball `debian/watch` files on sites other than GitHub are not interpreted; pass `--upstream-url`.
 - `dh --with` add-ons are reported, not converted.
 - Debian-repacked tarballs (`+dfsg`/`+ds`) without a `Files-Excluded` field
   are reported for review.
@@ -144,6 +144,8 @@ output, and an optional `args` file. Cases:
 - `scala-2.13` — real package (Debian Java team): self-hosting compiler with
   build profiles (`<pkg.scala.stage0>`), `debian/watch` v5 in git mode, Java
   library dependencies, `update-alternatives` in maintainer scripts.
+- `xwpe` — real package (same maintainer in Debian and upstream):
+  `debian/watch` v5 in git mode on Codeberg, autopkgtests with X11 tools.
 - `libfoo` — synthetic cmake library: multiple binaries, multiarch paths,
   patches, configure options, DEP-5 per-path licenses, GitHub watch,
   `update-alternatives` in a subpackage `postinst`.
