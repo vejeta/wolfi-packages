@@ -95,7 +95,7 @@ subpackages:
           	done
           }
 
-          file; find "$pkgdir" -name "*.pod" | while read -r file; do
+          find "$pkgdir" -name "*.pod" | while read -r file; do
           	amove "${file#"$pkgdir"}"
           done
 update:

@@ -533,7 +533,9 @@ class Converter:
         """Prefix a body with the abuild environment it relies on."""
         if not text.strip():
             return None
-        text = re.sub(r"(?m)^(\s*)local\s+", r"\1", text)   # no longer inside a function
+        # no longer inside a function: a bare declaration ("local file;") would run "file"
+        text = re.sub(r"(?m)^(\s*)local\s+[A-Za-z_][\w ]*(?:;\s*|$)", r"\1", text)
+        text = re.sub(r"(?m)^(\s*)local\s+", r"\1", text)
         refs = lambda t: set(re.findall(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)", t))
         used = refs(text)
         # helper variables (_foo) and everything they reference, transitively
