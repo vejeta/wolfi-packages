@@ -8,7 +8,7 @@
 #
 # Conversion notes:
 # - build dependency 'ruby-minitest' (Debian 'ruby-minitest') not found in Wolfi; left out
-# - build dependency 'x11-utils' (Debian 'x11-utils') not found in Wolfi; left out
+# - build dependency 'x11-utils' is a bundle; using luit, xdpyinfo, xmessage, xprop
 # - build dependency 'x11-xkb-utils' (Debian 'x11-xkb-utils') not found in Wolfi; left out
 # - build dependency 'xfonts-base' (Debian 'xfonts-base') not found in Wolfi; left out
 # - build dependency 'xkb-data' (Debian 'xkb-data') not found in Wolfi; left out
@@ -40,13 +40,16 @@ environment:
       - procps
       - ruby
       # TODO(debian-to-melange): ruby-minitest is not in Wolfi (Debian: ruby-minitest); left out
-      # TODO(debian-to-melange): x11-utils is not in Wolfi (Debian: x11-utils); left out
+      - luit  # Debian: x11-utils
+      - xdpyinfo  # Debian: x11-utils
+      - xmessage  # Debian: x11-utils
+      - xprop  # Debian: x11-utils
       # TODO(debian-to-melange): x11-xkb-utils is not in Wolfi (Debian: x11-xkb-utils); left out
       - xauth
       # TODO(debian-to-melange): xfonts-base is not in Wolfi (Debian: xfonts-base); left out
       # TODO(debian-to-melange): xkb-data is not in Wolfi (Debian: xkb-data); left out
       - xterm
-      - xvfb
+      - xvfb-run  # Debian: xvfb
 pipeline:
   - uses: git-checkout
     with:

@@ -33,7 +33,7 @@ environment:
       - libxmu-dev
       - psmisc
       - xauth
-      - xvfb
+      - xvfb-run  # Debian: xvfb
 pipeline:
   - uses: git-checkout
     with:

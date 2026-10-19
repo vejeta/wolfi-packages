@@ -10,7 +10,6 @@
 # - ${python3:Depends} from upstream's requirements: wcwidth
 # - build dependency 'py3-pytest-runner' (Debian 'python3-pytest-runner') not found in Wolfi; left out
 # - upstream tarball from debian/watch
-# - dh --with sphinxdoc has no direct melange equivalent; review
 # - Wolfi Python layout: py3.X-pyte for Python 3.10, 3.11, 3.12, 3.13, 3.14
 package:
   name: py3-pyte
