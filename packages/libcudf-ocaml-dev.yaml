@@ -69,6 +69,7 @@ pipeline:
   - name: From debian/rules execute_after_dh_auto_build
     runs: |
       make doc/cudf-check.1 c-lib
+      make c-lib-opt
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libcudf-ocaml-dev/examples"

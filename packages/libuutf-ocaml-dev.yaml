@@ -57,9 +57,11 @@ pipeline:
       for a in bytecode native; do  	  mv debian/install_$a.sh debian/install_$a.sh.old;  	done
       .recipe-files/rules .recipe-files/install_bytecode.sh
       diff -u debian/install_bytecode.sh.old .recipe-files/install_bytecode.sh
+      diff -u debian/install_native.sh.old .recipe-files/install_native.sh
       mv debian/install_bytecode.sh.old .recipe-files/install_bytecode.sh
       mv debian/install_native.sh.old .recipe-files/install_native.sh
       OCAML_STDLIB_DIR=/usr/lib/ocaml .recipe-files/install_bytecode.sh
+      OCAML_STDLIB_DIR=/usr/lib/ocaml .recipe-files/install_native.sh
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr"

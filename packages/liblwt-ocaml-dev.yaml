@@ -49,6 +49,8 @@ environment:
       - libppxlib-ocaml-dev  # Wolfi Community Packages
       - libocplib-endian-ocaml-dev  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: libcompiler-libs-ocaml-dev
+      - coreutils
+      - findutils
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -63,6 +65,9 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/Comment-out-unix_mcast-tests.patch .recipe-files/Disable-page_size-test.patch
+  - name: Configure (from debian/rules override_dh_auto_configure)
+    runs: |
+      dune exec -p lwt src/unix/config/discover.exe -- --save --use-libev true
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
       dune build -p lwt_direct,lwt,lwt_ppx,lwt_react,lwt_retry,lwt_runtime_events -j $(nproc) @install
