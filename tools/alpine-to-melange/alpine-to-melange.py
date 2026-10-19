@@ -73,6 +73,8 @@ NAME_MAP = {
     "tar": "gnutar",
     "muon": "meson",
     "gpm-dev": "libgpm-dev",
+    # Alpine's xmlto pulls in the DocBook XSL stylesheets; Wolfi's are in docbook-xml
+    "xmlto": ["xmlto", "docbook-xml"],
     "clang-dev": "clang",
 }
 

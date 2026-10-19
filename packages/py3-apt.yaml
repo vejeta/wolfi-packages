@@ -151,6 +151,7 @@ test:
     - uses: test/tw/ldd-check
     - uses: python/import
       with:
+        python: python3
         imports: import apt
     - uses: fetch
       with:

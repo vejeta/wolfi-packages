@@ -45,6 +45,14 @@ pipeline:
       mkdir -p .recipe-files
       for f in 0001-Change-gettext-domainname-to-libcwidget4-1.patch 0002-Fix-cwidget-and-aptitude-FTBFS.patch; do mv libcwidget4/$f .recipe-files/; done
       rmdir libcwidget4 2>/dev/null || true
+  - name: 'Debian''s include/ncursesw'
+    runs: |
+      mkdir -p /usr/include/ncursesw
+      for h in curses.h ncurses.h ncurses_dll.h term.h term_entry.h termcap.h tic.h unctrl.h \
+               panel.h menu.h form.h eti.h etip.h cursesapp.h cursesf.h cursesm.h cursesp.h cursesw.h cursslk.h; do
+        [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h
+      done
+      true
   - uses: fetch
     with:
       uri: https://deb.debian.org/debian/pool/main/c/cwidget/cwidget_${{package.version}}.orig.tar.xz
@@ -141,6 +149,14 @@ test:
     - runs: |
         test -f /usr/share/licenses/libcwidget4/COPYING
     - uses: test/tw/ldd-check
+    - name: 'Debian''s include/ncursesw'
+      runs: |
+        mkdir -p /usr/include/ncursesw
+        for h in curses.h ncurses.h ncurses_dll.h term.h term_entry.h termcap.h tic.h unctrl.h \
+                 panel.h menu.h form.h eti.h etip.h cursesapp.h cursesf.h cursesm.h cursesp.h cursesw.h cursslk.h; do
+          [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h
+        done
+        true
     - uses: fetch
       with:
         uri: https://deb.debian.org/debian/pool/main/c/cwidget/cwidget_${{package.version}}.orig.tar.xz

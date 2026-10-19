@@ -31,7 +31,8 @@ environment:
       - meson  # Alpine: muon
       - openssl-dev
       - python3
-      - xmlto
+      - xmlto  # Alpine: xmlto
+      - docbook-xml  # Alpine: xmlto
       - zlib-dev
       - bzip2
       - curl

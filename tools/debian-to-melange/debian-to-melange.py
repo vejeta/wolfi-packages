@@ -2130,6 +2130,15 @@ class Converter:
 
         # ---- pipeline -----------------------------------------------------
         pipeline = []
+        if any(alts[0].startswith(("libncurses-dev", "libncursesw")) for alts in parse_relations(source.get("build-depends"))):
+            # Debian has the wide-character headers under include/ncursesw as well; Wolfi only in include
+            pipeline.append({"name": "Debian's include/ncursesw", "runs": (
+                "mkdir -p /usr/include/ncursesw\n"
+                "for h in curses.h ncurses.h ncurses_dll.h term.h term_entry.h termcap.h tic.h unctrl.h \\\n"
+                "         panel.h menu.h form.h eti.h etip.h cursesapp.h cursesf.h cursesm.h cursesp.h cursesw.h cursslk.h; do\n"
+                "  [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h\n"
+                "done\n"
+                "true\n")})
         self.source_steps = []
         if native and a.from_debian and [n for n in self.top if n != "debian"]:
             # a Debian-native program (ucf ...): its source is the Debian tarball
@@ -2452,7 +2461,7 @@ class Converter:
                     and self.wolfi.has("py3-supported-" + v[4:]):
                 d = C("py3-supported-" + v[4:], d.comment if isinstance(d, C) else "Debian: python3-" + v[4:])
             keep.append(d)
-        uses_python = any("python3 " in st.get("runs", "") for st in pipeline if isinstance(st, dict))
+        uses_python = True  # debian/rules may run the source's own Python scripts (doc-debtags)
         env[:] = [keep[0], "py3-supported-build-base"] + (["python3"] if uses_python else []) + keep[1:]
 
         pipeline[:] = [st for st in pipeline if not (isinstance(st, dict) and st.get("uses") == "py/pip-build-install")]
@@ -3152,7 +3161,7 @@ class Converter:
             test["pipeline"].append({"name": "Load the module", "runs": "perl -M{} -e1\n".format(module)})
         if main and getattr(self, "python_module", None):
             test["environment"]["contents"]["packages"].append("python3")
-            test["pipeline"].append({"uses": "python/import", "with": {"imports": "import " + self.python_module}})
+            test["pipeline"].append({"uses": "python/import", "with": {"python": "python3", "imports": "import " + self.python_module}})
         if main:
             steps, packages = self.autopkgtests(name)
             have = list(test["environment"]["contents"]["packages"])
