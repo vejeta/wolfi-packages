@@ -303,6 +303,8 @@ class HelperTest(unittest.TestCase):
         rel = d2m.parse_relations("a (>= 1), b | c [amd64], ${misc:Depends}, d:any <!nocheck>")
         self.assertEqual(rel, [["a"], ["b", "c"], ["${misc:Depends}"], ["d"]])
         self.assertEqual(d2m.parse_relations("x <stage1>, y <!stage1>, z <stage1> <!nocheck>"), [["y"], ["z"]])
+        # the recipes build with the nocheck profile
+        self.assertEqual(d2m.parse_relations("a, t <!nocheck>, n <nocheck>", d2m.BUILD_PROFILES), [["a"], ["n"]])
 
     def test_to_spdx(self):
         self.assertEqual(d2m.to_spdx("GPL-2+"), "GPL-2.0-or-later")

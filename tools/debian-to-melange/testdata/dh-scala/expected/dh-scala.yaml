@@ -29,14 +29,10 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - busybox
-      - git
       - perl-archive-zip  # Debian: libarchive-zip-perl
       - perl-dpkg  # Debian: libdpkg-perl
-      - perl-file-stripnondeterminism  # Debian: libfile-stripnondeterminism-perl
       - perl-xml-libxml  # Debian: libxml-libxml-perl
-      - licensecheck
       - perl
-      - xz  # Debian: xz-utils
       - coreutils
       - findutils
 pipeline:

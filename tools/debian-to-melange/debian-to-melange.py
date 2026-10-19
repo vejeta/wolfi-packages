@@ -453,8 +453,13 @@ def parse_deb822(text):
     return paras
 
 
-def parse_relations(value):
-    """'a (>= 1) | b, c [amd64]' -> [['a', 'b'], ['c']] (names only)."""
+# The build profiles of the builds the recipes do (no build-time test suite).
+BUILD_PROFILES = frozenset({"nocheck"})
+
+
+def parse_relations(value, profiles=()):
+    """'a (>= 1) | b, c [amd64]' -> [['a', 'b'], ['c']] (names only), for a
+    build with the given build profiles enabled."""
     out = []
     if not value:
         return out
@@ -464,10 +469,10 @@ def parse_relations(value):
             continue
         alts = []
         for alt in group.split("|"):
-            # Build profiles: <a b> <c> means (a and b) or c. With no profile
-            # enabled (a normal build), "!x" holds and "x" does not.
+            # Build profiles: <a b> <c> means (a and b) or c; "!x" holds when x is not enabled
             formulas = re.findall(r"<([^>]*)>", alt)
-            if formulas and not any(all(t.startswith("!") for t in f.split()) for f in formulas):
+            if formulas and not any(all((t[1:] not in profiles) if t.startswith("!") else (t in profiles)
+                                        for t in f.split()) for f in formulas):
                 continue
             alt = re.sub(r"\(.*?\)|\[.*?\]|<.*?>", "", alt).strip()
             sv = re.match(r"^([a-z0-9][a-z0-9.+]*)-\$\{[^}]*\}$", alt)
@@ -2179,9 +2184,10 @@ class Converter:
             self.notes.append("maintainer scripts converted; note that apko does not run install scripts")
 
         # ---- environment ---------------------------------------------------
-        build_deps = self.map_deps(parse_relations(source.get("build-depends")) +
-                                   parse_relations(source.get("build-depends-indep")) +
-                                   parse_relations(source.get("build-depends-arch")), "build")
+        # the recipe does not run the upstream tests at build time: Debian's nocheck profile
+        build_deps = self.map_deps(parse_relations(source.get("build-depends"), BUILD_PROFILES) +
+                                   parse_relations(source.get("build-depends-indep"), BUILD_PROFILES) +
+                                   parse_relations(source.get("build-depends-arch"), BUILD_PROFILES), "build")
         own = {b["package"] for b in binaries}
         self_deps = sorted(own & {alt for alts in parse_relations(source.get("build-depends")) for alt in alts})
         if self_deps:
