@@ -162,23 +162,23 @@ pipeline:
   - uses: cmake/install
   - name: Install files
     runs: |
-      if ! ls -d "${{targets.destdir}}"/debian/*.service >/dev/null 2>&1; then
+      if ! ls -d "${{targets.destdir}}"/usr/lib/systemd/system/*.service >/dev/null 2>&1; then
         mkdir -p "${{targets.destdir}}/usr/lib/systemd/system"
         cp -a debian/*.service "${{targets.destdir}}/usr/lib/systemd/system/"
       fi
-      if ! ls -d "${{targets.destdir}}"/debian/*.timer >/dev/null 2>&1; then
+      if ! ls -d "${{targets.destdir}}"/usr/lib/systemd/system/*.timer >/dev/null 2>&1; then
         mkdir -p "${{targets.destdir}}/usr/lib/systemd/system"
         cp -a debian/*.timer "${{targets.destdir}}/usr/lib/systemd/system/"
       fi
-      if ! ls -d "${{targets.destdir}}/apt/61-apt.rules" >/dev/null 2>&1; then
+      if ! ls -d "${{targets.destdir}}/usr/lib/udev/rules.d/61-apt.rules" >/dev/null 2>&1; then
         mkdir -p "${{targets.destdir}}/usr/lib/udev/rules.d"
         cp -a .recipe-files/61-apt.rules "${{targets.destdir}}/usr/lib/udev/rules.d/"
       fi
-      if ! ls -d "${{targets.destdir}}/apt/apt.systemd.daily" >/dev/null 2>&1; then
+      if ! ls -d "${{targets.destdir}}/usr/lib/apt/apt.systemd.daily" >/dev/null 2>&1; then
         mkdir -p "${{targets.destdir}}/usr/lib/apt"
         cp -a .recipe-files/apt.systemd.daily "${{targets.destdir}}/usr/lib/apt/"
       fi
-      if ! ls -d "${{targets.destdir}}/apt/default-sequoia.config" >/dev/null 2>&1; then
+      if ! ls -d "${{targets.destdir}}/usr/share/apt/default-sequoia.config" >/dev/null 2>&1; then
         mkdir -p "${{targets.destdir}}/usr/share/apt"
         cp -a .recipe-files/default-sequoia.config "${{targets.destdir}}/usr/share/apt/"
       fi

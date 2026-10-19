@@ -18,6 +18,7 @@ package:
   dependencies:
     runtime:
       - perl-text-charwidth  # Wolfi Community Packages (Debian: libtext-charwidth-perl)
+      - perl  # Debian: ${perl:Depends}
 environment:
   contents:
     keyring:

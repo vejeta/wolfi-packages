@@ -15,6 +15,9 @@ package:
   description: Module to convert between character sets in Perl
   copyright:
     - license: Artistic-1.0-Perl OR GPL-1.0-or-later
+  dependencies:
+    runtime:
+      - perl  # Debian: ${perl:Depends}
 environment:
   contents:
     keyring:

@@ -17,6 +17,7 @@ package:
     - license: GPL-3.0-or-later
   dependencies:
     runtime:
+      - perl  # Debian: ${perl:Depends}
       # Debian Recommends (not supported by apk): libintl-xs-perl
 environment:
   contents:
@@ -90,6 +91,7 @@ subpackages:
     dependencies:
       runtime:
         - perl-libintl-perl
+        - perl  # Debian: ${perl:Depends}
 update:
   enabled: true
   release-monitor:

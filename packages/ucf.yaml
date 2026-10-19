@@ -28,6 +28,8 @@ package:
     runtime:
       - perl-text-wrapi18n  # Wolfi Community Packages (Debian: libtext-wrapi18n-perl)
       - procps
+      - perl  # Debian: ${perl:Depends}
+      - util-linux-misc  # used by the shell scripts; Essential in Debian
   scriptlets:
     pre-install: |
       #!/bin/sh
@@ -214,15 +216,30 @@ pipeline:
       fi
   - name: Install files
     runs: |
-      mkdir -p "${{targets.destdir}}/usr/bin"
-      cp -a ucf "${{targets.destdir}}/usr/bin/"
-      mkdir -p "${{targets.destdir}}/etc"
-      cp -a ucf.conf "${{targets.destdir}}/etc/"
-      mkdir -p "${{targets.destdir}}/usr/share/ucf"
-      cp -a ucf_library.sh "${{targets.destdir}}/usr/share/ucf/"
-      cp -a ucf_helper_functions.sh "${{targets.destdir}}/usr/share/ucf/"
-      cp -a ucfq "${{targets.destdir}}/usr/bin/"
-      cp -a ucfr "${{targets.destdir}}/usr/bin/"
+      if ! ls -d "${{targets.destdir}}/usr/bin/ucf" >/dev/null 2>&1; then
+        mkdir -p "${{targets.destdir}}/usr/bin"
+        cp -a ucf "${{targets.destdir}}/usr/bin/"
+      fi
+      if ! ls -d "${{targets.destdir}}/etc/ucf.conf" >/dev/null 2>&1; then
+        mkdir -p "${{targets.destdir}}/etc"
+        cp -a ucf.conf "${{targets.destdir}}/etc/"
+      fi
+      if ! ls -d "${{targets.destdir}}/usr/share/ucf/ucf_library.sh" >/dev/null 2>&1; then
+        mkdir -p "${{targets.destdir}}/usr/share/ucf"
+        cp -a ucf_library.sh "${{targets.destdir}}/usr/share/ucf/"
+      fi
+      if ! ls -d "${{targets.destdir}}/usr/share/ucf/ucf_helper_functions.sh" >/dev/null 2>&1; then
+        mkdir -p "${{targets.destdir}}/usr/share/ucf"
+        cp -a ucf_helper_functions.sh "${{targets.destdir}}/usr/share/ucf/"
+      fi
+      if ! ls -d "${{targets.destdir}}/usr/bin/ucfq" >/dev/null 2>&1; then
+        mkdir -p "${{targets.destdir}}/usr/bin"
+        cp -a ucfq "${{targets.destdir}}/usr/bin/"
+      fi
+      if ! ls -d "${{targets.destdir}}/usr/bin/ucfr" >/dev/null 2>&1; then
+        mkdir -p "${{targets.destdir}}/usr/bin"
+        cp -a ucfr "${{targets.destdir}}/usr/bin/"
+      fi
       install -Dm644 man/ucf.1 -t "${{targets.destdir}}/usr/share/man/man1"
       install -Dm644 man/ucf.conf.5 -t "${{targets.destdir}}/usr/share/man/man5"
       install -Dm644 man/ucf_helper_functions.sh.5 -t "${{targets.destdir}}/usr/share/man/man5"

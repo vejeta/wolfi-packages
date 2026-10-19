@@ -15,6 +15,9 @@ package:
   description: Get display widths of characters on the terminal
   copyright:
     - license: Artistic-1.0-Perl OR GPL-1.0-or-later
+  dependencies:
+    runtime:
+      - perl  # Debian: ${perl:Depends}
 environment:
   contents:
     keyring:

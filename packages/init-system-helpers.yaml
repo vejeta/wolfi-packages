@@ -32,6 +32,7 @@ package:
   dependencies:
     runtime:
       - dpkg  # used by the maintainer scripts
+      - perl  # Debian: ${perl:Depends}
   scriptlets:
     post-install: |
       #!/bin/sh
@@ -159,6 +160,7 @@ test:
         - findutils  # Essential in Debian, so on every testbed
         - grep  # Essential in Debian, so on every testbed
         - sed  # Essential in Debian, so on every testbed
+        - perl
   pipeline:
     - runs: |
         test -x /usr/bin/deb-systemd-helper
@@ -194,6 +196,10 @@ test:
           /^$/ && pkg != "" { add() }
           END { if (pkg != "") add() }
         ' /lib/apk/db/installed
+        for t in debian/init-system-helpers.templates debian/templates; do
+          # po-debconf's translatable fields (_Description, __Choices) in the C locale
+          [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/init-system-helpers.templates" && break
+        done
     - name: 'autopkgtest: t'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"

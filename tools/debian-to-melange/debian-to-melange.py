@@ -2678,8 +2678,10 @@ class Converter:
                 target = '"{}/{}/{}"'.format(destdir, dst, rename) if rename else '"{}/{}/"'.format(destdir, dst)
                 if from_tree and native and main and self.upstream_installs and self.bs and not rename:
                     # dh_install looks in debian/tmp first: the build may have installed it already
+                    # where dh_install puts it: dst/<basename>
+                    installed = "{}/{}".format(dst, os.path.basename(norm_path(src).rstrip("/"))).lstrip("/")
                     cmds.append('if ! ls -d {4} >/dev/null 2>&1; then\n  mkdir -p "{0}/{1}"\n  cp -a {2} {3}\nfi'.format(
-                        destdir, dst, src, target, shell_path(destdir, norm_path(src))))
+                        destdir, dst, src, target, shell_path(destdir, installed)))
                 elif from_tree:
                     cmds.append('mkdir -p "{0}/{1}"\ncp -a {2} {3}'.format(destdir, dst, src, target))
                 elif dst.startswith("usr/share/man/") and "*" not in src:

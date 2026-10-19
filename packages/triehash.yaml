@@ -15,6 +15,9 @@ package:
   description: Generates perfect hash functions as native machine code
   copyright:
     - license: MIT
+  dependencies:
+    runtime:
+      - perl  # Debian: ${perl:Depends}
 environment:
   contents:
     keyring:
