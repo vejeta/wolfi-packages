@@ -1,0 +1,106 @@
+From 3cdb9b5426ef508c9220b4b0316954e3b7dff9ac Mon Sep 17 00:00:00 2001
+From: Hajime Yoshimori <lugia.kun@gmail.com>
+Date: Fri, 1 May 2020 21:14:32 +0900
+Subject: [PATCH 03/15] check return value of dladdr
+
+https://github.com/dex4er/fakechroot/pull/70
+---
+ src/dladdr.c           | 12 +++++++-----
+ test/Makefile.am       |  1 +
+ test/src/Makefile.am   |  1 +
+ test/src/test-dladdr.c | 14 ++++++++++++++
+ test/t/dladdr.t        | 14 ++++++++++++++
+ 5 files changed, 37 insertions(+), 5 deletions(-)
+ create mode 100644 test/src/test-dladdr.c
+ create mode 100755 test/t/dladdr.t
+
+diff --git a/src/dladdr.c b/src/dladdr.c
+index fef3257..3dffdb3 100644
+--- a/src/dladdr.c
++++ b/src/dladdr.c
+@@ -36,11 +36,13 @@ wrapper(dladdr, int, (const void * addr, Dl_info * info))
+ 
+     ret = nextcall(dladdr)(addr, info);
+ 
+-    if (info->dli_fname) {
+-        narrow_chroot_path(info->dli_fname);
+-    }
+-    if (info->dli_sname) {
+-        narrow_chroot_path(info->dli_sname);
++    if (ret != 0) {
++        if (info->dli_fname) {
++            narrow_chroot_path(info->dli_fname);
++        }
++        if (info->dli_sname) {
++            narrow_chroot_path(info->dli_sname);
++        }
+     }
+ 
+     return ret;
+diff --git a/test/Makefile.am b/test/Makefile.am
+index aba2953..0021b0a 100644
+--- a/test/Makefile.am
++++ b/test/Makefile.am
+@@ -9,6 +9,7 @@ TESTS = \
+     t/cmd-subst.t \
+     t/cp.t \
+     t/dedotdot.t \
++    t/dladdr.t \
+     t/execlp.t \
+     t/execve-elfloader.t \
+     t/execve-null-envp.t \
+diff --git a/test/src/Makefile.am b/test/src/Makefile.am
+index 7fb3075..5f5fde8 100644
+--- a/test/src/Makefile.am
++++ b/test/src/Makefile.am
+@@ -3,6 +3,7 @@ check_PROGRAMS = \
+     test-chroot \
+     test-clearenv \
+     test-dedotdot \
++    test-dladdr \
+     test-execlp \
+     test-execve-null-envp \
+     test-fts \
+diff --git a/test/src/test-dladdr.c b/test/src/test-dladdr.c
+new file mode 100644
+index 0000000..5ec8d24
+--- /dev/null
++++ b/test/src/test-dladdr.c
+@@ -0,0 +1,14 @@
++#define _GNU_SOURCE
++#include <dlfcn.h>
++#include <stdlib.h>
++#include <string.h>
++#include <stdio.h>
++
++int main(int argc, char** argv)
++{
++  Dl_info info;
++  memset(&info, 0xfe, sizeof(info)); /* fill with inaccessible address */
++  int ret = dladdr(NULL, &info);
++  printf("%ld\n", ret);
++  return 0;
++}
+diff --git a/test/t/dladdr.t b/test/t/dladdr.t
+new file mode 100755
+index 0000000..fc7f939
+--- /dev/null
++++ b/test/t/dladdr.t
+@@ -0,0 +1,14 @@
++#!/bin/sh
++
++srcdir=${srcdir:-.}
++. $srcdir/common.inc.sh
++
++prepare 1
++
++PATH=$srcdir/bin:$PATH
++
++t=`$srcdir/fakechroot.sh $testtree /bin/test-dladdr`
++[ "$t" != "0" ] && not
++ok "dladdr returns" $t
++
++cleanup
+-- 
+2.39.2
+

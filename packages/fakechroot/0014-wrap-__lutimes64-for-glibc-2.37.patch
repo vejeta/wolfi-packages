@@ -1,0 +1,87 @@
+From 0481f29757567dc23a8a9ae47456be037bde9e9f Mon Sep 17 00:00:00 2001
+From: Johannes Schauer Marin Rodrigues <josch@mister-muffin.de>
+Date: Sun, 14 Apr 2024 18:05:50 +0200
+Subject: [PATCH 14/15] wrap __lutimes64 for glibc 2.37
+
+---
+ configure.ac      |  1 +
+ src/Makefile.am   |  1 +
+ src/__lutimes64.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 44 insertions(+)
+ create mode 100644 src/__lutimes64.c
+
+diff --git a/configure.ac b/configure.ac
+index 26c0611..dca4f95 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -165,6 +165,7 @@ AC_CHECK_FUNCS(m4_normalize([
+     __getcwd_chk
+     __getwd_chk
+     __lstat64_time64
++    __lutimes64
+     __lxstat
+     __lxstat64
+     __open
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 55193a9..5eec264 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -6,6 +6,7 @@ libfakechroot_la_SOURCES = \
+     __getcwd_chk.c \
+     __getwd_chk.c \
+     __lstat64_time64.c \
++    __lutimes64.c \
+     __lxstat.c \
+     __lxstat64.c \
+     __lxstat64.h \
+diff --git a/src/__lutimes64.c b/src/__lutimes64.c
+new file mode 100644
+index 0000000..e8bce0c
+--- /dev/null
++++ b/src/__lutimes64.c
+@@ -0,0 +1,42 @@
++/*
++    libfakechroot -- fake chroot environment
++    Copyright (c) 2010, 2013 Piotr Roszatycki <dexter@debian.org>
++
++    This library is free software; you can redistribute it and/or
++    modify it under the terms of the GNU Lesser General Public
++    License as published by the Free Software Foundation; either
++    version 2.1 of the License, or (at your option) any later version.
++
++    This library is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++    Lesser General Public License for more details.
++
++    You should have received a copy of the GNU Lesser General Public
++    License along with this library; if not, write to the Free Software
++    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++*/
++
++
++#include <config.h>
++
++#ifdef HAVE___LUTIMES64
++
++#define _ATFILE_SOURCE
++#define _POSIX_C_SOURCE 200809L
++
++#include <sys/time.h>
++#include "libfakechroot.h"
++
++wrapper(__lutimes64, int, (const char * filename, UTIMES_TYPE_ARG2(tv)))
++{
++    char fakechroot_abspath[FAKECHROOT_PATH_MAX];
++    char fakechroot_buf[FAKECHROOT_PATH_MAX];
++    debug("__lutimes64(\"%s\", &tv)", filename);
++    expand_chroot_path(filename);
++    return nextcall(__lutimes64)(filename, tv);
++}
++
++#else
++typedef int empty_translation_unit;
++#endif
+-- 
+2.39.2
+

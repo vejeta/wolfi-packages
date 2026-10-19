@@ -1,0 +1,102 @@
+From d9a47178203931231987d10117acb5684d12ed4c Mon Sep 17 00:00:00 2001
+From: Johannes Schauer Marin Rodrigues <josch@mister-muffin.de>
+Date: Tue, 1 Nov 2022 00:47:56 +0100
+Subject: [PATCH 09/15] add test/t/rm.t and amend test/t/touch.t with
+ --no-dereference test
+
+ - test/t/rm.t will fail under glibc 2.34 unless __stat64_time64 functions are
+   wrapped
+ - test/t/touch.t will fail under glibc 2.34 unless __lstat64_time64 is
+   wrapped
+---
+ test/Makefile.am |  1 +
+ test/t/rm.t      | 25 +++++++++++++++++++++++++
+ test/t/touch.t   | 17 +++++++++++++++--
+ 3 files changed, 41 insertions(+), 2 deletions(-)
+ create mode 100755 test/t/rm.t
+
+diff --git a/test/Makefile.am b/test/Makefile.am
+index a1ec743..88e740e 100644
+--- a/test/Makefile.am
++++ b/test/Makefile.am
+@@ -29,6 +29,7 @@ TESTS = \
+     t/pwd.t \
+     t/readlink.t \
+     t/realpath.t \
++    t/rm.t \
+     t/socket-af_unix.t \
+     t/statfs.t \
+     t/statvfs.t \
+diff --git a/test/t/rm.t b/test/t/rm.t
+new file mode 100755
+index 0000000..9ecf88c
+--- /dev/null
++++ b/test/t/rm.t
+@@ -0,0 +1,25 @@
++#!/bin/sh
++
++srcdir=${srcdir:-.}
++. $srcdir/common.inc.sh
++
++prepare 2
++
++for chroot in chroot fakechroot; do
++
++    if [ $chroot = "chroot" ] && ! is_root; then
++        skip $(( $tap_plan / 2 )) "not root"
++    else
++
++        mkdir -p $testtree/dir-$chroot
++        echo 'something' > $testtree/dir-$chroot/file
++
++        $srcdir/$chroot.sh $testtree /bin/sh -c "rm -r /dir-$chroot"
++        test -e $testtree/dir-$chroot && not
++        ok "$chroot rm -r /dir-$chroot:" $t
++
++    fi
++
++done
++
++cleanup
+diff --git a/test/t/touch.t b/test/t/touch.t
+index fbea316..cc05a2b 100755
+--- a/test/t/touch.t
++++ b/test/t/touch.t
+@@ -3,12 +3,12 @@
+ srcdir=${srcdir:-.}
+ . $srcdir/common.inc.sh
+ 
+-prepare 16
++prepare 24
+ 
+ . $srcdir/touch.inc.sh
+ 
+ if [ -z "$touch" ]; then
+-    skip 16 "touch not found"
++    skip 24 "touch not found"
+ else
+ 
+     for chroot in chroot fakechroot; do
+@@ -37,6 +37,19 @@ else
+ 
+             sleep 1
+ 
++            # with --no-dereference, on 32bit, touch will use __lstat64_time64
++            t=`$srcdir/$chroot.sh $testtree $touch -h -r /tmp/$chroot-touch.txt /tmp/$chroot-touch2.txt 2>&1`
++            test "$t" = "" || not
++            ok "$chroot touch -r" $t
++            test -f $testtree/tmp/$chroot-touch2.txt || not
++            ok "$chroot $chroot-touch2.txt exists"
++            test $testtree/tmp/$chroot-touch2.txt -nt $testtree/tmp/$chroot-touch.txt && not
++            ok "$chroot $chroot-touch2.txt is not newer than touch.txt"
++            test $testtree/tmp/$chroot-touch2.txt -ot $testtree/tmp/$chroot-touch.txt && not
++            ok "$chroot $chroot-touch2.txt is not older than $chroot-touch.txt"
++
++            sleep 1
++
+             t=`$srcdir/$chroot.sh $testtree $touch -m /tmp/$chroot-touch.txt 2>&1`
+             test "$t" = "" || not
+             ok "$chroot touch -m" $t
+-- 
+2.39.2
+

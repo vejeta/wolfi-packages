@@ -1,0 +1,28 @@
+From 63c2cbed6dca6196940b439736ca2c069cb9358b Mon Sep 17 00:00:00 2001
+From: Ilya Lipnitskiy <ilya.lipnitskiy@gmail.com>
+Date: Mon, 22 Feb 2021 21:44:07 -0800
+Subject: [PATCH 04/15] tmpnam.c: fix heap overflow
+
+https://github.com/dex4er/fakechroot/pull/85
+
+Signed-off-by: Ilya Lipnitskiy <ilya.lipnitskiy@gmail.com>
+---
+ src/tmpnam.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/tmpnam.c b/src/tmpnam.c
+index ce60817..917ee6b 100644
+--- a/src/tmpnam.c
++++ b/src/tmpnam.c
+@@ -42,7 +42,7 @@ wrapper(tmpnam, char *, (char * s))
+ 
+     expand_chroot_path(ptr);
+ 
+-    ptr2 = malloc(strlen(ptr));
++    ptr2 = malloc(strlen(ptr) + 1);
+     if (ptr2 == NULL) return NULL;
+ 
+     strcpy(ptr2, ptr);
+-- 
+2.39.2
+

@@ -165,6 +165,8 @@ NAME_MAP = {
     "xvfb": ["xvfb-run", "xkbcomp", "xkeyboard-config"],
     "xkb-data": "xkeyboard-config",
     "bsdextrautils": "util-linux-misc",  # column, hexdump, col, ...
+    "libcap2-bin": "libcap-utils",  # setcap, getcap, capsh
+    "gnu-which": "which",
     # compiled locales (glibc-locales only has their sources)
     "locales-all": "glibc-locale-en",
     "locales": "glibc-locale-en",
@@ -487,6 +489,38 @@ def files_excluded(text):
     return paras[0].get("files-excluded", "").split() if paras else []
 
 
+# dpkg-architecture and friends, for a native build on Linux (amd64 stands
+# for any architecture: conditionals only ask about the OS and cross builds).
+BUILD_CONTEXT = {
+    "DEB_HOST_ARCH_OS": "linux", "DEB_BUILD_ARCH_OS": "linux",
+    "DEB_HOST_GNU_SYSTEM": "linux-gnu", "DEB_BUILD_GNU_SYSTEM": "linux-gnu",
+    "DEB_HOST_GNU_TYPE": "x86_64-linux-gnu", "DEB_BUILD_GNU_TYPE": "x86_64-linux-gnu",
+    "DEB_HOST_ARCH": "amd64", "DEB_BUILD_ARCH": "amd64", "DEB_HOST_MULTIARCH": "x86_64-linux-gnu",
+    "DEB_BUILD_OPTIONS": "", "DEB_BUILD_PROFILES": "",
+}
+
+
+def make_functions(text):
+    """$(findstring), $(filter), $(filter-out), $(strip) on already expanded text."""
+    for _ in range(5):
+        m = re.search(r"\$\((findstring|filter|filter-out|strip)\s+([^()$]*)\)", text)
+        if not m:
+            break
+        fn, args = m.group(1), m.group(2)
+        if fn == "strip":
+            out = " ".join(args.split())
+        else:
+            pat, _, words = args.partition(",")
+            if fn == "findstring":
+                out = pat if pat in words else ""
+            else:
+                pats = [re.escape(p).replace("%", ".*") for p in pat.split()]
+                keep = [w for w in words.split() if any(re.fullmatch(p, w) for p in pats)]
+                out = " ".join(keep if fn == "filter" else [w for w in words.split() if w not in keep])
+        text = text[:m.start()] + out + text[m.end():]
+    return text
+
+
 # Variables GNU make defines by itself.
 MAKE_DEFAULTS = {"RM": "rm -f", "MAKE": "make", "CC": "cc", "CXX": "g++", "INSTALL": "install"}
 
@@ -501,7 +535,26 @@ class Rules:
         self.dh_args = ""
         lines = self._join_continuations(text.splitlines())
         target = None
+        active = []  # make conditionals: is each enclosing branch taken?
         for line in lines:
+            cond = re.match(r"^\s*(ifeq|ifneq|ifdef|ifndef|else|endif)\b\s*(.*)$", line)
+            if cond:
+                kw, arg = cond.groups()
+                if kw == "endif":
+                    active and active.pop()
+                elif kw == "else":
+                    if active:
+                        taken = not active[-1] and not getattr(self, "_done", {}).get(len(active))
+                        inner = re.match(r"^(ifeq|ifneq|ifdef|ifndef)\s*(.*)$", arg)
+                        if inner and taken:
+                            taken = self._condition(inner.group(1), inner.group(2))
+                        self._done = dict(getattr(self, "_done", {}), **{str(len(active)): False})
+                        active[-1] = taken if all(active[:-1]) else False
+                else:
+                    active.append(self._condition(kw, arg) if all(active) else False)
+                continue  # conditionals do not end a recipe
+            if not all(active):
+                continue
             if line.startswith("\t"):
                 if target is not None:
                     self.targets[target].append(line[1:])
@@ -528,6 +581,31 @@ class Rules:
             if m:
                 self.dh_args = m.group(1).strip()
 
+    def _condition(self, kw, arg):
+        """Evaluate ifeq/ifneq/ifdef/ifndef for a native Debian build on Linux."""
+        if kw in ("ifdef", "ifndef"):
+            defined = bool(self.vars.get(arg.strip()) or BUILD_CONTEXT.get(arg.strip()))
+            return defined if kw == "ifdef" else not defined
+        arg = arg.strip()
+        if arg.startswith("(") and arg.endswith(")"):
+            # split at the comma outside $(...)
+            depth, cut = 0, None
+            for i, ch in enumerate(arg[1:-1]):
+                depth += {"(": 1, ")": -1}.get(ch, 0)
+                if ch == "," and depth == 0:
+                    cut = i
+                    break
+            if cut is None:
+                return True
+            parts = (arg[1:-1][:cut], arg[1:-1][cut + 1:])
+        else:
+            m = re.match(r"^[\"'](.*)[\"']\s+[\"'](.*)[\"']$", arg)
+            if not m:
+                return True
+            parts = m.groups()
+        a, b = (make_functions(self.expand(x, context=True)).strip() for x in parts)
+        return (a == b) if kw == "ifeq" else (a != b)
+
     @staticmethod
     def _join_continuations(lines):
         out, buf = [], ""
@@ -541,12 +619,13 @@ class Rules:
             out.append(buf)
         return out
 
-    def expand(self, value, depth=0):
+    def expand(self, value, depth=0, context=False):
         if depth > 10:
             return value
         def repl(m):
             name = m.group(1) or m.group(2)
-            return self.expand(self.vars.get(name, MAKE_DEFAULTS.get(name, m.group(0))), depth + 1)
+            default = BUILD_CONTEXT.get(name, m.group(0)) if context else m.group(0)
+            return self.expand(self.vars.get(name, MAKE_DEFAULTS.get(name, default)), depth + 1, context)
         return re.sub(r"\$\((\w+)\)|\$\{(\w+)\}", repl, value)
 
     def buildsystem(self):
@@ -1080,6 +1159,8 @@ class Converter:
             return []
 
     def read(self, rel):
+        if rel in getattr(self, "generated", {}):
+            return self.generated[rel]
         path = os.path.join(self.deb, rel)
         if os.path.isfile(path):
             with open(path, encoding="utf-8", errors="replace") as fh:
@@ -1125,6 +1206,35 @@ class Converter:
         self.notes.append(msg)
         return Comment("{}: {}".format(TODO, msg))
 
+    @staticmethod
+    def multiarch(line):
+        """usr/lib/$(DEB_HOST_MULTIARCH) is usr/lib on Wolfi; the triplet elsewhere is the host's."""
+        line = re.sub(r"(^|/|\s|=)(usr/lib)/\$[({]DEB_HOST_MULTIARCH[)}]", r"\1\2", line)
+        return re.sub(r"\$[({]DEB_HOST_MULTIARCH[)}]", "${{host.triplet.gnu}}", line)
+
+    SED_IN = re.compile(r"^sed\s+(?:-e\s+)?(['\"])((?:s(.).*?\3.*?\3[gi]*;?)+)\1\s+debian/(\S+\.in)\s*>\s*debian/(\S+)\s*$")
+
+    def generate_from_in(self, rules):
+        """sed 's/@X@/value/' debian/foo.in > debian/foo in debian/rules: make foo now,
+        so maintainer scripts and *.links generated at build time are converted too."""
+        self.generated = {}
+        templated = rules.template_substitutions()  # those keep their variables as melange vars
+        for recipe in rules.targets.values():
+            for raw in recipe:
+                m = self.SED_IN.match(rules.expand(raw.strip().lstrip("@-")))
+                if not m or self.read(m.group(4)) is None or \
+                        (m.group(5) in templated and re.search(r"(pre|post)(inst|rm)$", m.group(5))):
+                    continue
+                text = self.read(m.group(4))
+                for expr in re.findall(r"s(.)(.*?)\1(.*?)\1[gi]*", m.group(2)):
+                    sep, pat, repl = expr
+                    repl = re.sub(r"(^|/)usr/lib/\$[({]DEB_HOST_MULTIARCH[)}]", r"\1usr/lib", repl)
+                    if "$(" in pat or "$(" in repl:
+                        break
+                    text = text.replace(pat, repl)
+                else:
+                    self.generated[m.group(5)] = text
+
     def port_recipe(self, rules, lines, name, deb_pkg):
         """Translate a debian/rules recipe into shell for a melange step.
 
@@ -1137,7 +1247,7 @@ class Converter:
                 continue
             line = line.lstrip("@-")
             if re.match(r"^dh[_-]", line):
-                auto = self.dh_auto_command(rules.expand(line))
+                auto = self.dh_auto_command(self.multiarch(rules.expand(line)))
                 if auto == "":
                     continue
                 if auto:
@@ -1147,8 +1257,11 @@ class Converter:
                     return None
                 continue  # debhelper bookkeeping (Built-Using, substvars...)
             line = rules.expand(line)
+            m = self.SED_IN.match(line)
+            if m and m.group(5) in getattr(self, "generated", {}):
+                continue  # generated now, see generate_from_in()
             line = re.sub(r"`pwd`/|\$\(pwd\)/|\$\$\(pwd\)/", "", line)  # the source tree, like $(CURDIR)
-            line = re.sub(r"(^|/|\s)(usr/lib)/\$[({]DEB_HOST_MULTIARCH[)}]", r"\1\2", line)
+            line = self.multiarch(line)
             for pkg, target in self.rename.items():
                 if pkg != deb_pkg:
                     # files for another binary package: its melange output directory
@@ -1180,13 +1293,17 @@ class Converter:
 
     def dh_auto_command(self, line):
         """dh_auto_build/dh_auto_install [-- ARGS] for make-based builds, as shell."""
-        sub = re.search(r"\s(?:-D\s*|--sourcedir(?:ectory)?[= ])(\S+)", line)
+        opts, sep, rest = line.partition(" -- ")  # debhelper options, then the build system's
+        sub = re.search(r"\s(?:-D\s*|--sourcedir(?:ectory)?[= ])(\S+)", opts)
         if sub:
-            line = line[:sub.start()] + line[sub.end():]
-        builddir = re.search(r"\s(?:-B\s*|--builddir(?:ectory)?[= ])(\S+)", line)
+            opts = opts[:sub.start()] + opts[sub.end():]
+        line = opts + sep + rest
+        builddir = re.search(r"\s(?:-B\s*|--builddir(?:ectory)?[= ])(\S+)", opts)
         if builddir:
             if "udeb" in builddir.group(1):
                 return ""  # the debian-installer build: left out with the udeb
+            if getattr(self, "multi_builddir", False):
+                return self.builddir_command(line, builddir.group(1))
             # the configure pipeline builds in the source tree
             line = line[:builddir.start()] + line[builddir.end():]
         line = re.sub(r"\s--destdir[= ]\S+", "", line)
@@ -1201,6 +1318,32 @@ class Converter:
         if m.group(1) == "build":
             return "make -j$(nproc)" + args
         return 'make install DESTDIR="${{targets.destdir}}"' + (" PREFIX=/usr" if self.bs == "makefile" else "") + args
+
+    def builddir_command(self, line, builddir):
+        """dh_auto_* for one of several build directories (variants of one source)."""
+        m = re.match(r"^dh_auto_(configure|build|install|test)\b", line)
+        bs = re.search(r"--buildsystem[= ](\S+)", line)
+        bs = bs.group(1) if bs else self.bs
+        args = line.split(" -- ", 1)[1].strip() if " -- " in line else ""
+        if not m or m.group(1) == "test":
+            return "" if m else None
+        step, dest = m.group(1), 'DESTDIR="${{targets.destdir}}"'
+        if bs == "meson":
+            return {"configure": "meson setup --prefix=/usr --libdir=lib --libexecdir=lib --buildtype=plain "
+                                 "--wrap-mode=nodownload {} {}".format(builddir, args).strip(),
+                    "build": "meson compile -C {}".format(builddir),
+                    "install": "{} meson install -C {}".format(dest, builddir)}[step]
+        if bs == "cmake":
+            return {"configure": "cmake -S . -B {} -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=None {}".format(
+                        builddir, args).strip(),
+                    "build": "cmake --build {} -j$(nproc)".format(builddir),
+                    "install": "{} cmake --install {}".format(dest, builddir)}[step]
+        if bs in ("autoconf", "makefile"):
+            return {"configure": "mkdir -p {0} && (cd {0} && ../configure --prefix=/usr --sysconfdir=/etc "
+                                 "--localstatedir=/var {1})".format(builddir, args).strip(),
+                    "build": "make -C {} -j$(nproc)".format(builddir),
+                    "install": "make -C {} install {}".format(builddir, dest)}[step]
+        return None
 
     # Stands for the build system's melange pipeline inside a ported override.
     PIPELINE_MARK = "\0pipeline"
@@ -1349,6 +1492,7 @@ class Converter:
         fmt = (self.read("source/format") or "").strip()
         native = "native" in fmt or (deb_version is not None and "-" not in deb_version)
         rules = Rules(self.read("rules") or "")
+        self.generate_from_in(rules)
         if deb_version:
             # /usr/share/dpkg/pkg-info.mk
             # a native version is the package version; its mangled form stays as Debian's
@@ -1572,6 +1716,9 @@ class Converter:
         overrides = rules.overrides()
         self.bs = bs
         self.pipeline_used = False
+        builddirs = {d for r in overrides.values() for l in r
+                     for d in re.findall(r"\s(?:-B\s*|--builddir(?:ectory)?[= ])(\S+)", " " + l) if "udeb" not in d}
+        self.multi_builddir = len(builddirs) > 1
         self.python_module = rules.vars.get("PYBUILD_NAME") if bs == "pybuild" else None
         if bs == "pybuild":
             # what can be imported: setuptools' top_level.txt, else the distribution name
@@ -1585,7 +1732,9 @@ class Converter:
             elif not self.python_module or "-" in self.python_module:
                 self.python_module = re.sub(r"^(py3|python3?)-", "", self.python_module or name).replace("-", "_")
         ported = {}
-        for target in ("override_dh_auto_build", "override_dh_auto_install"):
+        targets = ("override_dh_auto_configure", "override_dh_auto_build", "override_dh_auto_install") \
+            if self.multi_builddir else ("override_dh_auto_build", "override_dh_auto_install")
+        for target in targets:
             if target in overrides:
                 ported[target] = self.port_recipe(rules, overrides[target], name, main["package"])
         # Overrides that generate the build system (./autogen.sh) run before configure.
@@ -1610,7 +1759,13 @@ class Converter:
             "override_dh_auto_install" not in overrides
             or bool(install_override and any("${{targets.destdir}}" in l or l == self.PIPELINE_MARK
                                              for l in install_override)))
-        if bs in BUILD_PIPELINES and (build_override or install_override) and bs in ("cmake", "meson", "autoconf"):
+        if ported.get("override_dh_auto_configure"):
+            # several build directories: configure each as debian/rules does
+            if bs == "autoconf" and self.needs_autoreconf(source):
+                pipeline.append({"runs": "autoreconf -fi\n"})
+            pipeline.append({"name": "Configure (from debian/rules override_dh_auto_configure)",
+                             "runs": "\n".join(ported["override_dh_auto_configure"]) + "\n"})
+        elif bs in BUILD_PIPELINES and (build_override or install_override) and bs in ("cmake", "meson", "autoconf"):
             # configure as dh_auto_configure would, then the overrides
             if bs == "autoconf" and self.needs_autoreconf(source):
                 pipeline.append({"runs": "autoreconf -fi\n"})
@@ -1939,6 +2094,13 @@ class Converter:
         if not url:
             watch = self.read("watch") or ""
             m = re.search(r"https?://github\.com/([^/\s]+)/([^/\s]+?)(?:\.git)?/(?:tags|releases)", watch)
+            tpl = re.search(r"(?mi)^Template:\s*GitHub\s*$", watch)
+            if not m and tpl:
+                # debian/watch v5 template: Owner + Project
+                owner = re.search(r"(?mi)^Owner:\s*(\S+)", watch)
+                project = re.search(r"(?mi)^Project:\s*(\S+)", watch)
+                if owner and project:
+                    m = re.match(r"(.*)/(.*)", "{}/{}".format(owner.group(1), project.group(1)))
             repo, prefix = None, None
             if m:
                 repo = "https://github.com/{}/{}".format(m.group(1), m.group(2))
@@ -2094,7 +2256,7 @@ class Converter:
             if line.strip():
                 cmds.append('mkdir -p "{}/{}"'.format(destdir, usr_merge(norm_path(line))))
         for line in (self.pkgfile(binary["package"], "links", main) or "").splitlines():
-            parts = line.split()
+            parts = line.split("#", 1)[0].split()
             if len(parts) == 2:
                 target, link = usr_merge(norm_path(parts[0])), usr_merge(norm_path(parts[1]))
                 cmds.append('mkdir -p "{0}/{2}"\nln -sf /{1} "{0}/{3}"'.format(

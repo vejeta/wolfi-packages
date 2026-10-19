@@ -1,0 +1,72 @@
+From 5f742bbfda32a1345ec00132216ea0cb56223551 Mon Sep 17 00:00:00 2001
+From: Johannes Schauer Marin Rodrigues <josch@mister-muffin.de>
+Date: Sun, 14 Apr 2024 18:04:20 +0200
+Subject: [PATCH 13/15] symlink.t: also test lutimes (if available) as well as
+ real files
+
+---
+ test/src/test-lstat.c | 15 +++++++++++++++
+ test/t/symlink.t      |  6 +++++-
+ 2 files changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/test/src/test-lstat.c b/test/src/test-lstat.c
+index 640d74c..37b0069 100644
+--- a/test/src/test-lstat.c
++++ b/test/src/test-lstat.c
+@@ -1,7 +1,9 @@
+ #define _BSD_SOURCE
+ #define _DEFAULT_SOURCE
++
+ #include <sys/types.h>
+ #include <sys/stat.h>
++#include <sys/time.h>
+ #include <unistd.h>
+ #include <stdlib.h>
+ #include <stdio.h>
+@@ -22,6 +24,19 @@ int main (int argc, char *argv[]) {
+         exit(1);
+     }
+ 
++#ifdef HAVE_LUTIMES
++    struct timeval tv[2];
++    if (lutimes(argv[1], tv)) {
++        perror("lutimes");
++        exit(1);
++    }
++#endif
++
++    if ((stab.st_mode & S_IFMT) == S_IFREG) {
++        printf("regular file size: %d\n", (int)stab.st_size);
++        return 0;
++    }
++
+     if ((stab.st_mode & S_IFMT) != S_IFLNK) {
+         fprintf(stderr, "not a symlink\n");
+         exit(1);
+diff --git a/test/t/symlink.t b/test/t/symlink.t
+index 73ff535..869ef6f 100755
+--- a/test/t/symlink.t
++++ b/test/t/symlink.t
+@@ -6,7 +6,7 @@ srcdir=${srcdir:-.}
+ readlink=`command -v readlink 2>/dev/null`
+ readlink=${readlink:-/bin/readlink}
+ 
+-prepare 18
++prepare 19
+ 
+ for chroot in chroot fakechroot; do
+ 
+@@ -55,6 +55,10 @@ for chroot in chroot fakechroot; do
+         test -n "$rs" -a "$rs" = "$ss" || not
+         ok "$chroot abs-symlink readlink size [" $rs "] = stat size [" $ss "]"
+ 
++        t=`$srcdir/$chroot.sh $testtree /bin/test-lstat /$chroot-file 2>&1`
++        test "$t" = "regular file size: 10" || not
++        ok "$chroot-file is of size 10"
++
+     fi
+ 
+ done
+-- 
+2.39.2
+

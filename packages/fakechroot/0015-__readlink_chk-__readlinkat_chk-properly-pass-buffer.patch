@@ -1,0 +1,67 @@
+From cc4e85c97906d3de9f535308b6862c418eff1208 Mon Sep 17 00:00:00 2001
+From: Yorick van Pelt <yorick@yorickvanpelt.nl>
+Date: Sat, 25 Nov 2023 15:34:40 +0100
+Subject: [PATCH 15/15] __readlink_chk, __readlinkat_chk: properly pass buffer
+ length
+
+Fixes https://github.com/dex4er/fakechroot/issues/114
+---
+ src/__readlink_chk.c   | 8 +++++++-
+ src/__readlinkat_chk.c | 8 +++++++-
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/src/__readlink_chk.c b/src/__readlink_chk.c
+index b77f17c..5433a0a 100644
+--- a/src/__readlink_chk.c
++++ b/src/__readlink_chk.c
+@@ -25,6 +25,7 @@
+ #define _FORTIFY_SOURCE 2
+ #include <stddef.h>
+ #include <unistd.h>
++#include <stdio.h>
+ #include "libfakechroot.h"
+ 
+ 
+@@ -41,7 +42,12 @@ wrapper(__readlink_chk, ssize_t, (const char * path, char * buf, size_t bufsiz,
+     debug("__readlink_chk(\"%s\", &buf, %zd, %zd)", path, bufsiz, buflen);
+     expand_chroot_path(path);
+ 
+-    if ((linksize = nextcall(__readlink_chk)(path, tmp, FAKECHROOT_PATH_MAX-1, buflen)) == -1) {
++    if (__builtin_expect(!!(bufsiz > buflen), 0)) {
++      printf("readlink: prevented write past end of buffer\n");
++      exit(-1);
++    }
++
++    if ((linksize = nextcall(__readlink_chk)(path, tmp, FAKECHROOT_PATH_MAX-1, FAKECHROOT_PATH_MAX-1)) == -1) {
+         return -1;
+     }
+     tmp[linksize] = '\0';
+diff --git a/src/__readlinkat_chk.c b/src/__readlinkat_chk.c
+index a7f1165..c25160c 100644
+--- a/src/__readlinkat_chk.c
++++ b/src/__readlinkat_chk.c
+@@ -26,6 +26,7 @@
+ #define _FORTIFY_SOURCE 2
+ #include <stddef.h>
+ #include <unistd.h>
++#include <stdio.h>
+ #include "libfakechroot.h"
+ 
+ 
+@@ -42,7 +43,12 @@ wrapper(__readlinkat_chk, ssize_t, (int dirfd, const char * path, char * buf, si
+     debug("__readlinkat_chk(%d, \"%s\", &buf, %zd, %zd)", dirfd, path, bufsiz, buflen);
+     expand_chroot_path_at(dirfd, path);
+ 
+-    if ((linksize = nextcall(__readlinkat_chk)(dirfd, path, tmp, FAKECHROOT_PATH_MAX-1, buflen)) == -1) {
++    if (__builtin_expect(!!(bufsiz > buflen), 0)) {
++      printf("readlinkat: prevented write past end of buffer\n");
++      exit(-1);
++    }
++
++    if ((linksize = nextcall(__readlinkat_chk)(dirfd, path, tmp, FAKECHROOT_PATH_MAX-1, FAKECHROOT_PATH_MAX-1)) == -1) {
+         return -1;
+     }
+     tmp[linksize] = '\0';
+-- 
+2.39.2
+
