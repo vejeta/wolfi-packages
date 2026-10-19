@@ -32,6 +32,8 @@ environment:
       - ocaml
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
+      - ocaml-findlib-compat
       - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-qtest  # Wolfi Community Packages
       - libqtest-ocaml-dev  # Wolfi Community Packages
@@ -87,7 +89,9 @@ test:
         - busybox
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
-        - ocaml-findlib
+        - ocaml-findlib-compat  # Debian: ocaml
+        - ocaml-findlib  # Debian: ocaml-findlib
+        - ocamlfind  # Debian: ocaml-findlib
         - bash  # Essential in Debian, so on every testbed
         - coreutils  # Essential in Debian, so on every testbed
         - diffutils  # Essential in Debian, so on every testbed

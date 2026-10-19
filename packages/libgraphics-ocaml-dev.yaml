@@ -33,6 +33,8 @@ environment:
       - ocaml
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
+      - ocaml-findlib-compat
       - ocaml-compiler-libs  # Debian: ocaml
       - libdune-ocaml-dev  # Wolfi Community Packages
       - libx11-dev

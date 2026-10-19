@@ -7,8 +7,6 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/ocaml-mirage-kv-mem
 #
 # Conversion notes:
-# - build dependency 'liboptint-ocaml-dev' (Debian 'liboptint-ocaml-dev') not found in Wolfi; left out
-# - build dependency 'libmirage-ptime-ocaml-dev' (Debian 'libmirage-ptime-ocaml-dev') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/o/ocaml-mirage-kv-mem/ocaml-mirage-kv-mem_4.0.1.orig.tar.bz2), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
 package:
@@ -33,11 +31,13 @@ environment:
       - ocaml
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
+      - ocaml-findlib-compat
       - ocaml-compiler-libs  # Debian: ocaml
       - libfmt-ocaml-dev  # Wolfi Community Packages
-      # TODO(debian-to-melange): liboptint-ocaml-dev is not in Wolfi (Debian: liboptint-ocaml-dev); left out
+      - liboptint-ocaml-dev  # Wolfi Community Packages
       - libptime-ocaml-dev  # Wolfi Community Packages
-      # TODO(debian-to-melange): libmirage-ptime-ocaml-dev is not in Wolfi (Debian: libmirage-ptime-ocaml-dev); left out
+      - libmirage-ptime-ocaml-dev  # Wolfi Community Packages
       - libmirage-kv-ocaml-dev  # Wolfi Community Packages
       - libalcotest-ocaml-dev  # Wolfi Community Packages
 pipeline:

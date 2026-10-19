@@ -29,6 +29,8 @@ environment:
       - ocaml
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
+      - ocaml-findlib-compat
       - ocaml-compiler-libs  # Debian: ocaml
       - libcmdliner-ocaml-dev  # Wolfi Community Packages
       - libptime-ocaml-dev  # Wolfi Community Packages

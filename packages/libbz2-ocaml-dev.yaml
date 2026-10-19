@@ -22,7 +22,9 @@ package:
     runtime:
       - bzip2-dev  # Debian: libbz2-dev
       - libbz2-ocaml
-      - ocaml-findlib
+      - ocaml-findlib  # Debian: ocaml-findlib
+      - ocamlfind  # Debian: ocaml-findlib
+      - ocaml-findlib-compat  # Debian: ocaml-findlib
       # Debian Recommends (not supported by apk): ocaml-odoc
 environment:
   contents:
@@ -36,6 +38,8 @@ environment:
       - ocaml
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
+      - ocaml-findlib-compat
       - ocaml-compiler-libs  # Debian: ocaml
       - bzip2-dev  # Debian: libbz2-dev
       - coreutils
@@ -80,7 +84,9 @@ test:
         - busybox
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
-        - ocaml-findlib
+        - ocaml-findlib-compat  # Debian: ocaml
+        - ocaml-findlib  # Debian: ocaml-findlib
+        - ocamlfind  # Debian: ocaml-findlib
         - libbz2-ocaml-dev
         - bzip2
         - bash  # Essential in Debian, so on every testbed

@@ -9,7 +9,6 @@
 # Conversion notes:
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/o/ocaml-rresult/ocaml-rresult_0.7.0.orig.tar.bz2), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
-# - port debian/rules override_dh_auto_install: opam-installer --prefix=$(DESTDIR)/usr --libdir=..$(OCAML_STDLIB_DIR) rresult.install && rm -f $(DESTDIR)/usr/doc/rresult/LICENSE.md
 package:
   name: librresult-ocaml-dev
   version: '0.7.0'
@@ -30,7 +29,9 @@ environment:
       - busybox
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
-      - ocaml-findlib
+      - ocaml-findlib-compat  # Debian: ocaml
+      - ocaml-findlib  # Debian: ocaml-findlib
+      - ocamlfind  # Debian: ocaml-findlib
       - ocamlbuild
       - libtopkg-ocaml-dev  # Wolfi Community Packages
       - opam  # Debian: opam-installer
@@ -44,19 +45,15 @@ pipeline:
   - name: Build (from debian/rules override_dh_auto_build)
     runs: |
       ocaml pkg/pkg.ml build --tests true
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_install: opam-installer --prefix=$(DESTDIR)/usr --libdir=..$(OCAML_STDLIB_DIR) rresult.install && rm -f $(DESTDIR)/usr/doc/rresult/LICENSE.md
+  - name: Install (from debian/rules override_dh_auto_install)
+    runs: |
+      opam-installer --prefix=${{targets.destdir}}/usr --libdir=../usr/lib/ocaml rresult.install
+      rm -f ${{targets.destdir}}/usr/doc/rresult/LICENSE.md
   - name: Install files
     runs: |
-      mkdir -p "${{targets.destdir}}/usr/lib/ocaml/rresult"
-      cp -a usr/lib/ocaml/rresult/*opam* "${{targets.destdir}}/usr/lib/ocaml/rresult/"
-      cp -a usr/lib/ocaml/rresult/*.cmi "${{targets.destdir}}/usr/lib/ocaml/rresult/"
-      cp -a usr/lib/ocaml/rresult/*.cmt* "${{targets.destdir}}/usr/lib/ocaml/rresult/"
-      cp -a usr/lib/ocaml/rresult/*.ml* "${{targets.destdir}}/usr/lib/ocaml/rresult/"
-      cp -a usr/lib/ocaml/rresult/*.cmx "${{targets.destdir}}/usr/lib/ocaml/rresult/"
-      cp -a usr/lib/ocaml/rresult/*.cmxa "${{targets.destdir}}/usr/lib/ocaml/rresult/"
-      cp -a usr/lib/ocaml/rresult/*.a "${{targets.destdir}}/usr/lib/ocaml/rresult/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/librresult-ocaml-dev"
-      cp -a usr/doc/rresult/* "${{targets.destdir}}/usr/share/doc/librresult-ocaml-dev/"
+      mv "${{targets.destdir}}"/usr/doc/rresult/* "${{targets.destdir}}/usr/share/doc/librresult-ocaml-dev/"
+      rmdir "${{targets.destdir}}/usr/doc/rresult" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/librresult-ocaml-dev
 subpackages:
   - name: librresult-ocaml
@@ -64,9 +61,9 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/rresult"
-          cp -a usr/lib/ocaml/rresult/META "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
-          cp -a usr/lib/ocaml/rresult/*.cma "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
-          cp -a usr/lib/ocaml/rresult/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
+          mv "${{targets.destdir}}/usr/lib/ocaml/rresult/META" "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/rresult/*.cma "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/rresult/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
 update:
   enabled: true
   release-monitor:

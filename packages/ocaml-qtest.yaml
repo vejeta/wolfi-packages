@@ -29,6 +29,8 @@ environment:
       - ocaml
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
+      - ocaml-findlib-compat
       - ocaml-compiler-libs  # Debian: ocaml
       - libounit-ocaml-dev  # Wolfi Community Packages
       - libqcheck-ocaml-dev  # Wolfi Community Packages
@@ -105,8 +107,10 @@ test:
         - busybox
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
+        - ocaml-findlib-compat  # Debian: ocaml
         - ocamlbuild
-        - ocaml-findlib
+        - ocaml-findlib  # Debian: ocaml-findlib
+        - ocamlfind  # Debian: ocaml-findlib
         - libounit-ocaml-dev  # Wolfi Community Packages
         - libqcheck-ocaml-dev  # Wolfi Community Packages
         - ocaml-qtest

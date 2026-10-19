@@ -20,7 +20,9 @@ package:
     - license: LGPL-3+-linking-exception
   dependencies:
     runtime:
-      - ocaml-findlib
+      - ocaml-findlib  # Debian: ocaml-findlib
+      - ocamlfind  # Debian: ocaml-findlib
+      - ocaml-findlib-compat  # Debian: ocaml-findlib
       - libextlib-ocaml-dev  # Wolfi Community Packages
 environment:
   contents:
@@ -34,6 +36,8 @@ environment:
       - ocaml
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
+      - ocaml-findlib-compat
       - ocaml-compiler-libs  # Debian: ocaml
       - ocamlbuild
       - libextlib-ocaml-dev  # Wolfi Community Packages
@@ -131,7 +135,9 @@ test:
         - libcudf-ocaml-dev
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
-        - ocaml-findlib
+        - ocaml-findlib-compat  # Debian: ocaml
+        - ocaml-findlib  # Debian: ocaml-findlib
+        - ocamlfind  # Debian: ocaml-findlib
         - ocamlbuild
   pipeline:
     - runs: |

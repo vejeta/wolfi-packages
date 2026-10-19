@@ -9,7 +9,6 @@
 # Conversion notes:
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/c/camlzip/camlzip_1.14.orig.tar.gz), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
-# - port debian/rules override_dh_auto_install: mkdir -p $(LIBINSTALL) && OCAMLFIND_DESTDIR=$(LIBINSTALL) OCAMLFIND_LDCONF=ignore  		$(MAKE) install-findlib && mkdir -p $(LIBINSTALL)/stublibs && mv $(LIBINSTALL)/zip/dll*.so $(LIBINSTALL)/stublibs
 # - autopkgtests converted to the test pipeline (1 steps)
 package:
   name: libzip-ocaml
@@ -30,7 +29,9 @@ environment:
       - zlib-dev  # Debian: zlib1g-dev
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
-      - ocaml-findlib
+      - ocaml-findlib-compat  # Debian: ocaml
+      - ocaml-findlib  # Debian: ocaml-findlib
+      - ocamlfind  # Debian: ocaml-findlib
       - coreutils
       - findutils
 pipeline:
@@ -50,20 +51,25 @@ pipeline:
     runs: |
       make
       make allopt
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_install: mkdir -p $(LIBINSTALL) && OCAMLFIND_DESTDIR=$(LIBINSTALL) OCAMLFIND_LDCONF=ignore  		$(MAKE) install-findlib && mkdir -p $(LIBINSTALL)/stublibs && mv $(LIBINSTALL)/zip/dll*.so $(LIBINSTALL)/stublibs
+  - name: Install (from debian/rules override_dh_auto_install)
+    runs: |
+      mkdir -p ${{targets.destdir}}/usr/lib/ocaml
+      OCAMLFIND_DESTDIR=${{targets.destdir}}/usr/lib/ocaml OCAMLFIND_LDCONF=ignore  		make install-findlib
+      mkdir -p ${{targets.destdir}}/usr/lib/ocaml/stublibs
+      mv ${{targets.destdir}}/usr/lib/ocaml/zip/dll*.so ${{targets.destdir}}/usr/lib/ocaml/stublibs
   - name: Install files
     runs: |
-      mkdir -p "${{targets.destdir}}/usr/lib/ocaml/zip"
-      cp -a usr/lib/ocaml/zip/zip.cma "${{targets.destdir}}/usr/lib/ocaml/zip/"
-      cp -a usr/lib/ocaml/zip/META "${{targets.destdir}}/usr/lib/ocaml/zip/"
-      mkdir -p "${{targets.destdir}}/usr/lib/ocaml/camlzip"
-      cp -a usr/lib/ocaml/camlzip/META "${{targets.destdir}}/usr/lib/ocaml/camlzip/"
-      mkdir -p "${{targets.destdir}}/usr/lib/ocaml/stublibs"
-      cp -a usr/lib/ocaml/stublibs/dllcamlzip.so "${{targets.destdir}}/usr/lib/ocaml/stublibs/"
-      cp -a usr/lib/ocaml/zip/zip.cmxs "${{targets.destdir}}/usr/lib/ocaml/zip/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/libzip-ocaml"
       cp -a README.md "${{targets.destdir}}/usr/share/doc/libzip-ocaml/"
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/libzip-ocaml
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - name: Remove libtool archives
     runs: |
       find "${{targets.destdir}}" -name "*.la" -delete
@@ -74,14 +80,14 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/zip"
-          cp -a usr/lib/ocaml/zip/lib*.a "${{targets.contextdir}}/usr/lib/ocaml/zip/"
-          cp -a usr/lib/ocaml/zip/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/zip/"
-          cp -a usr/lib/ocaml/zip/*.ml* "${{targets.contextdir}}/usr/lib/ocaml/zip/"
-          cp -a usr/lib/ocaml/zip/*.cmt "${{targets.contextdir}}/usr/lib/ocaml/zip/"
-          cp -a usr/lib/ocaml/zip/*.cmti "${{targets.contextdir}}/usr/lib/ocaml/zip/"
-          cp -a usr/lib/ocaml/zip/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/zip/"
-          cp -a usr/lib/ocaml/zip/zip.cmxa "${{targets.contextdir}}/usr/lib/ocaml/zip/"
-          cp -a usr/lib/ocaml/zip/zip.a "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/zip/lib*.a "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/zip/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/zip/*.ml* "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/zip/*.cmt "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/zip/*.cmti "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          mv "${{targets.destdir}}"/usr/lib/ocaml/zip/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          mv "${{targets.destdir}}/usr/lib/ocaml/zip/zip.cmxa" "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          mv "${{targets.destdir}}/usr/lib/ocaml/zip/zip.a" "${{targets.contextdir}}/usr/lib/ocaml/zip/"
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libzip-ocaml-dev/examples"
           cp -a test/* "${{targets.contextdir}}/usr/share/doc/libzip-ocaml-dev/examples/"
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libzip-ocaml-dev"
@@ -102,6 +108,7 @@ test:
         - busybox
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
+        - ocaml-findlib-compat  # Debian: ocaml
         - libzip-ocaml-dev
         - bash  # Essential in Debian, so on every testbed
         - coreutils  # Essential in Debian, so on every testbed

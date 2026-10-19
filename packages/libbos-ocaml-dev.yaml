@@ -9,7 +9,6 @@
 # Conversion notes:
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/o/ocaml-bos/ocaml-bos_0.3.0.orig.tar.bz2), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
-# - port debian/rules override_dh_auto_install: opam-installer  	  --prefix=$(DESTDIR)  	  --libdir=.$(OCAML_STDLIB_DIR)  	  --docdir=./usr/share/ocaml-dune/doc  	  bos.install && rm -f $(DESTDIR)/doc/*/LICENSE*
 # - no debian/libbos-ocaml.install; define which files go to this subpackage
 package:
   name: libbos-ocaml-dev
@@ -31,7 +30,9 @@ environment:
       - busybox
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
-      - ocaml-findlib
+      - ocaml-findlib-compat  # Debian: ocaml
+      - ocaml-findlib  # Debian: ocaml-findlib
+      - ocamlfind  # Debian: ocaml-findlib
       - ocamlbuild
       - libtopkg-ocaml-dev  # Wolfi Community Packages
       - opam  # Debian: opam-installer
@@ -51,7 +52,10 @@ pipeline:
   - name: Build (from debian/rules override_dh_auto_build)
     runs: |
       ocaml pkg/pkg.ml build --tests true
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_install: opam-installer  	  --prefix=$(DESTDIR)  	  --libdir=.$(OCAML_STDLIB_DIR)  	  --docdir=./usr/share/ocaml-dune/doc  	  bos.install && rm -f $(DESTDIR)/doc/*/LICENSE*
+  - name: Install (from debian/rules override_dh_auto_install)
+    runs: |
+      opam-installer  	  --prefix=${{targets.destdir}}/  	  --libdir=./usr/lib/ocaml  	  --docdir=./usr/share/ocaml-dune/doc  	  bos.install
+      rm -f ${{targets.destdir}}/doc/*/LICENSE*
   - name: Install files
     runs: |
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libbos-ocaml-dev

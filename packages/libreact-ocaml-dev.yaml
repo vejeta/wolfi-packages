@@ -9,7 +9,6 @@
 # Conversion notes:
 # - upstream tarball from debian/watch
 # - dh --with ocaml has no direct melange equivalent; review
-# - port debian/rules override_dh_auto_install: opam-installer --prefix=$(DESTDIR) --libdir=.$(OCAML_STDLIB_DIR) react.install && rm -f $(DESTDIR)/doc/react/LICENSE.md
 package:
   name: libreact-ocaml-dev
   version: '1.2.2'
@@ -28,7 +27,9 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - busybox
-      - ocaml-findlib
+      - ocaml-findlib  # Debian: ocaml-findlib
+      - ocamlfind  # Debian: ocaml-findlib
+      - ocaml-findlib-compat  # Debian: ocaml-findlib
       - ocamlbuild
       - libtopkg-ocaml-dev  # Wolfi Community Packages
       - opam  # Debian: opam-installer
@@ -44,18 +45,12 @@ pipeline:
   - name: Build (from debian/rules override_dh_auto_build)
     runs: |
       ocaml pkg/pkg.ml build --tests true
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_install: opam-installer --prefix=$(DESTDIR) --libdir=.$(OCAML_STDLIB_DIR) react.install && rm -f $(DESTDIR)/doc/react/LICENSE.md
+  - name: Install (from debian/rules override_dh_auto_install)
+    runs: |
+      opam-installer --prefix=${{targets.destdir}}/ --libdir=./usr/lib/ocaml react.install
+      rm -f ${{targets.destdir}}/doc/react/LICENSE.md
   - name: Install files
     runs: |
-      mkdir -p "${{targets.destdir}}/usr/lib/ocaml/react"
-      cp -a usr/lib/ocaml/react/opam "${{targets.destdir}}/usr/lib/ocaml/react/"
-      cp -a usr/lib/ocaml/react/react.ml* "${{targets.destdir}}/usr/lib/ocaml/react/"
-      cp -a usr/lib/ocaml/react/react.cmi "${{targets.destdir}}/usr/lib/ocaml/react/"
-      cp -a usr/lib/ocaml/react/react.cmt* "${{targets.destdir}}/usr/lib/ocaml/react/"
-      cp -a usr/lib/ocaml/react/react.cmx "${{targets.destdir}}/usr/lib/ocaml/react/"
-      cp -a usr/lib/ocaml/react/react.cmxa "${{targets.destdir}}/usr/lib/ocaml/react/"
-      cp -a usr/lib/ocaml/react/react.a "${{targets.destdir}}/usr/lib/ocaml/react/"
-      cp -a usr/lib/ocaml/react/react_top* "${{targets.destdir}}/usr/lib/ocaml/react/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/libreact-ocaml-dev"
       cp -a doc/react/* "${{targets.destdir}}/usr/share/doc/libreact-ocaml-dev/"
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libreact-ocaml-dev
@@ -65,9 +60,9 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/react"
-          cp -a usr/lib/ocaml/react/META "${{targets.contextdir}}/usr/lib/ocaml/react/"
-          cp -a usr/lib/ocaml/react/react.cma "${{targets.contextdir}}/usr/lib/ocaml/react/"
-          cp -a usr/lib/ocaml/react/react.cmxs "${{targets.contextdir}}/usr/lib/ocaml/react/"
+          mv "${{targets.destdir}}/usr/lib/ocaml/react/META" "${{targets.contextdir}}/usr/lib/ocaml/react/"
+          mv "${{targets.destdir}}/usr/lib/ocaml/react/react.cma" "${{targets.contextdir}}/usr/lib/ocaml/react/"
+          mv "${{targets.destdir}}/usr/lib/ocaml/react/react.cmxs" "${{targets.contextdir}}/usr/lib/ocaml/react/"
 update:
   enabled: true
   release-monitor:

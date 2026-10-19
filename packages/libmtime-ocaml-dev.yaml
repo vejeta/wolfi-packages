@@ -7,10 +7,8 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/ocaml-mtime
 #
 # Conversion notes:
-# - build dependency 'libjs-of-ocaml-dev': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/o/ocaml-mtime/ocaml-mtime_2.2.0.orig.tar.bz2), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
-# - port debian/rules override_dh_auto_install: opam-installer  	  --prefix=$(DESTDIR)  	  --libdir=.$(OCAML_STDLIB_DIR)  	  --docdir=./usr/share/ocaml-dune/doc  	  mtime.install
 # - no debian/libmtime-ocaml.install; define which files go to this subpackage
 package:
   name: libmtime-ocaml-dev
@@ -29,8 +27,11 @@ environment:
       - busybox
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
-      - ocaml-findlib
+      - ocaml-findlib-compat  # Debian: ocaml
+      - ocaml-findlib  # Debian: ocaml-findlib
+      - ocamlfind  # Debian: ocaml-findlib
       - ocamlbuild
+      - libjs-of-ocaml-dev  # Wolfi Community Packages
       - libtopkg-ocaml-dev  # Wolfi Community Packages
       - opam  # Debian: opam-installer
       - coreutils
@@ -43,7 +44,9 @@ pipeline:
   - name: Build (from debian/rules override_dh_auto_build)
     runs: |
       ocaml pkg/pkg.ml build --tests true
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_install: opam-installer  	  --prefix=$(DESTDIR)  	  --libdir=.$(OCAML_STDLIB_DIR)  	  --docdir=./usr/share/ocaml-dune/doc  	  mtime.install
+  - name: Install (from debian/rules override_dh_auto_install)
+    runs: |
+      opam-installer  	  --prefix=${{targets.destdir}}/  	  --libdir=./usr/lib/ocaml  	  --docdir=./usr/share/ocaml-dune/doc  	  mtime.install
   - name: Install files
     runs: |
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libmtime-ocaml-dev

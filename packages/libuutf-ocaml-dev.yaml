@@ -9,7 +9,6 @@
 # Conversion notes:
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/u/uutf/uutf_1.0.4.orig.tar.bz2), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
-# - port debian/rules override_dh_auto_install: for a in bytecode native; do  	  mv debian/install_$$a.sh debian/install_$$a.sh.old;  	done && debian/rules debian/install_bytecode.sh && diff -u debian/install_bytecode.sh.old debian/install_bytecode
 package:
   name: libuutf-ocaml-dev
   version: '1.0.4'
@@ -27,7 +26,9 @@ environment:
       - busybox
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
-      - ocaml-findlib
+      - ocaml-findlib-compat  # Debian: ocaml
+      - ocaml-findlib  # Debian: ocaml-findlib
+      - ocamlfind  # Debian: ocaml-findlib
       - ocamlbuild
       - libtopkg-ocaml-dev  # Wolfi Community Packages
       - libcmdliner-ocaml-dev  # Wolfi Community Packages
@@ -47,7 +48,14 @@ pipeline:
   - name: Build (from debian/rules override_dh_auto_build)
     runs: |
       ocaml pkg/pkg.ml build --with-cmdliner true --tests true
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_install: for a in bytecode native; do  	  mv debian/install_$$a.sh debian/install_$$a.sh.old;  	done && debian/rules debian/install_bytecode.sh && diff -u debian/install_bytecode.sh.old debian/install_bytecode
+  - name: Install (from debian/rules override_dh_auto_install)
+    runs: |
+      for a in bytecode native; do  	  mv debian/install_$a.sh debian/install_$a.sh.old;  	done
+      .recipe-files/rules .recipe-files/install_bytecode.sh
+      diff -u debian/install_bytecode.sh.old .recipe-files/install_bytecode.sh
+      mv debian/install_bytecode.sh.old .recipe-files/install_bytecode.sh
+      mv debian/install_native.sh.old .recipe-files/install_native.sh
+      OCAML_STDLIB_DIR=/usr/lib/ocaml .recipe-files/install_bytecode.sh
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr"

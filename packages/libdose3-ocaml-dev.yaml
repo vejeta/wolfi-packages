@@ -10,7 +10,6 @@
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/d/dose3/dose3_7.0.0.orig.tar.gz), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
 # - port debian/rules override_dh_auto_build: dune build -p dose3$(DUNE_EXTRAPROFILE) @install --verbose && make -C doc/manpages man && pod2man --section 8 -release "apt-cudf $(RELEASE)"  		debian/update-cudf-solvers > debian/update-cudf-solvers.
-# - port debian/rules override_dh_auto_install: dune install -p dose3$(DUNE_EXTRAPROFILE) --destdir=$(DESTDIR) --prefix=/usr --libdir=$(OCAML_STDLIB_DIR) --docdir=/usr/share/ocaml-dune/doc
 # - autopkgtests converted to the test pipeline (7 steps)
 package:
   name: libdose3-ocaml-dev
@@ -37,6 +36,8 @@ environment:
       - ocaml
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
+      - ocaml-findlib-compat
       - libbase64-ocaml-dev  # Wolfi Community Packages
       - libbz2-ocaml-dev  # Wolfi Community Packages
       - libcudf-ocaml-dev  # Wolfi Community Packages
@@ -77,18 +78,21 @@ pipeline:
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
       dune build -p dose3,dose3-extra -j $(nproc) @install
-  - name: Install
-    runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" dose3 dose3-extra
   # TODO(debian-to-melange): port debian/rules override_dh_auto_build: dune build -p dose3$(DUNE_EXTRAPROFILE) @install --verbose && make -C doc/manpages man && pod2man --section 8 -release "apt-cudf $(RELEASE)"  		debian/update-cudf-solvers > debian/update-cudf-solvers.
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_install: dune install -p dose3$(DUNE_EXTRAPROFILE) --destdir=$(DESTDIR) --prefix=/usr --libdir=$(OCAML_STDLIB_DIR) --docdir=/usr/share/ocaml-dune/doc
+  - name: Install (from debian/rules override_dh_auto_install)
+    runs: |
+      dune install -p dose3,dose3-extra --destdir=${{targets.destdir}}/ --prefix=/usr --libdir=/usr/lib/ocaml --docdir=/usr/share/ocaml-dune/doc
   - name: Install files
     runs: |
-      mkdir -p "${{targets.destdir}}/usr/share"
-      cp -a usr/share/ocaml-dune "${{targets.destdir}}/usr/share/"
-      mkdir -p "${{targets.destdir}}/usr/lib"
-      cp -a usr/lib/ocaml "${{targets.destdir}}/usr/lib/"
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/libdose3-ocaml-dev
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - uses: strip
 subpackages:
   - name: dose-distcheck
@@ -96,7 +100,7 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/bin"
-          cp -a usr/bin/dose-distcheck "${{targets.contextdir}}/usr/bin/"
+          mv "${{targets.destdir}}/usr/bin/dose-distcheck" "${{targets.contextdir}}/usr/bin/"
           install -Dm644 doc/manpages/dose-distcheck.1 -t "${{targets.contextdir}}/usr/share/man/man1"
           ln -sf /usr/bin/dose-distcheck "${{targets.contextdir}}/usr/bin/dose-debcheck"
           ln -sf /usr/bin/dose-distcheck "${{targets.contextdir}}/usr/bin/dose-eclipsecheck"
@@ -122,7 +126,7 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/bin"
-          cp -a usr/bin/dose-builddebcheck "${{targets.contextdir}}/usr/bin/"
+          mv "${{targets.destdir}}/usr/bin/dose-builddebcheck" "${{targets.contextdir}}/usr/bin/"
           install -Dm644 doc/manpages/dose-builddebcheck.1 -t "${{targets.contextdir}}/usr/share/man/man1"
     dependencies:
       runtime:
@@ -141,10 +145,10 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/bin"
-          cp -a usr/bin/dose-ceve "${{targets.contextdir}}/usr/bin/"
-          cp -a usr/bin/dose-challenged "${{targets.contextdir}}/usr/bin/"
-          cp -a usr/bin/dose-deb-coinstall "${{targets.contextdir}}/usr/bin/"
-          cp -a usr/bin/dose-outdated "${{targets.contextdir}}/usr/bin/"
+          mv "${{targets.destdir}}/usr/bin/dose-ceve" "${{targets.contextdir}}/usr/bin/"
+          mv "${{targets.destdir}}/usr/bin/dose-challenged" "${{targets.contextdir}}/usr/bin/"
+          mv "${{targets.destdir}}/usr/bin/dose-deb-coinstall" "${{targets.contextdir}}/usr/bin/"
+          mv "${{targets.destdir}}/usr/bin/dose-outdated" "${{targets.contextdir}}/usr/bin/"
           install -Dm644 doc/manpages/dose-ceve.1 -t "${{targets.contextdir}}/usr/share/man/man1"
           install -Dm644 doc/manpages/dose-challenged.1 -t "${{targets.contextdir}}/usr/share/man/man1"
           install -Dm644 doc/manpages/dose-deb-coinstall.1 -t "${{targets.contextdir}}/usr/share/man/man1"
@@ -173,7 +177,7 @@ subpackages:
           mkdir -p "${{targets.contextdir}}/usr/bin"
           cp -a .recipe-files/update-cudf-solvers "${{targets.contextdir}}/usr/bin/"
           cp -a src/applications/scripts/apt-cudf-get "${{targets.contextdir}}/usr/bin/"
-          cp -a usr/bin/apt-cudf "${{targets.contextdir}}/usr/bin/"
+          mv "${{targets.destdir}}/usr/bin/apt-cudf" "${{targets.contextdir}}/usr/bin/"
           install -Dm644 debian/update-cudf-solvers.8 -t "${{targets.contextdir}}/usr/share/man/man8"
           install -Dm644 doc/manpages/apt-cudf-get.8 -t "${{targets.contextdir}}/usr/share/man/man8"
           install -Dm644 doc/manpages/apt-cudf.1 -t "${{targets.contextdir}}/usr/share/man/man1"

@@ -35,6 +35,8 @@ environment:
       - ocaml
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
+      - ocaml-findlib-compat
       - ocaml-compiler-libs  # Debian: ocaml
       - libocaml-compiler-libs-ocaml-dev  # Wolfi Community Packages
       - libppx-derivers-ocaml-dev  # Wolfi Community Packages

@@ -34,6 +34,8 @@ environment:
       - ocaml
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
+      - ocaml-findlib-compat
       - hevea  # Wolfi Community Packages
       - imagemagick-7  # Debian: imagemagick
       - netpbm  # Debian: imagemagick
@@ -107,7 +109,9 @@ test:
       packages:
         - busybox
         - menhir
-        - ocaml-findlib
+        - ocaml-findlib  # Debian: ocaml-findlib
+        - ocamlfind  # Debian: ocaml-findlib
+        - ocaml-findlib-compat  # Debian: ocaml-findlib
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
         - ocamlbuild

@@ -1,0 +1,24 @@
+From: Stephane Glondu <steph@glondu.net>
+Date: Sat, 15 Feb 2020 10:16:22 +0100
+Subject: Do not run tests that are too heavy for buildds
+
+---
+ tests/dune | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/tests/dune b/tests/dune
+index 858c0df..4f51ef5 100644
+--- a/tests/dune
++++ b/tests/dune
+@@ -13,9 +13,9 @@
+  (libraries utils parmap))
+ 
+ (tests
+- (names testexceptions simplescale simplescale_array simplescalefold
++ (names testexceptions simplescalefold
+    simplescalemapfold)
+- (modules testexceptions simplescale simplescale_array simplescalefold
++ (modules testexceptions simplescalefold
+    simplescalemapfold)
+  (flags
+   (:standard -w -35-27))

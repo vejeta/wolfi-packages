@@ -32,6 +32,8 @@ environment:
       - ocaml
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
+      - ocaml-findlib-compat
       - ocaml-compiler-libs  # Debian: ocaml
 pipeline:
   - uses: fetch
@@ -71,6 +73,7 @@ test:
         - busybox
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
+        - ocaml-findlib-compat  # Debian: ocaml
         - ocaml-dune
         - libounit-ocaml-dev  # Wolfi Community Packages
         - libppx-inline-test-ocaml-dev  # Wolfi Community Packages

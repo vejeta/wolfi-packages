@@ -26,6 +26,7 @@ package:
     runtime:
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
+      - ocaml-findlib-compat  # Debian: ocaml
 environment:
   contents:
     keyring:
@@ -38,6 +39,8 @@ environment:
       - ocaml
       - ocaml-dune
       - ocaml-findlib
+      - ocamlfind
+      - ocaml-findlib-compat
       - ocaml-compiler-libs  # Debian: ocaml
       - cppo  # Wolfi Community Packages
       - ocaml-crunch  # Wolfi Community Packages

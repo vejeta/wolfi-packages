@@ -9,7 +9,6 @@
 # Conversion notes:
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/c/cmdliner/cmdliner_2.1.1.orig.tar.bz2), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
-# - port debian/rules override_dh_auto_install: make DESTDIR=$(DESTDIR) LIBDIR=$(DESTDIR)$(OCAML_STDLIB_DIR)/cmdliner install
 package:
   name: libcmdliner-ocaml-dev
   version: '2.1.1'
@@ -28,7 +27,9 @@ environment:
       - busybox
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
-      - ocaml-findlib
+      - ocaml-findlib-compat  # Debian: ocaml
+      - ocaml-findlib  # Debian: ocaml-findlib
+      - ocamlfind  # Debian: ocaml-findlib
       - ocamlbuild
       - libresult-ocaml-dev  # Wolfi Community Packages
       - coreutils
@@ -40,20 +41,24 @@ pipeline:
       expected-sha256: 05b938d1def4f54c478178f1982822834510431ed98f2ac67cb4d90aa120d6b6
   - runs: |
       make -j$(nproc)
-      if make -s -n install >/dev/null 2>&1; then
-        make install DESTDIR="${{targets.destdir}}" PREFIX=/usr
-      fi
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_install: make DESTDIR=$(DESTDIR) LIBDIR=$(DESTDIR)$(OCAML_STDLIB_DIR)/cmdliner install
+  - name: Install (from debian/rules override_dh_auto_install)
+    runs: |
+      make DESTDIR=${{targets.destdir}}/ LIBDIR=${{targets.destdir}}/usr/lib/ocaml/cmdliner install
   - name: Install files
     runs: |
-      mkdir -p "${{targets.destdir}}/usr"
-      cp -a usr/share "${{targets.destdir}}/usr/"
-      cp -a usr/bin "${{targets.destdir}}/usr/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/libcmdliner-ocaml-dev/examples"
       cp -a test/* "${{targets.destdir}}/usr/share/doc/libcmdliner-ocaml-dev/examples/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/libcmdliner-ocaml-dev"
       cp -a README.md "${{targets.destdir}}/usr/share/doc/libcmdliner-ocaml-dev/"
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libcmdliner-ocaml-dev
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - name: Remove libtool archives
     runs: |
       find "${{targets.destdir}}" -name "*.la" -delete
