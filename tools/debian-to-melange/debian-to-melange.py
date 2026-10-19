@@ -624,11 +624,16 @@ def debian_providers(name):
     return re.findall(r'<dt><a href="/sid/([^"/]+)">', m.group(1)) if m else []
 
 
+def is_archive(data):
+    """gzip, xz, bzip2, zstd, zip or tar data (not an HTML error page)."""
+    return data[:2] == b"\x1f\x8b" or data[:6] == b"\xfd7zXZ\x00" or data[:3] == b"BZh" \
+        or data[:4] in (b"\x28\xb5\x2f\xfd", b"PK\x03\x04") or data[257:262] == b"ustar"
+
+
 def url_exists(url, tries=2):
     for _ in range(tries):
         try:
-            http_get(url)
-            return True
+            return is_archive(http_get(url))
         except urllib.error.HTTPError:
             return False
         except Exception:
@@ -686,6 +691,9 @@ def python_requirements(tree):
     return names
 
 
+DEBIAN_AREA = {}  # source package -> archive area (main, contrib, non-free)
+
+
 def fetch_from_debian(spec, dest):
     """Download debian/ of a source package from sources.debian.org into dest.
 
@@ -707,6 +715,7 @@ def fetch_from_debian(spec, dest):
     if entry is None:
         raise SystemExit("error: version {} of {} not found".format(version, name))
     version, area = entry["version"], entry.get("area", "main")
+    DEBIAN_AREA[name] = area
     prefix = name[:4] if name.startswith("lib") else name[0]
     tree = os.path.join(dest, "{}-{}".format(name, version))
 
@@ -1226,6 +1235,7 @@ class Converter:
             raise SystemExit("error: no binary package in debian/control")
 
         src_name, deb_version = parse_changelog(self.read("changelog") or "")
+        self.deb_version = deb_version
         src_name = src_name or source.get("source")
         fmt = (self.read("source/format") or "").strip()
         native = "native" in fmt or (deb_version is not None and "-" not in deb_version)
@@ -1775,6 +1785,8 @@ class Converter:
                 url = cands[0]
             if url:
                 self.notes.append("upstream tarball from debian/watch")
+        if not url and self.args.download:
+            url = self.debian_orig_url(source, version)
         if not url:
             return [self.todo("set the upstream tarball URL (see debian/watch or {})".format(source.get("homepage", "Homepage"))),
                     {"uses": "fetch", "with": {"uri": "https://example.invalid/${{package.name}}-${{package.version}}.tar.gz",
@@ -1788,6 +1800,22 @@ class Converter:
         if not sha:
             return [self.todo("compute expected-sha256 (re-run with --download)"), step]
         return [step]
+
+    def debian_orig_url(self, source, version):
+        """Debian's copy of the upstream tarball, when upstream cannot be reached."""
+        upver = (self.deb_version or "").split(":", 1)[-1].rsplit("-", 1)[0]
+        name = source.get("source", "")
+        if not upver or not name or re.search(r"[+~](dfsg|ds|repack)", upver):
+            return None  # repacked by Debian: not the upstream tarball
+        prefix = name[:4] if name.startswith("lib") else name[0]
+        for ext in ("gz", "xz", "bz2"):
+            url = "https://deb.debian.org/debian/pool/{}/{}/{}/{}_{}.orig.tar.{}".format(
+                DEBIAN_AREA.get(name, "main"), prefix, name, name, upver, ext)
+            if url_exists(url):
+                self.notes.append("upstream download not reachable; using Debian's copy of the upstream "
+                                  "tarball ({}), which disappears from the pool when Debian updates".format(url))
+                return url
+        return None
 
     def install_lines(self, binary, main, native, destdir):
         cmds = []
@@ -2077,7 +2105,13 @@ def watch_tarball_urls(watch, source, version):
         toks = [t for t in toks if t not in ("debian", "uupdate", "same", "ignore")]
         if not toks or not toks[0].startswith("http"):
             continue
-        url = toks[0].rstrip("/") + "/" + toks[1] if len(toks) > 1 and "/" not in toks[1] else toks[0]
+        if len(toks) > 1 and "/" not in toks[1]:
+            # <directory> <file pattern>; a web page to scrape (foo.html) is not handled
+            if not (toks[0].endswith("/") or "." not in toks[0].rsplit("/", 1)[-1]):
+                continue
+            url = toks[0].rstrip("/") + "/" + toks[1]
+        else:
+            url = toks[0]
         url = url.replace("@PACKAGE@", source).replace("@ANY_VERSION@", "(VERSION)")
         exts = [""]
         if url.endswith("@ARCHIVE_EXT@"):

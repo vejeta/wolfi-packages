@@ -1,0 +1,18 @@
+Description: increase time limit on riscv64
+Author: Bo YU <vimer@debian.org>
+Origin: https://buildd.debian.org/status/fetch.php?pkg=algol68g&arch=riscv64&ver=3.1.2-1.1&stamp=1763021349&raw=0
+Forwarded: not-needed
+Last-Update: 2025-11-14
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/test-set/15-mersenne.a68
++++ b/test-set/15-mersenne.a68
+@@ -16,7 +16,7 @@
+    iff 2**p-1 divides S(p-1) where S(n+1) = S(n)**2-2, and S(1)=4.
+ CO
+ 
+-PR precision=6800 timelimit=120 PR
++PR precision=6800 timelimit=360 PR
+ 
+ PR echo "This test will take a long time ... " PR
+ 
