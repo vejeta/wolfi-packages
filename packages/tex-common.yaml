@@ -1145,6 +1145,12 @@ pipeline:
       mkdir -p "${{targets.destdir}}/usr/share/texmf"
       ln -sf /var/lib/texmf/ls-R-TEXMFMAIN "${{targets.destdir}}/usr/share/texmf/ls-R"
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/tex-common/copyright
+  - name: Commands are executable (dh_fixperms)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        [ -d "$d/usr/bin" ] && find "$d/usr/bin" -type f -exec chmod 755 {} +
+      done
+      true
 update:
   enabled: false
   manual: true

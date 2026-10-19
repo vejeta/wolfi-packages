@@ -52,13 +52,17 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/source_date_epoch
+  - name: Configure (from debian/rules override_dh_auto_configure)
+    runs: |
+      rm config.sh || true
+      make config.sh 		PREFIX=/usr 		LIBDIR=/usr/share/hevea 		LATEXLIBDIR=/usr/share/texmf/tex/latex/misc
   - name: Build (from debian/rules override_dh_auto_build)
     runs: |
-      make byte
+      make opt
   - name: Install (from debian/rules override_dh_auto_install)
     runs: |
-      make install TARGET=byte DESTDIR=${{targets.destdir}}
-      rm ${{targets.destdir}}/usr/share/hevea/imagen
+      make install TARGET=opt DESTDIR=${{targets.destdir}}
+      rm ${{targets.destdir}}/usr/share/hevea/imagen || true
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/bin"

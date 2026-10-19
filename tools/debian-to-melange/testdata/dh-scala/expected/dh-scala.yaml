@@ -62,6 +62,12 @@ pipeline:
       cp -a README.md "${{targets.destdir}}/usr/share/doc/dh-scala/"
       cp -a doc/guide.md "${{targets.destdir}}/usr/share/doc/dh-scala/"
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/dh-scala/copyright
+  - name: Commands are executable (dh_fixperms)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        [ -d "$d/usr/bin" ] && find "$d/usr/bin" -type f -exec chmod 755 {} +
+      done
+      true
 subpackages:
   - name: dh-make-scala
     description: Start Debian packages of Scala libraries from Maven Central

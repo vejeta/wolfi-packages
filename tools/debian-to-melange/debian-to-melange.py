@@ -629,11 +629,20 @@ def make_functions(text):
 MAKE_DEFAULTS = {"RM": "rm -f", "MAKE": "make", "CC": "cc", "CXX": "g++", "INSTALL": "install"}
 
 
+# dh-ocaml's ocamlvars.mk, for Wolfi's OCaml (native code, natdynlink)
+OCAMLVARS = {
+    "OCAML_STDLIB_DIR": "/usr/lib/ocaml", "OCAML_DLL_DIR": "/usr/lib/ocaml/stublibs",
+    "OCAML_HAVE_OCAMLOPT": "yes", "OCAML_NATDYNLINK": "yes", "OCAML_BEST": "opt", "OCAML_OPT_ARCH": "amd64",
+}
+
+
 class Rules:
     """Minimal debian/rules (Makefile) model: variables, dh line, overrides."""
 
     def __init__(self, text):
         self.vars = {}
+        if re.search(r"(?m)^-?include\s+/usr/share/ocaml/ocaml(vars|init)\.mk", text):
+            self.vars.update(OCAMLVARS)  # before the conditionals that test them
         self.exports = []
         self.targets = {}
         self.target_vars = {}
@@ -1626,6 +1635,7 @@ class Converter:
             line = raw.strip()
             if not line or line.startswith("#"):
                 continue
+            ignore_errors = "-" in re.match(r"^[@-]*", line).group(0)
             line = line.lstrip("@-")
             if re.match(r"^dh[_-]", line):
                 auto = self.dh_auto_command(self.multiarch(rules.expand(line)))
@@ -1700,6 +1710,8 @@ class Converter:
             if re.match(r"^cd\s", line):
                 # make runs each recipe line in its own shell: a cd does not carry to the next
                 line = "({})".format(line)
+            if ignore_errors:
+                line += " || true"  # make's "-": the line may fail
             out.append(line)
         return out
 
@@ -2013,12 +2025,6 @@ class Converter:
                     if b.get(field):
                         b[field] = b[field].replace("${%s}" % k, v)
         self.generate_from_in(rules)
-        if re.search(r"(?m)^-?include\s+/usr/share/ocaml/ocaml(vars|init)\.mk", self.read("rules") or ""):
-            # dh-ocaml's ocamlvars.mk, for Wolfi's OCaml (native code, natdynlink)
-            for var, value in (("OCAML_STDLIB_DIR", "/usr/lib/ocaml"), ("OCAML_DLL_DIR", "/usr/lib/ocaml/stublibs"),
-                               ("OCAML_HAVE_OCAMLOPT", "yes"), ("OCAML_NATDYNLINK", "yes"), ("OCAML_BEST", "opt"),
-                               ("OCAML_OPT_ARCH", "amd64")):
-                rules.vars.setdefault(var, value)
         if deb_version:
             # /usr/share/dpkg/pkg-info.mk
             # a native version is the package version; its mangled form stays as Debian's
@@ -2343,8 +2349,10 @@ class Converter:
             elif not self.python_module or "-" in self.python_module:
                 self.python_module = re.sub(r"^(py3|python3?)-", "", self.python_module or name).replace("-", "_")
         ported = {}
+        # override_dh_auto_configure too when there are several build directories, or no
+        # configure pipeline to stand for it (a plain Makefile: "make config.sh PREFIX=/usr")
         targets = ("override_dh_auto_configure", "override_dh_auto_build", "override_dh_auto_install") \
-            if self.multi_builddir else ("override_dh_auto_build", "override_dh_auto_install")
+            if self.multi_builddir or bs not in BUILD_PIPELINES else ("override_dh_auto_build", "override_dh_auto_install")
         for target in targets:
             if target in overrides:
                 ported[target] = self.port_recipe(rules, overrides[target], name, main["package"])
@@ -2510,6 +2518,14 @@ class Converter:
         pipeline.append(self.install_step(main, True, native, name))
         post_install.sort(key=lambda st: dh_sequence_index(st.get("name", "")))  # stable: rules order otherwise
         pipeline += post_install
+        if any(isinstance(st, dict) and re.search(r'(?m)^cp -a \S+ "\$\{\{targets\.destdir\}\}/usr/s?bin/"',
+                                                  st.get("runs", "")) for st in pipeline):
+            # dh_fixperms: commands copied from the source tree are executable
+            pipeline.append({"name": "Commands are executable (dh_fixperms)", "runs": (
+                'for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do\n'
+                '  [ -d "$d/usr/bin" ] && find "$d/usr/bin" -type f -exec chmod 755 {} +\n'
+                'done\n'
+                'true\n')})
         if bs and self.upstream_installs:
             # upstream may install into sbin or /lib; Wolfi is usr-merged with sbin in bin
             pipeline.append({"name": "Usr-merge (sbin into bin)", "runs": (
