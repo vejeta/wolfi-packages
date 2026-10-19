@@ -20,6 +20,7 @@ conventions of tools/debian-to-melange.
 """
 
 import argparse
+import hashlib
 import importlib.util
 import io
 import json
@@ -242,6 +243,13 @@ class ApkBuild:
     def get(self, name, default=""):
         return self.vars.get(name, default)
 
+    def override(self, **values):
+        """Set variables (--name, --version) and re-expand those that use them."""
+        self.vars.update(values)
+        for n in self.order:
+            if n not in values and n in self.raw:
+                self.vars[n] = self.expand(self.raw[n])
+
     def words(self, name):
         return self.get(name).split()
 
@@ -367,6 +375,8 @@ PREAMBLE_VARS = [
     ("CTARGET", "${{host.triplet.gnu}}"),
     ("JOBS", "$(nproc)"),
 ]
+
+ARCHIVE_SUFFIXES = (".tar.gz", ".tar.xz", ".tar.bz2", ".tar.zst", ".tgz", ".zip")
 
 # abuild's own functions: the steps of the recipe, never helpers to inline.
 STANDARD_FUNCTIONS = {"prepare", "build", "check", "package", "snapshot", "fetch", "unpack"}
@@ -533,11 +543,24 @@ class Converter:
         apk, a = self.apk, self.args
         self.name = name = a.name or apk.get("pkgname")
         version = a.version or apk.get("pkgver")
+        if a.name or a.version:
+            original = apk.get("pkgname")
+            apk.override(pkgname=name, pkgver=version)
+            self.based_on = (original, apk.raw.get("pkgver", ""), apk.get("pkgrel", "0")) \
+                if a.name and original != name else None
+            if a.name and original and original != name:
+                # another package built like a sibling aport: its sources too
+                for n in ("source", "builddir"):
+                    if n in apk.vars:
+                        apk.vars[n] = apk.vars[n].replace(original, name)
         if not name or not version:
             raise SystemExit("error: APKBUILD has no pkgname/pkgver")
         desc = apk.get("pkgdesc")
         pkg = {"name": name, "version": version, "epoch": 0, "description": desc[:1].upper() + desc[1:]}
         pkg["copyright"] = [{"license": apk.get("license") or "NOASSERTION"}]
+        if getattr(self, "based_on", None):
+            # the sibling's license says nothing about this package: read its own
+            pkg["copyright"] = [{"license": "custom"}]
         if not apk.get("license"):
             pkg["copyright"].insert(0, self.todo("APKBUILD has no license"))
 
@@ -590,7 +613,16 @@ class Converter:
             self.notes.append("triggers= not converted: " + apk.get("triggers"))
 
         # ---- environment -------------------------------------------------
-        build_names = apk.words("makedepends") + apk.words("makedepends_build") + apk.words("makedepends_host")
+        # abuild installs depends= as well as makedepends= to build
+        build_names = apk.words("makedepends") + apk.words("makedepends_build") + apk.words("makedepends_host") \
+            + [d for d in apk.words("depends") if d not in apk.words("makedepends")]
+        # an Alpine foo-dev always depends on foo (its tools, e.g. font-util's
+        # ucs2any); Wolfi's -dev packages do not always
+        for d in list(build_names):
+            base = d[:-len("-dev")] if d.endswith("-dev") else None
+            if base and base not in build_names and self.wolfi.has(base) and \
+                    not base.startswith("lib") and not self.wolfi.has(base + "-libs"):
+                build_names.append(base)
         if a.with_check:
             build_names += apk.words("checkdepends")
         env_pkgs = ["build-base", "busybox"] + [
@@ -630,6 +662,13 @@ class Converter:
             step = {"uses": "fetch", "with": {"uri": template_version(url, apk, transforms)}}
             if fname in sums:
                 step["with"]["expected-sha512"] = sums[fname]
+            elif getattr(a, "download", False) and fname.endswith(tuple(ARCHIVE_SUFFIXES)):
+                # --name/--version select another tarball than the APKBUILD's
+                try:
+                    step["with"]["expected-sha512"] = hashlib.sha512(http_get(url)).hexdigest()
+                except Exception as exc:
+                    step["with"]["expected-sha256"] = "0" * 64
+                    pipeline.append(self.todo("cannot download {}: {}".format(url, exc)))
             else:
                 step["with"]["expected-sha256"] = "0" * 64
                 pipeline.append(self.todo("no checksum for {}".format(fname)))
@@ -685,11 +724,22 @@ class Converter:
         subpackages = [s for s in (self.subpackage(entry, name) for entry in apk.words("subpackages")) if s]
 
         # ---- update / test -----------------------------------------------
+        if pkg["copyright"][0].get("license", "") in ("Public Domain", "public-domain"):
+            pkg["copyright"][0]["license"] = "custom"  # not an SPDX id; read the license file
         if "custom" in pkg["copyright"][0].get("license", "") and main_url and a.download:
             lic = tarball_license(main_url.replace("${{package.version}}", version))
             if lic:
                 self.notes.append("license 'custom' identified as {} from the upstream license file; check it".format(lic))
                 pkg["copyright"][0]["license"] = pkg["copyright"][0]["license"].replace("custom", lic)
+        if "custom" in pkg["copyright"][0].get("license", "") and main_url and a.download:
+            # an SPDX reference to the license text shipped with the package
+            ref = "LicenseRef-" + name
+            pkg["copyright"][0]["license"] = pkg["copyright"][0]["license"].replace("custom", ref)
+            self.notes.append("license 'custom' not identified; {} refers to the upstream license file".format(ref))
+            pipeline.append({"name": "Install the license file ({})".format(ref), "runs": (
+                'for f in COPYING LICENSE LICENCE; do\n'
+                '  [ -f "$f" ] && install -Dm644 "$f" -t "${{targets.destdir}}/usr/share/licenses/${{package.name}}"\n'
+                'done; true\n')})
         if "custom" in pkg["copyright"][0].get("license", ""):
             pkg["copyright"].insert(0, self.todo("'custom' is not an SPDX id; set the license"))
 
@@ -728,8 +778,14 @@ class Converter:
         return name, recipe, self.header()
 
     def header(self):
-        lines = ["Generated by alpine-to-melange {} from the Alpine APKBUILD of {} {}-r{}.".format(
-            __version__, self.apk.get("pkgname"), self.apk.get("pkgver"), self.apk.get("pkgrel", "0"))]
+        based_on = getattr(self, "based_on", None)
+        if based_on:
+            lines = ["Generated by alpine-to-melange {} from the Alpine APKBUILD of {} {}-r{},".format(
+                __version__, based_on[0], based_on[1], based_on[2]),
+                "adapted to {} {}.".format(self.apk.get("pkgname"), self.apk.get("pkgver"))]
+        else:
+            lines = ["Generated by alpine-to-melange {} from the Alpine APKBUILD of {} {}-r{}.".format(
+                __version__, self.apk.get("pkgname"), self.apk.get("pkgver"), self.apk.get("pkgrel", "0"))]
         if self.args.from_alpine:
             lines.append("https://gitlab.alpinelinux.org/alpine/aports/-/tree/master/{}".format(self.args.aports_path))
         if self.apk.get("url"):
@@ -842,10 +898,14 @@ def license_text_id(text):
     t = re.sub(r"\s+", " ", text)
     if "Permission is hereby granted, free of charge" in t:
         return "MIT"
-    if re.search(r"Permission to use, copy, modify, distribute, and sell this software", t) and "The Open Group" in t:
-        return "MIT-open-group"  # X.Org
+    if re.search(r"Permission to use, copy, modify, distribute, and sell this software", t):
+        return "MIT-open-group" if "The Open Group" in t else "HPND-sell-variant"  # X.Org
     if "Redistribution and use in source and binary forms" in t:
         return "BSD-3-Clause" if re.search(r"Neither the name|endorse or promote", t) else "BSD-2-Clause"
+    if re.search(r"Permission to use, copy, modify, and distribute this software", t) and "without fee" in t:
+        return "HPND"
+    if re.search(r"\bpublic domain\b", t, re.I):
+        return "LicenseRef-public-domain"
     return None
 
 

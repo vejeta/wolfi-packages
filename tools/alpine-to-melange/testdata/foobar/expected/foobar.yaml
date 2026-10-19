@@ -45,6 +45,8 @@ environment:
       - cmake
       - ninja  # Alpine: samurai
       - linux-headers
+      - bash
+      - ca-certificates-bundle
 pipeline:
   - uses: fetch
     with:

@@ -7,11 +7,9 @@
 # Debian packaging: https://salsa.debian.org/debian/xdotool
 #
 # Conversion notes:
-# - build dependency 'ruby-minitest' (Debian 'ruby-minitest') not found in Wolfi; left out
 # - build dependency 'x11-utils' is a bundle; using luit, xdpyinfo, xmessage, xprop
-# - build dependency 'x11-xkb-utils' (Debian 'x11-xkb-utils') not found in Wolfi; left out
-# - build dependency 'xfonts-base' (Debian 'xfonts-base') not found in Wolfi; left out
-# - build dependency 'xkb-data' (Debian 'xkb-data') not found in Wolfi; left out
+# - build dependency 'x11-xkb-utils' is a bundle; using xkbcomp
+# - build dependency 'xfonts-base' is a bundle; using font-arabic-misc, font-cursor-misc, font-daewoo-misc, font-dec-misc, font-isas-misc, font-jis-misc, font-micro-misc, font-misc, font-mutt-misc, font-schumacher-misc, font-sony-misc, font-sun-misc
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
 package:
   name: xdotool
@@ -39,15 +37,25 @@ environment:
       - pkgconf-dev  # Debian: pkg-config
       - procps
       - ruby
-      # TODO(debian-to-melange): ruby-minitest is not in Wolfi (Debian: ruby-minitest); left out
       - luit  # Debian: x11-utils
       - xdpyinfo  # Debian: x11-utils
       - xmessage  # Debian: x11-utils
       - xprop  # Debian: x11-utils
-      # TODO(debian-to-melange): x11-xkb-utils is not in Wolfi (Debian: x11-xkb-utils); left out
+      - xkbcomp  # Debian: x11-xkb-utils
       - xauth
-      # TODO(debian-to-melange): xfonts-base is not in Wolfi (Debian: xfonts-base); left out
-      # TODO(debian-to-melange): xkb-data is not in Wolfi (Debian: xkb-data); left out
+      - font-arabic-misc  # Wolfi Community Packages, Debian: xfonts-base
+      - font-cursor-misc  # Wolfi Community Packages, Debian: xfonts-base
+      - font-daewoo-misc  # Wolfi Community Packages, Debian: xfonts-base
+      - font-dec-misc  # Wolfi Community Packages, Debian: xfonts-base
+      - font-isas-misc  # Wolfi Community Packages, Debian: xfonts-base
+      - font-jis-misc  # Wolfi Community Packages, Debian: xfonts-base
+      - font-micro-misc  # Wolfi Community Packages, Debian: xfonts-base
+      - font-misc  # Debian: xfonts-base
+      - font-mutt-misc  # Wolfi Community Packages, Debian: xfonts-base
+      - font-schumacher-misc  # Wolfi Community Packages, Debian: xfonts-base
+      - font-sony-misc  # Debian: xfonts-base
+      - font-sun-misc  # Wolfi Community Packages, Debian: xfonts-base
+      - xkeyboard-config  # Debian: xkb-data
       - xterm
       - xvfb-run  # Debian: xvfb
 pipeline:

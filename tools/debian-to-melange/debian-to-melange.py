@@ -194,14 +194,30 @@ BUNDLES = {
                 "xmore xwd xwud".split(),
     "x11-xserver-utils": "iceauth sessreg showrgb xcmsdb xgamma xhost xkill xmodmap xrandr xrdb "
                          "xrefresh xset xsetmode xsetpointer xsetroot xstdcmap xvidtune".split(),
+    # the X.Org misc fonts (font-misc-misc is font-misc in Wolfi)
+    "xfonts-base": "font-arabic-misc font-cursor-misc font-daewoo-misc font-dec-misc font-isas-misc "
+                   "font-jis-misc font-micro-misc font-misc font-mutt-misc font-schumacher-misc "
+                   "font-sony-misc font-sun-misc".split(),
     "x11-xkb-utils": "setxkbmap xkbcomp xkbevd xkbprint xkbutils".split(),
     "x11-utils": "appres editres listres luit viewres xdpyinfo xdriinfo xev xfd xfontsel xlsatoms "
                  "xlsclients xlsfonts xmessage xprop xvinfo xwininfo".split(),
 }
 
 
+# Gems that Wolfi's ruby package bundles (Debian packages them as ruby-<gem>).
+RUBY_BUNDLED_GEMS = {
+    "abbrev", "benchmark", "bigdecimal", "csv", "debug", "drb", "getoptlong", "logger", "matrix",
+    "minitest", "mutex-m", "net-ftp", "net-pop", "net-smtp", "nkf", "observer", "ostruct",
+    "power-assert", "prime", "pstore", "racc", "rake", "rbs", "rdoc", "readline", "reline",
+    "resolv-replace", "rinda", "rss", "syslog", "test-unit", "typeprof",
+}
+
+
 def dep_candidates(name):
     """Ordered Wolfi name candidates for a Debian package name."""
+    m = re.match(r"^ruby-(.+)$", name)
+    if m and m.group(1) in RUBY_BUNDLED_GEMS:
+        return ["ruby"]
     if isinstance(NAME_MAP.get(name), list):
         return NAME_MAP[name][:1]
     if name in NAME_MAP:
