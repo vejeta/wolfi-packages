@@ -6,7 +6,6 @@
 # - ${python3:Depends} from upstream's requirements: wcwidth
 # - upstream tarball from debian/watch
 # - compute expected-sha256 (re-run with --download)
-# - dh --with sphinxdoc has no direct melange equivalent; review
 # - update: check the tag format of https://github.com/selectel/pyte (assumed v0.8.0)
 # - Wolfi Python layout: py3.X-pyte for Python 3.12, 3.13
 package:

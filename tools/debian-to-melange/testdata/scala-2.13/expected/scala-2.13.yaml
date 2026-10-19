@@ -211,6 +211,11 @@ test:
   pipeline:
     - runs: |
         test -f /usr/share/doc/scala-2.13/copyright
+    - uses: git-checkout
+      with:
+        repository: https://github.com/scala/scala
+        tag: v${{package.version}}
+        expected-commit: '0000000000000000000000000000000000000000'
     - name: 'autopkgtest: smoke'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"

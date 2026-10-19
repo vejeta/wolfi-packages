@@ -21,10 +21,12 @@ conventions of tools/debian-to-melange.
 
 import argparse
 import importlib.util
+import io
 import json
 import os
 import re
 import sys
+import tarfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -628,15 +630,24 @@ class Converter:
         subpackages = [s for s in (self.subpackage(entry, name) for entry in apk.words("subpackages")) if s]
 
         # ---- update / test -----------------------------------------------
+        if "custom" in pkg["copyright"][0].get("license", "") and main_url and a.download:
+            lic = tarball_license(main_url.replace("${{package.version}}", version))
+            if lic:
+                self.notes.append("license 'custom' identified as {} from the upstream license file; check it".format(lic))
+                pkg["copyright"][0]["license"] = pkg["copyright"][0]["license"].replace("custom", lic)
+        if "custom" in pkg["copyright"][0].get("license", ""):
+            pkg["copyright"].insert(0, self.todo("'custom' is not an SPDX id; set the license"))
+
         update = github_update(main_url)
         if update:
             for t in transforms.values():
                 if "${{vars.%s}}" % t["to"] in main_url and t["replace"] != "${1}":
                     update["version-transform"] = [{"match": re.escape(t["replace"].replace("$$", "$")),
                                                     "replace": apk_unglob(t["match"])}]
+        project = release_monitoring_id(name, version) if (a.download and not update) else None
         update = update or {
             "enabled": True,
-            "release-monitor": {"identifier": C(0, "{}: set the release-monitoring.org project id".format(TODO))}}
+            "release-monitor": {"identifier": project or C(0, "{}: set the release-monitoring.org project id".format(TODO))}}
         test = {"environment": {"contents": {"packages": ["busybox"]}},
                 "pipeline": [{"uses": "test/tw/ldd-check"}]}
 
@@ -764,6 +775,40 @@ def textwrap_dedent(text):
 # ==========================================================================
 # Input
 # ==========================================================================
+
+def license_text_id(text):
+    """SPDX id of a common license text, or None."""
+    t = re.sub(r"\s+", " ", text)
+    if "Permission is hereby granted, free of charge" in t:
+        return "MIT"
+    if re.search(r"Permission to use, copy, modify, distribute, and sell this software", t) and "The Open Group" in t:
+        return "MIT-open-group"  # X.Org
+    if "Redistribution and use in source and binary forms" in t:
+        return "BSD-3-Clause" if re.search(r"Neither the name|endorse or promote", t) else "BSD-2-Clause"
+    return None
+
+
+def tarball_license(url):
+    """License of the top-level COPYING/LICENSE file of a source tarball."""
+    try:
+        with tarfile.open(fileobj=io.BytesIO(http_get(url))) as tar:
+            for m in tar.getmembers():
+                if m.isfile() and m.name.count("/") == 1 and re.match(r"(COPYING|LICEN[CS]E)(\.\w+)?$", m.name.split("/")[1]):
+                    return license_text_id(tar.extractfile(m).read().decode("utf-8", "replace"))
+    except Exception:
+        return None
+    return None
+
+
+def release_monitoring_id(name, version):
+    """The release-monitoring.org project named `name` that knows `version`."""
+    try:
+        data = json.loads(http_get("https://release-monitoring.org/api/v2/projects/?name=" + urllib.parse.quote(name)))
+    except Exception:
+        return None
+    items = [p for p in data.get("items", []) if version in p.get("versions", [])]
+    return items[0]["id"] if len(items) == 1 else None
+
 
 def http_get(url):
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})

@@ -4,6 +4,8 @@
 #
 # Conversion notes:
 # - set expected-commit for tag v1.6.6 (re-run with --download, or git ls-remote)
+# - test dependency 'x11-apps' is a Debian bundle of several programs
+# - test dependency 'x11-xserver-utils' is a Debian bundle of several programs
 # - autopkgtests converted to the test pipeline (2 steps)
 package:
   name: xwpe
@@ -77,23 +79,33 @@ test:
         - gfortran
         - gdb
         - perl
+        - python3
         - py3-pillow  # Debian: python3-pil
-        - xvfb
+        - xorg-server  # Debian: xvfb
         - matchbox-window-manager
         - xdotool
-        - x11-apps
-        - x11-xserver-utils
+        - x11-apps  # TODO(debian-to-melange): a Debian bundle; list the programs used (atobm, bitmap, bmtoa...)
+        - x11-xserver-utils  # TODO(debian-to-melange): a Debian bundle; list the programs used (iceauth, sessreg, showrgb...)
         - xclip
-        - imagemagick
+        - imagemagick-7  # Debian: imagemagick
   pipeline:
     - runs: |
         test -f /usr/share/doc/xwpe/copyright
     - uses: test/tw/ldd-check
+    - uses: git-checkout
+      with:
+        repository: https://codeberg.org/mendezr/xwpe.git
+        tag: v${{package.version}}
+        expected-commit: '0000000000000000000000000000000000000000'
     - name: 'autopkgtest: XWPE_TEST_WAIT_SCALE=3 WPE_BIN=/usr/bin/wpe python3 -m pytes'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        (
         XWPE_TEST_WAIT_SCALE=3 WPE_BIN=/usr/bin/wpe python3 -m pytest -q tests --ignore=tests/x11
+        ) || echo 'autopkgtest marked flaky failed (ignored)'
     - name: 'autopkgtest: XWPE_TEST_WAIT_SCALE=3 XWPE_BIN=/usr/bin/xwpe python3 -m pyt'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        (
         XWPE_TEST_WAIT_SCALE=3 XWPE_BIN=/usr/bin/xwpe python3 -m pytest -q tests/x11
+        ) || echo 'autopkgtest marked flaky failed (ignored)'

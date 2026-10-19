@@ -138,6 +138,11 @@ test:
     - runs: |
         test -f /usr/share/doc/libfoo/copyright
     - uses: test/tw/ldd-check
+    - uses: git-checkout
+      with:
+        repository: https://github.com/example/libfoo
+        tag: v${{package.version}}
+        expected-commit: '0000000000000000000000000000000000000000'
     - name: 'autopkgtest: foo-tool --version'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
