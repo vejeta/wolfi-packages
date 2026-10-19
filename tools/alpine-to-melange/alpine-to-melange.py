@@ -76,6 +76,7 @@ NAME_MAP = {
     "ghc": "ghc-bootstrap",
     "cabal": "cabal-install-bootstrap",
     "pandoc": "pandoc-cli",
+    "biblatex": "texmf-dist-bibtexextra",
     "gpm-dev": "libgpm-dev",
     # Alpine's xmlto pulls in the DocBook XSL stylesheets; Wolfi's are in docbook-xml
     "xmlto": ["xmlto", "docbook-xml"],

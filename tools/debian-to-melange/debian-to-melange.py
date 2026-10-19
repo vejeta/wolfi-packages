@@ -257,6 +257,15 @@ def dep_candidates(name):
     if name in NAME_MAP:
         return [NAME_MAP[name]]
     cands = [name]
+    tl = re.match(r"^texlive-(.+)$", name)
+    if tl:
+        # Debian splits TeX Live like its collections: texmf-dist-<collection> here
+        sub = {"base": "texlive", "binaries": "texlive", "full": "texmf-dist-full", "science": "texmf-dist-mathscience",
+               "extra-utils": "texmf-dist-binextra", "font-utils": "texmf-dist-fontutils",
+               "formats-extra": "texmf-dist-formatsextra", "plain-generic": "texmf-dist-plaingeneric"}.get(tl.group(1))
+        return [sub or "texmf-dist-" + tl.group(1).replace("-", "")]
+    if name in ("lmodern", "tex-gyre", "fonts-lmodern"):
+        return ["texmf-dist-fontsrecommended"]  # they come with the TeX Live collection
     if re.match(r"^libboost[\d.]*-[\w-]+-dev$", name):
         return ["boost-dev"]  # Debian splits Boost per library; Wolfi has one boost-dev
     m = re.match(r"^openjdk-(\d+)-(jdk|jre)(?:-headless)?$", name)
