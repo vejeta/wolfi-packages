@@ -707,6 +707,10 @@ class Converter:
         if "gobject-introspection-dev" in plain and "glib-gir" not in plain:
             # Alpine ships GLib's .gir files in glib-dev; Wolfi splits them out.
             env_pkgs.append(C("glib-gir", "GLib .gir files (part of glib-dev on Alpine)"))
+        if any(s.split(":")[0].endswith("-lang") for s in apk.words("subpackages")) and \
+                not any(p.startswith("gettext") for p in plain):
+            # translations are compiled with msgfmt, which Alpine's builders have
+            env_pkgs.append(C("gettext", "msgfmt for the -lang subpackage"))
         environment = {"contents": {
             "keyring": ["https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"],
             "repositories": ["https://packages.wolfi.dev/os"],

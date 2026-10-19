@@ -54,6 +54,7 @@ environment:
       - perl-uri
       - perl-yaml
       - perl-yaml-libyaml
+      - gettext  # msgfmt for the -lang subpackage
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
