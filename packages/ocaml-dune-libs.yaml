@@ -1,22 +1,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
 #
-# The OCaml libraries that come with dune. Wolfi's ocaml-dune ships the dune
-# program only; Debian builds these libraries in ocaml-dune and in its
-# ocaml-dune-*-builder sources from a copy of the dune source. Here they are
-# built from upstream dune, at the version of Wolfi's ocaml-dune, and split
-# into Debian's packages, which other recipes of this repository use.
+# The private OCaml libraries of dune (stdune, dyn, dune-glob, dune-site),
+# which some OCaml programs build with. Wolfi's ocaml-dune ships the dune
+# program only; Debian builds these in ocaml-dune-full-builder. Here they are
+# built from upstream dune, at the version of Wolfi's ocaml-dune. The
+# libraries they need from dune itself are in ocaml-dune-configurator.
 package:
   name: ocaml-dune-libs
   version: '3.24.2'
   epoch: 0
-  description: OCaml libraries of the dune build system
+  description: Private OCaml libraries of the dune build system
   copyright:
     - license: MIT
   dependencies:
     runtime:
-      - libdune-core-ocaml-dev
-      - libdune-configurator-ocaml-dev
       - libdune-ocaml-dev
 environment:
   contents:
@@ -32,12 +30,10 @@ environment:
       - ocaml-dune
       - ocaml-findlib
       - libcsexp-ocaml-dev
+      - libdune-core-ocaml-dev
       - libpp-ocaml-dev
       - libre-ocaml-dev
 vars:
-  # the opam packages of each subpackage, as Debian splits them
-  core: dune-build-info ordering xdg fs-io top-closure
-  configurator: dune-configurator
   private: dune-private-libs dune-site stdune dyn dune-glob
 pipeline:
   - uses: fetch
@@ -46,45 +42,18 @@ pipeline:
       expected-sha256: 472798691b0216daf538709f0f4703b3617ef24ad0866c9096068baaba4d762a
   - name: Build
     runs: |
-      pkgs="${{vars.core}} ${{vars.configurator}} ${{vars.private}}"
+      pkgs="${{vars.private}}"
       dune build --release -p "$(echo $pkgs | tr ' ' ',')" @install
   - name: Install
     runs: |
       dune install --release --destdir="${{targets.destdir}}" --prefix=/usr \
         --libdir="$(ocamlfind printconf destdir)" \
-        ${{vars.core}} ${{vars.configurator}} ${{vars.private}}
+        ${{vars.private}}
       # the opam files and changelogs: the license is enough
       rm -rf "${{targets.destdir}}"/usr/doc
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/ocaml-dune-libs
   - uses: strip
 subpackages:
-  - name: libdune-core-ocaml-dev
-    description: OCaml libraries of dune (dune-build-info, ordering, xdg, fs-io, top-closure)
-    dependencies:
-      provides:
-        - libdune-core-ocaml=${{package.full-version}}
-      runtime:
-        - ocaml
-    pipeline:
-      - runs: |
-          lib=usr/lib/ocaml
-          for p in ${{vars.core}}; do
-            mkdir -p "${{targets.contextdir}}/$lib"
-            mv "${{targets.destdir}}/$lib/$p" "${{targets.contextdir}}/$lib/"
-          done
-  - name: libdune-configurator-ocaml-dev
-    description: Helper library for gathering system configuration
-    dependencies:
-      runtime:
-        - libcsexp-ocaml-dev
-        - ocaml
-    pipeline:
-      - runs: |
-          lib=usr/lib/ocaml
-          for p in ${{vars.configurator}}; do
-            mkdir -p "${{targets.contextdir}}/$lib"
-            mv "${{targets.destdir}}/$lib/$p" "${{targets.contextdir}}/$lib/"
-          done
   - name: libdune-ocaml-dev
     description: Private OCaml libraries of dune (stdune, dyn, dune-glob, dune-site)
     dependencies:
@@ -120,13 +89,10 @@ test:
         - busybox
         - ocaml
         - ocaml-findlib
-        - libdune-core-ocaml-dev
-        - libdune-configurator-ocaml-dev
         - libdune-ocaml-dev
   pipeline:
     - name: The libraries are found by ocamlfind
       runs: |
-        for p in dune-build-info ordering xdg fs-io top-closure dune-configurator \
-                 dune-private-libs dune-site stdune dyn dune-glob; do
+        for p in dune-private-libs dune-site stdune dyn dune-glob; do
           ocamlfind query "$p"
         done
