@@ -68,6 +68,7 @@ pipeline:
       pkgdir="${{targets.destdir}}"
       srcdir="/home/build/_srcdir"
       mkdir -p "$srcdir"
+      [ -e "/home/build/_srcdir/foobar-2.1.0-rc3" ] || ln -s /home/build "/home/build/_srcdir/foobar-2.1.0-rc3"
       cp -a /home/build/foobar/foobar.initd "$srcdir"/
       cp -a /home/build/foobar/foobar.conf "$srcdir"/
 

@@ -32,6 +32,9 @@ pipeline:
       repository: https://github.com/sekrit-twc/zimg
       tag: release-${{package.version}}
       expected-commit: '0000000000000000000000000000000000000000'
+  - name: Create $srcdir
+    runs: |
+      mkdir -p /home/build/_srcdir
   - uses: fetch
     with:
       uri: https://github.com/google/googletest/archive/refs/tags/v1.16.0.tar.gz
@@ -42,6 +45,8 @@ pipeline:
     runs: |
       pkgdir="${{targets.destdir}}"
       srcdir="/home/build/_srcdir"
+      mkdir -p "$srcdir"
+      [ -e "/home/build/_srcdir/zimg-release-3.0.6" ] || ln -s /home/build "/home/build/_srcdir/zimg-release-3.0.6"
 
       mkdir -p "$pkgdir"
       # googletest is required in-tree

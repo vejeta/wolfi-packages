@@ -68,6 +68,8 @@ NAME_MAP = {
     "ninja-build": "ninja",
     "pkg-config": "pkgconf-dev",
     "mawk": "gawk",
+    # Wolfi ships the DocBook XSL stylesheets, and their catalog, in docbook-xml
+    "docbook-xsl": "docbook-xml",
     "awk": "gawk",
     "pkgconf": "pkgconf-dev",
     "ca-certificates": "ca-certificates-bundle",

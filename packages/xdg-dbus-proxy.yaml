@@ -6,7 +6,6 @@
 # Upstream: https://github.com/flatpak/xdg-dbus-proxy/
 #
 # Conversion notes:
-# - build dependency 'docbook-xsl' not found in Wolfi
 # - check() not run (pass --with-check to add it to the build)
 package:
   name: xdg-dbus-proxy
@@ -27,7 +26,9 @@ environment:
     packages:
       - build-base
       - busybox
+      - docbook-xml  # Alpine: docbook-xsl
       - glib-dev
+      - libxslt
       - meson
 pipeline:
   - uses: fetch
@@ -46,8 +47,7 @@ pipeline:
       		-Dpython.bytecompile=0 "$@"
       }
 
-      # docbook-xsl (needed for the man page) is not in Wolfi
-      abuild_meson -Dman=disabled . output
+      abuild_meson . output
       meson compile -C output
   - name: Install
     runs: |
@@ -58,6 +58,11 @@ pipeline:
     runs: |
       find "${{targets.destdir}}" -name "*.la" -delete
   - uses: strip
+subpackages:
+  - name: xdg-dbus-proxy-doc
+    description: Filtering proxy for D-Bus connections (doc)
+    pipeline:
+      - uses: split/alldocs
 update:
   enabled: true
   github:

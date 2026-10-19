@@ -56,6 +56,9 @@ DROP = {
 }
 NAME_MAP = {
     "samurai": "ninja",
+    # Wolfi ships the DocBook XSL stylesheets, and their catalog, in docbook-xml
+    "docbook-xsl": "docbook-xml",
+    "docbook-xsl-nons": "docbook-xml",
     "ca-certificates": "ca-certificates-bundle",
     "gtk4.0": "gtk-4",
     "gtk4.0-dev": "gtk-4-dev",
@@ -341,7 +344,8 @@ def github_update(url):
     if not m:
         return None
     up = {"enabled": True, "github": {"identifier": "{}/{}".format(m.group(1), m.group(2))}}
-    prefix = m.group(3).rstrip("/")
+    # release%2F1.2 is the tag release/1.2
+    prefix = urllib.parse.unquote(m.group(3)) if m.group(3).endswith("%2F") else m.group(3).rstrip("/")
     if prefix:
         up["github"]["strip-prefix"] = prefix
     if "/releases/" in url:
@@ -363,6 +367,9 @@ PREAMBLE_VARS = [
     ("CTARGET", "${{host.triplet.gnu}}"),
     ("JOBS", "$(nproc)"),
 ]
+
+# abuild's own functions: the steps of the recipe, never helpers to inline.
+STANDARD_FUNCTIONS = {"prepare", "build", "check", "package", "snapshot", "fetch", "unpack"}
 
 HELPERS = {
     "abuild-meson": (
@@ -400,6 +407,18 @@ class Converter:
         self.wolfi = wolfi
         self.notes = []
         self.aux = {}
+        # functions that build subpackages (foo:bar, or the suffix of $pkgname-doc)
+        self.subpackage_functions = {e.split(":")[1] if ":" in e else e.rsplit("-", 1)[-1]
+                                     for e in apk.words("subpackages")}
+
+    def function_depends(self, fname):
+        """depends="..." set inside a function (meta packages do this in package())."""
+        text = "\n".join(self.apk.functions.get(fname, []))
+        m = re.search(r'(?m)^\s*depends="([^"]*)"', text)
+        if not m:
+            return []
+        names = self.apk.expand(m.group(1)).split()
+        return [re.split(r"[<>=~]", n, maxsplit=1)[0] for n in names]
 
     def todo(self, msg):
         self.notes.append(msg)
@@ -464,14 +483,43 @@ class Converter:
         used |= needed
         funcs = [code for helper, code in HELPERS.items()
                  if re.search(r"(^|[\s;(|&]){}\b".format(re.escape(helper)), text)]
+        # functions the APKBUILD defines for itself (_install ...), transitively
+        own, seen = [], set()
+        queue = [text]
+        while queue:
+            t = queue.pop()
+            for fn, body in self.apk.functions.items():
+                if fn in seen or fn in STANDARD_FUNCTIONS or fn in self.subpackage_functions:
+                    continue
+                if re.search(r"(^|[\s;(|&]){}\b".format(re.escape(fn)), t):
+                    seen.add(fn)
+                    code = "{}() {{\n{}\n}}".format(fn, "\n".join(body).rstrip())
+                    own.append(code)
+                    queue.append(code)
+        funcs += own
+        if re.search(r"(^|[\s;(|&])default_prepare\b", text):
+            # builddir=<dir> default_prepare: the source patches, in that directory
+            patches = [f for f in self.local_files if f.endswith(".patch")]
+            funcs.append("default_prepare() {{\n\tfor _p in {}; do\n\t\tpatch -p1 -d \"$builddir\" < {}/{}/$_p\n\tdone\n}}".format(
+                " ".join(patches) or ":", WORKSPACE, self.name))
+        for f in self.local_payload():
+            # files next to the APKBUILD are in $srcdir, the parent of abuild's builddir
+            text, n = re.subn(r"(?<![\w/.]){}".format(re.escape("../" + f)), '"$srcdir"/' + f, text)
+            if n:
+                used.add("srcdir")
         for code in funcs:  # helpers use abuild variables too ($pkgdir, $subpkgdir)
             used |= refs(code)
         text = re.sub(r"(^|[\s;(|&])abuild-meson\b", r"\1abuild_meson", text)
         pre = ['{}="{}"'.format(n, v) for n, v in PREAMBLE_VARS if n in used]
         pre += ["{}={}".format(n, v) for n, v in helpers if n in used]
         pre += funcs
-        if "srcdir" in used and self.local_payload():
+        if "srcdir" in used and getattr(self, "abuild_builddir", None):
+            # abuild unpacks the main tarball in $srcdir/$pkgname-$pkgver; here it is the workspace
             pre.append('mkdir -p "$srcdir"')
+            pre.append('[ -e "{0}" ] || ln -s {1} "{0}"'.format(self.abuild_builddir, WORKSPACE))
+        if "srcdir" in used and self.local_payload():
+            if 'mkdir -p "$srcdir"' not in pre:
+                pre.append('mkdir -p "$srcdir"')
             for f in self.local_payload():
                 pre.append('cp -a {}/{}/{} "$srcdir"/'.format(WORKSPACE, self.name, f))
         return ("\n".join(pre) + "\n\n" if pre else "") + text + "\n"
@@ -503,7 +551,7 @@ class Converter:
         elif any(x in ("!x86_64", "!aarch64") for x in arch):
             pkg["target-architecture"] = [x for x in ("x86_64", "aarch64") if "!" + x not in arch]
 
-        runtime = self.map_deps(apk.words("depends"), "runtime")
+        runtime = self.map_deps(apk.words("depends") + self.function_depends("package"), "runtime")
         if runtime:
             pkg["dependencies"] = {"runtime": runtime}
         provides = [p for p in apk.words("provides") if not p.startswith(("so:", "cmd:", "pc:"))]
@@ -563,6 +611,7 @@ class Converter:
         remote = [(f, u) for f, u in sources if u]
         main_url = None
         builddir = apk.get("builddir") or "{}/{}-{}".format(SRCDIR, name, version)
+        self.abuild_builddir = builddir if "$" not in builddir else None
         for idx, (fname, url) in enumerate(remote):
             url = apk.expand(url)
             if url.startswith(("git+", "git://")) or url.endswith(".git"):
@@ -591,6 +640,9 @@ class Converter:
             else:
                 step["with"]["strip-components"] = 0
                 step["with"]["directory"] = SRCDIR[len(WORKSPACE) + 1:]
+                if not any(isinstance(st, dict) and st.get("name") == "Create $srcdir" for st in pipeline):
+                    # fetch extracts with tar -C, which needs the directory
+                    pipeline.append({"name": "Create $srcdir", "runs": "mkdir -p {}\n".format(SRCDIR)})
                 if not re.search(r"\.(tar(\.\w+)?|tgz|tbz2|txz|zip)$", fname):
                     step["with"]["extract"] = False
             pipeline.append(step)
@@ -607,6 +659,9 @@ class Converter:
             if fname not in apk.functions:
                 continue
             text = self.body(fname, default)
+            if fname == "package":
+                # converted to dependencies.runtime
+                text = re.sub(r'(?m)^\s*depends="[^"]*"\n?', "", text)
             step = self.runs(text)
             if step:
                 pipeline.append({"name": label, "runs": step})
@@ -623,7 +678,7 @@ class Converter:
             if "libtool" not in options:
                 pipeline.append({"name": "Remove libtool archives (abuild does this by default)",
                                  "runs": 'find "${{targets.destdir}}" -name "*.la" -delete\n'})
-            if "!strip" not in options:
+            if "!strip" not in options and "noarch" not in apk.words("arch"):
                 pipeline.append({"uses": "strip"})
 
         # ---- subpackages -------------------------------------------------
@@ -649,7 +704,7 @@ class Converter:
             "enabled": True,
             "release-monitor": {"identifier": project or C(0, "{}: set the release-monitoring.org project id".format(TODO))}}
         test = {"environment": {"contents": {"packages": ["busybox"]}},
-                "pipeline": [{"uses": "test/tw/ldd-check"}]}
+                "pipeline": [] if "noarch" in apk.words("arch") else [{"uses": "test/tw/ldd-check"}]}
 
         recipe = {"package": pkg}
         used_t = [t for t in transforms.values()
@@ -691,6 +746,12 @@ class Converter:
             if fname in declared:
                 if fname in self.files:
                     text = self.files[fname].decode("utf-8", "replace")
+                    if text.strip() in self.files and "\n" not in text.strip():
+                        # a symlink in aports: the raw file is the target's name
+                        text = self.files[text.strip()].decode("utf-8", "replace")
+                    # abuild scripts may tell which one runs from their name; under apk
+                    # they are not files of that name
+                    text = text.replace("${0##*/}", fname).replace("$(basename $0)", fname)
                     if not text.startswith("#!"):
                         text = "#!/bin/sh\n" + text
                     scripts[kind] = text
