@@ -1010,6 +1010,91 @@ def render_conffile(pkg, templates):
     return "\n".join(lines).rstrip() + "\n"
 
 
+# commands of autopkgtest scripts that are not on a minimal Wolfi testbed
+TEST_TOOLS = {"runuser": ["runuser"], "dpkg-parsechangelog": ["dpkg-dev"], "dpkg-architecture": ["dpkg-dev"],
+              "dpkg-buildpackage": ["dpkg-dev"], "dpkg-source": ["dpkg-dev"], "script": ["script"], "python3": ["python3"], "perl": ["perl"],
+              "make": ["make"], "gcc": ["build-base"], "cc": ["build-base"]}
+
+
+# dh's install sequence: ported override steps run in this order
+DH_SEQUENCE = ["dh_auto_install", "dh_install", "dh_installdocs", "dh_installchangelogs", "dh_installexamples",
+               "dh_installman", "dh_installcatalogs", "dh_installcron", "dh_installdebconf", "dh_installemacsen",
+               "dh_installifupdown", "dh_installinfo", "dh_installinit", "dh_installsystemd", "dh_installtmpfiles",
+               "dh_installlogrotate", "dh_installpam", "dh_installudev", "dh_installwm", "dh_installxfonts",
+               "dh_bugfiles", "dh_lintian", "dh_icons", "dh_perl", "dh_usrlocal", "dh_link", "dh_compress",
+               "dh_fixperms", "dh_missing", "dh_strip", "dh_makeshlibs", "dh_shlibdeps", "dh_installdeb",
+               "dh_gencontrol", "dh_md5sums", "dh_builddeb"]
+
+
+# GNU commands of Debian's Essential packages that busybox only partly implements
+ESSENTIAL_SCRIPT_TOOLS = {"getopt": "util-linux-misc"}
+
+
+def essential_script_tools(data):
+    """Wolfi packages for Essential-package commands the source's shell scripts call."""
+    if not data:
+        return []
+    import io
+    import tarfile
+    found = []
+    try:
+        with tarfile.open(fileobj=io.BytesIO(data)) as tar:
+            for m in tar:
+                if not m.isfile() or m.size > 2000000 or "/test" in m.name:
+                    continue
+                text = tar.extractfile(m).read()
+                if not (re.match(rb"#!\s*(/usr)?/bin/(env\s+)?(ba|da)?sh\b|#!\s*@SHELL@", text) or
+                        re.search(r"\.sh(\.in)?$", m.name)):
+                    continue
+                for tool, dep in ESSENTIAL_SCRIPT_TOOLS.items():
+                    if dep not in found and re.search(rb"(^|[\s;&|(`])" + tool.encode() + rb"\s+-", text, re.M):
+                        found.append(dep)
+    except (tarfile.TarError, OSError, EOFError):
+        return []
+    return found
+
+
+def perl_ph_required(data):
+    """Does Perl code in the source tarball require h2ph headers (require "syscall.ph")?"""
+    if not data:
+        return False
+    import io
+    import tarfile
+    try:
+        with tarfile.open(fileobj=io.BytesIO(data)) as tar:
+            for m in tar:
+                if m.isfile() and m.size < 2000000:
+                    text = tar.extractfile(m).read()
+                    if re.search(rb"require\s*\(?\s*[\"'][\w/]+\.ph[\"']", text):
+                        return True
+    except (tarfile.TarError, OSError, EOFError):
+        return False
+    return False
+
+
+def gencontrol_substvars(rules, source):
+    """-Vname=value of dh_gencontrol in debian/rules; a value chosen by
+    $(shell test -e /usr/bin/X && echo A || echo B) is A when X is a build dependency."""
+    builddeps = {alt for alts in parse_relations(source.get("build-depends")) for alt in alts}
+    out = {}
+    for t, recipe in rules.targets.items():
+        if not t.startswith("override_dh_gencontrol"):
+            continue
+        for line in recipe:
+            for m in re.finditer(r"-V([\w:.+-]+)=\"\$\(shell test -e (\S+) && echo \"([^\"]*)\" \|\| echo ([^)]*)\)\"", line):
+                out[m.group(1)] = m.group(3) if os.path.basename(m.group(2)) in builddeps else m.group(4).strip()
+            for m in re.finditer(r"-V([\w:.+-]+)=(?:\"([^\"$]*)\"|([^\s\"$]+))(?=\s|$)", line):
+                out.setdefault(m.group(1), m.group(2) if m.group(2) is not None else m.group(3))
+    return out
+
+
+def dh_sequence_index(step_name):
+    m = re.search(r"\b(override|execute_before|execute_after)_(dh_\w+)$", step_name)
+    if not m or m.group(2) not in DH_SEQUENCE:
+        return len(DH_SEQUENCE)
+    return DH_SEQUENCE.index(m.group(2)) + {"execute_before": -0.1, "override": 0, "execute_after": 0.1}[m.group(1)]
+
+
 # commands in ported debian/rules recipes -> Wolfi build packages
 RECIPE_TOOLS = {
     "pod2man": ["perl"], "pod2text": ["perl"], "perl": ["perl"],
@@ -1390,6 +1475,13 @@ class Converter:
                     continue
                 if self.dh_install_options(line):
                     continue  # applied by install_lines()
+                man = re.match(r"^dh_installman\s+(.*)$", line)
+                if man and not man.group(1).startswith("-"):
+                    for page in man.group(1).split():
+                        sec = re.search(r"\.(\d)\w*$", page)
+                        if sec:
+                            out.append('install -Dm644 {} -t "${{{{targets.destdir}}}}/usr/share/man/man{}"'.format(page, sec.group(1)))
+                    continue
                 if re.match(r"^dh_auto_|^dh_(install|link)\b", line):
                     return None
                 continue  # debhelper bookkeeping (Built-Using, substvars...)
@@ -1434,10 +1526,18 @@ class Converter:
                     out.append("mkdir -p {}".format(d))
             # debhelper has made debian/<pkg>/... and debian/ by now; a redirect here may not have it
             for target in re.findall(r"(?<![<>&\d])>>?\s*\"?([^\s\"'&|;]+)/[^\s/\"']+", line):
-                if target not in ("/dev",) and "mkdir -p {}".format(target) not in out:
+                if target not in ("/dev", ".", "..") and "mkdir -p {}".format(target) not in out:
                     out.append("mkdir -p {}".format(target))
             out.append(line)
         return out
+
+    def perl_depends(self, binary, have):
+        """${perl:Depends}: dh_perl's perl, for Perl scripts and modules."""
+        if "${perl:Depends}" not in (binary.get("depends") or ""):
+            return []
+        if any((d.value if isinstance(d, C) else d) == "perl" for d in have if not isinstance(d, Comment)):
+            return []
+        return [C("perl", "Debian: ${perl:Depends}")]
 
     def essential_used(self, binary):
         """Debian never declares Depends on its Essential packages; a Breaks or Conflicts on
@@ -1699,6 +1799,12 @@ class Converter:
         fmt = (self.read("source/format") or "").strip()
         native = "native" in fmt or (deb_version is not None and "-" not in deb_version)
         rules = Rules(self.read("rules") or "")
+        for k, v in gencontrol_substvars(rules, source).items():
+            # dh_gencontrol -Vname=value: substvars set by debian/rules
+            for b in binaries:
+                for field in ("depends", "pre-depends", "recommends"):
+                    if b.get(field):
+                        b[field] = b[field].replace("${%s}" % k, v)
         self.generate_from_in(rules)
         if deb_version:
             # /usr/share/dpkg/pkg-info.mk
@@ -1815,6 +1921,7 @@ class Converter:
         runtime = self.map_deps(parse_relations(main.get("depends")) + parse_relations(main.get("pre-depends")), "runtime")
         runtime += self.unversioned_libs(main, source)
         runtime += self.essential_used(main)
+        runtime += self.perl_depends(main, runtime)
         if "${python3:Depends}" in (main.get("depends") or ""):
             reqs = python_requirements(self.tree)
             for mod in self.patch_imports():
@@ -1921,6 +2028,39 @@ class Converter:
         if not native:
             pipeline += self.fetch_step(source, version)
             self.source_steps = [st for st in pipeline if isinstance(st, dict)]
+        if getattr(self, "source_data", None) is None and a.download:
+            # a git source: GitHub's archive of the pinned commit, for the source scans below
+            git = next((st["with"] for st in pipeline if isinstance(st, dict) and st.get("uses") == "git-checkout"), None)
+            m = git and re.match(r"https://github\.com/([^/]+/[^/]+?)(?:\.git)?$", git.get("repository", ""))
+            if m and not str(git.get("expected-commit", "0")).startswith("0000"):
+                try:
+                    self.source_data = http_get("https://codeload.github.com/{}/tar.gz/{}".format(
+                        m.group(1), git["expected-commit"]))
+                except Exception:
+                    pass
+            if getattr(self, "source_data", None) is None or not is_archive(self.source_data):
+                # Debian's orig tarball (repacked or not) is good enough to scan
+                self.source_data = None
+                name, upver = source.get("source", ""), (self.deb_version or "").split(":", 1)[-1].rsplit("-", 1)[0]
+                prefix = name[:4] if name.startswith("lib") else name[0]
+                for ext in ("xz", "gz", "bz2"):
+                    try:
+                        data = http_get("https://deb.debian.org/debian/pool/{}/{}/{}/{}_{}.orig.tar.{}".format(
+                            DEBIAN_AREA.get(name, "main"), prefix, name, name, upver, ext))
+                    except Exception:
+                        continue
+                    if is_archive(data):
+                        self.source_data = data
+                        break
+        for dep in essential_script_tools(getattr(self, "source_data", None)):
+            # Debian's Essential packages back these commands everywhere; Wolfi's busybox lacks them
+            pkg.setdefault("dependencies", {}).setdefault("runtime", []).append(
+                C(dep, "used by the shell scripts; Essential in Debian"))
+        if "${perl:Depends}" in (main.get("depends") or "") and perl_ph_required(getattr(self, "source_data", None)):
+            # Debian's perl ships h2ph headers (syscall.ph ...); Wolfi's does not
+            pkg.setdefault("dependencies", {}).setdefault("runtime", []).append(
+                C("perl-ph-headers", "Wolfi Community Packages; the Perl code requires *.ph"))
+        if not native:
             excluded = files_excluded(self.read("copyright"))
             if excluded:
                 pipeline.append({"name": "Remove files excluded by Debian (debian/copyright Files-Excluded)",
@@ -2059,13 +2199,25 @@ class Converter:
                                   "override_dh_fixperms", "override_dh_lintian", "override_dh_usrlocal",
                                   "override_dh_installsystemd", "override_dh_installinit")):
                 continue
+            at = next((i for i, l in enumerate(recipe) if re.match(r"^[@-]*dh_install(\s|$)", l.strip())), None)
+            if target == "override_dh_install" and at is not None:
+                # commands before the dh_install call prepare what it installs; those after, adjust it
+                before = self.port_recipe(rules, recipe[:at], name, main["package"])
+                after = self.port_recipe(rules, recipe[at:], name, main["package"])
+                if before is not None and after is not None:
+                    if before:
+                        pre_install.append({"name": "From debian/rules " + target, "runs": "\n".join(before) + "\n"})
+                    if after:
+                        post_install.append({"name": "From debian/rules " + target, "runs": "\n".join(after) + "\n"})
+                    continue
             if re.match(r"^(override|execute_after|execute_before)_dh_", target) and not target.startswith("override_dh_auto_"):
                 # dh_foo plus commands of its own
                 cmds = self.port_recipe(rules, recipe, name, main["package"])
                 if cmds:
                     step = {"name": "From debian/rules " + target, "runs": "\n".join(cmds) + "\n"}
-                    if re.match(r"^execute_(after_dh_auto_(configure|build|test)|before_dh_auto_(build|test|install))$", target):
-                        pre_install.append(step)   # before the files are installed
+                    if re.match(r"^execute_(after_dh_auto_(configure|build|test)|before_dh_auto_(build|test|install))$", target) \
+                            or target == "execute_before_dh_install":
+                        pre_install.append(step)   # before the files are installed (dh_install)
                     else:
                         post_install.append(step)  # on the installed files
                     continue
@@ -2074,6 +2226,7 @@ class Converter:
 
         pipeline += pre_install
         pipeline.append(self.install_step(main, True, native, name))
+        post_install.sort(key=lambda st: dh_sequence_index(st.get("name", "")))  # stable: rules order otherwise
         pipeline += post_install
         if bs and self.upstream_installs:
             # upstream may install into sbin or /lib; Wolfi is usr-merged with sbin in bin
@@ -2084,7 +2237,7 @@ class Converter:
                 '    mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"\n'
                 '  done\n'
                 'done\n')})
-        if post_install or ported:
+        if post_install or pre_install or ported:
             # commands from debian/rules expect GNU tools (rm --verbose, find -print0 ...)
             env_pkgs += [p for p in ("coreutils", "findutils") if p not in env_pkgs]
             # tools debhelper brings along (perl, dpkg-dev) or the recipe names
@@ -2409,7 +2562,8 @@ class Converter:
         sha = None
         if self.args.download:
             real = url.replace("${{package.version}}", version)
-            sha = hashlib.sha256(http_get(real)).hexdigest()
+            self.source_data = http_get(real)
+            sha = hashlib.sha256(self.source_data).hexdigest()
         step = {"uses": "fetch", "with": {"uri": url, "expected-sha256": sha or "0" * 64}}
         if not sha:
             return [self.todo("compute expected-sha256 (re-run with --download)"), step]
@@ -2431,12 +2585,31 @@ class Converter:
                     continue
                 if not is_archive(data):
                     continue
+                self.source_data = data
             step = {"uses": "fetch", "with": {
                 "uri": url.replace(ver, "${{package.version}}") if ver == self.version_for_url else url,
                 "expected-sha256": hashlib.sha256(data).hexdigest() if data else "0" * 64}}
             self.notes.append("Debian-native package: source from the Debian archive")
             return step
         return None
+
+    def debian_packaging_step(self):
+        """debian/ of a non-native package (Debian's debian.tar.xz), for autopkgtests that read it."""
+        name, debver = self.source.get("source", ""), (self.deb_version or "").split(":", 1)[-1]
+        if not name or "-" not in debver:
+            return None
+        prefix = name[:4] if name.startswith("lib") else name[0]
+        url = "https://deb.debian.org/debian/pool/{}/{}/{}/{}_{}.debian.tar.xz".format(
+            DEBIAN_AREA.get(name, "main"), prefix, name, name, debver)
+        step = {"uses": "fetch", "with": {"uri": url, "strip-components": 0}}
+        if getattr(self.args, "download", False):
+            try:
+                step["with"]["expected-sha256"] = hashlib.sha256(http_get(url)).hexdigest()
+            except Exception:
+                return None
+        else:
+            step["with"]["expected-sha256"] = C("", "{}: sha256 of {}".format(TODO, url))
+        return step
 
     def debian_orig_url(self, source, version):
         """Debian's copy of the upstream tarball, when upstream cannot be reached."""
@@ -2613,6 +2786,7 @@ class Converter:
         deps = self.map_deps(parse_relations(b.get("depends")), "runtime")
         deps += self.unversioned_libs(b, self.source)
         deps += self.essential_used(b)
+        deps += self.perl_depends(b, deps)
         if deps:
             sub["dependencies"] = {"runtime": deps}
         scripts, _ = self.scriptlets(b, False, name, [], "", {}, {})
@@ -2694,7 +2868,7 @@ class Converter:
             mapped = self.map_deps(deps, "test")
             missing = [d for d in mapped if isinstance(d, Comment)]
             if missing:
-                what = para.get("test-command", "").split("\n")[0][:60] or para.get("tests", "")
+                what = para.get("test-command", "").strip().split("\n")[0][:60] or " ".join(para.get("tests", "").replace(",", " ").split())
                 self.notes.append("autopkgtest '{}' left out: it needs packages that are not in Wolfi".format(what))
                 steps.append(Comment("{}: autopkgtest '{}' left out; it needs packages that are not in Wolfi".format(TODO, what)))
                 continue
@@ -2719,7 +2893,7 @@ class Converter:
                 # Restrictions: flaky -- a failure is reported, not fatal
                 return "(\n{}) || echo 'autopkgtest marked flaky failed (ignored)'\n".format(cmd)
             if "test-command" in para:
-                steps.append({"name": "autopkgtest: {}".format(para["test-command"].split("\n")[0][:60]),
+                steps.append({"name": "autopkgtest: {}".format(para["test-command"].strip().split("\n")[0][:60]),
                               "runs": env + guard(para["test-command"].strip() + "\n")})
             for test in para.get("tests", "").split():
                 script = self.read(os.path.join(para.get("tests-directory", "tests"), test))
@@ -2731,12 +2905,27 @@ class Converter:
                 steps.append({"name": "autopkgtest: " + test,
                               "runs": env + guard(script.split("\n", 1)[1 if script.startswith("#!") else 0].strip() + "\n")})
         real = [st for st in steps if not isinstance(st, Comment)]
+        for st in real:
+            if "AUTOPKGTEST_NORMAL_USER" in st["runs"]:
+                # autopkgtest's unprivileged user: melange's test environment has "build"
+                # and / as on a Debian testbed (0755): sandboxes may make it 0700
+                st["runs"] = st["runs"].replace(env, env + "export AUTOPKGTEST_NORMAL_USER=build\n"
+                                                "chmod 755 / 2>/dev/null || true\n"
+                                                'chmod 1777 "$AUTOPKGTEST_TMP"\n', 1)
+            for tool, pkgs in TEST_TOOLS.items():
+                if re.search(r"(^|[\s;&|(`])" + re.escape(tool) + r"\b", st["runs"], re.M):
+                    packages += [p for p in pkgs if p not in [q.value if isinstance(q, C) else q for q in packages]]
         if real:
             self.notes.append("autopkgtests converted to the test pipeline ({} steps)".format(len(real)))
             steps.insert(0, dpkg_database_step(aliases, self.main_package))
             if self.source_steps:
                 # autopkgtest runs in the unpacked source tree
-                steps = [dict(st) for st in self.source_steps] + steps
+                packaging = []
+                if any(re.search(r"(?<![\w/])debian/|dpkg-parsechangelog", st["runs"]) for st in real) \
+                        and not any("debian.tar" in str(st) or "_{}.tar".format(self.deb_version) in str(st)
+                                    for st in self.source_steps):
+                    packaging = [st for st in [self.debian_packaging_step()] if st]
+                steps = [dict(st) for st in self.source_steps] + packaging + steps
         return steps, packages
 
     def test_section(self, binary, name, conffile, main=True):

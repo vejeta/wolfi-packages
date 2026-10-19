@@ -20,6 +20,7 @@ package:
       - openjdk-25-default-jdk  # Debian: default-jdk-headless
       - perl-archive-zip  # Debian: libarchive-zip-perl
       - perl-dpkg  # Debian: libdpkg-perl
+      - perl  # Debian: ${perl:Depends}
 environment:
   contents:
     keyring:
@@ -86,6 +87,7 @@ subpackages:
         - perl-xml-libxml  # Debian: libxml-libxml-perl
         - licensecheck
         - xz  # Debian: xz-utils
+        - perl  # Debian: ${perl:Depends}
     test:
       environment:
         contents:

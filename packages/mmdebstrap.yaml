@@ -7,9 +7,7 @@
 # Debian packaging: https://salsa.debian.org/debian/mmdebstrap
 #
 # Conversion notes:
-# - runtime dependency 'apt' (Debian 'apt') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/m/mmdebstrap/mmdebstrap_1.6.0.orig.tar.gz), which disappears from the pool when Debian updates
-# - port debian/rules override_dh_install: mkdir -p debian/tmp/usr/bin && cp -a mmdebstrap debian/tmp/usr/bin/mmdebstrap && cp -a tarfilter debian/tmp/usr/bin/mmtarfilter && cp -a mmdebstrap-autopkgtest-build-qemu debian/tmp/usr/bin/mmdebstrap
 # - test dependency 'apt-cudf' (Debian 'apt-cudf') not found in Wolfi; left out
 # - test dependency 'arch-test' (Debian 'arch-test') not found in Wolfi; left out
 # - test dependency 'aspcud' (Debian 'aspcud') not found in Wolfi; left out
@@ -28,8 +26,7 @@
 # - test dependency 'uidmap' (Debian 'uidmap') not found in Wolfi; left out
 # - test dependency 'util-linux-extra' (Debian 'util-linux-extra') not found in Wolfi; left out
 # - test dependency 'uuid-runtime' (Debian 'uuid-runtime') not found in Wolfi; left out
-# - autopkgtest '
-testsuite,' left out: it needs packages that are not in Wolfi
+# - autopkgtest 'testsuite' left out: it needs packages that are not in Wolfi
 # - test dependency 'cron' (Debian 'cron') not found in Wolfi; left out
 # - test dependency 'debootstrap' (Debian 'debootstrap') not found in Wolfi; left out
 # - test dependency 'doc-debian' (Debian 'doc-debian') not found in Wolfi; left out
@@ -48,8 +45,10 @@ package:
     - license: MIT
   dependencies:
     runtime:
-      # TODO(debian-to-melange): apt is not in Wolfi (Debian: apt); left out
+      - apt  # Wolfi Community Packages
+      - perl  # Debian: ${perl:Depends}
       # Debian Recommends (not supported by apk): arch-test, gpg, libdistro-info-perl, libdpkg-perl, mount, python3, uidmap
+      - perl-ph-headers  # Wolfi Community Packages; the Perl code requires *.ph
 environment:
   contents:
     keyring:
@@ -62,6 +61,7 @@ environment:
       - python3
       - coreutils
       - findutils
+      - perl
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -75,7 +75,21 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/0001-hurd-profile.sh-shfmt-and-shellcheck.patch .recipe-files/0001-tests-check-against-debootstrap-dist-isc-dhcp-client.patch .recipe-files/0001-tests-manually-add-entries-in-dev-to-tar1.txt.patch
-  # TODO(debian-to-melange): port debian/rules override_dh_install: mkdir -p debian/tmp/usr/bin && cp -a mmdebstrap debian/tmp/usr/bin/mmdebstrap && cp -a tarfilter debian/tmp/usr/bin/mmtarfilter && cp -a mmdebstrap-autopkgtest-build-qemu debian/tmp/usr/bin/mmdebstrap
+  - name: From debian/rules override_dh_install
+    runs: |
+      mkdir -p ${{targets.destdir}}/usr/bin
+      cp -a mmdebstrap ${{targets.destdir}}/usr/bin/mmdebstrap
+      cp -a tarfilter ${{targets.destdir}}/usr/bin/mmtarfilter
+      cp -a mmdebstrap-autopkgtest-build-qemu ${{targets.destdir}}/usr/bin/mmdebstrap-autopkgtest-build-qemu
+      mkdir -p ${{targets.destdir}}/usr/lib/apt/solvers
+      cp -a proxysolver ${{targets.destdir}}/usr/lib/apt/solvers/mmdebstrap-dump-solution
+      mkdir -p ${{targets.destdir}}/usr/share/mmdebstrap
+      mkdir -p ${{targets.destdir}}/usr/share
+      cp -a hooks ${{targets.destdir}}/usr/share/mmdebstrap
+      mkdir -p ${{targets.destdir}}/usr/libexec/mmdebstrap
+      mkdir -p ${{targets.destdir}}/usr/libexec
+      cp -a gpgvnoexpkeysig ${{targets.destdir}}/usr/libexec/mmdebstrap
+      cp -a ldconfig.fakechroot ${{targets.destdir}}/usr/libexec/mmdebstrap
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/mmdebstrap/examples"
@@ -83,10 +97,12 @@ pipeline:
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/mmdebstrap/copyright
   - name: From debian/rules override_dh_installman
     runs: |
-      mkdir -p .
       pod2man ${{targets.destdir}}/usr/bin/mmdebstrap > ./mmdebstrap.1
       pod2man ${{targets.destdir}}/usr/bin/mmdebstrap-autopkgtest-build-qemu > ./mmdebstrap-autopkgtest-build-qemu.1
       help2man --no-info --name "filter a tarball like dpkg does" --version-string="1.6.0" ${{targets.destdir}}/usr/bin/mmtarfilter > ./mmtarfilter.1
+      install -Dm644 ./mmdebstrap.1 -t "${{targets.destdir}}/usr/share/man/man1"
+      install -Dm644 ./mmtarfilter.1 -t "${{targets.destdir}}/usr/share/man/man1"
+      install -Dm644 ./mmdebstrap-autopkgtest-build-qemu.1 -t "${{targets.destdir}}/usr/share/man/man1"
       rm ./mmdebstrap.1 ./mmtarfilter.1 ./mmdebstrap-autopkgtest-build-qemu.1
 update:
   enabled: true
@@ -100,6 +116,5 @@ test:
   pipeline:
     - runs: |
         test -f /usr/share/doc/mmdebstrap/copyright
-    # TODO(debian-to-melange): autopkgtest '
-testsuite,' left out; it needs packages that are not in Wolfi
+    # TODO(debian-to-melange): autopkgtest 'testsuite' left out; it needs packages that are not in Wolfi
     # TODO(debian-to-melange): autopkgtest 'false' left out; it needs packages that are not in Wolfi

@@ -36,6 +36,7 @@ package:
         - CMake/FindLFS.cmake
   dependencies:
     runtime:
+      - sequoia-sqv  # Wolfi Community Packages (Debian: sqv)
       - libapt-pkg7.0
       - db  # libdb-5.3.so: unversioned soname, no so: dependency
       # Debian Recommends (not supported by apk): ca-certificates
