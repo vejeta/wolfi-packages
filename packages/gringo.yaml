@@ -54,8 +54,13 @@ pipeline:
   - uses: cmake/configure
     with:
       opts: -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -LAH -DCMAKE_SKIP_RPATH=YES -DCLINGO_MANAGE_RPATH=OFF -DLIB_POTASSCO_BUILD_APP=ON -DLIB_POTASSCO_BUILD_TESTS=ON -DCLASP_BUILD_APP=OFF -DCLASP_BUILD_TESTS=OFF -DCLASP_BUILD_EXAMPLES=OFF -DCLINGO_BUILD_EXAMPLES=ON -DCLINGO_BUILD_TESTS=ON -DCLINGO_BUILD_WITH_PYTHON=OFF
+      output-dir: build.dir/hardening_mt
   - uses: cmake/build
+    with:
+      output-dir: build.dir/hardening_mt
   - uses: cmake/install
+    with:
+      output-dir: build.dir/hardening_mt
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/bin"
@@ -142,6 +147,7 @@ test:
     - name: 'autopkgtest: gringo5'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         # clingo+lua: cannot example
         # Author: Thomas Krennwallner <tkren@kr.tuwien.ac.at>
         # Date: 2018-02-04

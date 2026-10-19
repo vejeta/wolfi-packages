@@ -43,6 +43,7 @@ pipeline:
       repository: https://github.com/potassco/clasp
       tag: v${{package.version}}
       expected-commit: c18347343d051e242dd95819b11a23ce66916bc6
+      recurse-submodules: true
   - uses: patch
     with:
       patches: .recipe-files/clasp-manpage.patch .recipe-files/link-libatomic-check-gcc.patch .recipe-files/use-system-catch-for-glibc-2.34-compat.patch
@@ -87,6 +88,7 @@ test:
         repository: https://github.com/potassco/clasp
         tag: v${{package.version}}
         expected-commit: c18347343d051e242dd95819b11a23ce66916bc6
+        recurse-submodules: true
     - name: dpkg database (as on a Debian testbed)
       runs: |
         db=/var/lib/dpkg
@@ -117,6 +119,7 @@ test:
     - name: 'autopkgtest: clasp2'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         # clasp: gbie1.lp unsat_01.lp is unsatisfiable
         # Author: Thomas Krennwallner <tkren@kr.tuwien.ac.at>
         # Date: 2017-05-07

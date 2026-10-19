@@ -47,6 +47,16 @@ pipeline:
       expected-sha512: a1ad2e94c73f20f7bbed6b47634d7c3b2343bd2e7a13a0563f701711724cae08a4906cc3adc24000742287a1653468ab3edd82db7708d3e5a336889a326dda44
   - name: Build
     runs: |
+      abuild_meson() {
+      	meson setup --prefix=/usr --libdir=/usr/lib --libexecdir=/usr/libexec \
+      		--bindir=/usr/bin --sbindir=/usr/sbin --includedir=/usr/include \
+      		--datadir=/usr/share --mandir=/usr/share/man --infodir=/usr/share/info \
+      		--localedir=/usr/share/locale --sysconfdir=/etc --localstatedir=/var \
+      		--sharedstatedir=/var/lib --buildtype=plain --auto-features=auto \
+      		--wrap-mode=nofallback -Db_staticpic=true -Db_pie=true \
+      		-Dpython.bytecompile=0 "$@"
+      }
+
       LDFLAGS="$LDFLAGS -lintl" \
       abuild_meson \
       	-Db_lto=true \

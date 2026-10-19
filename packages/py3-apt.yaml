@@ -9,7 +9,6 @@
 # Conversion notes:
 # - Debian-native package: source from the Debian archive
 # - dh --with python3,sphinxdoc has no direct melange equivalent; review
-# - port debian/rules override_dh_auto_build: dh_auto_build && PYTHONPATH=$(BUILDDIR3) sphinx-build doc/source build/sphinx/html
 # - runtime dependency 'libjs-jquery': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - runtime dependency 'libjs-underscore': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - autopkgtests converted to the test pipeline (1 steps)
@@ -71,8 +70,10 @@ pipeline:
     with:
       uri: https://deb.debian.org/debian/pool/main/p/python-apt/python-apt_${{package.version}}.tar.xz
       expected-sha256: daf46b0ed85061ccee64c3aa3004c695b33047f9f62f0de7863966c287731d5a
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_build: dh_auto_build && PYTHONPATH=$(BUILDDIR3) sphinx-build doc/source build/sphinx/html
   - uses: py/pip-build-install
+  - name: Build (from debian/rules override_dh_auto_build)
+    runs: |
+      PYTHONPATH=${{targets.destdir}}`python3 -c 'import sysconfig; print(sysconfig.get_path("platlib"))'` sphinx-build doc/source build/sphinx/html
   - name: Install (from debian/rules override_dh_auto_install)
     runs: |
       mkdir -p ${{targets.outdir}}/py3-apt-common/usr/share/

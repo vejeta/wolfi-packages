@@ -1560,6 +1560,9 @@ class Converter:
                 continue  # debhelper bookkeeping (Built-Using, substvars...)
             line = rules.expand(line)
             line = re.sub(r"(?<![\w/.])\./debian/", "debian/", line)  # ./debian/foo is debian/foo
+            # pybuild's build directory: py/pip-build-install installs straight into destdir
+            line = re.sub(r"\$\(shell pybuild --print build_dir[^)]*\)",
+                          "${{targets.destdir}}`python3 -c 'import sysconfig; print(sysconfig.get_path(\"platlib\"))'`", line)
             m = self.SED_IN.match(line)
             if m and m.group(5) in getattr(self, "generated", {}):
                 continue  # generated now, see generate_from_in()
@@ -2330,6 +2333,13 @@ class Converter:
             pipeline.append(self.todo("port debian/rules {}: {}".format(
                 target, " && ".join(l.strip() for l in recipe if l.strip())[:200])))
 
+        dirs = {rules.expand(m.group(1)) for recipe in rules.targets.values() for l in recipe
+                for m in [re.search(r"dh_auto_\w+\b.*?\s(?:--builddirectory[= ]|-B\s*)(\S+)", l)] if m and "udeb" not in m.group(1)}
+        if len(dirs) == 1 and bs in ("cmake", "meson") and "$(" not in next(iter(dirs)):
+            # debian/rules builds in its own directory; the .install files name it
+            for st in pipeline:
+                if isinstance(st, dict) and str(st.get("uses", "")).startswith(bs + "/"):
+                    st.setdefault("with", {})["output-dir"] = next(iter(dirs))
         pipeline += pre_install
         pipeline.append(self.install_step(main, True, native, name))
         post_install.sort(key=lambda st: dh_sequence_index(st.get("name", "")))  # stable: rules order otherwise
@@ -3253,6 +3263,17 @@ def git_snapshot_step(url, date, resolve=False):
     return [Comment("{}: {}".format(TODO, msg)), step], [msg]
 
 
+def has_submodules(url, commit):
+    """Does the repository at that commit have a .gitmodules (GitHub only)?"""
+    m = re.match(r"https://github\.com/([^/]+/[^/]+?)(?:\.git)?/?$", url)
+    if not m:
+        return False
+    try:
+        return bool(http_get("https://raw.githubusercontent.com/{}/{}/.gitmodules".format(m.group(1), commit)).strip())
+    except Exception:
+        return False
+
+
 def git_url_checkout_step(url, version, tag_prefix=None, resolve=False, todo=None):
     """A git-checkout step pinned to a commit, the Wolfi convention for git sources.
 
@@ -3264,6 +3285,8 @@ def git_url_checkout_step(url, version, tag_prefix=None, resolve=False, todo=Non
         "repository": url,
         "tag": prefix + "${{package.version}}",
         "expected-commit": commit or "0" * 40}}
+    if commit and has_submodules(url, commit):
+        step["with"]["recurse-submodules"] = True  # release tarballs include them (clasp: libpotassco)
     if commit:
         return [step], []
     msg = "set expected-commit for tag {}{} (re-run with --download, or git ls-remote)".format(prefix, version)

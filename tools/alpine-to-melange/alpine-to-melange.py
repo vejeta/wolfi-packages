@@ -507,6 +507,9 @@ class Converter:
         text = "\n".join(lines)
         text = re.sub(r"(?m)^\s*cd\s+\"?\$\{?builddir\}?\"?\s*$\n?", "", text)
         text = textwrap_dedent(text).strip("\n")
+        # muon is a meson implementation in C: Wolfi has meson
+        text = re.sub(r"(^|[\s;(|&])abuild-muon\b", r"\1abuild-meson", text)
+        text = re.sub(r"(^|[\s;(|&])muon\s+-C\s+(\S+)\s+(install|test)\b", r"\1meson \3 -C \2", text)
         return text
 
     def runs(self, text):
@@ -557,9 +560,6 @@ class Converter:
                 used.add("srcdir")
         for code in funcs:  # helpers use abuild variables too ($pkgdir, $subpkgdir)
             used |= refs(code)
-        # muon is a meson implementation in C: Wolfi has meson
-        text = re.sub(r"(^|[\s;(|&])abuild-muon\b", r"\1abuild-meson", text)
-        text = re.sub(r"(^|[\s;(|&])muon\s+-C\s+(\S+)\s+(install|test)\b", r"\1meson \3 -C \2", text)
         text = re.sub(r"(^|[\s;(|&])abuild-meson\b", r"\1abuild_meson", text)
         # musl's iconv leaves usr/lib/charset.alias; glibc builds do not
         text = re.sub(r"\brm\s+(?!-\w*f)([^\n]*charset\.alias)", r"rm -f \1", text)
@@ -794,6 +794,11 @@ class Converter:
                 'done\n')})
             if "!strip" not in options and "noarch" not in apk.words("arch"):
                 pipeline.append({"uses": "strip"})
+
+        if any(re.search(r"(^|[\s;(|&])python3\s", st.get("runs", ""), re.M) for st in pipeline if isinstance(st, dict)) \
+                and not any((d.value if isinstance(d, C) else d) == "python3" for d in environment["contents"]["packages"]):
+            # Alpine's py3-* build dependencies pull python3 in; Wolfi's split ones do not
+            environment["contents"]["packages"].append("python3")
 
         # ---- subpackages -------------------------------------------------
         subpackages = [s for s in (self.subpackage(entry, name) for entry in apk.words("subpackages")) if s]

@@ -29,6 +29,7 @@ environment:
       - py3.13-gpep517-bin  # commands of Alpine's py3-gpep517
       - py3-installer
       - py3-setuptools
+      - python3
 pipeline:
   - uses: git-checkout
     with:
