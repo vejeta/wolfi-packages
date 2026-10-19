@@ -1,0 +1,33 @@
+From: "Davide G. M. Salvetti" <salve@debian.org>
+Date: Tue, 27 Dec 2011 22:40:42 +0100
+Subject: doc/Makefile.in: Rationalize dist target
+
+Depend on the info target instead of on the individual info manuals.
+
+Forwarded: no
+---
+ doc/Makefile.in | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/doc/Makefile.in b/doc/Makefile.in
+index 303f79a..077126a 100644
+--- a/doc/Makefile.in
++++ b/doc/Makefile.in
+@@ -75,7 +75,16 @@ dvi: auctex.dvi tex-ref.dvi preview-latex.dvi
+ 
+ install: install-auctex install-preview
+ 
+-dist: $(DISTTEXTS) preview-latex.info auctex.info tex-ref.pdf
++install-man:
++	test x$(packagedir) != xno && \
++	{ $(MKINSTALLDIRS) $(DESTDIR)$(packagedir)/man/auctex ; \
++	for i in $(AUCTEXTEXIFILES) $(PREVIEWTEXIFILES) tex-ref.tex ; \
++	do echo $(INSTALL_DATA) $$i $(DESTDIR)$(packagedir)/man/auctex; \
++	   $(INSTALL_DATA) $$i $(DESTDIR)$(packagedir)/man/auctex; \
++	done ; \
++	}
++
++dist: $(DISTTEXTS) info tex-ref.pdf
+ 
+ extradist: auctex.htmls/$(TEXI2HTML_TOC) auctex.ps auctex.pdf tex-ref.ps tex-ref.pdf
+ 

@@ -1,0 +1,27 @@
+From: Agathe Porte <gagath@debian.org>
+Date: Mon, 3 Mar 2025 16:19:55 +0100
+Subject: Do not use git to determine version
+
+Forwarded: not-needed
+---
+ Makefile | 9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 894369f..3653f13 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,12 +1,5 @@
+ NAME=EBGaramond
+-TAG_COMMIT := $(shell git rev-list --abbrev-commit --tags --max-count=1)
+-TAG := $(shell git describe --abbrev=0 --tags ${TAG_COMMIT} 2>/dev/null || true)
+-COMMIT := $(shell git rev-parse --short HEAD)
+-DATE := $(shell git log -1 --format=%cd --date=format:"%Y%m%d")
+-VERSION := $(TAG:v%=%)
+-ifneq ($(COMMIT), $(TAG_COMMIT))
+-	VERSION := $(VERSION)-next-$(COMMIT)-$(DATE)
+-endif
++VERSION := 0.016+git20230418
+ 
+ SRC=SFD
+ BLD=build

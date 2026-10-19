@@ -1,0 +1,27 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: cabin-font
+Upstream-Contact: Pablo Impallari <impallari@gmail.com>
+Source: https://github.com/impallari/Cabin
+Files-Excluded: .gitignore fonts
+Comment: Exclude unnecessary files
+
+Files: *
+Copyright: Copyright 2018 The Cabin Project Authors (https://github.com/impallari/Cabin.git)
+ AUTHORS:
+ Pablo Impallari <impallari@gmail.com>
+ Kalapi Gajjar-Bordawekar <hello@kalapigajjar.com>
+ Igino Marini <mail@iginomarini.com>
+License: OFL-1.1-no-RFN
+Comment: The RFN notice was removed with
+ https://github.com/impallari/Cabin/commit/e7047e0fed51a3efc92cd0c90efacab7aa99f49e
+
+Files: debian/*
+Copyright: 2012 Bernhard Reiter <ockham@raz.or.at>
+License: OFL-1.1-no-RFN
+Comment:
+ The Debian packaging is distributed under the same license as the
+ Font Software.
+
+License: OFL-1.1-no-RFN
+ On Debian systems, the complete text of the Open Font License
+ version 1.1 can be found in "/usr/share/common-licenses/OFL-1.1".

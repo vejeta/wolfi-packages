@@ -1,0 +1,37 @@
+Origin: https://github.com/rsms/inter/pull/909
+From: Bastian Germann <bage@debian.org>
+Date: Wed, 30 Sep 2026 08:17:10 +0200
+Subject: Support SOURCE_DATE_EPOCH for reproducible builds
+
+The use of datetime.utcnow results in the built font having the current
+timestamp. The widely used environment variable SOURCE_DATE_EPOCH comes
+in handy to build fonts that are reproducible with the same tool chain
+version.
+
+Apply it in postprocess-designspace. There are other uses of
+datetime.utcnow that might also benefit from checking that variable.
+---
+--- a/misc/tools/postprocess-designspace.py
++++ b/misc/tools/postprocess-designspace.py
+@@ -3,7 +3,7 @@
+ from multiprocessing import Pool
+ from fontTools.designspaceLib import DesignSpaceDocument
+ from ufo2ft.filters import loadFilters
+-from datetime import datetime
++from datetime import datetime, timezone
+ 
+ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'tools')))
+ from common import getGitHash, getVersion
+@@ -15,7 +15,11 @@
+ def update_version(ufo):
+   version = getVersion()
+   buildtag, buildtagErrs = getGitHash()
+-  now = datetime.utcnow()
++  sourceDateEpoch = os.environ.get("SOURCE_DATE_EPOCH")
++  if sourceDateEpoch is not None:
++    now = datetime.fromtimestamp(int(sourceDateEpoch), timezone.utc)
++  else:
++    now = datetime.utcnow()
+   if buildtag == "" or len(buildtagErrs) > 0:
+     buildtag = "src"
+     print("warning: getGitHash() failed: %r" % buildtagErrs, file=sys.stderr)

@@ -1,0 +1,21 @@
+From: "Davide G. M. Salvetti" <salve@debian.org>
+Date: Sun, 19 Nov 2023 22:45:55 +0100
+Subject: Use UTF-8
+
+---
+ style/fontaxes.el | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/style/fontaxes.el b/style/fontaxes.el
+index aebe4c6..7023c59 100644
+--- a/style/fontaxes.el
++++ b/style/fontaxes.el
+@@ -29,7 +29,7 @@
+ ;; This file adds support for `fontaxes.sty' version v1.0d from
+ ;; 2014/03/23.  `fontaxes.sty' is part of TeXLive.
+ 
+-;; Thanks to Mosè Giordano for his perceptive comments on
++;; Thanks to MosÃ¨ Giordano for his perceptive comments on
+ ;; implementation of "figureversion".
+ 
+ ;;; Code:

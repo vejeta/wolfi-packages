@@ -1,0 +1,15 @@
+From: Bastian Germann <bage@debian.org>
+Date: Tue, 6 Oct 2026 22:08:58 +0200
+Subject: Drop non-functional gftools --axis-order
+---
+--- a/sources/build.sh
++++ b/sources/build.sh
+@@ -68,7 +68,7 @@ done
+ 
+ echo "Fixing VF Meta"
+ # gftools fix-vf-meta $vfs;
+-gftools gen-stat ../fonts/variable/*.ttf --axis-order wdth wght ital --inplace
++gftools gen-stat ../fonts/variable/*.ttf --inplace
+ 
+ echo "Subset fonts"
+ mkdir -p ../fonts/noto-set/variable

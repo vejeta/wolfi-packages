@@ -1,0 +1,22 @@
+From: Agathe Porte <gagath@debian.org>
+Date: Mon, 3 Mar 2025 16:12:16 +0100
+Subject: Build 12-Bold
+
+Forwarded: not-needed
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 90b5f2b..894369f 100644
+--- a/Makefile
++++ b/Makefile
+@@ -28,7 +28,7 @@ SCRIPT=tools/makefont.py
+ 
+ #SIZES=08 12
+ #STYLES=Regular SC Allsc Italic Bold
+-FONTS=08-Regular 08-Italic 12-Regular SC12-Regular 12-AllSC 12-Italic SC08-Regular # SC12-Italic 12-Bold
++FONTS=08-Regular 08-Italic 12-Regular SC12-Regular 12-AllSC 12-Italic SC08-Regular 12-Bold # SC12-Italic
+ 
+ SFD=$(FONTS:%=$(SRC)/$(NAME)%.sfdir)
+ OTF=$(FONTS:%=$(BLD)/$(NAME)%.otf)
