@@ -76,8 +76,6 @@ NAME_MAP = {
     "sq": "sequoia-sq",
     "python3-gi": "py3-gobject3",
     "gir1.2-glib-2.0": "gobject-introspection",
-    "pyflakes3": "py3-pyflakes",
-    "pycodestyle": "py3-pycodestyle",
     "libgmock-dev": "gtest-dev",  # googletest ships gmock too
     "libsigc++-2.0-dev": "libsigc++-dev",
     "libxapian-dev": "xapian-core-dev",
@@ -290,6 +288,22 @@ def dep_candidates(name):
 
 # Packages published by this repository (Wolfi Community Packages).
 COMMUNITY_INDEX = "https://downloads.sourceforge.net/project/wolfi/{arch}/APKINDEX.tar.gz"
+
+
+NCURSESW_USERS = None
+
+
+def ncursesw_users():
+    """Package names of this repository's recipes built with Debian's include/ncursesw."""
+    global NCURSESW_USERS
+    if NCURSESW_USERS is None:
+        NCURSESW_USERS = set()
+        for f in glob.glob(os.path.join(HERE, "..", "..", "packages", "*.yaml")):
+            with open(f, encoding="utf-8", errors="replace") as fh:
+                text = fh.read()
+            if "include/ncursesw" in text and "ln -sf ../" in text:
+                NCURSESW_USERS |= set(re.findall(r"(?m)^  (?:  - )?name: (\S+)", text))
+    return NCURSESW_USERS
 
 
 def recipe_names(directory):
@@ -2168,7 +2182,9 @@ class Converter:
                     if is_archive(data):
                         self.source_data = data
                         break
-        if any(alts[0].startswith(("libncurses-dev", "libncursesw")) for alts in parse_relations(source.get("build-depends"))):
+        if any(alts[0].startswith(("libncurses-dev", "libncursesw")) or alts[0] in ncursesw_users()
+               for alts in parse_relations(source.get("build-depends"))):
+            # (also for the libraries built that way: their headers include <ncursesw/curses.h>)
             # Debian has the wide-character headers under include/ncursesw as well; Wolfi only in include
             pipeline.append({"name": "Debian's include/ncursesw", "runs": (
                 "mkdir -p /usr/include/ncursesw\n"
@@ -2321,6 +2337,25 @@ class Converter:
                 continue  # Debian packaging checks and bookkeeping (execute_before/after_*)
             tool = re.sub(r"-(indep|arch)$", "", target[len("override_"):])
             calls = [l.strip().lstrip("@-") for l in recipe if l.strip() and not l.strip().startswith("#")]
+            files = [c for c in calls if re.match(r"^dh_install(examples|docs)\s", c)]
+            if files and len(files) == len(calls):
+                # dh_installexamples/dh_installdocs -pPKG FILES: into that package's doc directory
+                cmds = []
+                for c in files:
+                    words = c.split()
+                    pkgs = [w[2:] for w in words[1:] if w.startswith("-p") and len(w) > 2]
+                    args = [w for w in words[1:] if not w.startswith("-")]
+                    if not args:
+                        continue
+                    sub = "/examples" if words[0] == "dh_installexamples" else ""
+                    for pkg in pkgs or [main["package"]]:
+                        name_ = self.rename.get(pkg, pkg)
+                        root = "${{targets.destdir}}" if pkg == main["package"] else "${{{{targets.outdir}}}}/{}".format(name_)
+                        cmds.append('mkdir -p "{0}/usr/share/doc/{1}{2}"\ncp -a {3} "{0}/usr/share/doc/{1}{2}/"'.format(
+                            root, name_, sub, " ".join(args)))
+                if cmds:
+                    post_install.append({"name": "From debian/rules " + target, "runs": "\n".join(cmds) + "\n"})
+                continue
             if calls and all(re.match(r"^({}|dh_missing)\b".format(re.escape(tool)), c) for c in calls):
                 continue  # only adjusts how the same debhelper tool runs
             if target.startswith(("override_dh_auto_test", "override_dh_strip", "override_dh_shlibdeps",

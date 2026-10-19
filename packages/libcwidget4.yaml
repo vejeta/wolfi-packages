@@ -13,13 +13,7 @@
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/c/cwidget/cwidget_0.5.18.orig.tar.xz), which disappears from the pool when Debian updates
 # - runtime dependency 'libjs-jquery': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - autopkgtests converted to the test pipeline (1 steps)
-package:
-  name: libcwidget4
-  version: '0.5.18'
-  epoch: 0
-  description: High-level terminal interface library for C++ (runtime files)
-  copyright:
-    - license: GPL-2.0-or-later
+package: libcwidget-dev
 environment:
   contents:
     keyring:
@@ -76,6 +70,10 @@ pipeline:
       find "${{targets.destdir}}" -path "*jquery.min.js*" -prune -exec rm -rf {} +
       find "${{targets.destdir}}" -path "*jquery.js*" -prune -exec rm -rf {} +
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/libcwidget4
+  - name: From debian/rules override_dh_installexamples
+    runs: |
+      mkdir -p "${{targets.outdir}}/libcwidget-dev/usr/share/doc/libcwidget-dev/examples"
+      cp -a src/cwidget/testcwidget.cc "${{targets.outdir}}/libcwidget-dev/usr/share/doc/libcwidget-dev/examples/"
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do

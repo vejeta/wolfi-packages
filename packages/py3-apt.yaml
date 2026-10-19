@@ -12,22 +12,7 @@
 # - runtime dependency 'libjs-jquery': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - runtime dependency 'libjs-underscore': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - autopkgtests converted to the test pipeline (1 steps)
-package:
-  name: py3-apt
-  version: '3.1.0'
-  epoch: 0
-  description: Python 3 interface to libapt-pkg
-  copyright:
-    - license: GPL-2.0-or-later
-    - license: Permissive
-      paths:
-        - tests/test_all.py
-        - tests/test_hashes.py
-  dependencies:
-    runtime:
-      - py3-apt-common
-      - distro-info-data  # Wolfi Community Packages
-      # Debian Recommends (not supported by apk): lsb-release, iso-codes
+package: python3-apt
 environment:
   contents:
     keyring:
@@ -54,8 +39,8 @@ environment:
       - py3-supported-sphinx  # Debian: python3-sphinx
       - gnupg
       - gnupg-dirmngr  # Debian: dirmngr
-      - py3-pycodestyle  # Wolfi Community Packages (Debian: pycodestyle)
-      - py3-pyflakes  # Wolfi Community Packages (Debian: pyflakes3)
+      - pycodestyle  # Wolfi Community Packages
+      - pyflakes3  # Wolfi Community Packages
       - coreutils
       - findutils
   environment:
@@ -83,6 +68,10 @@ pipeline:
   - name: Install files
     runs: |
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/py3-apt/copyright
+  - name: From debian/rules override_dh_installdocs
+    runs: |
+      mkdir -p "${{targets.destdir}}/usr/share/doc/py3-apt"
+      cp -a python3-apt "${{targets.destdir}}/usr/share/doc/py3-apt/"
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
@@ -134,8 +123,8 @@ test:
         - binutils
         - fakeroot  # Wolfi Community Packages
         - intltool
-        - py3-pycodestyle  # Wolfi Community Packages (Debian: pycodestyle)
-        - py3-pyflakes  # Wolfi Community Packages (Debian: pyflakes3)
+        - pycodestyle  # Wolfi Community Packages
+        - pyflakes3  # Wolfi Community Packages
         - gnupg
         - distro-info-data  # Wolfi Community Packages
         - bash  # Essential in Debian, so on every testbed
@@ -161,7 +150,7 @@ test:
       runs: |
         db=/var/lib/dpkg
         mkdir -p "$db/info" && touch "$db/status"
-        awk -v db="$db" -v aliases='dirmngr=gnupg-dirmngr libc-bin=glibc libc6=glibc perl-base=perl pycodestyle=py3-pycodestyle pyflakes3=py3-pyflakes python3-all=python3' '
+        awk -v db="$db" -v aliases='dirmngr=gnupg-dirmngr libc-bin=glibc libc6=glibc perl-base=perl python3-all=python3' '
           BEGIN { n = split(aliases, a, " "); for (i = 1; i <= n; i++) { split(a[i], kv, "="); alias[kv[2]] = alias[kv[2]] " " kv[1] } }
           function add(   m, j, f) {
             m = split(pkg alias[pkg], names, " ")
