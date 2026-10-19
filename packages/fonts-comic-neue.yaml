@@ -7,7 +7,6 @@
 # Debian packaging: https://salsa.debian.org/fonts-team/fonts-comic-neue
 #
 # Conversion notes:
-# - build dependency 'sfnt2woff-zopfli' (Debian 'sfnt2woff-zopfli') not found in Wolfi; left out
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
 # - port debian/rules override_dh_auto_build: for otf in $(wildcard instance_otf/*.otf) ;  	do  		sfnt2woff-zopfli $${otf} ;  		woff2_compress $${otf} ;  	done
 package:
@@ -26,7 +25,7 @@ environment:
     packages:
       - busybox
       - fontmake
-      # TODO(debian-to-melange): sfnt2woff-zopfli is not in Wolfi (Debian: sfnt2woff-zopfli); left out
+      - sfnt2woff-zopfli  # Wolfi Community Packages
       - woff2
       - coreutils
       - findutils

@@ -7,10 +7,6 @@
 # Debian packaging: https://salsa.debian.org/kolter/libunicode-linebreak-perl
 #
 # Conversion notes:
-# - runtime dependency 'perl-mime-charset' (Debian 'libmime-charset-perl') not found in Wolfi; left out
-# - build dependency 'libthai-dev' (Debian 'libthai-dev') not found in Wolfi; left out
-# - build dependency 'libsombok-dev' (Debian 'libsombok-dev') not found in Wolfi; left out
-# - build dependency 'perl-mime-charset' (Debian 'libmime-charset-perl') not found in Wolfi; left out
 # - set expected-commit for tag v0.0.20190101 (re-run with --download, or git ls-remote)
 package:
   name: perl-unicode-linebreak
@@ -21,7 +17,7 @@ package:
     - license: Artistic-1.0-Perl OR GPL-1.0-or-later
   dependencies:
     runtime:
-      # TODO(debian-to-melange): perl-mime-charset is not in Wolfi (Debian: libmime-charset-perl); left out
+      - perl-mime-charset  # Wolfi Community Packages (Debian: libmime-charset-perl)
       - perl
 environment:
   contents:
@@ -35,9 +31,9 @@ environment:
       - perl
       - perl-dev
       - pkgconf-dev  # Debian: pkgconf
-      # TODO(debian-to-melange): libthai-dev is not in Wolfi (Debian: libthai-dev); left out
-      # TODO(debian-to-melange): libsombok-dev is not in Wolfi (Debian: libsombok-dev); left out
-      # TODO(debian-to-melange): perl-mime-charset is not in Wolfi (Debian: libmime-charset-perl); left out
+      - libthai-dev  # Wolfi Community Packages
+      - libsombok-dev  # Wolfi Community Packages
+      - perl-mime-charset  # Wolfi Community Packages (Debian: libmime-charset-perl)
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |

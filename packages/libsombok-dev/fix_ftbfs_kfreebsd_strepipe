@@ -1,0 +1,23 @@
+Description: Fix a FTBFS on kFreeBSD where ESTRPIPE (errno) is not defined
+Forwarded: no
+Author: Emmanuel Bouthenot <kolter@debian.org>
+Bug-Debian: http://bugs.debian.org/630776
+Last-Update: 2011-06-17
+--- a/src/sombok.c
++++ b/src/sombok.c
+@@ -5,6 +5,15 @@
+ #include <assert.h>
+ #include "sombok.h"
+ 
++/*
++ * Fix a FTBFS on Debian/kFreeBSD
++ * see http://bugs.debian.org/630776
++ * ESTRPIPE is only defined on Linux and Solaris
++ */
++#ifndef ESTRPIPE
++#define ESTRPIPE EPIPE
++#endif
++
+ #define BUFLEN (8192)
+ static char buf[BUFLEN];
+ static char *encbuf = NULL;

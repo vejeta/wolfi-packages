@@ -1,0 +1,29 @@
+Description: Fix FTBS with automake >= 1.13
+  Automake no longer support TESTS= directive with wildcards
+  This patch replace the wildcard expression with the exhaustive lists of tests to run
+  see http://lists.gnu.org/archive/html/help-debbugs/2013-06/msg00000.html
+Author: Emmanuel Bouthenot <kolter@debian.org>
+Bug-Debian: http://bugs.debian.org/713384
+Last-Update: 2013-09-23
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -26,7 +26,16 @@
+ sombok_CFLAGS = -Iinclude
+ sombok_LDFLAGS =
+ sombok_LDADD = libsombok.la
+-TESTS = tests/*.t
++TESTS = \
++	tests/01break.t \
++	tests/02hangul.t \
++	tests/03ns.t \
++	tests/05urgent.t \
++	tests/06context.t \
++	tests/07sea.t \
++	tests/09uri.t \
++	tests/11format.t \
++	tests/14sea_al.t
+ 
+ if ENABLE_DOC
+ html_DATA = doc/html/*
