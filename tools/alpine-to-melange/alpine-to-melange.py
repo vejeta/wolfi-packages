@@ -20,6 +20,7 @@ conventions of tools/debian-to-melange.
 """
 
 import argparse
+import hashlib
 import importlib.util
 import io
 import json
@@ -56,6 +57,10 @@ DROP = {
 }
 NAME_MAP = {
     "samurai": "ninja",
+    # Wolfi ships the DocBook XSL stylesheets, and their catalog, in docbook-xml;
+    # Alpine's docbook-xsl also brings xmlcatalog and xsltproc
+    "docbook-xsl": ["docbook-xml", "libxml2-utils", "libxslt"],
+    "docbook-xsl-nons": ["docbook-xml", "libxml2-utils", "libxslt"],
     "ca-certificates": "ca-certificates-bundle",
     "gtk4.0": "gtk-4",
     "gtk4.0-dev": "gtk-4-dev",
@@ -63,6 +68,9 @@ NAME_MAP = {
     "gtk+3.0-dev": "gtk-3-dev",
     "py3-setuptools": "py3-setuptools",
     "linux-headers": "linux-headers",
+    # Wolfi's rust ships cargo; its clang ships libclang (bindgen)
+    "cargo": "rust",
+    "clang-dev": "clang",
 }
 
 # abuild default subpackage handlers -> melange pipelines
@@ -239,6 +247,13 @@ class ApkBuild:
     def get(self, name, default=""):
         return self.vars.get(name, default)
 
+    def override(self, **values):
+        """Set variables (--name, --version) and re-expand those that use them."""
+        self.vars.update(values)
+        for n in self.order:
+            if n not in values and n in self.raw:
+                self.vars[n] = self.expand(self.raw[n])
+
     def words(self, name):
         return self.get(name).split()
 
@@ -336,12 +351,18 @@ def template_version(url, apk, transforms):
     return out
 
 
+def apk_source(apk):
+    """source= with the URLs of remote files (what unpack() loops over)."""
+    return " ".join(u or f for f, u in parse_sources(apk))
+
+
 def github_update(url):
     m = re.match(r"https://github\.com/([^/]+)/([^/]+)/(?:archive|releases)/(?:refs/tags/|download/)?([^/]*?)\$\{\{(?:package\.version|vars\.[\w-]+)\}\}", url or "")
     if not m:
         return None
     up = {"enabled": True, "github": {"identifier": "{}/{}".format(m.group(1), m.group(2))}}
-    prefix = m.group(3).rstrip("/")
+    # release%2F1.2 is the tag release/1.2
+    prefix = urllib.parse.unquote(m.group(3)) if m.group(3).endswith("%2F") else m.group(3).rstrip("/")
     if prefix:
         up["github"]["strip-prefix"] = prefix
     if "/releases/" in url:
@@ -363,6 +384,11 @@ PREAMBLE_VARS = [
     ("CTARGET", "${{host.triplet.gnu}}"),
     ("JOBS", "$(nproc)"),
 ]
+
+ARCHIVE_SUFFIXES = (".tar.gz", ".tar.xz", ".tar.bz2", ".tar.zst", ".tgz", ".zip")
+
+# abuild's own functions: the steps of the recipe, never helpers to inline.
+STANDARD_FUNCTIONS = {"prepare", "build", "check", "package", "snapshot", "fetch", "unpack"}
 
 HELPERS = {
     "abuild-meson": (
@@ -400,6 +426,19 @@ class Converter:
         self.wolfi = wolfi
         self.notes = []
         self.aux = {}
+        self.unpacked = []          # sources left for the APKBUILD's unpack()
+        # functions that build subpackages (foo:bar, or the suffix of $pkgname-doc)
+        self.subpackage_functions = {e.split(":")[1] if ":" in e else e.rsplit("-", 1)[-1]
+                                     for e in apk.words("subpackages")}
+
+    def function_depends(self, fname):
+        """depends="..." set inside a function (meta packages do this in package())."""
+        text = "\n".join(self.apk.functions.get(fname, []))
+        m = re.search(r'(?m)^\s*depends="([^"]*)"', text)
+        if not m:
+            return []
+        names = self.apk.expand(m.group(1)).split()
+        return [re.split(r"[<>=~]", n, maxsplit=1)[0] for n in names]
 
     def todo(self, msg):
         self.notes.append(msg)
@@ -417,6 +456,11 @@ class Converter:
                 continue
             base = re.split(r"[<>=~]", name, maxsplit=1)[0]
             if base in DROP:
+                continue
+            if isinstance(NAME_MAP.get(base), list):
+                for cand in NAME_MAP[base]:
+                    if not any((o.value if isinstance(o, C) else o) == cand for o in out):
+                        out.append(C(cand, "Alpine: {}".format(base)))
                 continue
             cand = NAME_MAP.get(base, base)
             found = self.wolfi.has(cand)
@@ -464,14 +508,50 @@ class Converter:
         used |= needed
         funcs = [code for helper, code in HELPERS.items()
                  if re.search(r"(^|[\s;(|&]){}\b".format(re.escape(helper)), text)]
+        # functions the APKBUILD defines for itself (_install ...), transitively
+        own, seen = [], set()
+        queue = [text]
+        while queue:
+            t = queue.pop()
+            for fn, body in self.apk.functions.items():
+                if fn in seen or fn in STANDARD_FUNCTIONS or fn in self.subpackage_functions:
+                    continue
+                if re.search(r"(^|[\s;(|&]){}\b".format(re.escape(fn)), t):
+                    seen.add(fn)
+                    code = "{}() {{\n{}\n}}".format(fn, "\n".join(body).rstrip())
+                    own.append(code)
+                    queue.append(code)
+        funcs += own
+        if re.search(r"(^|[\s;(|&])default_prepare\b", text):
+            # builddir=<dir> default_prepare: the source patches, in that directory
+            patches = [f for f in self.local_files if f.endswith(".patch")]
+            funcs.append("default_prepare() {{\n\tfor _p in {}; do\n\t\tpatch -p1 -d \"$builddir\" < {}/{}/$_p\n\tdone\n}}".format(
+                " ".join(patches) or ":", WORKSPACE, self.name))
+        for f in self.local_payload():
+            # files next to the APKBUILD are in $srcdir, the parent of abuild's builddir
+            text, n = re.subn(r"(?<![\w/.]){}".format(re.escape("../" + f)), '"$srcdir"/' + f, text)
+            if n:
+                used.add("srcdir")
         for code in funcs:  # helpers use abuild variables too ($pkgdir, $subpkgdir)
             used |= refs(code)
         text = re.sub(r"(^|[\s;(|&])abuild-meson\b", r"\1abuild_meson", text)
+        # musl's iconv leaves usr/lib/charset.alias; glibc builds do not
+        text = re.sub(r"\brm\s+(?!-\w*f)([^\n]*charset\.alias)", r"rm -f \1", text)
         pre = ['{}="{}"'.format(n, v) for n, v in PREAMBLE_VARS if n in used]
+        if re.search(r"\bcargo\b[^\n]*--target[= ]\"?\$\{?CTARGET", text):
+            # Alpine's rust knows its own triplets (x86_64-alpine-linux-musl); Wolfi's, rust's own
+            pre = [p if not p.startswith("CTARGET=") else 'CTARGET="${{host.triplet.rust}}"' for p in pre]
         pre += ["{}={}".format(n, v) for n, v in helpers if n in used]
         pre += funcs
-        if "srcdir" in used and self.local_payload():
+        if "source" in used and apk_source(self.apk):
+            pre.append('source="{}"'.format(apk_source(self.apk)))
+        if "srcdir" in used and getattr(self, "abuild_builddir", None) and self.abuild_builddir != SRCDIR:
+            # abuild unpacks the main tarball in $srcdir/$pkgname-$pkgver; here it is the workspace
             pre.append('mkdir -p "$srcdir"')
+            pre.append('[ -e "{0}" ] || ln -s {1} "{0}"'.format(self.abuild_builddir, WORKSPACE))
+        if "srcdir" in used and self.local_payload():
+            if 'mkdir -p "$srcdir"' not in pre:
+                pre.append('mkdir -p "$srcdir"')
             for f in self.local_payload():
                 pre.append('cp -a {}/{}/{} "$srcdir"/'.format(WORKSPACE, self.name, f))
         return ("\n".join(pre) + "\n\n" if pre else "") + text + "\n"
@@ -485,11 +565,24 @@ class Converter:
         apk, a = self.apk, self.args
         self.name = name = a.name or apk.get("pkgname")
         version = a.version or apk.get("pkgver")
+        if a.name or a.version:
+            original = apk.get("pkgname")
+            apk.override(pkgname=name, pkgver=version)
+            self.based_on = (original, apk.raw.get("pkgver", ""), apk.get("pkgrel", "0")) \
+                if a.name and original != name else None
+            if a.name and original and original != name:
+                # another package built like a sibling aport: its sources too
+                for n in ("source", "builddir"):
+                    if n in apk.vars:
+                        apk.vars[n] = apk.vars[n].replace(original, name)
         if not name or not version:
             raise SystemExit("error: APKBUILD has no pkgname/pkgver")
         desc = apk.get("pkgdesc")
         pkg = {"name": name, "version": version, "epoch": 0, "description": desc[:1].upper() + desc[1:]}
         pkg["copyright"] = [{"license": apk.get("license") or "NOASSERTION"}]
+        if getattr(self, "based_on", None):
+            # the sibling's license says nothing about this package: read its own
+            pkg["copyright"] = [{"license": "custom"}]
         if not apk.get("license"):
             pkg["copyright"].insert(0, self.todo("APKBUILD has no license"))
 
@@ -503,7 +596,7 @@ class Converter:
         elif any(x in ("!x86_64", "!aarch64") for x in arch):
             pkg["target-architecture"] = [x for x in ("x86_64", "aarch64") if "!" + x not in arch]
 
-        runtime = self.map_deps(apk.words("depends"), "runtime")
+        runtime = self.map_deps(apk.words("depends") + self.function_depends("package"), "runtime")
         if runtime:
             pkg["dependencies"] = {"runtime": runtime}
         provides = [p for p in apk.words("provides") if not p.startswith(("so:", "cmd:", "pc:"))]
@@ -542,7 +635,16 @@ class Converter:
             self.notes.append("triggers= not converted: " + apk.get("triggers"))
 
         # ---- environment -------------------------------------------------
-        build_names = apk.words("makedepends") + apk.words("makedepends_build") + apk.words("makedepends_host")
+        # abuild installs depends= as well as makedepends= to build
+        build_names = apk.words("makedepends") + apk.words("makedepends_build") + apk.words("makedepends_host") \
+            + [d for d in apk.words("depends") if d not in apk.words("makedepends")]
+        # an Alpine foo-dev always depends on foo (its tools, e.g. font-util's
+        # ucs2any); Wolfi's -dev packages do not always
+        for d in list(build_names):
+            base = d[:-len("-dev")] if d.endswith("-dev") else None
+            if base and base not in build_names and self.wolfi.has(base) and \
+                    not base.startswith("lib") and not self.wolfi.has(base + "-libs"):
+                build_names.append(base)
         if a.with_check:
             build_names += apk.words("checkdepends")
         env_pkgs = ["build-base", "busybox"] + [
@@ -563,6 +665,7 @@ class Converter:
         remote = [(f, u) for f, u in sources if u]
         main_url = None
         builddir = apk.get("builddir") or "{}/{}-{}".format(SRCDIR, name, version)
+        self.abuild_builddir = builddir if "$" not in builddir else None
         for idx, (fname, url) in enumerate(remote):
             url = apk.expand(url)
             if url.startswith(("git+", "git://")) or url.endswith(".git"):
@@ -581,6 +684,13 @@ class Converter:
             step = {"uses": "fetch", "with": {"uri": template_version(url, apk, transforms)}}
             if fname in sums:
                 step["with"]["expected-sha512"] = sums[fname]
+            elif getattr(a, "download", False) and fname.endswith(tuple(ARCHIVE_SUFFIXES)):
+                # --name/--version select another tarball than the APKBUILD's
+                try:
+                    step["with"]["expected-sha512"] = hashlib.sha512(http_get(url)).hexdigest()
+                except Exception as exc:
+                    step["with"]["expected-sha256"] = "0" * 64
+                    pipeline.append(self.todo("cannot download {}: {}".format(url, exc)))
             else:
                 step["with"]["expected-sha256"] = "0" * 64
                 pipeline.append(self.todo("no checksum for {}".format(fname)))
@@ -591,11 +701,25 @@ class Converter:
             else:
                 step["with"]["strip-components"] = 0
                 step["with"]["directory"] = SRCDIR[len(WORKSPACE) + 1:]
+                if not any(isinstance(st, dict) and st.get("name") == "Create $srcdir" for st in pipeline):
+                    # fetch extracts with tar -C, which needs the directory
+                    pipeline.append({"name": "Create $srcdir", "runs": "mkdir -p {}\n".format(SRCDIR)})
                 if not re.search(r"\.(tar(\.\w+)?|tgz|tbz2|txz|zip)$", fname):
                     step["with"]["extract"] = False
+            if "unpack" in apk.functions or not re.search(r"\.(tar(\.\w+)?|tgz|tbz2|txz|zip)$", fname):
+                # the APKBUILD's unpack() handles it (a .deb with ar ...)
+                step["with"]["extract"] = False
+                step["with"].pop("strip-components", None)
+                step["with"].pop("directory", None)
+                self.unpacked.append(fname)
             pipeline.append(step)
         if not remote:
             pipeline.append(self.todo("APKBUILD has no remote source"))
+        if "unpack" in apk.functions:
+            # abuild links the downloaded sources into $srcdir before unpack()
+            links = ['ln -sf {0}/{1} "$srcdir"/{1}'.format(WORKSPACE, f) for f in self.unpacked]
+            pipeline.append({"name": "Unpack", "runs": self.runs(
+                'mkdir -p "$srcdir"\n' + "\n".join(links) + "\n" + self.body("unpack"))})
 
         patches = [f for f in self.local_files if f.endswith(".patch")]
         if patches:
@@ -607,6 +731,9 @@ class Converter:
             if fname not in apk.functions:
                 continue
             text = self.body(fname, default)
+            if fname == "package":
+                # converted to dependencies.runtime
+                text = re.sub(r'(?m)^\s*depends="[^"]*"\n?', "", text)
             step = self.runs(text)
             if step:
                 pipeline.append({"name": label, "runs": step})
@@ -623,18 +750,29 @@ class Converter:
             if "libtool" not in options:
                 pipeline.append({"name": "Remove libtool archives (abuild does this by default)",
                                  "runs": 'find "${{targets.destdir}}" -name "*.la" -delete\n'})
-            if "!strip" not in options:
+            if "!strip" not in options and "noarch" not in apk.words("arch"):
                 pipeline.append({"uses": "strip"})
 
         # ---- subpackages -------------------------------------------------
         subpackages = [s for s in (self.subpackage(entry, name) for entry in apk.words("subpackages")) if s]
 
         # ---- update / test -----------------------------------------------
+        if pkg["copyright"][0].get("license", "") in ("Public Domain", "public-domain"):
+            pkg["copyright"][0]["license"] = "custom"  # not an SPDX id; read the license file
         if "custom" in pkg["copyright"][0].get("license", "") and main_url and a.download:
             lic = tarball_license(main_url.replace("${{package.version}}", version))
             if lic:
                 self.notes.append("license 'custom' identified as {} from the upstream license file; check it".format(lic))
                 pkg["copyright"][0]["license"] = pkg["copyright"][0]["license"].replace("custom", lic)
+        if "custom" in pkg["copyright"][0].get("license", "") and main_url and a.download:
+            # an SPDX reference to the license text shipped with the package
+            ref = "LicenseRef-" + name
+            pkg["copyright"][0]["license"] = pkg["copyright"][0]["license"].replace("custom", ref)
+            self.notes.append("license 'custom' not identified; {} refers to the upstream license file".format(ref))
+            pipeline.append({"name": "Install the license file ({})".format(ref), "runs": (
+                'for f in COPYING LICENSE LICENCE; do\n'
+                '  [ -f "$f" ] && install -Dm644 "$f" -t "${{targets.destdir}}/usr/share/licenses/${{package.name}}"\n'
+                'done; true\n')})
         if "custom" in pkg["copyright"][0].get("license", ""):
             pkg["copyright"].insert(0, self.todo("'custom' is not an SPDX id; set the license"))
 
@@ -644,12 +782,16 @@ class Converter:
                 if "${{vars.%s}}" % t["to"] in main_url and t["replace"] != "${1}":
                     update["version-transform"] = [{"match": re.escape(t["replace"].replace("$$", "$")),
                                                     "replace": apk_unglob(t["match"])}]
-        project = release_monitoring_id(name, version) if (a.download and not update) else None
+        project = None
+        if a.download and not update:
+            # the package name, then the upstream one (_pkgreal in Alpine's perl and python aports)
+            names = [name] + [n for n in (apk.get("_pkgreal"), apk.get("_pyname"), apk.get("_gemname")) if n]
+            project = next((p for p in (release_monitoring_id(n, version) for n in names) if p), None)
         update = update or {
             "enabled": True,
             "release-monitor": {"identifier": project or C(0, "{}: set the release-monitoring.org project id".format(TODO))}}
         test = {"environment": {"contents": {"packages": ["busybox"]}},
-                "pipeline": [{"uses": "test/tw/ldd-check"}]}
+                "pipeline": [] if "noarch" in apk.words("arch") else [{"uses": "test/tw/ldd-check"}]}
 
         recipe = {"package": pkg}
         used_t = [t for t in transforms.values()
@@ -657,6 +799,21 @@ class Converter:
                          for st in pipeline if isinstance(st, dict))]
         if used_t:
             recipe["var-transforms"] = used_t
+        if self.local_files:
+            # the files next to the recipe arrive as <name>/, which can clash with
+            # what the sources build (a program called <name>): move them aside first
+            def aside(v):
+                if isinstance(v, str):
+                    v = v.replace("{}/{}/".format(WORKSPACE, name), "{}/.recipe-files/".format(WORKSPACE))
+                    return re.sub(r"(?<![\w/.-]){}/".format(re.escape(name)), ".recipe-files/", v)
+                if isinstance(v, list):
+                    return [aside(x) for x in v]
+                if isinstance(v, dict):
+                    return {k: aside(x) for k, x in v.items()}
+                return v
+            pipeline = [{"name": "Move the recipe files out of the build tree",
+                         "runs": "mkdir -p .recipe-files\nmv {0}/* .recipe-files/\nrmdir {0}\n".format(name)}] + aside(pipeline)
+            subpackages = aside(subpackages)
         recipe.update({"environment": environment, "pipeline": pipeline})
         if re.search(r"/etc/(init\.d|conf\.d)/", "\n".join(apk.functions.get("package", []))):
             self.notes.append("package() installs OpenRC files (/etc/init.d, /etc/conf.d); Wolfi does not use OpenRC")
@@ -673,8 +830,14 @@ class Converter:
         return name, recipe, self.header()
 
     def header(self):
-        lines = ["Generated by alpine-to-melange {} from the Alpine APKBUILD of {} {}-r{}.".format(
-            __version__, self.apk.get("pkgname"), self.apk.get("pkgver"), self.apk.get("pkgrel", "0"))]
+        based_on = getattr(self, "based_on", None)
+        if based_on:
+            lines = ["Generated by alpine-to-melange {} from the Alpine APKBUILD of {} {}-r{},".format(
+                __version__, based_on[0], based_on[1], based_on[2]),
+                "adapted to {} {}.".format(self.apk.get("pkgname"), self.apk.get("pkgver"))]
+        else:
+            lines = ["Generated by alpine-to-melange {} from the Alpine APKBUILD of {} {}-r{}.".format(
+                __version__, self.apk.get("pkgname"), self.apk.get("pkgver"), self.apk.get("pkgrel", "0"))]
         if self.args.from_alpine:
             lines.append("https://gitlab.alpinelinux.org/alpine/aports/-/tree/master/{}".format(self.args.aports_path))
         if self.apk.get("url"):
@@ -691,6 +854,12 @@ class Converter:
             if fname in declared:
                 if fname in self.files:
                     text = self.files[fname].decode("utf-8", "replace")
+                    if text.strip() in self.files and "\n" not in text.strip():
+                        # a symlink in aports: the raw file is the target's name
+                        text = self.files[text.strip()].decode("utf-8", "replace")
+                    # abuild scripts may tell which one runs from their name; under apk
+                    # they are not files of that name
+                    text = text.replace("${0##*/}", fname).replace("$(basename $0)", fname)
                     if not text.startswith("#!"):
                         text = "#!/bin/sh\n" + text
                     scripts[kind] = text
@@ -781,10 +950,14 @@ def license_text_id(text):
     t = re.sub(r"\s+", " ", text)
     if "Permission is hereby granted, free of charge" in t:
         return "MIT"
-    if re.search(r"Permission to use, copy, modify, distribute, and sell this software", t) and "The Open Group" in t:
-        return "MIT-open-group"  # X.Org
+    if re.search(r"Permission to use, copy, modify, distribute, and sell this software", t):
+        return "MIT-open-group" if "The Open Group" in t else "HPND-sell-variant"  # X.Org
     if "Redistribution and use in source and binary forms" in t:
         return "BSD-3-Clause" if re.search(r"Neither the name|endorse or promote", t) else "BSD-2-Clause"
+    if re.search(r"Permission to use, copy, modify, and distribute this software", t) and "without fee" in t:
+        return "HPND"
+    if re.search(r"\bpublic domain\b", t, re.I):
+        return "LicenseRef-public-domain"
     return None
 
 

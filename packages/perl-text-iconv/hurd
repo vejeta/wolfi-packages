@@ -1,0 +1,13 @@
+Index: libtext-iconv-perl-1.7/Iconv.xs
+===================================================================
+--- libtext-iconv-perl-1.7.orig/Iconv.xs
++++ libtext-iconv-perl-1.7/Iconv.xs
+@@ -114,7 +114,7 @@ SV *do_conv(struct tiobj *obj, SV *strin
+    
+    while(inbytesleft != 0)
+    {
+-#if (defined(__hpux) || defined(__linux) || defined(VMS)) && ! defined(_LIBICONV_VERSION)
++#if (defined(__hpux) || defined(__linux) || defined(__GNU__) || defined(VMS)) && ! defined(_LIBICONV_VERSION)
+       /* Even in HP-UX 11.00, documentation and header files do not agree */
+       /* glibc doesn't seem care too much about standards */
+       ret = iconv(obj->handle, &icursor, &inbytesleft,

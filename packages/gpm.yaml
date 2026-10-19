@@ -7,11 +7,6 @@
 # Debian packaging: https://salsa.debian.org/debian/gpm
 #
 # Conversion notes:
-# - postinst: uses Debian-only tool 'ucf'
-# - postinst: uses Debian-only tool 'invoke-rc.d'
-# - prerm: uses Debian-only tool 'invoke-rc.d'
-# - postrm: uses Debian-only tool 'ucf'
-# - postrm: uses Debian-only tool 'ucf'
 # - debian/config contains logic beyond prompting; review: unset device type responsiveness repeat_type sample_rate append; [ -e /etc/gpm.conf ] && . /etc/gpm.conf; if [ -n "$device" ] && [ -n "$type" ]; then
 # - debconf questions converted to /etc/gpm.conf (GPM_RESTART, GPM_DEVICE, GPM_TYPE, GPM_RESPONSIVENESS, GPM_REPEAT_TYPE, GPM_SAMPLE_RATE, GPM_APPEND)
 # - maintainer scripts converted; note that apko does not run install scripts
@@ -27,6 +22,10 @@ package:
       paths:
         - scripts/git-archiv-tarbz2.sh
         - scripts/report_success.sh
+  dependencies:
+    runtime:
+      - ucf  # used by the maintainer scripts
+      - init-system-helpers  # used by the maintainer scripts
   scriptlets:
     post-install: |
       #!/bin/sh
@@ -115,7 +114,6 @@ package:
             update_symlinks
             create_gpm_conf
             check_gpm_conf
-      # TODO(debian-to-melange): 'ucf' does not exist on Wolfi
             ucf --debconf-ok $cfg /etc/gpm.conf
             rm $cfg
           ;;
@@ -126,7 +124,6 @@ package:
       RET="${GPM_RESTART:-false}"
       if [ "$RET" = true ] || /usr/lib/gpm/gpm_has_mouse_control; then
         # Note, yes, this is restart, its ment to be..
-      # TODO(debian-to-melange): 'invoke-rc.d' does not exist on Wolfi
         invoke-rc.d gpm restart
       fi
 
@@ -224,7 +221,6 @@ package:
             update_symlinks
             create_gpm_conf
             check_gpm_conf
-      # TODO(debian-to-melange): 'ucf' does not exist on Wolfi
             ucf --debconf-ok $cfg /etc/gpm.conf
             rm $cfg
           ;;
@@ -235,7 +231,6 @@ package:
       RET="${GPM_RESTART:-false}"
       if [ "$RET" = true ] || /usr/lib/gpm/gpm_has_mouse_control; then
         # Note, yes, this is restart, its ment to be..
-      # TODO(debian-to-melange): 'invoke-rc.d' does not exist on Wolfi
         invoke-rc.d gpm restart
       fi
 
@@ -259,7 +254,6 @@ package:
         # Try several methods of stopping the daemon.
         # The init.d script had problems in earlier revisions.
 
-      # TODO(debian-to-melange): 'invoke-rc.d' does not exist on Wolfi
         invoke-rc.d gpm stop ||
 
         systemctl stop gpm ||
@@ -295,9 +289,7 @@ package:
       if [ "$1" = "purge" ]; then
         echo " Removing gpm config file."
         rm -f /etc/gpm.conf
-      # TODO(debian-to-melange): 'ucf' does not exist on Wolfi
         if [ -x "/usr/bin/ucf" ]; then
-      # TODO(debian-to-melange): 'ucf' does not exist on Wolfi
           ucf --purge /etc/gpm.conf
         fi
       fi
@@ -320,16 +312,18 @@ environment:
       - autoconf
       - automake
       - libtool
+      - coreutils
+      - findutils
 pipeline:
-  - uses: fetch
-    with:
-      uri: https://nico.schottelius.org/software/gpm/archives/gpm-${{package.version}}.tar.gz
-      expected-sha256: c7e4661c24e05ae13547176b649bac8e3a0db2575f7dd57559f9e0b509f90f49
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
       for f in 001_missing_V_option.patch 002_force_repeat_000 005_types_000 007_doc_fix_000 007_doc_fix_001 007_doc_fix_FAQ 010_ps2_rework.patch 013_xterm_mouse_support_000 014_has_mouse_control.patch 031_max_consoles.patch 050_dont_link_libcurses 060_no_blocking_on_mouse_device_under_x 070_struct_ucred 080_cross-compile.patch 090_linux3_versions 091_glibc_2.17_types 092_fix-format-not-a-string-literal-and-no-format-arguments.patch 093_fix-typos.patch 094_gpm-1.20.7-glibc-2.26-1.patch 095_fix-compilation-with-gcc-10.patch 096_fix-compilation-against-musl-libc.patch 097-implicit 098-gcc-15 gpm-microtouch-setup.8 gpm-systemd-wrapper.sh gpm.apm gpm.conf gpm.conf.5 gpm.service; do mv gpm/$f .recipe-files/; done
       rmdir gpm 2>/dev/null || true
+  - uses: fetch
+    with:
+      uri: https://nico.schottelius.org/software/gpm/archives/gpm-${{package.version}}.tar.gz
+      expected-sha256: c7e4661c24e05ae13547176b649bac8e3a0db2575f7dd57559f9e0b509f90f49
   - uses: patch
     with:
       patches: .recipe-files/001_missing_V_option.patch .recipe-files/002_force_repeat_000 .recipe-files/005_types_000 .recipe-files/007_doc_fix_000 .recipe-files/007_doc_fix_001 .recipe-files/007_doc_fix_FAQ .recipe-files/010_ps2_rework.patch .recipe-files/013_xterm_mouse_support_000 .recipe-files/014_has_mouse_control.patch .recipe-files/031_max_consoles.patch .recipe-files/050_dont_link_libcurses .recipe-files/060_no_blocking_on_mouse_device_under_x .recipe-files/070_struct_ucred .recipe-files/080_cross-compile.patch .recipe-files/090_linux3_versions .recipe-files/091_glibc_2.17_types .recipe-files/092_fix-format-not-a-string-literal-and-no-format-arguments.patch .recipe-files/093_fix-typos.patch .recipe-files/094_gpm-1.20.7-glibc-2.26-1.patch .recipe-files/095_fix-compilation-with-gcc-10.patch .recipe-files/096_fix-compilation-against-musl-libc.patch .recipe-files/097-implicit .recipe-files/098-gcc-15
@@ -368,6 +362,10 @@ pipeline:
       install -Dm644 doc/gpm.8 -t "${{targets.destdir}}/usr/share/man/man8"
       install -Dm644 doc/mev.1 -t "${{targets.destdir}}/usr/share/man/man1"
       install -Dm644 .recipe-files/gpm.service "${{targets.destdir}}/usr/lib/systemd/system/gpm.service"
+      mkdir -p "${{targets.destdir}}/usr/share/doc/gpm/examples"
+      cp -a conf/gpm-syn.conf "${{targets.destdir}}/usr/share/doc/gpm/examples/"
+      cp -a conf/gpm-twiddler.conf "${{targets.destdir}}/usr/share/doc/gpm/examples/"
+      cp -a contrib/emacs/t-mouse.el "${{targets.destdir}}/usr/share/doc/gpm/examples/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/gpm"
       cp -a MANIFEST "${{targets.destdir}}/usr/share/doc/gpm/"
       cp -a README "${{targets.destdir}}/usr/share/doc/gpm/"

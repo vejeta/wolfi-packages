@@ -1,0 +1,395 @@
+From dac74cd68cfb6eeaae9cd13bdc48737a44980df9 Mon Sep 17 00:00:00 2001
+From: Johannes Schauer Marin Rodrigues <josch@mister-muffin.de>
+Date: Tue, 1 Nov 2022 00:48:23 +0100
+Subject: [PATCH 10/15] support glibc 2.34 by wrapping
+ __{f,l,}stat{at,}64_time64 and__utime{nsat,s,}64
+
+These functions are only wrapped on 32 bit platforms like i386, armel or
+armhf. On 64 bit platforms, the corresponding HAVE_* macros will not be
+defined.
+
+ * __fstatat64_time64
+ * __lstat64_time64
+ * __stat64_time64
+ * __utime64
+ * __utimensat64
+ * __utimes64
+---
+ configure.ac             |  6 +++++
+ src/Makefile.am          |  6 +++++
+ src/__fstatat64_time64.c | 44 ++++++++++++++++++++++++++++++++++++
+ src/__lstat64_time64.c   | 49 ++++++++++++++++++++++++++++++++++++++++
+ src/__stat64_time64.c    | 47 ++++++++++++++++++++++++++++++++++++++
+ src/__utime64.c          | 41 +++++++++++++++++++++++++++++++++
+ src/__utimensat64.c      | 42 ++++++++++++++++++++++++++++++++++
+ src/__utimes64.c         | 42 ++++++++++++++++++++++++++++++++++
+ 8 files changed, 277 insertions(+)
+ create mode 100644 src/__fstatat64_time64.c
+ create mode 100644 src/__lstat64_time64.c
+ create mode 100644 src/__stat64_time64.c
+ create mode 100644 src/__utime64.c
+ create mode 100644 src/__utimensat64.c
+ create mode 100644 src/__utimes64.c
+
+diff --git a/configure.ac b/configure.ac
+index 5b3053e..26c0611 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -158,11 +158,13 @@ ACX_CHECK_FTS_NAME_TYPE
+ # Checks for library functions.
+ AC_CHECK_FUNCS(m4_normalize([
+     __chk_fail
++    __fstatat64_time64
+     __fxstat64
+     __fxstatat
+     __fxstatat64
+     __getcwd_chk
+     __getwd_chk
++    __lstat64_time64
+     __lxstat
+     __lxstat64
+     __open
+@@ -175,7 +177,11 @@ AC_CHECK_FUNCS(m4_normalize([
+     __realpath_chk
+     __readlink_chk
+     __readlinkat_chk
++    __stat64_time64
+     __statfs
++    __utime64
++    __utimensat64
++    __utimes64
+     __xmknod
+     __xmknodat
+     __xstat
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 6e9d9ae..55193a9 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -1,9 +1,11 @@
+ pkglib_LTLIBRARIES = libfakechroot.la
+ libfakechroot_la_SOURCES = \
++    __fstatat64_time64.c \
+     __fxstatat.c \
+     __fxstatat64.c \
+     __getcwd_chk.c \
+     __getwd_chk.c \
++    __lstat64_time64.c \
+     __lxstat.c \
+     __lxstat64.c \
+     __lxstat64.h \
+@@ -18,7 +20,11 @@ libfakechroot_la_SOURCES = \
+     __readlinkat_chk.c \
+     __realpath_chk.c \
+     __realpath_chk.h \
++    __stat64_time64.c \
+     __statfs.c \
++    __utime64.c \
++    __utimensat64.c \
++    __utimes64.c \
+     __xmknod.c \
+     __xmknodat.c \
+     __xstat.c \
+diff --git a/src/__fstatat64_time64.c b/src/__fstatat64_time64.c
+new file mode 100644
+index 0000000..47a401f
+--- /dev/null
++++ b/src/__fstatat64_time64.c
+@@ -0,0 +1,44 @@
++/*
++    libfakechroot -- fake chroot environment
++    Copyright (c) 2010, 2021 Piotr Roszatycki <dexter@debian.org>
++
++    This library is free software; you can redistribute it and/or
++    modify it under the terms of the GNU Lesser General Public
++    License as published by the Free Software Foundation; either
++    version 2.1 of the License, or (at your option) any later version.
++
++    This library is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++    Lesser General Public License for more details.
++
++    You should have received a copy of the GNU Lesser General Public
++    License along with this library; if not, write to the Free Software
++    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++*/
++
++
++#include <config.h>
++
++#ifdef HAVE___FSTATAT64_TIME64
++
++#define _ATFILE_SOURCE
++#define _POSIX_C_SOURCE 200809L
++#include <sys/stat.h>
++#include <limits.h>
++#include "libfakechroot.h"
++
++struct __stat64_t64;
++
++wrapper(__fstatat64_time64, int, (int dirfd, const char *pathname, struct __stat64_t64 *buf, int flags))
++{
++    char fakechroot_abspath[FAKECHROOT_PATH_MAX];
++    char fakechroot_buf[FAKECHROOT_PATH_MAX];
++    debug("__fstatat64_time64(%d, \"%s\", &buf, %d)", dirfd, pathname, flags);
++    expand_chroot_path_at(dirfd, pathname);
++    return nextcall(__fstatat64_time64)(dirfd, pathname, buf, flags);
++}
++
++#else
++typedef int empty_translation_unit;
++#endif
+diff --git a/src/__lstat64_time64.c b/src/__lstat64_time64.c
+new file mode 100644
+index 0000000..e3e8400
+--- /dev/null
++++ b/src/__lstat64_time64.c
+@@ -0,0 +1,49 @@
++/*
++    libfakechroot -- fake chroot environment
++    Copyright (c) 2010, 2021 Piotr Roszatycki <dexter@debian.org>
++
++    This library is free software; you can redistribute it and/or
++    modify it under the terms of the GNU Lesser General Public
++    License as published by the Free Software Foundation; either
++    version 2.1 of the License, or (at your option) any later version.
++
++    This library is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++    Lesser General Public License for more details.
++
++    You should have received a copy of the GNU Lesser General Public
++    License along with this library; if not, write to the Free Software
++    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++*/
++
++
++#include <config.h>
++
++#ifdef HAVE___LSTAT64_TIME64
++
++#define _ATFILE_SOURCE
++#define _POSIX_C_SOURCE 200809L
++#include <sys/stat.h>
++#include <limits.h>
++#include "libfakechroot.h"
++
++struct __stat64_t64;
++
++wrapper(__lstat64_time64, int, (const char *filename, struct __stat64_t64 *buf))
++{
++    char fakechroot_abspath[FAKECHROOT_PATH_MAX];
++    char fakechroot_buf[FAKECHROOT_PATH_MAX];
++    char resolved[FAKECHROOT_PATH_MAX];
++    debug("__lstat64_time64(\"%s\", &buf)", filename);
++    if (rel2abs(filename, resolved) == NULL) {
++        return -1;
++    }
++    filename = resolved;
++    expand_chroot_path(filename);
++    return nextcall(__lstat64_time64)(filename, buf);
++}
++
++#else
++typedef int empty_translation_unit;
++#endif
+diff --git a/src/__stat64_time64.c b/src/__stat64_time64.c
+new file mode 100644
+index 0000000..1b65345
+--- /dev/null
++++ b/src/__stat64_time64.c
+@@ -0,0 +1,47 @@
++/*
++    libfakechroot -- fake chroot environment
++    Copyright (c) 2010-2015 Piotr Roszatycki <dexter@debian.org>
++
++    This library is free software; you can redistribute it and/or
++    modify it under the terms of the GNU Lesser General Public
++    License as published by the Free Software Foundation; either
++    version 2.1 of the License, or (at your option) any later version.
++
++    This library is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++    Lesser General Public License for more details.
++
++    You should have received a copy of the GNU Lesser General Public
++    License along with this library; if not, write to the Free Software
++    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++*/
++
++
++#include <config.h>
++
++#ifdef HAVE___STAT64_TIME64
++
++#define _BSD_SOURCE
++#define _LARGEFILE64_SOURCE
++#define _DEFAULT_SOURCE
++#include <sys/stat.h>
++#include <limits.h>
++#include <stdlib.h>
++
++#include "libfakechroot.h"
++
++struct __stat64_t64;
++
++wrapper(__stat64_time64, int, (const char * file_name, struct __stat64_t64 * buf))
++{
++    char fakechroot_abspath[FAKECHROOT_PATH_MAX];
++    char fakechroot_buf[FAKECHROOT_PATH_MAX];
++    debug("__stat64_time64(\"%s\", &buf)", file_name);
++    expand_chroot_path(file_name);
++    return nextcall(__stat64_time64)(file_name, buf);
++}
++
++#else
++typedef int empty_translation_unit;
++#endif
+diff --git a/src/__utime64.c b/src/__utime64.c
+new file mode 100644
+index 0000000..65d6e83
+--- /dev/null
++++ b/src/__utime64.c
+@@ -0,0 +1,41 @@
++/*
++    libfakechroot -- fake chroot environment
++    Copyright (c) 2010, 2013 Piotr Roszatycki <dexter@debian.org>
++
++    This library is free software; you can redistribute it and/or
++    modify it under the terms of the GNU Lesser General Public
++    License as published by the Free Software Foundation; either
++    version 2.1 of the License, or (at your option) any later version.
++
++    This library is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++    Lesser General Public License for more details.
++
++    You should have received a copy of the GNU Lesser General Public
++    License along with this library; if not, write to the Free Software
++    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++*/
++
++
++#include <config.h>
++
++#ifdef HAVE___UTIME64
++
++#define _ATFILE_SOURCE
++#define _POSIX_C_SOURCE 200809L
++#include <utime.h>
++#include "libfakechroot.h"
++
++wrapper(__utime64, int, (const char * filename, const struct utimbuf * buf))
++{
++    char fakechroot_abspath[FAKECHROOT_PATH_MAX];
++    char fakechroot_buf[FAKECHROOT_PATH_MAX];
++    debug("__utime64(\"%s\", &buf)", filename);
++    expand_chroot_path(filename);
++    return nextcall(__utime64)(filename, buf);
++}
++
++#else
++typedef int empty_translation_unit;
++#endif
+diff --git a/src/__utimensat64.c b/src/__utimensat64.c
+new file mode 100644
+index 0000000..3973d64
+--- /dev/null
++++ b/src/__utimensat64.c
+@@ -0,0 +1,42 @@
++/*
++    libfakechroot -- fake chroot environment
++    Copyright (c) 2010, 2013 Piotr Roszatycki <dexter@debian.org>
++
++    This library is free software; you can redistribute it and/or
++    modify it under the terms of the GNU Lesser General Public
++    License as published by the Free Software Foundation; either
++    version 2.1 of the License, or (at your option) any later version.
++
++    This library is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++    Lesser General Public License for more details.
++
++    You should have received a copy of the GNU Lesser General Public
++    License along with this library; if not, write to the Free Software
++    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++*/
++
++
++#include <config.h>
++
++#ifdef HAVE___UTIMENSAT64
++
++#define _ATFILE_SOURCE
++#define _POSIX_C_SOURCE 200809L
++#include <sys/time.h>
++#include "libfakechroot.h"
++
++
++wrapper(__utimensat64, int, (int dirfd, const char * pathname, const struct timespec times [2], int flags))
++{
++    char fakechroot_abspath[FAKECHROOT_PATH_MAX];
++    char fakechroot_buf[FAKECHROOT_PATH_MAX];
++    debug("utimeat(%d, \"%s\", &buf, %d)", dirfd, pathname, flags);
++    expand_chroot_path_at(dirfd, pathname);
++    return nextcall(__utimensat64)(dirfd, pathname, times, flags);
++}
++
++#else
++typedef int empty_translation_unit;
++#endif
+diff --git a/src/__utimes64.c b/src/__utimes64.c
+new file mode 100644
+index 0000000..03e57d1
+--- /dev/null
++++ b/src/__utimes64.c
+@@ -0,0 +1,42 @@
++/*
++    libfakechroot -- fake chroot environment
++    Copyright (c) 2010, 2013 Piotr Roszatycki <dexter@debian.org>
++
++    This library is free software; you can redistribute it and/or
++    modify it under the terms of the GNU Lesser General Public
++    License as published by the Free Software Foundation; either
++    version 2.1 of the License, or (at your option) any later version.
++
++    This library is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++    Lesser General Public License for more details.
++
++    You should have received a copy of the GNU Lesser General Public
++    License along with this library; if not, write to the Free Software
++    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++*/
++
++
++#include <config.h>
++
++#ifdef HAVE___UTIMES64
++
++#define _ATFILE_SOURCE
++#define _POSIX_C_SOURCE 200809L
++
++#include <sys/time.h>
++#include "libfakechroot.h"
++
++wrapper(__utimes64, int, (const char * filename, UTIMES_TYPE_ARG2(tv)))
++{
++    char fakechroot_abspath[FAKECHROOT_PATH_MAX];
++    char fakechroot_buf[FAKECHROOT_PATH_MAX];
++    debug("__utimes64(\"%s\", &tv)", filename);
++    expand_chroot_path(filename);
++    return nextcall(__utimes64)(filename, tv);
++}
++
++#else
++typedef int empty_translation_unit;
++#endif
+-- 
+2.39.2
+

@@ -70,6 +70,8 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | Upstream `COPYING`, `LICENSE`, … | Installed in `/usr/share/licenses/<name>`, and checked by the test |
 | Architecture-dependent binaries | `strip` step and a `test/tw/ldd-check` test |
 | `dh $@ --buildsystem=…` or detected build files | `cmake/*`, `meson/*`, `autoconf/*`, `py/pip-build-install`, `go/build`, `cargo/build`, `scala/build` (dh-scala, with `debian/scala-build` copied next to the recipe), plain `make` |
+| `libfoo-perl` (Makefile.PL) | `perl-<CPAN distribution>`; `perl/make`, `autoconf/make`, `autoconf/make-install`, `perl/cleanup`; sources from CPAN; Debian's `usr/share/perl5` and `usr/lib/*/perl5` are Wolfi's `vendor_perl`; a test that loads the module named in `debian/tests/pkg-perl/use-name` |
+| Debian-native programs (ucf, debconf, init-system-helpers) | Source from the Debian archive; perl and dpkg-dev in the build, as debhelper brings them |
 | `python3-foo` (pybuild, `Architecture: all`) | The Wolfi layout: empty `py3-foo`, one `py3.X-foo` per supported Python (those with all the dependencies), `py3-supported-foo`; `${python3:Depends}` from upstream's `install_requires`/`dependencies`; `python/import` tests |
 | `override_dh_update_autotools_config`, `override_dh_autoreconf` (e.g. `./autogen.sh`) | A step before configure, with autoconf, automake and libtool |
 | `override_dh_auto_configure: dh_auto_configure -- ARGS` | `with: opts: ARGS` on the configure step |
@@ -78,7 +80,7 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | `Files-Excluded` in `debian/copyright` | `rm -rf` step after `fetch`, so the pristine tarball matches Debian's repack |
 | `debian/watch` (GitHub, git mode on any forge) | `git-checkout` with `tag` and `expected-commit` (resolved with `git ls-remote` when `--download` is given), and `update.github` or `update.git`. A `+gitYYYYMMDD` snapshot is pinned to the last commit of that day |
 | `debian/watch` with a plain tarball URL (PyPI, `@ARCHIVE_EXT@`) | `fetch` of the first URL that exists; `update.github` when the Homepage is on GitHub, otherwise the release-monitoring.org project with that name |
-| `debian/tests/control` (autopkgtest) | `test:` steps: the upstream source is checked out first (autopkgtest runs in the source tree), then `Test-Command` and `Tests` scripts (inlined, run in `$AUTOPKGTEST_TMP`); `Restrictions: flaky` failures are reported, not fatal; `Depends` mapped to Wolfi names. A test whose dependencies are not in Wolfi is left out as a TODO comment |
+| `debian/tests/control` (autopkgtest) | `test:` steps: the upstream source is checked out first (autopkgtest runs in the source tree), then `Test-Command` and `Tests` scripts (inlined, run in the source tree with `$AUTOPKGTEST_TMP` set); `Restrictions: flaky` failures are reported, not fatal; `Depends` mapped to Wolfi names, plus Debian's Essential packages (bash, coreutils, dpkg, …) that every testbed has. A test whose dependencies are not in Wolfi is left out as a TODO comment. The testbed is emulated: a dpkg database lists the installed apk packages (also under the Debian names of the test's dependencies, with the package's debconf templates), `debian/` of a non-native package is fetched when a test reads it, `AUTOPKGTEST_NORMAL_USER` is `build`, and commands the scripts call (`runuser`, `dpkg-parsechangelog`, …) are added. `mmdebstrap --mode=fakechroot` of a Debian chroot is left out (Wolfi's glibc is newer than the chroot's), the rest of that test kept |
 | `debian/patches/series` | Patches copied next to the recipe + `uses: patch` |
 | Extra binary packages + `*.install` | `subpackages` that move their files from `destdir` |
 | Main package `*.install` when nothing is installed by the build system (cargo, go, overridden `dh_auto_install`) | Copied from the source tree |
@@ -87,7 +89,8 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | Build-depends on fontconfig or Xft | Runtime dependency on `ttf-dejavu` (Debian's fontconfig always brings a font; Wolfi's does not) |
 | `usr/sbin`, `sbin`, `bin`, `lib` destinations | `usr/bin`, `usr/lib` (Wolfi is usr-merged, with sbin merged into bin) |
 | Multiarch paths (`usr/lib/*/`, `$(DEB_HOST_MULTIARCH)`) | `usr/lib/` |
-| `preinst` / `postinst` / `prerm` / `postrm` | `scriptlets` (see below) |
+| `preinst` / `postinst` / `prerm` / `postrm` | `scriptlets` (see below); commands they call (`update-alternatives`, `ucf`, `invoke-rc.d`, …) become runtime dependencies on the package that has them; the links `update-alternatives --install` would make (highest priority, slaves included) are shipped in the package, since apko does not run the scripts |
+| Other `override_dh_*` / `execute_*_dh_*` targets | Their own commands, after the build or on the installed files (`$(DEB_VERSION)`, `$$`, `$(RM)` expanded) |
 | `debian/foo.in` + `sed s/#X#/$(VAR)/` in `rules` | Script with `${{package.version}}` / `${{vars.x}}`; `VAR` becomes a melange `vars` entry |
 | debconf `templates` + `db_get` | `/etc/<name>.conf` with documented defaults; `db_get` reads from it |
 
@@ -105,9 +108,9 @@ arguments dpkg would have passed:
 | `prerm` | `pre-deinstall` | `remove` |
 | `postrm` | `post-deinstall` | `remove` |
 
-`#DEBHELPER#` is removed. Debian-only helpers (`update-alternatives`,
-`deb-systemd-helper`, `dpkg-maintscript-helper`, `ucf`, …) are flagged with a
-TODO. Note that **apko does not run install scripts**; images built with apko
+`#DEBHELPER#` is removed. `update-alternatives` and the other dpkg tools come
+from Wolfi's dpkg; `ucf`, `invoke-rc.d` and `deb-systemd-helper` from this
+repository's ucf and init-system-helpers. Note that **apko does not run install scripts**; images built with apko
 must run that logic explicitly.
 
 ### debconf
@@ -118,6 +121,26 @@ template text. `. /usr/share/debconf/confmodule` is replaced by sourcing that
 file, and `db_get pkg/question` by `RET="${VAR:-default}"`. Set the value
 before installing to change the behaviour non-interactively.
 
+### debian/rules details
+
+- `override_dh_x-arch` and `-indep` are merged into one step (one melange build makes
+  both), with their target-specific variables (`target: VAR=value`) joined.
+- `override_dh_install` is split at its `dh_install` call: commands before it run
+  before the install step, those after it on the installed files; other overrides
+  follow dh's sequence (dh_install, dh_installdocs, ..., dh_installman, ...).
+- `dh_install -pPKG -Xpattern` excludes are honoured; `dh_installman FILES` installs them.
+- `dh_gencontrol -Vname=value` substvars are put into Depends; a value chosen with
+  `$(shell test -e /usr/bin/X && echo A || echo B)` is A when X is a build dependency.
+- `dh --buildsystem=cmake+ninja` uses the cmake pipelines; CMake projects whose Debian
+  `.install` files use `usr/lib/<package>/` get `-DCMAKE_INSTALL_LIBEXECDIR=lib`.
+- Runtime dependencies Debian leaves implicit are added: `${perl:Depends}` (perl, and
+  perl-ph-headers when the Perl code requires `*.ph`), Essential packages named in
+  Breaks/Conflicts (libapt-pkg: dpkg), GNU `getopt` used by shell scripts
+  (util-linux-misc), and libraries with an unversioned soname (libdb-5.3.so), for which
+  melange derives no `so:` dependency.
+- `update-alternatives --install` in a postinst becomes the links themselves (the
+  highest priority wins), since apko does not run maintainer scripts.
+
 ## Known limitations
 
 - Other `debian/rules` logic (`override_dh_*` beyond configure, build and
@@ -125,7 +148,8 @@ before installing to change the behaviour non-interactively.
   the original commands.
 - Package name mapping is a curated table plus heuristics, checked against
   the Wolfi index unless `--no-check-wolfi` is given.
-- `debian/watch` files that scrape a download page are not interpreted; pass `--upstream-url`.
+- `debian/watch` files that scrape a download page are not interpreted; with `--download`
+  the converter falls back to Debian's copy of the upstream tarball, or CPAN for Perl modules.
 - `dh --with` add-ons are reported, not converted.
 - Debian-repacked tarballs (`+dfsg`/`+ds`) without a `Files-Excluded` field
   are reported for review.

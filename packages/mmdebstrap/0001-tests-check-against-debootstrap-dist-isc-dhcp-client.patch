@@ -1,0 +1,26 @@
+From 09c35a965009c6ee02a571eab07402cd8ec78b47 Mon Sep 17 00:00:00 2001
+From: Johannes Schauer Marin Rodrigues <josch@mister-muffin.de>
+Date: Wed, 7 Oct 2026 00:34:19 +0200
+Subject: [PATCH] tests/check-against-debootstrap-dist: isc-dhcp-client
+ postinst doesn't create /etc/apparmor.d/local/sbin.dhclient
+
+---
+ tests/check-against-debootstrap-dist | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+--- a/tests/check-against-debootstrap-dist
++++ b/tests/check-against-debootstrap-dist
+@@ -235,6 +235,13 @@ if [ "{{ VARIANT }}" = "-" ]; then
+   esac
+ fi
+ 
++# isc-dhcp-client postinst doesn't create this file in debootstrap run with
++# unshared wrapper. The responsible postinst snippet was automatically added
++# by dh_apparmor since isc-dhcp-client 4.4.3-P1-1.1
++if [ -e /tmp/debian-debootstrap/etc/apparmor.d/local/sbin.dhclient ] && [ ! -s /tmp/debian-debootstrap/etc/apparmor.d/local/sbin.dhclient ]; then
++  echo /sbin/setcap >/tmp/debian-debootstrap/etc/apparmor.d/local/sbin.dhclient
++fi
++
+ # check if the file content differs
+ diff --unified --no-dereference --recursive /tmp/debian-{{ DIST }}-debootstrap /tmp/debian-{{ DIST }}-mm >&2
+ 

@@ -4,8 +4,6 @@
 # Conversion notes:
 # - Debian repacks the upstream tarball (1:2.3.4+dfsg-2); check debian/copyright Files-Excluded before using the pristine upstream source
 # - set expected-commit for tag v2.3.4 (re-run with --download, or git ls-remote)
-# - port debian/rules override_dh_install: dh_install && rm -f debian/tmp/usr/lib/*/libfoo.la
-# - foo-tools.postinst: uses Debian-only tool 'update-alternatives'
 # - autopkgtests converted to the test pipeline (2 steps)
 package:
   name: libfoo
@@ -34,18 +32,20 @@ environment:
       - zlib-dev  # Debian: zlib1g-dev
       - openssl-dev  # Debian: libssl-dev
       - py3-sphinx  # Debian: python3-sphinx
+      - coreutils
+      - findutils
 pipeline:
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      for f in 0001-fix-build.patch 0002-gcc15.patch copyright; do mv libfoo/$f .recipe-files/; done
+      rmdir libfoo 2>/dev/null || true
   # TODO(debian-to-melange): set expected-commit for tag v2.3.4 (re-run with --download, or git ls-remote)
   - uses: git-checkout
     with:
       repository: https://github.com/example/libfoo
       tag: v${{package.version}}
       expected-commit: '0000000000000000000000000000000000000000'
-  - name: Move the recipe files out of the build tree
-    runs: |
-      mkdir -p .recipe-files
-      for f in 0001-fix-build.patch 0002-gcc15.patch copyright; do mv libfoo/$f .recipe-files/; done
-      rmdir libfoo 2>/dev/null || true
   - uses: patch
     with:
       patches: .recipe-files/0001-fix-build.patch .recipe-files/0002-gcc15.patch
@@ -54,10 +54,20 @@ pipeline:
       opts: -DFOO_ENABLE_TESTS=OFF -DFOO_WITH_SSL=ON
   - uses: cmake/build
   - uses: cmake/install
-  # TODO(debian-to-melange): port debian/rules override_dh_install: dh_install && rm -f debian/tmp/usr/lib/*/libfoo.la
   - name: Install files
     runs: |
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/libfoo/copyright
+  - name: From debian/rules override_dh_install
+    runs: |
+      rm -f ${{targets.destdir}}/usr/lib/*/libfoo.la
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - uses: strip
 subpackages:
   - name: libfoo-dev
@@ -80,9 +90,20 @@ subpackages:
           mv "${{targets.destdir}}/usr/bin/foo" "${{targets.contextdir}}/usr/bin/"
           mkdir -p "${{targets.contextdir}}/etc"
           ln -sf /usr/share/foo/foo.conf "${{targets.contextdir}}/etc/foo.conf"
+      - name: Alternatives (links update-alternatives makes)
+        runs: |
+          alt() {
+            for s in "" .gz; do
+              t="${2%.gz}$s" l="${1%.gz}$s"
+              [ -e "${{targets.contextdir}}$t" ] && [ ! -e "${{targets.contextdir}}$l" ] || continue
+              mkdir -p "$(dirname "${{targets.contextdir}}$l")" && ln -s "$t" "${{targets.contextdir}}$l" && return
+            done
+          }
+          alt /usr/bin/frob /usr/bin/foo
     dependencies:
       runtime:
         - libfoo
+        - dpkg  # used by the maintainer scripts
     scriptlets:
       post-install: |
         #!/bin/sh
@@ -92,7 +113,6 @@ subpackages:
         debian_foo_tools_postinst() (
         set -e
         if [ "$1" = "configure" ]; then
-        # TODO(debian-to-melange): 'update-alternatives' does not exist on Wolfi
             update-alternatives --install /usr/bin/frob frob /usr/bin/foo 50
         fi
         )
@@ -105,7 +125,6 @@ subpackages:
         debian_foo_tools_postinst() (
         set -e
         if [ "$1" = "configure" ]; then
-        # TODO(debian-to-melange): 'update-alternatives' does not exist on Wolfi
             update-alternatives --install /usr/bin/frob frob /usr/bin/foo 50
         fi
         )
@@ -131,6 +150,13 @@ test:
       packages:
         - busybox
         - foo-tools
+        - bash  # Essential in Debian, so on every testbed
+        - coreutils  # Essential in Debian, so on every testbed
+        - diffutils  # Essential in Debian, so on every testbed
+        - dpkg  # Essential in Debian, so on every testbed
+        - findutils  # Essential in Debian, so on every testbed
+        - grep  # Essential in Debian, so on every testbed
+        - sed  # Essential in Debian, so on every testbed
         - libfoo-dev
         - build-base  # Debian: build-essential
         - pkgconf-dev  # Debian: pkgconf
@@ -143,6 +169,33 @@ test:
         repository: https://github.com/example/libfoo
         tag: v${{package.version}}
         expected-commit: '0000000000000000000000000000000000000000'
+    - name: dpkg database (as on a Debian testbed)
+      runs: |
+        db=/var/lib/dpkg
+        mkdir -p "$db/info" && touch "$db/status"
+        awk -v db="$db" -v aliases='build-essential=build-base libc-bin=glibc libc6=glibc perl-base=perl pkgconf=pkgconf-dev' '
+          BEGIN { n = split(aliases, a, " "); for (i = 1; i <= n; i++) { split(a[i], kv, "="); alias[kv[2]] = alias[kv[2]] " " kv[1] } }
+          function add(   m, j, f) {
+            m = split(pkg alias[pkg], names, " ")
+            for (j = 1; j <= m; j++) {
+              f = db "/info/" names[j] ".list"
+              printf "%s", files > f; close(f)
+              gsub(/_/, "~", ver)
+              printf "Package: %s\nStatus: install ok installed\nPriority: optional\nArchitecture: all\nVersion: %s\nMaintainer: Wolfi\nDescription: %s (apk package %s)\n\n", names[j], ver, names[j], pkg >> (db "/status")
+            }
+            pkg = ""
+          }
+          /^P:/ { pkg = substr($0, 3); files = ""; dir = "" }
+          /^V:/ { ver = substr($0, 3) }
+          /^F:/ { dir = substr($0, 3); files = files "/" dir "\n" }
+          /^R:/ { files = files (dir == "" ? "" : "/" dir) "/" substr($0, 3) "\n" }
+          /^$/ && pkg != "" { add() }
+          END { if (pkg != "") add() }
+        ' /lib/apk/db/installed
+        for t in debian/libfoo1.templates debian/templates; do
+          # po-debconf's translatable fields (_Description, __Choices) in the C locale
+          [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/libfoo1.templates" && break
+        done
     - name: 'autopkgtest: foo-tool --version'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
@@ -150,7 +203,6 @@ test:
     - name: 'autopkgtest: link-test'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
-        cd "$AUTOPKGTEST_TMP"
         set -e
         cat > "$AUTOPKGTEST_TMP/t.c" <<EOC
         #include <foo.h>

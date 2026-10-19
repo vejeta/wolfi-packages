@@ -1,0 +1,27 @@
+From 1617833d4bfa415cbe2fc1e961cb751e47697c24 Mon Sep 17 00:00:00 2001
+From: Johannes Schauer Marin Rodrigues <josch@mister-muffin.de>
+Date: Mon, 6 Feb 2023 10:42:40 +0100
+Subject: [PATCH 12/15] test/touch.inc.sh: use testtree variable
+
+ - the variable is set in test/common.inc.sh and includes `basename $0 .t`
+ - otherwise test/t/touch.t will always get skipped
+---
+ test/touch.inc.sh | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/test/touch.inc.sh b/test/touch.inc.sh
+index 25e0dc0..76c2132 100644
+--- a/test/touch.inc.sh
++++ b/test/touch.inc.sh
+@@ -1,6 +1,6 @@
+-if [ -x testtree/usr/bin/touch ]; then
++if [ -x $testtree/usr/bin/touch ]; then
+     touch=/usr/bin/touch
+-elif [ -x testtree/bin/touch ]; then
++elif [ -x $testtree/bin/touch ]; then
+     touch=/bin/touch
+ else
+     touch=
+-- 
+2.39.2
+

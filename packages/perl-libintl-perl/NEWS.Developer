@@ -1,0 +1,12 @@
+libintl-perl (1.37-1) unstable; urgency=medium
+
+  From upstream Changes/NEWS for 1.36:
+
+  * Important: The library now tries to implement the effect of environment
+    variables exactly as described in the GNU gettext documentation at
+    https://www.gnu.org/software/gettext/manual/html_node/Locale-Environment-Variables.html
+    and
+    https://www.gnu.org/software/gettext/manual/html_node/The-LANGUAGE-variable.html.
+    That will probably slightly alter the behaviour in edge cases.
+
+ -- gregor herrmann <gregoa@debian.org>  Sun, 08 Feb 2026 17:37:05 +0100

@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# The C headers converted to Perl with h2ph (syscall.ph, sys/ioctl.ph ...),
+# which Debian's perl package ships and Wolfi's perl does not. Needed by
+# Perl programs that `require "syscall.ph"` (mmdebstrap, for one).
+package:
+  name: perl-ph-headers
+  version: '5.44.0'
+  epoch: 0
+  description: C headers converted to Perl with h2ph (syscall.ph and friends)
+  copyright:
+    - license: GPL-1.0-or-later OR Artistic-1.0-Perl
+  dependencies:
+    runtime:
+      - perl
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - busybox
+      - perl
+      - perl-utils
+      - glibc-dev
+      - linux-headers
+pipeline:
+  - name: Convert the headers
+    runs: |
+      archlib="$(perl -MConfig -e 'print $Config{vendorarchexp}')"
+      mkdir -p "${{targets.destdir}}$archlib"
+      # the headers Debian converts, with everything they include (-a)
+      cd /usr/include
+      h2ph -a -d "${{targets.destdir}}$archlib" \
+        syscall.h sys/syscall.h sys/ioctl.h sys/socket.h sys/time.h sys/resource.h \
+        sys/types.h sys/stat.h sys/wait.h sys/mount.h sys/file.h fcntl.h termios.h \
+        signal.h errno.h unistd.h linux/fs.h linux/ioctl.h || true  # other arches' stubs are missing
+      test -f "${{targets.destdir}}$archlib/syscall.ph"
+      test -f "${{targets.destdir}}$archlib/sys/ioctl.ph"
+update:
+  enabled: false
+  manual: true
+  exclude-reason: follows Wolfi's perl version; bump with it
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+        - perl
+  pipeline:
+    - runs: |
+        perl -e 'require "syscall.ph"; print SYS_getpid(), "\n"; die unless SYS_getpid() > 0'
+        perl -e 'require "sys/ioctl.ph"; die unless defined &TIOCGWINSZ'
+        perl -e 'require "syscall.ph"; my $p = syscall(SYS_getpid()); die "syscall" unless $p == $$'

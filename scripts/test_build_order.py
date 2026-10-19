@@ -35,6 +35,20 @@ class BuildOrderTest(unittest.TestCase):
         self.assertEqual(bo.waves({"liba", "app", "big"}, self.recipes),
                          [["liba"], ["app", "big"]])
 
+    def test_templated_subpackage_names(self):
+        write(self.tmp.name, "py3-lib", "package: {name: py3-lib}\n"
+                                        "vars: {pypi-package: lib}\n"
+                                        "data: [{name: py-versions, items: {3.10: '310', 3.13: '313'}}]\n"
+                                        "subpackages:\n"
+                                        "  - {range: py-versions, name: 'py${{range.key}}-${{vars.pypi-package}}'}\n"
+                                        "  - {name: 'py3-supported-${{vars.pypi-package}}'}\n")
+        write(self.tmp.name, "user", "package: {name: user}\n"
+                                     "environment: {contents: {packages: [py3-supported-lib]}}\n")
+        recipes = bo.load_recipes(self.tmp.name)
+        self.assertEqual(recipes["py3-lib"]["provides"],
+                         {"py3-lib", "py3.10-lib", "py3.13-lib", "py3-supported-lib"})
+        self.assertEqual(bo.waves({"py3-lib", "user"}, recipes), [["py3-lib"], ["user"]])
+
     def test_target_architecture_limits_builds(self):
         wave = bo.builds(["app", "big"], self.recipes, ["x86_64", "aarch64"])
         self.assertEqual(wave, [

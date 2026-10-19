@@ -1,0 +1,686 @@
+From eefdb166d5877bf7aefd4ec300ad71c303389c26 Mon Sep 17 00:00:00 2001
+From: Johannes Schauer Marin Rodrigues <josch@mister-muffin.de>
+Date: Tue, 6 Oct 2026 22:41:21 +0200
+Subject: [PATCH] tests: manually add entries in /dev to tar1.txt
+
+output dev entries which might not get created when creating a directory
+chroot, depending on the system on which this test is run (mknod might
+not be available) but which are needed later when comparing to tarball
+output
+---
+ tests/aptopt                                  | 18 +++++-
+ tests/as-debootstrap-unshare-wrapper          | 19 ++++--
+ tests/check-against-debootstrap-dist          | 61 +++++++++++--------
+ ...hroot-directory-not-accessible-by-apt-user | 18 +++++-
+ tests/create-directory                        | 21 ++++++-
+ tests/create-directory-dry-run                | 24 ++++----
+ tests/customize-hook                          | 18 +++++-
+ tests/deb822-1-2                              | 16 ++++-
+ tests/deb822-2-2                              | 16 ++++-
+ tests/debootstrap-no-op-options               | 18 +++++-
+ tests/directory-ending-in-tar                 | 18 +++++-
+ tests/dpkgopt                                 | 34 ++++++++++-
+ tests/eatmydata-via-hook-dir                  | 21 +++++--
+ tests/essential-hook                          | 18 +++++-
+ tests/existing-directory-with-lost-found      | 18 +++++-
+ tests/existing-empty-directory                | 18 +++++-
+ tests/hook-directory                          | 18 +++++-
+ tests/include                                 | 18 +++++-
+ ...install-busybox-based-sub-essential-system |  9 ++-
+ tests/multiple-include                        | 18 +++++-
+ tests/quiet                                   | 18 +++++-
+ tests/signed-by-with-host-keys                | 18 +++++-
+ tests/supply-components-manually              | 18 +++++-
+ 23 files changed, 405 insertions(+), 68 deletions(-)
+
+--- a/tests/aptopt
++++ b/tests/aptopt
+@@ -6,4 +6,20 @@ echo 'Acquire::Languages "none";' >/tmp/
+ {{ CMD }} --mode=root --variant=apt --aptopt='Acquire::Check-Valid-Until "false"' --aptopt=/tmp/config {{ DIST }} /tmp/debian-chroot {{ MIRROR }}
+ printf 'Acquire::Check-Valid-Until "false";\nAcquire::Languages "none";\n' | cmp /tmp/debian-chroot/etc/apt/apt.conf.d/99mmdebstrap -
+ rm /tmp/debian-chroot/etc/apt/apt.conf.d/99mmdebstrap
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort | diff -u tar1.txt -
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -
+--- a/tests/as-debootstrap-unshare-wrapper
++++ b/tests/as-debootstrap-unshare-wrapper
+@@ -46,17 +46,26 @@ if [ -n "$AUTOPROXY" ] && [ -x "$AUTOPRO
+ fi
+ 
+ mkdir /tmp/debian-mm
+-tar --xattrs --xattrs-include='*' -C /tmp/debian-mm -xf /tmp/debian-mm.tar
++have_mknod=
++set -- --exclude="./dev/*"
++if mknod /tmp/debian-mm/test-dev-null c 1 3 2>/dev/null; then
++  have_mknod="yes"
++  rm /tmp/debian-mm/test-dev-null
++  set --
++fi
++tar --xattrs --xattrs-include='*' "$@" -C /tmp/debian-mm -xf /tmp/debian-mm.tar
+ 
+ mkdir /tmp/debian-debootstrap
+ tar --xattrs --xattrs-include='*' -C /tmp/debian-debootstrap -xf "cache/debian-unstable-{{ VARIANT }}.tar"
+ 
+ # diff cannot compare device nodes, so we use tar to do that for us and then
+ # delete the directory
+-tar -C /tmp/debian-debootstrap -cf dev1.tar ./dev
+-tar -C /tmp/debian-mm -cf dev2.tar ./dev
+-cmp dev1.tar dev2.tar >&2
+-rm dev1.tar dev2.tar
++if [ "$have_mknod" = "yes" ]; then
++  tar -C /tmp/debian-debootstrap -cf dev1.tar ./dev
++  tar -C /tmp/debian-mm -cf dev2.tar ./dev
++  cmp dev1.tar dev2.tar >&2
++  rm dev1.tar dev2.tar
++fi
+ rm -r /tmp/debian-debootstrap/dev /tmp/debian-mm/dev
+ 
+ # remove downloaded deb packages
+--- a/tests/check-against-debootstrap-dist
++++ b/tests/check-against-debootstrap-dist
+@@ -16,7 +16,14 @@ echo "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPO
+   {{ DIST }} /tmp/debian-{{ DIST }}-mm.tar {{ MIRROR }}
+ 
+ mkdir /tmp/debian-{{ DIST }}-mm
+-tar --xattrs --xattrs-include='*' -C /tmp/debian-{{ DIST }}-mm -xf /tmp/debian-{{ DIST }}-mm.tar
++have_mknod=
++set -- --exclude="./dev/*"
++if mknod /tmp/debian-{{ DIST }}-mm/test-dev-null c 1 3 2>/dev/null; then
++  have_mknod="yes"
++  rm /tmp/debian-{{ DIST }}-mm/test-dev-null
++  set --
++fi
++tar --xattrs --xattrs-include='*' "$@" -C /tmp/debian-{{ DIST }}-mm -xf /tmp/debian-{{ DIST }}-mm.tar
+ rm /tmp/debian-{{ DIST }}-mm.tar
+ 
+ mkdir /tmp/debian-{{ DIST }}-debootstrap
+@@ -24,34 +31,36 @@ tar --xattrs --xattrs-include='*' -C /tm
+ 
+ # diff cannot compare device nodes, so we use tar to do that for us and then
+ # delete the directory
+-tar -C /tmp/debian-{{ DIST }}-debootstrap -cf /tmp/dev1.tar ./dev
+-tar -C /tmp/debian-{{ DIST }}-mm -cf /tmp/dev2.tar ./dev
+-ret=0
+-cmp /tmp/dev1.tar /tmp/dev2.tar >&2 || ret=$?
+-if [ "$ret" -ne 0 ]; then
+-  if type diffoscope >/dev/null; then
+-    diffoscope /tmp/dev1.tar /tmp/dev2.tar
+-    exit 1
+-  else
+-    echo "no diffoscope installed" >&2
+-  fi
+-  if type base64 >/dev/null; then
+-    base64 /tmp/dev1.tar
+-    base64 /tmp/dev2.tar
+-    exit 1
+-  else
+-    echo "no base64 installed" >&2
+-  fi
+-  if type xxd >/dev/null; then
+-    xxd /tmp/dev1.tar
+-    xxd /tmp/dev2.tar
++if [ "$have_mknod" = "yes" ]; then
++  tar -C /tmp/debian-{{ DIST }}-debootstrap -cf /tmp/dev1.tar ./dev
++  tar -C /tmp/debian-{{ DIST }}-mm -cf /tmp/dev2.tar ./dev
++  ret=0
++  cmp /tmp/dev1.tar /tmp/dev2.tar >&2 || ret=$?
++  if [ "$ret" -ne 0 ]; then
++    if type diffoscope >/dev/null; then
++      diffoscope /tmp/dev1.tar /tmp/dev2.tar
++      exit 1
++    else
++      echo "no diffoscope installed" >&2
++    fi
++    if type base64 >/dev/null; then
++      base64 /tmp/dev1.tar
++      base64 /tmp/dev2.tar
++      exit 1
++    else
++      echo "no base64 installed" >&2
++    fi
++    if type xxd >/dev/null; then
++      xxd /tmp/dev1.tar
++      xxd /tmp/dev2.tar
++      exit 1
++    else
++      echo "no xxd installed" >&2
++    fi
+     exit 1
+-  else
+-    echo "no xxd installed" >&2
+   fi
+-  exit 1
++  rm /tmp/dev1.tar /tmp/dev2.tar
+ fi
+-rm /tmp/dev1.tar /tmp/dev2.tar
+ rm -r /tmp/debian-{{ DIST }}-debootstrap/dev /tmp/debian-{{ DIST }}-mm/dev
+ 
+ # remove downloaded deb packages
+--- a/tests/chroot-directory-not-accessible-by-apt-user
++++ b/tests/chroot-directory-not-accessible-by-apt-user
+@@ -5,4 +5,20 @@ trap "rm -rf /tmp/debian-chroot" EXIT IN
+ mkdir /tmp/debian-chroot
+ chmod 700 /tmp/debian-chroot
+ {{ CMD }} --mode=root --variant=apt {{ DIST }} /tmp/debian-chroot {{ MIRROR }}
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort | diff -u tar1.txt -
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -
+--- a/tests/create-directory
++++ b/tests/create-directory
+@@ -6,4 +6,23 @@ trap "rm -rf /tmp/debian-chroot" EXIT IN
+ 
+ {{ CMD }} --mode=root --variant=apt {{ DIST }} /tmp/debian-chroot {{ MIRROR }}
+ chroot /tmp/debian-chroot dpkg-query --showformat '${binary:Package}\n' --show >pkglist.txt
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort >tar1.txt
++# output dev entries which might not get created when creating a directory
++# chroot, depending on the system on which this test is run but which are
++# needed later when comparing to tarball output
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u >tar1.txt
+--- a/tests/create-directory-dry-run
++++ b/tests/create-directory-dry-run
+@@ -6,18 +6,18 @@ export LC_ALL=C.UTF-8
+   --essential-hook="exit 1" \
+   --customize-hook="exit 1" \
+   {{ DIST }} /tmp/debian-chroot {{ MIRROR }}
+-rm /tmp/debian-chroot/dev/console
+-rm /tmp/debian-chroot/dev/fd
+-rm /tmp/debian-chroot/dev/full
+-rm /tmp/debian-chroot/dev/null
+-rm /tmp/debian-chroot/dev/ptmx
+-rm /tmp/debian-chroot/dev/random
+-rm /tmp/debian-chroot/dev/stderr
+-rm /tmp/debian-chroot/dev/stdin
+-rm /tmp/debian-chroot/dev/stdout
+-rm /tmp/debian-chroot/dev/tty
+-rm /tmp/debian-chroot/dev/urandom
+-rm /tmp/debian-chroot/dev/zero
++rm -f /tmp/debian-chroot/dev/console
++rm -f /tmp/debian-chroot/dev/fd
++rm -f /tmp/debian-chroot/dev/full
++rm -f /tmp/debian-chroot/dev/null
++rm -f /tmp/debian-chroot/dev/ptmx
++rm -f /tmp/debian-chroot/dev/random
++rm -f /tmp/debian-chroot/dev/stderr
++rm -f /tmp/debian-chroot/dev/stdin
++rm -f /tmp/debian-chroot/dev/stdout
++rm -f /tmp/debian-chroot/dev/tty
++rm -f /tmp/debian-chroot/dev/urandom
++rm -f /tmp/debian-chroot/dev/zero
+ rm /tmp/debian-chroot/etc/apt/sources.list
+ rm /tmp/debian-chroot/etc/fstab
+ rm /tmp/debian-chroot/etc/hostname
+--- a/tests/customize-hook
++++ b/tests/customize-hook
+@@ -13,4 +13,20 @@ printf "root\n/\n" | cmp /tmp/debian-chr
+ printf "root\n/\n" | cmp /tmp/debian-chroot/output2
+ rm /tmp/debian-chroot/output1
+ rm /tmp/debian-chroot/output2
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort | diff -u tar1.txt -
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -
+--- a/tests/deb822-1-2
++++ b/tests/deb822-1-2
+@@ -42,4 +42,18 @@ tar -C /tmp/debian-chroot --one-file-sys
+       | grep -v "^./etc/apt/sources.list.d/0001main.list$" \
+       | grep -v "^./etc/apt/sources.list.d/0002sources.list"
+     printf "./etc/apt/sources.list\n"
+-  } | sort | diff -u tar1.txt -
++    echo ./dev/console
++    echo ./dev/fd
++    echo ./dev/full
++    echo ./dev/null
++    echo ./dev/ptmx
++    echo ./dev/pts/
++    echo ./dev/random
++    echo ./dev/shm/
++    echo ./dev/stderr
++    echo ./dev/stdin
++    echo ./dev/stdout
++    echo ./dev/tty
++    echo ./dev/urandom
++    echo ./dev/zero
++  } | sort -u | diff -u tar1.txt -
+--- a/tests/deb822-2-2
++++ b/tests/deb822-2-2
+@@ -41,4 +41,18 @@ tar -C /tmp/debian-chroot --one-file-sys
+       | grep -v "^./etc/apt/sources.list.d/0001main.sources$" \
+       | grep -v "^./etc/apt/sources.list.d/0002sources.list$"
+     printf "./etc/apt/sources.list\n"
+-  } | sort | diff -u tar1.txt -
++    echo ./dev/console
++    echo ./dev/fd
++    echo ./dev/full
++    echo ./dev/null
++    echo ./dev/ptmx
++    echo ./dev/pts/
++    echo ./dev/random
++    echo ./dev/shm/
++    echo ./dev/stderr
++    echo ./dev/stdin
++    echo ./dev/stdout
++    echo ./dev/tty
++    echo ./dev/urandom
++    echo ./dev/zero
++  } | sort -u | diff -u tar1.txt -
+--- a/tests/debootstrap-no-op-options
++++ b/tests/debootstrap-no-op-options
+@@ -2,5 +2,21 @@
+ set -eu
+ export LC_ALL=C.UTF-8
+ {{ CMD }} --mode=root --variant=apt --resolve-deps --merged-usr --no-merged-usr --force-check-gpg {{ DIST }} /tmp/debian-chroot {{ MIRROR }}
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort | diff -u tar1.txt -
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -
+ rm -r /tmp/debian-chroot
+--- a/tests/directory-ending-in-tar
++++ b/tests/directory-ending-in-tar
+@@ -9,4 +9,20 @@ if [ "$ftype" != directory ]; then
+   echo "expected directory but got: $ftype" >&2
+   exit 1
+ fi
+-tar -C /tmp/debian-chroot.tar --one-file-system -c . | tar -t | sort | diff -u tar1.txt -
++tar -C /tmp/debian-chroot.tar --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -
+--- a/tests/dpkgopt
++++ b/tests/dpkgopt
+@@ -6,9 +6,39 @@ echo no-pager >/tmp/config
+ {{ CMD }} --mode=root --variant=apt --dpkgopt="path-exclude=/usr/share/doc/*" --dpkgopt=/tmp/config --dpkgopt="path-include=/usr/share/doc/dpkg/copyright" {{ DIST }} /tmp/debian-chroot {{ MIRROR }}
+ printf 'path-exclude=/usr/share/doc/*\nno-pager\npath-include=/usr/share/doc/dpkg/copyright\n' | cmp /tmp/debian-chroot/etc/dpkg/dpkg.cfg.d/99mmdebstrap -
+ rm /tmp/debian-chroot/etc/dpkg/dpkg.cfg.d/99mmdebstrap
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort >tar2.txt
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u >tar2.txt
+ {
+   grep -v '^./usr/share/doc/.' tar1.txt
+   echo ./usr/share/doc/dpkg/
+   echo ./usr/share/doc/dpkg/copyright
+-} | sort | diff -u - tar2.txt
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u - tar2.txt
+--- a/tests/eatmydata-via-hook-dir
++++ b/tests/eatmydata-via-hook-dir
+@@ -40,9 +40,22 @@ elfheader="$elfheader\\001\\000"
+   --hook-dir=./hooks/eatmydata \
+   --customize-hook='printf "'"$elfheader"'" | cmp --bytes=8 - "$1"/usr/bin/dpkg' \
+   {{ DIST }} /tmp/debian-chroot {{ MIRROR }}
+-tar -C /tmp/debian-chroot --one-file-system -c . \
+-  | tar -t \
+-  | sort \
+-  | diff -u tar1.txt -
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -
+ rm /tmp/checkeatmydata.sh
+ rm -r /tmp/debian-chroot
+--- a/tests/essential-hook
++++ b/tests/essential-hook
+@@ -9,7 +9,23 @@ SCRIPT
+ chmod +x /tmp/essential.sh
+ {{ CMD }} --mode=root --variant=apt --include=tzdata --essential-hook='echo tzdata tzdata/Areas select Europe | chroot "$1" debconf-set-selections' --essential-hook=/tmp/essential.sh {{ DIST }} /tmp/debian-chroot {{ MIRROR }}
+ [ "$(readlink /tmp/debian-chroot/etc/localtime)" = "/usr/share/zoneinfo/Europe/Berlin" ]
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort \
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u \
+   | grep -v '^./etc/localtime' \
+   | grep -v '^./etc/timezone' \
+   | grep -v '^./usr/sbin/tzconfig' \
+--- a/tests/existing-directory-with-lost-found
++++ b/tests/existing-directory-with-lost-found
+@@ -6,4 +6,20 @@ mkdir /tmp/debian-chroot
+ mkdir /tmp/debian-chroot/lost+found
+ {{ CMD }} --mode=root --variant=apt {{ DIST }} /tmp/debian-chroot {{ MIRROR }}
+ rmdir /tmp/debian-chroot/lost+found
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort | diff -u tar1.txt -
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -
+--- a/tests/existing-empty-directory
++++ b/tests/existing-empty-directory
+@@ -4,4 +4,20 @@ export LC_ALL=C.UTF-8
+ trap "rm -rf /tmp/debian-chroot" EXIT INT TERM
+ mkdir /tmp/debian-chroot
+ {{ CMD }} --mode=root --variant=apt {{ DIST }} /tmp/debian-chroot {{ MIRROR }}
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort | diff -u tar1.txt -
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -
+--- a/tests/hook-directory
++++ b/tests/hook-directory
+@@ -38,7 +38,23 @@ printf "cliA/customize\nhookA/customize0
+ for s in setup extract essential customize; do
+   rm /tmp/debian-chroot/$s
+ done
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort | diff -u tar1.txt -
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -
+ for h in hookA hookB; do
+   for s in setup extract essential customize; do
+     rm /tmp/$h/${s}00.sh
+--- a/tests/include
++++ b/tests/include
+@@ -8,4 +8,20 @@ rm -r /tmp/debian-chroot/usr/share/doc/d
+ rm -r /tmp/debian-chroot/usr/share/doc/doc-debian
+ rm /tmp/debian-chroot/var/lib/dpkg/info/doc-debian.list
+ rm /tmp/debian-chroot/var/lib/dpkg/info/doc-debian.md5sums
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort | diff -u tar1.txt -
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -
+--- a/tests/install-busybox-based-sub-essential-system
++++ b/tests/install-busybox-based-sub-essential-system
+@@ -36,6 +36,11 @@ fi
+ chroot /tmp/debian-chroot echo foobar \
+   | chroot /tmp/debian-chroot cat \
+   | chroot /tmp/debian-chroot sort \
+-  | chroot /tmp/debian-chroot tee /dev/null \
+-  | chroot /tmp/debian-chroot sed 's/foobar/blubber/' \
++  | {
++    if [ -c /tmp/debian-chroot/dev/null ]; then
++      chroot /tmp/debian-chroot tee /dev/null
++    else
++      cat
++    fi
++  } | chroot /tmp/debian-chroot sed 's/foobar/blubber/' \
+   | chroot /tmp/debian-chroot grep blubber >/dev/null
+--- a/tests/multiple-include
++++ b/tests/multiple-include
+@@ -18,4 +18,20 @@ for p in doc-debian tzdata; do
+     rm "/tmp/debian-chroot/var/lib/dpkg/info/$p.$f"
+   done
+ done
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort | diff -u tar1.txt -
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -
+--- a/tests/quiet
++++ b/tests/quiet
+@@ -2,5 +2,21 @@
+ set -eu
+ export LC_ALL=C.UTF-8
+ {{ CMD }} --mode=root --variant=apt --quiet {{ DIST }} /tmp/debian-chroot {{ MIRROR }}
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort | diff -u tar1.txt -
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -
+ rm -r /tmp/debian-chroot
+--- a/tests/signed-by-with-host-keys
++++ b/tests/signed-by-with-host-keys
+@@ -4,4 +4,20 @@ export LC_ALL=C.UTF-8
+ trap "rm -rf /tmp/debian-chroot" EXIT INT TERM
+ {{ CMD }} --mode=root --variant=apt {{ DIST }} /tmp/debian-chroot {{ MIRROR }}
+ printf 'deb {{ MIRROR }} {{ DIST }} main\n' | cmp /tmp/debian-chroot/etc/apt/sources.list -
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort | diff -u tar1.txt -
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -
+--- a/tests/supply-components-manually
++++ b/tests/supply-components-manually
+@@ -4,4 +4,20 @@ export LC_ALL=C.UTF-8
+ trap "rm -rf /tmp/debian-chroot" EXIT INT TERM
+ {{ CMD }} --mode={{ MODE }} --variant=apt --components="main main" --comp="main,main" {{ DIST }} /tmp/debian-chroot {{ MIRROR }}
+ echo "deb {{ MIRROR }} {{ DIST }} main" | cmp /tmp/debian-chroot/etc/apt/sources.list
+-tar -C /tmp/debian-chroot --one-file-system -c . | tar -t | sort | diff -u tar1.txt -
++tar -C /tmp/debian-chroot --one-file-system -c . | {
++  tar -t
++  echo ./dev/console
++  echo ./dev/fd
++  echo ./dev/full
++  echo ./dev/null
++  echo ./dev/ptmx
++  echo ./dev/pts/
++  echo ./dev/random
++  echo ./dev/shm/
++  echo ./dev/stderr
++  echo ./dev/stdin
++  echo ./dev/stdout
++  echo ./dev/tty
++  echo ./dev/urandom
++  echo ./dev/zero
++} | sort -u | diff -u tar1.txt -

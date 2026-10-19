@@ -310,6 +310,31 @@ class HelperTest(unittest.TestCase):
         self.assertEqual(d2m.to_spdx("Apache-2.0"), "Apache-2.0")
         self.assertEqual(d2m.to_spdx("LGPL-2.1+ and BSD-3-clause"), "LGPL-2.1-or-later AND BSD-3-Clause")
 
+    def test_alternatives(self):
+        text = ("update-alternatives --install /usr/bin/fr fr /usr/bin/fr-a 50 \\\n"
+                "  --slave /usr/share/man/man1/fr.1.gz fr.1.gz /usr/share/man/man1/fr-a.1.gz\n"
+                "update-alternatives --install /usr/bin/fr fr /usr/bin/fr-b 30\n"
+                "update-alternatives --install $LINK x $PATH 10\n")
+        self.assertEqual(d2m.alternatives(text), [
+            ("/usr/bin/fr", "/usr/bin/fr-a", [("/usr/share/man/man1/fr.1.gz", "/usr/share/man/man1/fr-a.1.gz")])])
+        step = d2m.alternatives_step(d2m.alternatives(text), "${{targets.destdir}}")
+        self.assertIn("alt /usr/bin/fr /usr/bin/fr-a\n", step["runs"])
+
+    def test_drop_foreign_fakechroot(self):
+        script = ("for v in a b; do\n"
+                  "\tmmdebstrap --variant=$v --mode=root unstable root.tar\n"
+                  "\ttouch fc.tar\n"
+                  "\trunuser -u u -- mmdebstrap --variant=$v --mode=fakechroot unstable fc.tar\n"
+                  "\tcmp root.tar fc.tar\n"
+                  "\trm root.tar fc.tar\n"
+                  "done\n")
+        out, dropped = d2m.drop_foreign_fakechroot(script)
+        self.assertTrue(dropped)
+        self.assertIn("--mode=root", out)
+        self.assertNotIn("fc.tar", out)
+        self.assertIn("\trm root.tar\n", out)
+        self.assertEqual(d2m.drop_foreign_fakechroot("true\n"), ("true\n", False))
+
     def test_debian_upstream_version(self):
         self.assertEqual(d2m.debian_upstream_version("1:2.3.4+dfsg-2"), "2.3.4")
         self.assertEqual(d2m.debian_upstream_version("0.40.0-3+deb13u1"), "0.40.0")
@@ -350,10 +375,18 @@ class HelperTest(unittest.TestCase):
 
     def test_convert_script_flags_debian_only_tools(self):
         notes = []
-        body, _ = d2m.convert_script("#!/bin/sh\nupdate-alternatives --install a b c 1\n", "postinst",
+        body, _ = d2m.convert_script("#!/bin/sh\npy3compile -p foo\n", "postinst",
                                      "p", [], "/etc/p.conf", notes)
         self.assertIn(d2m.TODO, body)
-        self.assertTrue(any("update-alternatives" in n for n in notes))
+        self.assertTrue(any("py3compile" in n for n in notes))
+
+    def test_convert_script_records_tool_packages(self):
+        d2m.SCRIPT_DEPS.clear()
+        body, _ = d2m.convert_script("#!/bin/sh\nupdate-alternatives --install a b c 1\n"
+                                     "touch /var/lib/ucf/hashfile\n", "postinst", "p", [], "/etc/p.conf", [])
+        self.assertNotIn(d2m.TODO, body)
+        self.assertEqual(d2m.SCRIPT_DEPS, {"postinst": {"dpkg"}})  # not ucf: only a path
+        d2m.SCRIPT_DEPS.clear()
 
     def test_scalar_quoting(self):
         self.assertEqual(d2m.scalar("1.0"), "'1.0'")

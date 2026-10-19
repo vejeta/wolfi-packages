@@ -1,0 +1,111 @@
+From 117d2e6e741bc4ff47e41e6879ca9e9821755ffd Mon Sep 17 00:00:00 2001
+From: Johannes Schauer Marin Rodrigues <josch@mister-muffin.de>
+Date: Tue, 31 Jan 2023 11:43:33 +0100
+Subject: [PATCH 11/15] also investigate .interp section for architectures that
+ do not list the linker in `objdump -p` like mips64el, ppc64el and s390x
+
+---
+ scripts/ldd.fakechroot.pl | 33 +++++++++++++++++++++++++++++++++
+ test/Makefile.am          |  1 +
+ test/t/ldd_interp.t       | 26 ++++++++++++++++++++++++++
+ 3 files changed, 60 insertions(+)
+ create mode 100755 test/t/ldd_interp.t
+
+diff --git a/scripts/ldd.fakechroot.pl b/scripts/ldd.fakechroot.pl
+index b4bb2a8..13a9454 100755
+--- a/scripts/ldd.fakechroot.pl
++++ b/scripts/ldd.fakechroot.pl
+@@ -124,6 +124,38 @@ sub objdump {
+     }
+ }
+ 
++# mips64el, ppc64el and s390x do not list the linker itself
++# if it's missing, obtain it from the .interp section
++#
++# mips64el: /lib64/ld.so.1
++# ppc64el: /lib64/ld64.so.2
++# s390x: /lib/ld64.so.1
++sub elfinterp {
++    my $file = shift;
++    my $res = '';
++    local *PIPE;
++    open PIPE, "objdump -sj .interp '$file' 2>/dev/null |";
++    while (my $line = <PIPE>) {
++        if ( $line !~ /^ [a-f0-9]+ ([a-f0-9][a-f0-9][a-f0-9 ]{6} [a-f0-9 ]{8} [a-f0-9 ]{8} [a-f0-9 ]{8})  /) {
++            next;
++        }
++        $line = $1;
++        $line =~ s/ //g;
++        $line =~ s/(..)/chr(hex($1))/eg;
++        $res .= $line;
++    }
++    close PIPE;
++
++    # remove trailing NUL byte
++    $res =~ s/\000$//;
++
++    # only add if it is missing
++    if ( $res && !exists $Libs{$res} ) {
++        push @Libs, $res;
++        $Libs{$res} = '';
++    }
++}
++
+ 
+ sub load_ldsoconf {
+     my ($file) = @_;
+@@ -191,6 +223,7 @@ MAIN: {
+         }
+ 
+         objdump($file);
++        elfinterp($file_in_chroot);
+ 
+         if ($Dynamic == 0) {
+             print "\tnot a dynamic executable\n";
+diff --git a/test/Makefile.am b/test/Makefile.am
+index 88e740e..d7f98f0 100644
+--- a/test/Makefile.am
++++ b/test/Makefile.am
+@@ -19,6 +19,7 @@ TESTS = \
+     t/host.t \
+     t/java.t \
+     t/jemalloc.t \
++    t/ldd_interp.t \
+     t/mkstemps.t \
+     t/mktemp.t \
+     t/opendir.t \
+diff --git a/test/t/ldd_interp.t b/test/t/ldd_interp.t
+new file mode 100755
+index 0000000..7c968bb
+--- /dev/null
++++ b/test/t/ldd_interp.t
+@@ -0,0 +1,26 @@
++#!/bin/sh
++
++srcdir=${srcdir:-.}
++. $srcdir/common.inc.sh
++
++plan 1
++
++pwd=`dirname $0`
++abs_top_srcdir=${abs_top_srcdir:-`cd "$pwd/../.." 2>/dev/null && pwd -P`}
++
++interp_file=$(file /bin/true | sed 's/^.*, interpreter \([^,]\+\), .*$/\1/')
++interp_readelf=$(readelf --string-dump=.interp /bin/true | sed -ne 's/^  \[ \+[0-9]\+\]  //p')
++
++# diag "$interp_file" "$interp_readelf"
++
++test "$interp_file" = "$interp_readelf" || not
++
++# ldd /bin/true | diag
++
++ldd /bin/true | grep --quiet "^[[:space:]]$interp_file (" || not
++
++# "$abs_top_srcdir/scripts/ldd.fakechroot" /bin/true | diag
++
++"$abs_top_srcdir/scripts/ldd.fakechroot" /bin/true | grep --quiet "^[[:space:]]$interp_file (" || not
++
++ok "ldd lists interpreter $interp_file"
+-- 
+2.39.2
+

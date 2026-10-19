@@ -30,13 +30,18 @@ environment:
       - spirv-tools-dev
       - vulkan-loader-dev
 pipeline:
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      mv libplacebo/* .recipe-files/
+      rmdir libplacebo
   - uses: fetch
     with:
       uri: https://code.videolan.org/videolan/libplacebo/-/archive/v${{package.version}}/libplacebo-v${{package.version}}.tar.gz
       expected-sha512: ea41f3852a5d877313d1969d771b0ba38338906a2a872abc67d2990f50c68848757616dc21cde1dbaa7e0fd46282e455bc7b3b14bfea14079935ff3afe7096e1
   - uses: patch
     with:
-      patches: libplacebo/glslang-deps.patch
+      patches: .recipe-files/glslang-deps.patch
   - name: Build
     runs: |
       abuild_meson() {
