@@ -57,19 +57,25 @@ pipeline:
       opts: --disable-werror $(CROSS_CONFIGURE_OPTIONS)
   - name: Build (from debian/rules override_dh_auto_build)
     runs: |
+      make -j$(nproc)
       make -C doc doc
   - name: Install (from debian/rules override_dh_auto_install)
     runs: |
+      make install DESTDIR="${{targets.destdir}}"
       make -C doc install
   - name: Install files
     runs: |
-      mkdir -p "${{targets.destdir}}/usr/lib"
-      cp -a usr/lib/libcwidget.so.* "${{targets.destdir}}/usr/lib/"
-      mkdir -p "${{targets.destdir}}/usr/share"
-      cp -a usr/share/locale "${{targets.destdir}}/usr/share/"
       find "${{targets.destdir}}" -path "*jquery.min.js*" -prune -exec rm -rf {} +
       find "${{targets.destdir}}" -path "*jquery.js*" -prune -exec rm -rf {} +
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/libcwidget4
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - uses: strip
 subpackages:
   - name: libcwidget-dev
@@ -77,12 +83,12 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/include"
-          cp -a usr/include/cwidget "${{targets.contextdir}}/usr/include/"
+          mv "${{targets.destdir}}/usr/include/cwidget" "${{targets.contextdir}}/usr/include/"
           mkdir -p "${{targets.contextdir}}/usr/lib"
-          cp -a usr/lib/libcwidget.so "${{targets.contextdir}}/usr/lib/"
-          cp -a usr/lib/libcwidget.a "${{targets.contextdir}}/usr/lib/"
-          cp -a usr/lib/pkgconfig "${{targets.contextdir}}/usr/lib/"
-          cp -a usr/lib/cwidget "${{targets.contextdir}}/usr/lib/"
+          mv "${{targets.destdir}}/usr/lib/libcwidget.so" "${{targets.contextdir}}/usr/lib/"
+          mv "${{targets.destdir}}/usr/lib/libcwidget.a" "${{targets.contextdir}}/usr/lib/"
+          mv "${{targets.destdir}}/usr/lib/pkgconfig" "${{targets.contextdir}}/usr/lib/"
+          mv "${{targets.destdir}}/usr/lib/cwidget" "${{targets.contextdir}}/usr/lib/"
           (cd "${{targets.contextdir}}" && find . -path "*jquery.min.js*" -prune | while read -r f; do
             mkdir -p "$(dirname "${{targets.destdir}}/$f")" && mv "$f" "${{targets.destdir}}/$f"
           done)
@@ -169,6 +175,7 @@ test:
     - name: 'autopkgtest: compile-example-testcwidget'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        set +o pipefail 2>/dev/null || true
         # Author: Manuel A. Fernandez Montecelo <mafm@debian.org>
         #
         # autopkgtest check: Build and run a program against the library, to verify that

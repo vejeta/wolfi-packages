@@ -107,8 +107,8 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/include/python-apt"
-          mv "${{targets.destdir}}/python/python-apt.h" "${{targets.contextdir}}/usr/include/python-apt/"
-          mv "${{targets.destdir}}/python/generic.h" "${{targets.contextdir}}/usr/include/python-apt/"
+          cp -a python/python-apt.h "${{targets.contextdir}}/usr/include/python-apt/"
+          cp -a python/generic.h "${{targets.contextdir}}/usr/include/python-apt/"
           mkdir -p "${{targets.contextdir}}/usr/share/doc/py3-apt-dev/examples"
           cp -a doc/client-example.cc "${{targets.contextdir}}/usr/share/doc/py3-apt-dev/examples/"
     dependencies:

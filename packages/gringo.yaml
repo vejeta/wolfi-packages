@@ -148,6 +148,8 @@ test:
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
         set +o pipefail 2>/dev/null || true
+        cat > "$AUTOPKGTEST_TMP/gringo5" <<'AUTOPKGTEST_SCRIPT'
+        #!/bin/bash
         # clingo+lua: cannot example
         # Author: Thomas Krennwallner <tkren@kr.tuwien.ac.at>
         # Date: 2018-02-04
@@ -158,3 +160,6 @@ test:
 
         result=$?
         test $result -eq 30
+        AUTOPKGTEST_SCRIPT
+        chmod +x "$AUTOPKGTEST_TMP/gringo5"
+        "$AUTOPKGTEST_TMP/gringo5"
