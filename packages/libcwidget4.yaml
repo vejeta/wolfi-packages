@@ -84,6 +84,9 @@ pipeline:
           mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
         done
       done
+  - name: Remove libtool archives
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
   - uses: strip
 subpackages:
   - name: libcwidget-dev
