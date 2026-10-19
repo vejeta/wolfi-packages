@@ -54,6 +54,8 @@ DROP = {
     "debhelper", "debhelper-compat", "cdbs", "quilt", "po-debconf", "debconf",
     "debconf-2.0", "lsb-base", "dpkg-dev", "init-system-helpers",
     "sensible-utils", "base-files", "base-passwd", "ucf",
+    # pybuild plugins: py/pip-build-install builds any PEP 517 project
+    "pybuild-plugin-pyproject",
     # Debian-only Java helpers (Maven repository layout, jar symlinks)
     "maven-repo-helper", "maven-debian-helper", "javahelper",
 }
@@ -736,6 +738,17 @@ def fetch_from_debian(spec, dest):
     top = json.loads(http_get("https://sources.debian.org/api/src/{}/{}/".format(name, version)))
     top_names = [c["name"] for c in top.get("content", [])]
     walk("debian")
+    egg = next((n for n in top_names if n.endswith(".egg-info")), None)
+    if egg:
+        # setuptools metadata in the sdist: top_level.txt names the importable modules
+        try:
+            data = http_get(SOURCES_RAW.format(area=area, prefix=prefix, name=name, version=version,
+                                               path=egg + "/top_level.txt"))
+            os.makedirs(os.path.join(tree, egg), exist_ok=True)
+            with open(os.path.join(tree, egg, "top_level.txt"), "wb") as fh:
+                fh.write(data)
+        except Exception:
+            pass
     for f in UPSTREAM_FILES:
         if f in top_names:
             with open(os.path.join(tree, f), "wb") as fh:
@@ -1011,6 +1024,22 @@ class Converter:
         if text is None and main:
             text = self.read(suffix)
         return text
+
+    def patch_imports(self):
+        """Third-party modules that lines added by debian/patches import."""
+        series = self.read("patches/series") or ""
+        mods = []
+        for p in series.split():
+            if p.startswith("#"):
+                continue
+            for m in re.finditer(r"(?m)^\+\s*(?:from\s+([A-Za-z_]\w*)[\w.]*\s+import|import\s+([A-Za-z_]\w*))",
+                                 self.read(os.path.join("patches", p)) or ""):
+                mod = m.group(1) or m.group(2)
+                if mod in sys.stdlib_module_names or mod == getattr(self, "python_module", None) or mod in mods:
+                    continue
+                mods.append(mod)
+        own = {n for n in self.top if not n.startswith(".")}
+        return [m for m in mods if m not in own]
 
     def debian_file(self, path):
         """debian/<file> named by a packaging file: copied next to the recipe."""
@@ -1325,6 +1354,11 @@ class Converter:
         runtime = self.map_deps(parse_relations(main.get("depends")) + parse_relations(main.get("pre-depends")), "runtime")
         if "${python3:Depends}" in (main.get("depends") or ""):
             reqs = python_requirements(self.tree)
+            for mod in self.patch_imports():
+                # a Debian patch imports a module that upstream does not require
+                if mod not in reqs:
+                    reqs.append(mod)
+                    self.notes.append("debian/patches import '{}', not in upstream's requirements; added".format(mod))
             if reqs:
                 self.notes.append("${python3:Depends} from upstream's requirements: " + ", ".join(reqs))
                 runtime += self.map_deps([["python3-" + r] for r in reqs], "runtime")
@@ -1414,8 +1448,17 @@ class Converter:
         self.bs = bs
         self.pipeline_used = False
         self.python_module = rules.vars.get("PYBUILD_NAME") if bs == "pybuild" else None
-        if bs == "pybuild" and not self.python_module:
-            self.python_module = re.sub(r"^(py3|python3?)-", "", name).replace("-", "_")
+        if bs == "pybuild":
+            # what can be imported: setuptools' top_level.txt, else the distribution name
+            egg = next((n for n in self.top if n.endswith(".egg-info")), None)
+            top_level = ""
+            if egg and os.path.isfile(os.path.join(self.tree, egg, "top_level.txt")):
+                with open(os.path.join(self.tree, egg, "top_level.txt")) as fh:
+                    top_level = next((l.strip() for l in fh if l.strip() and not l.startswith("_")), "")
+            if top_level:
+                self.python_module = top_level
+            elif not self.python_module or "-" in self.python_module:
+                self.python_module = re.sub(r"^(py3|python3?)-", "", self.python_module or name).replace("-", "_")
         ported = {}
         for target in ("override_dh_auto_build", "override_dh_auto_install"):
             if target in overrides:
