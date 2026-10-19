@@ -100,6 +100,7 @@ test:
         - busybox
         - build-base  # Debian: build-essential
         - scala-2.12  # Debian: scala
+        - ncurses-terminfo  # on every Debian system (ncurses-base: xterm-256color and other terminals)
         - scala-2.13
         - scala-3.8  # Debian: scala3
   pipeline:

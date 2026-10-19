@@ -245,7 +245,7 @@ class GitWatchTest(unittest.TestCase):
         self.assertNotIn("example.invalid", text)
         self.assertIn("- xorgproto  # Debian: x11proto-core-dev", text)
         test_env = text.split("\ntest:", 1)[1]
-        self.assertEqual(test_env.count("- glibc-locales"), 1)
+        self.assertEqual(test_env.count("- glibc-locale-en"), 1)
 
 
 class ScalaBuildTest(unittest.TestCase):

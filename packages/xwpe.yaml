@@ -25,6 +25,9 @@ package:
       paths:
         - icons/xwpe.svg
         - icons/xwpe-small.svg
+  dependencies:
+    runtime:
+      - ttf-dejavu  # Debian: fontconfig-config depends on fonts-dejavu-core
 environment:
   contents:
     keyring:
@@ -80,15 +83,18 @@ test:
         - busybox
         - py3-supported-pyte  # Wolfi Community Packages (Debian: python3-pyte)
         - py3-supported-pytest  # Debian: python3-pytest
-        - glibc-locales  # Debian: locales-all
+        - glibc-locale-en  # Debian: locales-all
         - build-base  # Debian: gcc
         - glibc-dev  # Debian: libc6-dev
         - gfortran
         - gdb
         - perl
+        - ncurses-terminfo  # on every Debian system (ncurses-base: xterm-256color and other terminals)
         - python3
         - py3-supported-pillow  # Debian: python3-pil
         - xvfb-run  # Debian: xvfb
+        - xkbcomp  # Debian: xvfb
+        - xkeyboard-config  # Debian: xvfb
         - matchbox-window-manager  # Wolfi Community Packages
         - xdotool  # Wolfi Community Packages
         - xwd  # Wolfi Community Packages, Debian: x11-apps

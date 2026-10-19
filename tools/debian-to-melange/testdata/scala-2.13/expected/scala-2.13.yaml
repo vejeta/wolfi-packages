@@ -208,6 +208,7 @@ test:
     contents:
       packages:
         - busybox
+        - ncurses-terminfo  # on every Debian system (ncurses-base: xterm-256color and other terminals)
   pipeline:
     - runs: |
         test -f /usr/share/doc/scala-2.13/copyright

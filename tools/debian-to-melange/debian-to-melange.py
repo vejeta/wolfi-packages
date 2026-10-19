@@ -156,8 +156,13 @@ NAME_MAP = {
     "bzip2": "bzip2",
     "openssl": "openssl",
     "nodejs": "nodejs",
-    "xvfb": "xvfb-run",  # Debian's xvfb ships Xvfb and xvfb-run
-    "locales-all": "glibc-locales",
+    # Debian's xvfb ships Xvfb and xvfb-run, and depends on the keymaps that
+    # Wolfi's Xvfb needs too but does not pull in
+    "xvfb": ["xvfb-run", "xkbcomp", "xkeyboard-config"],
+    "xkb-data": "xkeyboard-config",
+    # compiled locales (glibc-locales only has their sources)
+    "locales-all": "glibc-locale-en",
+    "locales": "glibc-locale-en",
     "imagemagick": "imagemagick-7",
     "libc6-dev": "glibc-dev",
     "npm": "npm",
@@ -183,6 +188,7 @@ BUNDLES = {
                 "xmore xwd xwud".split(),
     "x11-xserver-utils": "iceauth sessreg showrgb xcmsdb xgamma xhost xkill xmodmap xrandr xrdb "
                          "xrefresh xset xsetmode xsetpointer xsetroot xstdcmap xvidtune".split(),
+    "x11-xkb-utils": "setxkbmap xkbcomp xkbevd xkbprint xkbutils".split(),
     "x11-utils": "appres editres listres luit viewres xdpyinfo xdriinfo xev xfd xfontsel xlsatoms "
                  "xlsclients xlsfonts xmessage xprop xvinfo xwininfo".split(),
 }
@@ -190,6 +196,8 @@ BUNDLES = {
 
 def dep_candidates(name):
     """Ordered Wolfi name candidates for a Debian package name."""
+    if isinstance(NAME_MAP.get(name), list):
+        return NAME_MAP[name][:1]
     if name in NAME_MAP:
         return [NAME_MAP[name]]
     cands = [name]
@@ -1115,6 +1123,11 @@ class Converter:
     def map_deps(self, relations, kind):
         out, comments = [], []
         for alts in relations:
+            if len(alts) == 1 and isinstance(NAME_MAP.get(alts[0]), list):
+                for m in NAME_MAP[alts[0]]:
+                    if not any(o == m or (isinstance(o, C) and o.value == m) for o in out):
+                        out.append(C(m, "Debian: " + alts[0]))
+                continue
             if len(alts) == 1 and alts[0] in BUNDLES and self.wolfi.names is None:
                 out.append(C(alts[0], "{}: a Debian bundle; list the programs used ({}...)".format(
                     TODO, ", ".join(BUNDLES[alts[0]][:3]))))
@@ -1301,6 +1314,12 @@ class Converter:
             if reqs:
                 self.notes.append("${python3:Depends} from upstream's requirements: " + ", ".join(reqs))
                 runtime += self.map_deps([["python3-" + r] for r in reqs], "runtime")
+        build_names = {alt for alts in parse_relations(source.get("build-depends")) for alt in alts}
+        if build_names & {"libfontconfig-dev", "libfontconfig1-dev", "libxft-dev"} \
+                and main.get("architecture", "any") != "all":
+            # Debian's libfontconfig1 brings fontconfig-config, which depends on
+            # a font; Wolfi's fontconfig has none, and Xft finds nothing to draw with
+            runtime.append(C("ttf-dejavu", "Debian: fontconfig-config depends on fonts-dejavu-core"))
         recommends = [x[0] for x in parse_relations(main.get("recommends"))]
         if runtime or recommends:
             deps = {"runtime": runtime} if runtime else {}
@@ -1925,6 +1944,9 @@ class Converter:
         return {"enabled": True,
                 "release-monitor": {"identifier": C(0, "{}: set the release-monitoring.org project id".format(TODO))}}
 
+    # Packages every Debian testbed has, split differently in Wolfi.
+    TESTBED = {"ncurses-terminfo": "ncurses-base: xterm-256color and other terminals"}
+
     def autopkgtests(self, name):
         """debian/tests/control -> melange test pipeline steps and packages."""
         control = self.read("tests/control")
@@ -1947,6 +1969,9 @@ class Converter:
             for d in mapped:
                 if d not in packages:
                     packages.append(d)
+            for implicit in self.TESTBED:
+                if implicit not in [d.value if isinstance(d, C) else d for d in packages]:
+                    packages.append(C(implicit, "on every Debian system ({})".format(self.TESTBED[implicit])))
             if any((d.value if isinstance(d, C) else d).startswith("py3-") for d in mapped) and "python3" not in packages:
                 packages.append("python3")  # py3-supported-* do not provide the python3 command
             if "@builddeps@" in para.get("depends", ""):
