@@ -82,6 +82,13 @@ test:
         - gfortran
         - gdb
         - perl
+        - bash  # Essential in Debian, so on every testbed
+        - coreutils  # Essential in Debian, so on every testbed
+        - diffutils  # Essential in Debian, so on every testbed
+        - dpkg  # Essential in Debian, so on every testbed
+        - findutils  # Essential in Debian, so on every testbed
+        - grep  # Essential in Debian, so on every testbed
+        - sed  # Essential in Debian, so on every testbed
         - python3
         - py3-pillow  # Debian: python3-pil
         - xvfb-run  # Debian: xvfb

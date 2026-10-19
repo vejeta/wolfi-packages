@@ -41,21 +41,31 @@ environment:
       - busybox
       - py3-supported-build-base
       - py3-supported-packaging  # Debian: python3-packaging
+      - py3.13-pytest-bin  # commands of Debian's python3-pytest
       - py3-supported-pytest  # Debian: python3-pytest
+      - py3.13-setuptools-scm-bin  # commands of Debian's python3-setuptools-scm
       - py3-supported-setuptools-scm  # Debian: python3-setuptools-scm
 pipeline:
-  - uses: fetch
-    with:
-      uri: https://deb.debian.org/debian/pool/main/p/pytest-runner/pytest-runner_${{package.version}}.orig.tar.gz
-      expected-sha256: 70d4739585a7008f37bf4933c013fdb327b8878a5a69fcbb3316c88882f0f49b
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
       for f in stop-using-pkg_resources.patch; do mv py3-pytest-runner/$f .recipe-files/; done
       rmdir py3-pytest-runner 2>/dev/null || true
+  - uses: fetch
+    with:
+      uri: https://deb.debian.org/debian/pool/main/p/pytest-runner/pytest-runner_${{package.version}}.orig.tar.gz
+      expected-sha256: 70d4739585a7008f37bf4933c013fdb327b8878a5a69fcbb3316c88882f0f49b
   - uses: patch
     with:
       patches: .recipe-files/stop-using-pkg_resources.patch
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
 subpackages:
   - range: py-versions
     name: py${{range.key}}-${{vars.pypi-package}}

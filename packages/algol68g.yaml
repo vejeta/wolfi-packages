@@ -25,15 +25,15 @@ environment:
       - build-base
       - busybox
 pipeline:
-  - uses: fetch
-    with:
-      uri: https://deb.debian.org/debian/pool/main/a/algol68g/algol68g_${{package.version}}.orig.tar.gz
-      expected-sha256: bcac9a5e20ef14c8c693ef418988cb056e76c290fc9d6fa1f6564231dc78261d
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
       for f in 00-increase-time-limit-on-rv64.patch; do mv algol68g/$f .recipe-files/; done
       rmdir algol68g 2>/dev/null || true
+  - uses: fetch
+    with:
+      uri: https://deb.debian.org/debian/pool/main/a/algol68g/algol68g_${{package.version}}.orig.tar.gz
+      expected-sha256: bcac9a5e20ef14c8c693ef418988cb056e76c290fc9d6fa1f6564231dc78261d
   - uses: patch
     with:
       patches: .recipe-files/00-increase-time-limit-on-rv64.patch
@@ -47,6 +47,14 @@ pipeline:
       cp -a NEWS "${{targets.destdir}}/usr/share/doc/algol68g/"
       cp -a README "${{targets.destdir}}/usr/share/doc/algol68g/"
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/algol68g
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - uses: strip
 update:
   enabled: true

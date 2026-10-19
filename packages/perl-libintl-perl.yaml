@@ -65,6 +65,14 @@ pipeline:
     runs: |
       find ${{targets.destdir}}/usr/share/doc/perl-libintl-perl/examples -type f -print0 |  		xargs -r0 sed -E -i -e '1s|^#!\s*/usr/local/bin/perl|#!/usr/bin/perl|'
       rm -f --verbose ${{targets.destdir}}/usr/share/doc/perl-libintl-perl/examples/simplecal/.gitignore
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - uses: strip
 subpackages:
   - name: perl-intl-xs

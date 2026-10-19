@@ -57,9 +57,10 @@ DROP = {
 }
 NAME_MAP = {
     "samurai": "ninja",
-    # Wolfi ships the DocBook XSL stylesheets, and their catalog, in docbook-xml
-    "docbook-xsl": "docbook-xml",
-    "docbook-xsl-nons": "docbook-xml",
+    # Wolfi ships the DocBook XSL stylesheets, and their catalog, in docbook-xml;
+    # Alpine's docbook-xsl also brings xmlcatalog and xsltproc
+    "docbook-xsl": ["docbook-xml", "libxml2-utils", "libxslt"],
+    "docbook-xsl-nons": ["docbook-xml", "libxml2-utils", "libxslt"],
     "ca-certificates": "ca-certificates-bundle",
     "gtk4.0": "gtk-4",
     "gtk4.0-dev": "gtk-4-dev",
@@ -447,6 +448,11 @@ class Converter:
             base = re.split(r"[<>=~]", name, maxsplit=1)[0]
             if base in DROP:
                 continue
+            if isinstance(NAME_MAP.get(base), list):
+                for cand in NAME_MAP[base]:
+                    if not any((o.value if isinstance(o, C) else o) == cand for o in out):
+                        out.append(C(cand, "Alpine: {}".format(base)))
+                continue
             cand = NAME_MAP.get(base, base)
             found = self.wolfi.has(cand)
             if any((o.value if isinstance(o, C) else o) == cand for o in out):
@@ -749,7 +755,11 @@ class Converter:
                 if "${{vars.%s}}" % t["to"] in main_url and t["replace"] != "${1}":
                     update["version-transform"] = [{"match": re.escape(t["replace"].replace("$$", "$")),
                                                     "replace": apk_unglob(t["match"])}]
-        project = release_monitoring_id(name, version) if (a.download and not update) else None
+        project = None
+        if a.download and not update:
+            # the package name, then the upstream one (_pkgreal in Alpine's perl and python aports)
+            names = [name] + [n for n in (apk.get("_pkgreal"), apk.get("_pyname"), apk.get("_gemname")) if n]
+            project = next((p for p in (release_monitoring_id(n, version) for n in names) if p), None)
         update = update or {
             "enabled": True,
             "release-monitor": {"identifier": project or C(0, "{}: set the release-monitoring.org project id".format(TODO))}}

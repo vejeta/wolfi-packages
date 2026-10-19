@@ -34,17 +34,19 @@ environment:
       - psmisc
       - xauth
       - xvfb-run  # Debian: xvfb
+      - xkbcomp  # Debian: xvfb
+      - xkeyboard-config  # Debian: xvfb
 pipeline:
-  - uses: git-checkout
-    with:
-      repository: https://github.com/astrand/xclip
-      tag: ${{package.version}}
-      expected-commit: 9aa7090c3b8b437c6489edca32ae43d82e0c1281
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
       for f in 0001-Add-f-flags-to-tar.patch 0002-Correct-spelling-mistakes.patch 0003-Avoid-printf-s-NULL.patch 0004-Corrected-URL-to-Freedesktop-clipboard-spec.patch 0005-Update-INSTALL-with-needed-Ubuntu-deps-as-example-46.patch 0006-Fix-typos-49.patch 0007-Prepend-rm-arguments-with-in-xclip-cutfile-44.patch 0008-Fix-uninitialized-variables-causing-segfault.patch; do mv xclip/$f .recipe-files/; done
       rmdir xclip 2>/dev/null || true
+  - uses: git-checkout
+    with:
+      repository: https://github.com/astrand/xclip
+      tag: ${{package.version}}
+      expected-commit: 9aa7090c3b8b437c6489edca32ae43d82e0c1281
   - uses: patch
     with:
       patches: .recipe-files/0001-Add-f-flags-to-tar.patch .recipe-files/0002-Correct-spelling-mistakes.patch .recipe-files/0003-Avoid-printf-s-NULL.patch .recipe-files/0004-Corrected-URL-to-Freedesktop-clipboard-spec.patch .recipe-files/0005-Update-INSTALL-with-needed-Ubuntu-deps-as-example-46.patch .recipe-files/0006-Fix-typos-49.patch .recipe-files/0007-Prepend-rm-arguments-with-in-xclip-cutfile-44.patch .recipe-files/0008-Fix-uninitialized-variables-causing-segfault.patch
@@ -61,6 +63,14 @@ pipeline:
       mkdir -p "${{targets.destdir}}/usr/share/doc/xclip"
       cp -a README "${{targets.destdir}}/usr/share/doc/xclip/"
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/xclip
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - uses: strip
 update:
   enabled: true

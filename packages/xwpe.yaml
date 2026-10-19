@@ -71,6 +71,14 @@ pipeline:
       mkdir -p "${{targets.destdir}}/usr/share/doc/xwpe"
       cp -a README "${{targets.destdir}}/usr/share/doc/xwpe/"
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/xwpe
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - uses: strip
 update:
   enabled: true
@@ -82,6 +90,7 @@ test:
       packages:
         - busybox
         - py3-supported-pyte  # Wolfi Community Packages (Debian: python3-pyte)
+        - py3.13-pytest-bin  # commands of Debian's python3-pytest
         - py3-supported-pytest  # Debian: python3-pytest
         - glibc-locale-en  # Debian: locales-all
         - build-base  # Debian: gcc
@@ -89,6 +98,13 @@ test:
         - gfortran
         - gdb
         - perl
+        - bash  # Essential in Debian, so on every testbed
+        - coreutils  # Essential in Debian, so on every testbed
+        - diffutils  # Essential in Debian, so on every testbed
+        - dpkg  # Essential in Debian, so on every testbed
+        - findutils  # Essential in Debian, so on every testbed
+        - grep  # Essential in Debian, so on every testbed
+        - sed  # Essential in Debian, so on every testbed
         - python3
         - py3-supported-pillow  # Debian: python3-pil
         - xvfb-run  # Debian: xvfb

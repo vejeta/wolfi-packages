@@ -51,6 +51,14 @@ pipeline:
       mkdir -p "${{targets.destdir}}/usr/share/doc/perl-text-wrapi18n"
       cp -a README "${{targets.destdir}}/usr/share/doc/perl-text-wrapi18n/"
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/perl-text-wrapi18n/copyright
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
 update:
   enabled: true
   release-monitor:

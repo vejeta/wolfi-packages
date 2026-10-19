@@ -232,6 +232,14 @@ pipeline:
       mkdir -p "${{targets.destdir}}/usr/share/doc/ucf"
       cp -a examples "${{targets.destdir}}/usr/share/doc/ucf/"
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/ucf
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
       install -Dm644 .recipe-files/ucf.conf "${{targets.destdir}}"/etc/ucf-debconf.conf
 update:
   enabled: false
@@ -243,6 +251,14 @@ test:
       packages:
         - busybox
         - util-linux-misc  # Debian: bsdextrautils
+        - debconf  # Wolfi Community Packages
+        - bash  # Essential in Debian, so on every testbed
+        - coreutils  # Essential in Debian, so on every testbed
+        - diffutils  # Essential in Debian, so on every testbed
+        - dpkg  # Essential in Debian, so on every testbed
+        - findutils  # Essential in Debian, so on every testbed
+        - grep  # Essential in Debian, so on every testbed
+        - sed  # Essential in Debian, so on every testbed
   pipeline:
     - runs: |
         ucf --version || (ucf --help 2>&1 || true) | grep -qi -e usage -e ucf

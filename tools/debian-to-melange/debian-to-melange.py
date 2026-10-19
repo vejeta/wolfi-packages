@@ -187,6 +187,10 @@ def perl_name(binary):
     return "perl-" + m.group(1) if m else binary
 
 
+# The Python behind Wolfi's python3.
+DEFAULT_PYTHON = "3.13"
+
+
 def python_name(binary):
     """Wolfi names Python modules py3-foo, Debian python3-foo."""
     m = re.match(r"^python3-(.+)$", binary)
@@ -235,7 +239,9 @@ def dep_candidates(name):
         return ["openjdk-{}".format(m.group(1)) if m.group(2) == "jdk" else "openjdk-{}-jre".format(m.group(1))]
     m = re.match(r"^lib(.+)-perl$", name)
     if m:
-        return ["perl-" + m.group(1), name]
+        # Wolfi names Perl modules after the CPAN distribution: Text-Iconv is
+        # perl-text-iconv, but libintl-perl is perl-libintl-perl
+        return ["perl-" + m.group(1), "perl-" + name, name]
     m = re.match(r"^python3-(.+)$", name)
     if m and not name.endswith("-dev"):
         cands = ["py3-" + m.group(1), name]
@@ -391,6 +397,7 @@ def debian_upstream_version(version):
     v = re.split(r"[+~](?:dfsg|ds|repack)", v)[0]
     # apk versions: 1.2+git20170224 -> 1.2_git20170224, 1.2~rc1 -> 1.2_rc1
     v = re.sub(r"[+~.]?git[.+~]?(\d{8})\b.*$", r"_git\1", v)
+    v = re.sub(r"\+nmu(\d+)$", r"_p\1", v)  # non-maintainer uploads of native packages
     return re.sub(r"~(alpha|beta|pre|rc)", r"_\1", v)
 
 
@@ -757,7 +764,11 @@ def fetch_from_debian(spec, dest):
         listing = json.loads(http_get(SOURCES_API.format(name=name, version=version, path=path)))
         for item in listing.get("content", []):
             sub = (path + "/" if path else "") + item["name"]
-            if item["type"] == "directory":
+            link = (item.get("stat") or {}).get("symlink_dest")
+            if link:
+                # sources.debian.org does not serve symlinks; recreate them
+                os.symlink(link, os.path.join(tree, sub))
+            elif item["type"] == "directory":
                 os.makedirs(os.path.join(tree, sub), exist_ok=True)
                 walk(sub)
             else:
@@ -863,7 +874,11 @@ def render_conffile(pkg, templates):
     return "\n".join(lines).rstrip() + "\n"
 
 
+# Debian's Essential packages, present on every autopkgtest testbed (GNU tools, dpkg)
+ESSENTIAL = ["bash", "coreutils", "diffutils", "dpkg", "findutils", "grep", "sed"]
+
 SCRIPT_DEPS = {}  # script label -> packages its commands come from
+KEEP_DEBCONF = set()  # packages whose maintainer scripts keep using debconf
 
 
 def convert_script(text, kind, pkg, templates, conffile, notes):
@@ -875,20 +890,22 @@ def convert_script(text, kind, pkg, templates, conffile, notes):
         s = line.strip()
         if s == "#DEBHELPER#":
             continue
-        if re.match(r"^\.\s+/usr/share/debconf/confmodule\s*$", s):
+        if pkg in KEEP_DEBCONF:
+            pass  # debconf itself, or a package that depends on it: debconf runs as in Debian
+        elif re.match(r"^\.\s+/usr/share/debconf/confmodule\s*$", s):
             uses_debconf = True
             body.append("# debconf replaced by {}".format(conffile))
             body.append('[ -r "{0}" ] && . "{0}"'.format(conffile))
             continue
-        if re.match(r"^db_(stop|go|capb|title|version)\b", s):
+        if pkg not in KEEP_DEBCONF and re.match(r"^db_(stop|go|capb|title|version)\b", s):
             continue
         m = re.match(r"^(\s*)db_get\s+(\S+)(.*)$", line)
-        if m and m.group(2) in names:
+        if pkg not in KEEP_DEBCONF and m and m.group(2) in names:
             indent, q = m.group(1), m.group(2)
             t = next(t for t in templates if t["name"] == q)
             body.append('{}RET="${{{}:-{}}}"'.format(indent, names[q], t["default"]))
             continue
-        if re.match(r"^\s*db_\w+", line):
+        if pkg not in KEEP_DEBCONF and re.match(r"^\s*db_\w+", line):
             notes.append("{}: debconf call not converted: {}".format(kind, s))
             body.append("# {}: {}".format(TODO, s))
             continue
@@ -1130,18 +1147,22 @@ class Converter:
                     return None
                 continue  # debhelper bookkeeping (Built-Using, substvars...)
             line = rules.expand(line)
+            line = re.sub(r"`pwd`/|\$\(pwd\)/|\$\$\(pwd\)/", "", line)  # the source tree, like $(CURDIR)
             line = re.sub(r"(^|/|\s)(usr/lib)/\$[({]DEB_HOST_MULTIARCH[)}]", r"\1\2", line)
             for pkg, target in self.rename.items():
                 if pkg != deb_pkg:
                     # files for another binary package: its melange output directory
-                    line = re.sub(r"(?<![\w/])debian/{}/".format(re.escape(pkg)),
-                                  "${{{{targets.outdir}}}}/{}/".format(target), line)
+                    line = re.sub(r"(?<![\w/])debian/{}(?=/|\s|$)".format(re.escape(pkg)),
+                                  "${{{{targets.outdir}}}}/{}".format(target), line)
             for pkg in (deb_pkg, "tmp"):
+                line = re.sub(r"(?<![\w/])debian/{}(?=\s|$)".format(re.escape(pkg)), "${{targets.destdir}}", line)
                 line = re.sub(r"\$\(CURDIR\)/debian/{}(/|\b)".format(re.escape(pkg)), "${{targets.destdir}}/", line)
                 line = re.sub(r"(?<![\w/])debian/{}/".format(re.escape(pkg)), "${{targets.destdir}}/", line)
             line = re.sub(r"target/\$\(DEB_HOST_RUST_TYPE\)/", "target/", line)
             line = line.replace("usr/share/doc/{}/".format(deb_pkg), "usr/share/doc/{}/".format(self.rename.get(deb_pkg, deb_pkg)))
             line = line.replace("$(CURDIR)/", "").replace("$(CURDIR)", ".")
+            line = line.replace("$$", "$")  # make's escape for the shell's $
+            line = line.replace("${{targets.destdir}}/usr/sbin/", "${{targets.destdir}}/usr/bin/")  # usr-merged
             def aux(m):
                 rel = m.group(1)
                 path = os.path.join(self.deb, rel)
@@ -1238,7 +1259,9 @@ class Converter:
                 continue
             chosen = None
             for alt in alts:
-                if alt in DROP or alt.startswith(DROP_PREFIXES) or alt.startswith("${"):
+                if kind == "test" and alt in ("debconf", "ucf"):
+                    pass  # an autopkgtest that exercises them gets the real ones
+                elif alt in DROP or alt.startswith(DROP_PREFIXES) or alt.startswith("${"):
                     chosen = ""
                     break
                 if alt in self.rename:
@@ -1275,6 +1298,10 @@ class Converter:
             cand, alt, found = chosen
             if any(o == cand or (isinstance(o, C) and o.value == cand) for o in out):
                 continue
+            mb = re.match(r"^python3-(.+)$", alt)
+            if mb and self.wolfi.has("py{}-{}-bin".format(DEFAULT_PYTHON, mb.group(1))):
+                # Debian's python3-foo ships the commands Wolfi splits into py3.X-foo-bin
+                out.append(C("py{}-{}-bin".format(DEFAULT_PYTHON, mb.group(1)), "commands of Debian's " + alt))
             if found is not True and re.match(r"^libjs-", alt):
                 self.notes.append("{} dependency '{}': Debian ships JavaScript libraries separately; "
                                   "Wolfi does not, keep the copy bundled upstream".format(kind, alt))
@@ -1322,6 +1349,13 @@ class Converter:
         fmt = (self.read("source/format") or "").strip()
         native = "native" in fmt or (deb_version is not None and "-" not in deb_version)
         rules = Rules(self.read("rules") or "")
+        if deb_version:
+            # /usr/share/dpkg/pkg-info.mk
+            # a native version is the package version; its mangled form stays as Debian's
+            native_ver = "${{package.version}}" if (native and "-" not in deb_version) else deb_version
+            for var, value in (("DEB_VERSION", native_ver), ("DEB_SOURCE", src_name or ""),
+                               ("DEB_VERSION_UPSTREAM", debian_upstream_version(deb_version))):
+                rules.vars.setdefault(var, value)
         for var, value in rules.vars.items():
             # $(shell dh_listpackages): the binary packages, in debian/control order
             pkgs = " ".join(p["package"] for p in paras[1:] if "package" in p)
@@ -1361,7 +1395,7 @@ class Converter:
         self.version_for_url = None
         version_var = a.version_var
         if not version_var and native and not a.version:
-            cands = [v for v in rules.vars if re.match(r"^[A-Z0-9_]*VERSION$", v)]
+            cands = [v for v in rules.vars if re.match(r"^[A-Z0-9_]*VERSION$", v) and not v.startswith("DEB_")]
             if len(cands) == 1:
                 version_var = cands[0]
                 self.notes.append("native package: using {}={} from debian/rules as the version "
@@ -1417,6 +1451,7 @@ class Converter:
             pkg["copyright"] = [{"license": "NOASSERTION"}]
             pkg["copyright"].insert(0, self.todo("debian/copyright is not machine-readable (DEP-5); set the SPDX license"))
 
+        self.main_depends = main.get("depends") or ""
         runtime = self.map_deps(parse_relations(main.get("depends")) + parse_relations(main.get("pre-depends")), "runtime")
         if "${python3:Depends}" in (main.get("depends") or ""):
             reqs = python_requirements(self.tree)
@@ -1445,6 +1480,9 @@ class Converter:
 
         # ---- maintainer scripts + debconf ----------------------------------
         templates = parse_templates(self.pkgfile(main["package"], "templates", True))
+        if main["package"] == "debconf" or "debconf-2.0" in (main.get("provides") or ""):
+            templates = []  # debconf itself: keep the confmodule its scripts use
+            KEEP_DEBCONF.add(name)
         conffile = "/etc/{}.conf".format(name)
         if re.search(r"(^|\s)/?etc/?(\s|$)|etc/{}\.conf".format(re.escape(name)),
                      self.pkgfile(main["package"], "install", True) or ""):
@@ -1562,6 +1600,7 @@ class Converter:
         if prepare and bs == "autoconf":
             env_pkgs += [t for t in self.autoreconf_tools() if t not in env_pkgs]
         pipeline += prepare
+        self.ported_install = [v for v in ported.values() if v]
         build_override = ported.get("override_dh_auto_build")
         install_override = ported.get("override_dh_auto_install")
         # cargo and go builds install nothing into debian/tmp; an
@@ -1615,7 +1654,7 @@ class Converter:
         elif bs and bs not in BUILD_PIPELINES:
             pipeline.append(self.todo("unsupported Debian build system '{}'".format(bs)))
 
-        post_install = []
+        post_install, pre_install = [], []
         for with_ in rules.dh_with():
             if with_ in ("autoreconf", "python3", "sphinxdoc", "systemd", "quilt"):
                 continue  # done by the generated steps, or not needed
@@ -1644,17 +1683,31 @@ class Converter:
                                   "override_dh_fixperms", "override_dh_lintian", "override_dh_usrlocal",
                                   "override_dh_installsystemd", "override_dh_installinit")):
                 continue
-            if re.match(r"^(override|execute_after)_dh_", target) and not target.startswith("override_dh_auto_"):
-                # dh_foo plus commands of its own: the commands run on the installed files
+            if re.match(r"^(override|execute_after|execute_before)_dh_", target) and not target.startswith("override_dh_auto_"):
+                # dh_foo plus commands of its own
                 cmds = self.port_recipe(rules, recipe, name, main["package"])
                 if cmds:
-                    post_install.append({"name": "From debian/rules " + target, "runs": "\n".join(cmds) + "\n"})
+                    step = {"name": "From debian/rules " + target, "runs": "\n".join(cmds) + "\n"}
+                    if re.match(r"^execute_(after_dh_auto_(configure|build|test)|before_dh_auto_(build|test|install))$", target):
+                        pre_install.append(step)   # before the files are installed
+                    else:
+                        post_install.append(step)  # on the installed files
                     continue
             pipeline.append(self.todo("port debian/rules {}: {}".format(
                 target, " && ".join(l.strip() for l in recipe if l.strip())[:200])))
 
+        pipeline += pre_install
         pipeline.append(self.install_step(main, True, native, name))
         pipeline += post_install
+        if bs and self.upstream_installs:
+            # upstream may install into sbin or /lib; Wolfi is usr-merged with sbin in bin
+            pipeline.append({"name": "Usr-merge (sbin into bin)", "runs": (
+                'for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do\n'
+                '  for s in usr/sbin sbin bin; do\n'
+                '    [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue\n'
+                '    mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"\n'
+                '  done\n'
+                'done\n')})
         if post_install or ported:
             # commands from debian/rules expect GNU tools (rm --verbose, find -print0 ...)
             env_pkgs += [p for p in ("coreutils", "findutils") if p not in env_pkgs]
@@ -2113,8 +2166,14 @@ class Converter:
         desc = b.get("description", "").split("\n", 1)[0].strip()
         sub = {"name": self.rename.get(b["package"], b["package"]), "description": desc[:1].upper() + desc[1:]}
         cmds = self.install_lines(b, False, False, "${{targets.contextdir}}")
+        filled = "${{{{targets.outdir}}}}/{}".format(sub["name"])
         if cmds:
             sub["pipeline"] = [{"runs": "\n".join(cmds) + "\n"}]
+        elif any(filled in l for ls in self.ported_install for l in ls):
+            # debian/rules installs straight into this package
+            sub["pipeline"] = [{"runs": "true\n"}]
+        elif b.get("section", "").endswith("metapackages") or re.match(r"(?i)^meta-?package", desc):
+            sub["pipeline"] = [{"runs": "true\n"}]  # only dependencies
         elif b["package"].endswith("-dev"):
             sub["pipeline"] = [{"uses": "split/dev"}]
         elif b["package"].endswith("-doc") and self.bs not in ("pybuild",):
@@ -2194,6 +2253,10 @@ class Converter:
                 if r in ("isolation-machine", "breaks-testbed", "needs-reboot"):
                     self.notes.append("autopkgtest restriction '{}' cannot be honoured by melange test".format(r))
             deps = [d for d in parse_relations(para.get("depends", "@")) if d[0] not in ("@", "@builddeps@")]
+            if "@" in [d[0] for d in parse_relations(para.get("depends", "@"))]:
+                # "@" installs the package with its Depends, debconf included
+                deps += [alts for alts in parse_relations(self.main_depends)
+                         if any(a in ("debconf", "ucf") for a in alts)]
             mapped = self.map_deps(deps, "test")
             missing = [d for d in mapped if isinstance(d, Comment)]
             if missing:
@@ -2204,6 +2267,9 @@ class Converter:
             for d in mapped:
                 if d not in packages:
                     packages.append(d)
+            for e in ESSENTIAL:
+                if e not in [p.value if isinstance(p, C) else p for p in packages]:
+                    packages.append(C(e, "Essential in Debian, so on every testbed"))
             if any((d.value if isinstance(d, C) else d).startswith("py3-") for d in mapped) and "python3" not in packages:
                 packages.append("python3")  # py3-supported-* do not provide the python3 command
             if "@builddeps@" in para.get("depends", ""):
@@ -2545,7 +2611,7 @@ def main(argv=None):
             return built
         return 1 if args.strict and TODO in text else 0
     except urllib.error.URLError as exc:
-        print("error: network: {}".format(exc), file=sys.stderr)
+        print("error: network: {} ({})".format(exc, getattr(exc, "url", None) or getattr(exc, "filename", "")), file=sys.stderr)
         return 2
     finally:
         if tmp:

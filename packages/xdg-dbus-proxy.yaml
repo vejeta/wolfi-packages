@@ -27,9 +27,12 @@ environment:
       - build-base
       - busybox
       - docbook-xml  # Alpine: docbook-xsl
+      - libxml2-utils  # Alpine: docbook-xsl
+      - libxslt  # Alpine: docbook-xsl
       - glib-dev
-      - libxslt
       - meson
+      - dbus
+      - glib
 pipeline:
   - uses: fetch
     with:

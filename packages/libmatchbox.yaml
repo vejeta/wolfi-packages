@@ -38,17 +38,19 @@ environment:
       - libjpeg-turbo-dev  # Debian: libjpeg-dev
       - doxygen
       - pango-dev  # Debian: libpango1.0-dev
+      - coreutils
+      - findutils
 pipeline:
-  - uses: git-checkout
-    with:
-      repository: https://git.yoctoproject.org/libmatchbox
-      branch: master
-      expected-commit: 4ce687e71ea70133c2ab0158d297143138141817
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
       for f in 10-libmb.pc.in 30-build-system 50-implicit-decl fix-build; do mv libmatchbox/$f .recipe-files/; done
       rmdir libmatchbox 2>/dev/null || true
+  - uses: git-checkout
+    with:
+      repository: https://git.yoctoproject.org/libmatchbox
+      branch: master
+      expected-commit: 4ce687e71ea70133c2ab0158d297143138141817
   - uses: patch
     with:
       patches: .recipe-files/10-libmb.pc.in .recipe-files/30-build-system .recipe-files/50-implicit-decl .recipe-files/fix-build
@@ -67,6 +69,14 @@ pipeline:
       mkdir -p "${{targets.destdir}}/usr/share/doc/libmatchbox"
       cp -a NEWS "${{targets.destdir}}/usr/share/doc/libmatchbox/"
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/libmatchbox
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - uses: strip
 subpackages:
   - name: libmatchbox-dev

@@ -57,6 +57,14 @@ pipeline:
   - name: Install files
     runs: |
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/libfoo/copyright
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - uses: strip
 subpackages:
   - name: libfoo-dev
@@ -129,6 +137,13 @@ test:
       packages:
         - busybox
         - foo-tools
+        - bash  # Essential in Debian, so on every testbed
+        - coreutils  # Essential in Debian, so on every testbed
+        - diffutils  # Essential in Debian, so on every testbed
+        - dpkg  # Essential in Debian, so on every testbed
+        - findutils  # Essential in Debian, so on every testbed
+        - grep  # Essential in Debian, so on every testbed
+        - sed  # Essential in Debian, so on every testbed
         - libfoo-dev
         - build-base  # Debian: build-essential
         - pkgconf-dev  # Debian: pkgconf

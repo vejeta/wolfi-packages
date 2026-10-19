@@ -8,7 +8,6 @@
 #
 # Conversion notes:
 # - ${python3:Depends} from upstream's requirements: wcwidth
-# - build dependency 'py3-pytest-runner' (Debian 'python3-pytest-runner') not found in Wolfi; left out
 # - upstream tarball from debian/watch
 # - Wolfi Python layout: py3.X-pyte for Python 3.10, 3.11, 3.12, 3.13, 3.14
 package:
@@ -44,25 +43,37 @@ environment:
       - busybox
       - py3-supported-build-base
       - python3
+      - py3.13-pytest-bin  # commands of Debian's python3-pytest
       - py3-supported-pytest  # Debian: python3-pytest
-      # TODO(debian-to-melange): py3-pytest-runner is not in Wolfi (Debian: python3-pytest-runner); left out
+      - py3-supported-pytest-runner  # Wolfi Community Packages (Debian: python3-pytest-runner)
+      - py3.13-sphinx-bin  # commands of Debian's python3-sphinx
       - py3-supported-sphinx  # Debian: python3-sphinx
+      - coreutils
+      - findutils
 pipeline:
-  - uses: fetch
-    with:
-      uri: https://files.pythonhosted.org/packages/source/p/pyte/pyte-${{package.version}}.tar.gz
-      expected-sha256: 7e71d03e972d6f262cbe8704ff70039855f05ee6f7ad9d7129df9c977b5a88c5
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
       for f in 0001-Revert-Link-to-GitHub-in-the-docs.patch 0002-Fix-intersphinx_mapping.patch; do mv py3-pyte/$f .recipe-files/; done
       rmdir py3-pyte 2>/dev/null || true
+  - uses: fetch
+    with:
+      uri: https://files.pythonhosted.org/packages/source/p/pyte/pyte-${{package.version}}.tar.gz
+      expected-sha256: 7e71d03e972d6f262cbe8704ff70039855f05ee6f7ad9d7129df9c977b5a88c5
   - uses: patch
     with:
       patches: .recipe-files/0001-Revert-Link-to-GitHub-in-the-docs.patch .recipe-files/0002-Fix-intersphinx_mapping.patch
   - name: Build (from debian/rules override_dh_auto_build)
     runs: |
       python3 -m sphinx -b html -d docs/build/doctrees docs docs/build/html
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
 subpackages:
   - range: py-versions
     name: py${{range.key}}-${{vars.pypi-package}}

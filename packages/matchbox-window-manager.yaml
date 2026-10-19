@@ -9,8 +9,6 @@
 # Conversion notes:
 # - udeb package(s) left out: matchbox-window-manager-udeb
 # - license GPL-2.0-only read from the notice in debian/copyright (not DEP-5); check it
-# - postinst: uses Debian-only tool 'update-alternatives'
-# - prerm: uses Debian-only tool 'update-alternatives'
 # - maintainer scripts converted; note that apko does not run install scripts
 # - upstream from debian/watch (git), pinned to the tag's commit
 package:
@@ -20,6 +18,10 @@ package:
   description: Window manager for resource-limited systems
   copyright:
     - license: GPL-2.0-only
+  dependencies:
+    runtime:
+      - dpkg  # used by the maintainer scripts
+      - ttf-dejavu  # Debian: fontconfig-config depends on fonts-dejavu-core
   scriptlets:
     post-install: |
       #!/bin/sh
@@ -34,7 +36,6 @@ package:
       if [ "$action" = configure ]; then
           # register the alternatives of x-window-manager manually
           # because dh_installwm doesn't register manpage as slave yet.
-      # TODO(debian-to-melange): 'update-alternatives' does not exist on Wolfi
           update-alternatives --install /usr/bin/x-window-manager \
               x-window-manager /usr/bin/matchbox-window-manager 50 \
               --slave /usr/share/man/man1/x-window-manager.1.gz \
@@ -55,7 +56,6 @@ package:
       if [ "$action" = configure ]; then
           # register the alternatives of x-window-manager manually
           # because dh_installwm doesn't register manpage as slave yet.
-      # TODO(debian-to-melange): 'update-alternatives' does not exist on Wolfi
           update-alternatives --install /usr/bin/x-window-manager \
               x-window-manager /usr/bin/matchbox-window-manager 50 \
               --slave /usr/share/man/man1/x-window-manager.1.gz \
@@ -73,7 +73,6 @@ package:
 
       if [ "$1" != "upgrade" ]
       then
-      # TODO(debian-to-melange): 'update-alternatives' does not exist on Wolfi
           update-alternatives --remove x-window-manager /usr/bin/matchbox-window-manager
       fi
 
@@ -99,17 +98,19 @@ environment:
       - libxext-dev
       - libxt-dev
       - libxft-dev
+      - coreutils
+      - findutils
 pipeline:
-  - uses: git-checkout
-    with:
-      repository: https://git.yoctoproject.org/matchbox-window-manager
-      tag: ${{package.version}}
-      expected-commit: ce8c1053270d960a7235ab5c3435f707541810a4
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
       for f in build-themes.patch config.patch copyright fix-build.patch fix-build3.patch fix-build4 gconf.patch install-themes.patch makefile.patch matchbox-remote.1 matchbox-window-manager.1 pkg-config.patch spelling.patch tidy-help-text.patch xsettings.patch; do mv matchbox-window-manager/$f .recipe-files/; done
       rmdir matchbox-window-manager 2>/dev/null || true
+  - uses: git-checkout
+    with:
+      repository: https://git.yoctoproject.org/matchbox-window-manager
+      tag: ${{package.version}}
+      expected-commit: ce8c1053270d960a7235ab5c3435f707541810a4
   - uses: patch
     with:
       patches: .recipe-files/makefile.patch .recipe-files/config.patch .recipe-files/install-themes.patch .recipe-files/build-themes.patch .recipe-files/tidy-help-text.patch .recipe-files/gconf.patch .recipe-files/fix-build.patch .recipe-files/xsettings.patch .recipe-files/spelling.patch .recipe-files/pkg-config.patch .recipe-files/fix-build3.patch .recipe-files/fix-build4
@@ -133,6 +134,14 @@ pipeline:
       cp -a NEWS "${{targets.destdir}}/usr/share/doc/matchbox-window-manager/"
       cp -a AUTHORS "${{targets.destdir}}/usr/share/doc/matchbox-window-manager/"
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/matchbox-window-manager/copyright
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - uses: strip
 update:
   enabled: true

@@ -58,17 +58,19 @@ environment:
       - xkeyboard-config  # Debian: xkb-data
       - xterm
       - xvfb-run  # Debian: xvfb
+      - coreutils
+      - findutils
 pipeline:
-  - uses: git-checkout
-    with:
-      repository: https://github.com/jordansissel/xdotool
-      tag: v${{package.version}}
-      expected-commit: f11c44edd4d426d69bcff479b0d643a4da8bc99b
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
       for f in 0001-preserve-xdo_t-abi.patch 0002-record-upstream-version-info-Closes-795809.patch 0003-Fix-Minitest-case.patch copyright; do mv xdotool/$f .recipe-files/; done
       rmdir xdotool 2>/dev/null || true
+  - uses: git-checkout
+    with:
+      repository: https://github.com/jordansissel/xdotool
+      tag: v${{package.version}}
+      expected-commit: f11c44edd4d426d69bcff479b0d643a4da8bc99b
   - uses: patch
     with:
       patches: .recipe-files/0001-preserve-xdo_t-abi.patch .recipe-files/0002-record-upstream-version-info-Closes-795809.patch .recipe-files/0003-Fix-Minitest-case.patch
@@ -87,9 +89,19 @@ pipeline:
       mkdir -p "${{targets.destdir}}/usr/share"
       mkdir -p "${{targets.destdir}}/usr/share/man"
       mkdir -p "${{targets.destdir}}/usr/share/man/man1"
+      mkdir -p "${{targets.destdir}}/usr/share/doc/xdotool/examples"
+      cp -a examples/ffsp.sh "${{targets.destdir}}/usr/share/doc/xdotool/examples/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/xdotool"
       cp -a README "${{targets.destdir}}/usr/share/doc/xdotool/"
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/xdotool/copyright
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
   - uses: strip
 subpackages:
   - name: libxdo3

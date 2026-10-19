@@ -105,6 +105,13 @@ test:
         - busybox
         - build-base  # Debian: build-essential
         - scala-2.12  # Debian: scala
+        - bash  # Essential in Debian, so on every testbed
+        - coreutils  # Essential in Debian, so on every testbed
+        - diffutils  # Essential in Debian, so on every testbed
+        - dpkg  # Essential in Debian, so on every testbed
+        - findutils  # Essential in Debian, so on every testbed
+        - grep  # Essential in Debian, so on every testbed
+        - sed  # Essential in Debian, so on every testbed
         - scala-2.13
         - scala-3.8  # Debian: scala3
   pipeline:

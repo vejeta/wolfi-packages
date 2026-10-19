@@ -60,6 +60,14 @@ pipeline:
   - name: Build (from debian/rules override_dh_auto_build)
     runs: |
       python3 -m sphinx -b html -d docs/build/doctrees docs docs/build/html
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
 subpackages:
   - range: py-versions
     name: py${{range.key}}-${{vars.pypi-package}}

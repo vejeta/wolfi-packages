@@ -39,6 +39,14 @@ pipeline:
   - name: Install files
     runs: |
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/libscala-xml-java/copyright
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
 update:
   enabled: true
   github:
