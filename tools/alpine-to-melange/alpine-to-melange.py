@@ -70,6 +70,7 @@ NAME_MAP = {
     "linux-headers": "linux-headers",
     # Wolfi's rust ships cargo; its clang ships libclang (bindgen)
     "cargo": "rust",
+    "tar": "gnutar",
     "clang-dev": "clang",
 }
 
@@ -414,6 +415,19 @@ HELPERS = {
         "\tdone\n"
         "}"),
     "want_check": "want_check() { return 1; }",
+    # abuild's: refresh config.sub/config.guess from automake (new architectures)
+    "update_config_sub": (
+        "update_config_sub() {\n"
+        "\tfind . -name config.sub | while read -r _f; do\n"
+        "\t\tcp \"$(ls /usr/share/automake-*/config.sub | tail -1)\" \"$_f\"\n"
+        "\tdone\n"
+        "}"),
+    "update_config_guess": (
+        "update_config_guess() {\n"
+        "\tfind . -name config.guess | while read -r _f; do\n"
+        "\t\tcp \"$(ls /usr/share/automake-*/config.guess | tail -1)\" \"$_f\"\n"
+        "\tdone\n"
+        "}"),
 }
 
 
@@ -671,7 +685,8 @@ class Converter:
             if url.startswith(("git+", "git://")) or url.endswith(".git"):
                 pipeline.append(self.todo("git source not converted: " + url))
                 continue
-            gh = re.match(r"^https://github\.com/([^/]+)/([^/]+)/archive/(?:refs/tags/)?(.+?)\.tar\.gz$", url)
+            # archive/refs/tags/<tag>.tar.gz, or .../<tag>/<any name>.tar.gz
+            gh = re.match(r"^https://github\.com/([^/]+)/([^/]+)/archive/(?:refs/tags/)?([^/]+?)(?:/[^/]*)?\.tar\.gz$", url)
             if idx == 0 and gh and gh.group(3).endswith(version):
                 # Wolfi pins GitHub sources with git-checkout + expected-commit.
                 prefix = gh.group(3)[:-len(version)]

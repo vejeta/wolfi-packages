@@ -72,6 +72,17 @@ NAME_MAP = {
     "xsltproc": "libxslt",
     "sqv": "sequoia-sqv",
     "sq": "sequoia-sq",
+    "python3-gi": "py3-gobject3",
+    "gir1.2-glib-2.0": "gobject-introspection",
+    "pyflakes3": "py3-pyflakes",
+    "pycodestyle": "py3-pycodestyle",
+    # dual-life modules that Wolfi's perl ships in its core
+    "libscalar-list-utils-perl": "perl",
+    "libversion-perl": "perl",
+    "libpod-simple-perl": "perl",
+    "libencode-perl": "perl",
+    "libpod-parser-perl": "perl",
+    "libtest-simple-perl": "perl",
     "stunnel4": "stunnel",
     "db-util": "db-utils",
     "valgrind-if-available": "valgrind",
@@ -1900,6 +1911,10 @@ class Converter:
         self.source_name = src_name
         self.source = source
         main = next((b for b in binaries if b["package"] == src_name), None)
+        py = next((b for b in binaries if b["package"] == "python3-" + (src_name or "")), None)
+        if py is not None and "pybuild" in (self.read("rules") or ""):
+            # pyflakes: the module (python3-pyflakes) is the package, the CLI a subpackage
+            main = py
         if main is None:
             # libfoo built as libfoo1 + libfoo-dev: the shared library is the
             # main package, named after the source as Wolfi does
@@ -2431,11 +2446,11 @@ class Converter:
                 st["runs"] = "".join(l + "\n" for l in lines if not any(d in l for d in lic_dirs))
         pipeline[:] = [st for st in pipeline if not (isinstance(st, dict) and "runs" in st and not st["runs"])]
         for st in test["pipeline"]:
-            if "runs" in st:
+            if isinstance(st, dict) and "runs" in st:
                 st["runs"] = "".join(l + "\n" for l in st["runs"].splitlines()
                                      if not l.startswith(("test -f /usr/share/licenses/",
                                                           "test -f /usr/share/doc/{}/".format(name))))
-        test["pipeline"] = [st for st in test["pipeline"] if st.get("runs", True)]
+        test["pipeline"] = [st for st in test["pipeline"] if not isinstance(st, dict) or st.get("runs", True)]
         sub = {
             "range": "py-versions",
             "name": "py${{range.key}}-${{vars.pypi-package}}",
@@ -2460,7 +2475,7 @@ class Converter:
         subpackages[:0] = [sub, meta]
         # py3-foo resolves to the newest py3.X-foo, not necessarily python3's
         test["environment"]["contents"]["packages"].append("py3-supported-" + pypi)
-        test["pipeline"] = [st for st in test["pipeline"] if st.get("uses") != "python/import"]
+        test["pipeline"] = [st for st in test["pipeline"] if not isinstance(st, dict) or st.get("uses") != "python/import"]
         test["pipeline"].append({"uses": "python/import", "with": {"python": "python3", "imports": "import ${{vars.import}}"}})
         self.notes.append("Wolfi Python layout: py3.X-{} for Python {}".format(pypi, ", ".join(versions)))
         return [{"name": "py-versions",
