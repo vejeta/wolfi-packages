@@ -73,6 +73,7 @@ pipeline:
       cp -a data/com.stremio.Stremio.gschema.xml "${{targets.destdir}}/usr/share/glib-2.0/schemas/"
       install -Dm644 data/stremio.1 -t "${{targets.destdir}}/usr/share/man/man1"
       install -Dm644 stremio/copyright "${{targets.destdir}}"/usr/share/doc/stremio/copyright
+  - uses: strip
 update:
   enabled: true
   github:
@@ -86,3 +87,4 @@ test:
   pipeline:
     - runs: |
         test -f /usr/share/doc/stremio/copyright
+    - uses: test/tw/ldd-check

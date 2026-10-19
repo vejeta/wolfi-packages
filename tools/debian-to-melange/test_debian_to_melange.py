@@ -50,7 +50,7 @@ def case_args(name):
 
 
 def convert(name, out):
-    argv = ["--debian-dir", os.path.join(TESTDATA, name, "debian"), "--out", out] + case_args(name)
+    argv = ["--debian-dir", os.path.join(TESTDATA, name, "debian"), "--out", out, "--no-check-wolfi"] + case_args(name)
     with redirect_stderr(io.StringIO()):
         rc = d2m.main(argv)
     return rc
@@ -215,7 +215,7 @@ class JvmPackagesTest(unittest.TestCase):
         out = tempfile.mkdtemp()
         try:
             with redirect_stderr(io.StringIO()) as err:
-                d2m.main(["--debian-dir", os.path.join(TESTDATA, "scala-2.13", "debian"), "--out", out])
+                d2m.main(["--debian-dir", os.path.join(TESTDATA, "scala-2.13", "debian"), "--out", out, "--no-check-wolfi"])
         finally:
             shutil.rmtree(out)
         self.assertIn("self-hosting", err.getvalue())

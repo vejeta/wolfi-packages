@@ -53,6 +53,7 @@ pipeline:
   - name: Install files
     runs: |
       install -Dm644 libfoo/copyright "${{targets.destdir}}"/usr/share/doc/libfoo/copyright
+  - uses: strip
 subpackages:
   - name: libfoo-dev
     description: Example library for frobnicating data - development files
@@ -112,6 +113,7 @@ subpackages:
       pipeline:
         - runs: |
             foo --version || foo --help
+        - uses: test/tw/ldd-check
 update:
   enabled: true
   github:
@@ -129,6 +131,7 @@ test:
   pipeline:
     - runs: |
         test -f /usr/share/doc/libfoo/copyright
+    - uses: test/tw/ldd-check
     - name: 'autopkgtest: foo-tool --version'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"

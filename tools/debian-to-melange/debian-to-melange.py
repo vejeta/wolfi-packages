@@ -27,6 +27,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import textwrap
 import urllib.error
 import urllib.parse
@@ -69,6 +70,9 @@ NAME_MAP = {
     "ca-certificates": "ca-certificates-bundle",
     "golang-go": "go",
     "x11proto-core-dev": "xorgproto",
+    "libcairo2-dev": "cairo-dev",
+    "libpango1.0-dev": "pango-dev",
+    "libjson-c-dev": "json-c-dev",
     "x11proto-dev": "xorgproto",
     "librsvg2-bin": "rsvg-convert",
     "python3-pil": "py3-pillow",
@@ -202,7 +206,11 @@ class WolfiIndex:
         spec = importlib.util.spec_from_file_location("pkg_check", PKG_CHECK)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        self.names = self._load(mod, mod.WOLFI_INDEX.format(arch=arch))
+        try:
+            self.names = self._load(mod, mod.WOLFI_INDEX.format(arch=arch))
+        except Exception as exc:
+            print("warning: cannot read the Wolfi index ({}); names are not checked".format(exc), file=sys.stderr)
+            return
         try:
             self.community = self._load(mod, COMMUNITY_INDEX.format(arch=arch))
         except Exception as exc:  # the community index is optional
@@ -700,6 +708,20 @@ def emit(node, indent=0):
 # Conversion
 # ==========================================================================
 
+# Upstream license files installed in /usr/share/licenses/<name>.
+LICENSE_FILES = ("COPYING", "COPYING.LIB", "COPYING.LESSER", "LICENSE", "LICENSE.txt",
+                 "LICENSE.md", "LICENCE", "NOTICE")
+
+
+def dh_compat(source, read):
+    """debhelper compatibility level, from debhelper-compat or debian/compat."""
+    m = re.search(r"debhelper-compat\s*\(\s*=\s*(\d+)", source.get("build-depends", ""))
+    if m:
+        return int(m.group(1))
+    text = (read("compat") or "").strip()
+    return int(text) if text.isdigit() else 0
+
+
 BUILDSYSTEM_FILES = [
     ("meson.build", "meson"),
     ("CMakeLists.txt", "cmake"),
@@ -851,8 +873,10 @@ class Converter:
                 out.append(C(cand, "{}: Java library, fetch from Maven Central (Debian: {})".format(TODO, alt)))
                 continue
             if found is False:
-                self.notes.append("{} dependency '{}' (Debian '{}') not found in Wolfi".format(kind, cand, alt))
-                out.append(C(cand, "{}: not in Wolfi (Debian: {})".format(TODO, alt)))
+                # Left out, so that the environment resolves; optional features
+                # are then disabled by the build, required ones fail there.
+                self.notes.append("{} dependency '{}' (Debian '{}') not found in Wolfi; left out".format(kind, cand, alt))
+                out.append(Comment("{}: {} is not in Wolfi (Debian: {}); left out".format(TODO, cand, alt)))
             elif self.wolfi.community_only(cand):
                 out.append(C(cand, "Wolfi Community Packages" + ("" if cand == alt else " (Debian: {})".format(alt))))
             elif cand != alt:
@@ -989,6 +1013,8 @@ class Converter:
         if not bs:
             bs = next((b for f, b in BUILDSYSTEM_FILES if f in self.top), None)
         base = ["build-base", "busybox"] if bs else ["busybox"]
+        if bs == "autoconf" and self.needs_autoreconf(source):
+            base += self.autoreconf_tools()
         env_pkgs = base + [d for d in build_deps if (d.value if isinstance(d, C) else d) not in base]
         environment = {"contents": {
             "keyring": ["https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"],
@@ -1029,6 +1055,8 @@ class Converter:
             pipeline.append({"name": "Build (from debian/rules override_dh_auto_build)",
                              "runs": "\n".join(build_override) + "\n"})
         elif bs in BUILD_PIPELINES:
+            if bs == "autoconf" and self.needs_autoreconf(source):
+                pipeline.append({"runs": "autoreconf -fi\n"})
             opts = rules.configure_opts()
             for i, step in enumerate(BUILD_PIPELINES[bs]):
                 entry = {"uses": step}
@@ -1073,6 +1101,9 @@ class Converter:
         pipeline.append(self.install_step(main, True, native, name))
         if templates and uses_debconf:
             pipeline[-1]["runs"] += 'install -Dm644 {0}/{0}.conf "${{{{targets.destdir}}}}"{1}\n'.format(name, conffile)
+        if any(b.get("architecture", "any") != "all" for b in binaries) and bs:
+            # dh_strip; Wolfi recipes strip with the strip pipeline.
+            pipeline.append({"uses": "strip"})
 
         # ---- subpackages --------------------------------------------------
         subpackages = []
@@ -1082,7 +1113,7 @@ class Converter:
             subpackages.append(self.subpackage(b, name, main))
 
         # ---- copy debian/copyright for /usr/share/doc --------------------
-        if self.read("copyright") is not None:
+        if self.read("copyright") is not None and not self.license_files():
             self.aux["copyright"] = self.read("copyright")
 
         # ---- update -------------------------------------------------------
@@ -1242,10 +1273,36 @@ class Converter:
                 out.append("\n".join(lines))
         return out
 
+    def needs_autoreconf(self, source):
+        """dh runs dh_autoreconf from compat 10; a git checkout has no configure."""
+        if dh_compat(source, self.read) < 10:
+            return False
+        return self.git_source is not None or ("configure.ac" in self.top and "configure" not in self.top)
+
+    def autoreconf_tools(self):
+        tools = ["autoconf", "automake"]
+        try:
+            with open(os.path.join(self.tree, "configure.ac"), errors="replace") as fh:
+                ac = fh.read()
+        except OSError:
+            ac = ""
+        if re.search(r"\b(LT_INIT|AC_PROG_LIBTOOL)\b", ac):
+            tools.append("libtool")
+        if re.search(r"\bAM_GNU_GETTEXT\b", ac):
+            tools.append("gettext-dev")
+        return tools
+
+    def license_files(self):
+        return [f for f in LICENSE_FILES if f in self.top]
+
     def install_step(self, binary, main, native, name):
         dest = "${{targets.destdir}}"
         cmds = self.install_lines(binary, main, native, dest)
-        cmds.append('install -Dm644 {0}/copyright "{1}"/usr/share/doc/{0}/copyright'.format(name, dest))
+        lic = self.license_files()
+        if lic:
+            cmds.append('install -Dm644 {} -t "{}"/usr/share/licenses/{}'.format(" ".join(lic), dest, name))
+        else:
+            cmds.append('install -Dm644 {0}/copyright "{1}"/usr/share/doc/{0}/copyright'.format(name, dest))
         return {"name": "Install files", "runs": "\n".join(cmds) + "\n"}
 
     def subpackage(self, b, name, main):
@@ -1303,7 +1360,14 @@ class Converter:
                 if r in ("isolation-machine", "breaks-testbed", "needs-reboot"):
                     self.notes.append("autopkgtest restriction '{}' cannot be honoured by melange test".format(r))
             deps = [d for d in parse_relations(para.get("depends", "@")) if d[0] not in ("@", "@builddeps@")]
-            for d in self.map_deps(deps, "test"):
+            mapped = self.map_deps(deps, "test")
+            missing = [d for d in mapped if isinstance(d, Comment)]
+            if missing:
+                what = para.get("test-command", "").split("\n")[0][:60] or para.get("tests", "")
+                self.notes.append("autopkgtest '{}' left out: it needs packages that are not in Wolfi".format(what))
+                steps.append(Comment("{}: autopkgtest '{}' left out; it needs packages that are not in Wolfi".format(TODO, what)))
+                continue
+            for d in mapped:
                 if d not in packages:
                     packages.append(d)
             if "@builddeps@" in para.get("depends", ""):
@@ -1321,8 +1385,9 @@ class Converter:
                     packages.append("bash")
                 steps.append({"name": "autopkgtest: " + test,
                               "runs": env + 'cd "$AUTOPKGTEST_TMP"\n' + script.split("\n", 1)[1 if script.startswith("#!") else 0].strip() + "\n"})
-        if steps:
-            self.notes.append("autopkgtests converted to the test pipeline ({} steps)".format(len(steps)))
+        real = [st for st in steps if not isinstance(st, Comment)]
+        if real:
+            self.notes.append("autopkgtests converted to the test pipeline ({} steps)".format(len(real)))
         return steps, packages
 
     def test_section(self, binary, name, conffile, main=True):
@@ -1335,12 +1400,16 @@ class Converter:
                 cmds.append("{0} --version || {0} --help".format(tool))
         if not main and not cmds:
             return None
-        if main:
+        if main and self.license_files():
+            cmds.append("test -f /usr/share/licenses/{}/{}".format(name, self.license_files()[0]))
+        elif main:
             cmds.append("test -f /usr/share/doc/{}/copyright".format(name))
         if conffile:
             cmds.append("test -f {}".format(conffile))
         test = {"environment": {"contents": {"packages": ["busybox"]}},
                 "pipeline": [{"runs": "\n".join(cmds) + "\n"}]}
+        if binary.get("architecture", "any") != "all":
+            test["pipeline"].append({"uses": "test/tw/ldd-check"})
         if main:
             steps, packages = self.autopkgtests(name)
             have = list(test["environment"]["contents"]["packages"])
@@ -1439,6 +1508,19 @@ def report_build(args, name):
     return 0 if ok else 3
 
 
+def spdx_header(license_id, author):
+    """SPDX lines for the recipe file, as the recipes in this repository have."""
+    if not license_id:
+        return []
+    if not author:
+        name, mail = os.environ.get("DEBFULLNAME"), os.environ.get("DEBEMAIL")
+        author = "{} <{}>".format(name, mail) if name and mail else name
+    lines = ["SPDX-License-Identifier: " + license_id]
+    if author:
+        lines.append("SPDX-FileCopyrightText: {} {}".format(time.strftime("%Y"), author))
+    return lines + [""]
+
+
 def write_output(name, recipe, header, aux, out, to_stdout):
     text = "\n".join(["# " + l if l else "#" for l in header]) + "\n"
     text += "\n".join(emit(recipe)) + "\n"
@@ -1475,8 +1557,14 @@ def main(argv=None):
     p.add_argument("--version-var", help="debian/rules variable holding the version (native packages)")
     p.add_argument("--upstream-url", help="upstream tarball URL (the version is templated automatically)")
     p.add_argument("--download", action="store_true", help="download the tarball to compute expected-sha256")
-    p.add_argument("--check-wolfi", action="store_true",
-                   help="verify mapped dependency names against the Wolfi APKINDEX")
+    p.add_argument("--check-wolfi", action="store_true", default=True,
+                   help="verify mapped dependency names against the Wolfi APKINDEX (default)")
+    p.add_argument("--no-check-wolfi", dest="check_wolfi", action="store_false",
+                   help="do not download the Wolfi APKINDEX (offline)")
+    p.add_argument("--spdx-license",
+                   help="license of the recipe itself, written as an SPDX header (e.g. GPL-3.0-or-later)")
+    p.add_argument("--author", default=None,
+                   help="copyright holder for the SPDX header (default: $DEBFULLNAME <$DEBEMAIL>)")
     p.add_argument("--strict", action="store_true", help="exit 1 if anything needs manual review")
     p.add_argument("--build", action="store_true",
                    help="build the generated recipe with melange (bubblewrap runner) and report the result")
@@ -1496,6 +1584,7 @@ def main(argv=None):
             top = None
         conv = Converter(tree, top, args, WolfiIndex(args.check_wolfi))
         name, recipe, header = conv.convert()
+        header = spdx_header(args.spdx_license, args.author) + header
         text = write_output(name, recipe, header, conv.aux, args.out, args.stdout)
         for n in conv.notes:
             print("note: " + n, file=sys.stderr)

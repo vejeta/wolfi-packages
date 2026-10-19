@@ -36,10 +36,10 @@ environment:
       - libxft-dev
       - fontconfig-dev  # Debian: libfontconfig-dev
       - freetype-dev  # Debian: libfreetype-dev
-      - libcairo2-dev
-      - libpango1.0-dev
+      - cairo-dev  # Debian: libcairo2-dev
+      - pango-dev  # Debian: libpango1.0-dev
       - libvterm-dev
-      - libjson-c-dev
+      - json-c-dev  # Debian: libjson-c-dev
       - xorgproto  # Debian: x11proto-core-dev
       - zlib-dev  # Debian: zlib1g-dev
       - rsvg-convert  # Debian: librsvg2-bin
@@ -81,6 +81,7 @@ test:
   pipeline:
     - runs: |
         test -f /usr/share/doc/xwpe/copyright
+    - uses: test/tw/ldd-check
     - name: 'autopkgtest: XWPE_TEST_WAIT_SCALE=3 WPE_BIN=/usr/bin/wpe python3 -m pytes'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"

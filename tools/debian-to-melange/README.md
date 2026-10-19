@@ -14,7 +14,7 @@ Standard library only (Python ≥ 3.9). Validated against melange v0.62.1.
 
 ```bash
 # From sources.debian.org (latest version, or NAME=VERSION)
-tools/debian-to-melange/debian-to-melange.py --from-debian stremio-server-installer --check-wolfi
+tools/debian-to-melange/debian-to-melange.py --from-debian stremio-server-installer
 
 # From a local checkout (path to debian/ or to the source tree)
 tools/debian-to-melange/debian-to-melange.py --debian-dir ~/src/foo/debian
@@ -24,9 +24,10 @@ tools/debian-to-melange/debian-to-melange.py --debian-dir foo/debian \
   --upstream-url https://example.org/foo-1.2.3.tar.gz --download
 ```
 
-Output: `packages/<name>.yaml` plus `packages/<name>/` with patches, the
-Debian copyright file and any generated configuration file — the same layout
-used by every other recipe in this repository.
+Output: `packages/<name>.yaml` plus `packages/<name>/` with patches and any
+generated configuration file — the same layout used by every other recipe in
+this repository. The Debian copyright file is copied there only when upstream
+has no license file to install.
 
 | Option | Purpose |
 |--------|---------|
@@ -37,7 +38,8 @@ used by every other recipe in this repository.
 | `--version-var VAR` | `debian/rules` variable that holds the version (native packages) |
 | `--upstream-url URL` | Upstream tarball; the version is templated as `${{package.version}}` |
 | `--download` | Download the tarball to fill in `expected-sha256` |
-| `--check-wolfi` | Verify mapped dependency names against the Wolfi APKINDEX (uses `pkg-check`); names only published by this repository are labelled `Wolfi Community Packages` |
+| `--no-check-wolfi` | Do not download the Wolfi APKINDEX. By default mapped names are checked against it (uses `pkg-check`), and names only published by this repository are labelled `Wolfi Community Packages` |
+| `--spdx-license ID` | Write an SPDX header for the recipe itself, with `--author` (default `$DEBFULLNAME <$DEBEMAIL>`) |
 | `--strict` | Exit 1 if anything needs manual review (for CI) |
 | `--build` | Build the generated recipe with melange (bubblewrap runner, this repository's pipelines) and report the result; exit 3 if it fails |
 | `--melange PATH`, `--melange-opts "..."` | melange binary and extra `melange build` options for `--build` (e.g. `--cache-dir`) |
@@ -46,7 +48,7 @@ Recommended workflow:
 
 ```bash
 python3 tools/pkg-check/pkg-check.py -t wolfi -p foo        # 1. not already in Wolfi?
-tools/debian-to-melange/debian-to-melange.py --from-debian foo --check-wolfi   # 2. convert
+tools/debian-to-melange/debian-to-melange.py --from-debian foo   # 2. convert
 grep -n 'TODO(debian-to-melange)' packages/foo.yaml          # 3. review
 melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 ```
@@ -61,16 +63,19 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | `debian/copyright` (DEP-5) | `package.copyright` with SPDX ids (`GPL-2+` → `GPL-2.0-or-later`, `Expat` → `MIT`, …) and per-path entries |
 | `Depends` / `Pre-Depends` | `dependencies.runtime`, names mapped to Wolfi |
 | `Recommends` | Comment (apk has no recommends) |
-| `Build-Depends{,-Indep,-Arch}` | `environment.contents.packages`, names mapped to Wolfi (`librust-*-dev` dropped: cargo fetches crates). Names not found are kept with a TODO, never dropped |
+| `Build-Depends{,-Indep,-Arch}` | `environment.contents.packages`, names mapped to Wolfi (`librust-*-dev` dropped: cargo fetches crates). Names not in Wolfi are left out as a TODO comment, so the environment still resolves |
 | Build profiles (`<!nocheck>`, `<pkg.foo.stage0>`) | Evaluated for a normal build: dependencies only needed under a profile are left out |
 | `libfoo-perl`, `openjdk-N-jdk`, `default-jdk` | `perl-foo`, `openjdk-N`, `openjdk-25-default-jdk`; `lib*-java` flagged (Wolfi fetches jars from Maven Central); `libjs-*` and Debian Java helpers dropped |
+| autoconf with debhelper ≥ 10 and no generated `configure` (git checkouts) | `autoreconf -fi` step, with `autoconf`, `automake` (and `libtool`, `gettext-dev` when `configure.ac` uses them) |
+| Upstream `COPYING`, `LICENSE`, … | Installed in `/usr/share/licenses/<name>`, and checked by the test |
+| Architecture-dependent binaries | `strip` step and a `test/tw/ldd-check` test |
 | `dh $@ --buildsystem=…` or detected build files | `cmake/*`, `meson/*`, `autoconf/*`, `py/pip-build-install`, `go/build`, `cargo/build`, `scala/build` (dh-scala, with `debian/scala-build` copied next to the recipe), plain `make` |
 | `override_dh_auto_configure: dh_auto_configure -- ARGS` | `with: opts: ARGS` on the configure step |
 | `override_dh_auto_build`, `override_dh_auto_install` | `runs` steps with the same commands (`debian/<pkg>/` → `${{targets.destdir}}/`, `debian/<file>` copied next to the recipe, `target/$(DEB_HOST_RUST_TYPE)/` → `target/`); TODO if make or debhelper constructs remain |
 | `export VAR = value` in `rules` | `environment.environment` (`$(CURDIR)` → `/home/build`; `DEB_*`, `PATH`, `CARGO_HOME`, compiler flags skipped) |
 | `Files-Excluded` in `debian/copyright` | `rm -rf` step after `fetch`, so the pristine tarball matches Debian's repack |
 | `debian/watch` (GitHub, or v5 git mode on any forge) | `git-checkout` with `tag` and `expected-commit` (resolved with `git ls-remote` when `--download` is given), and `update.github` or `update.git` |
-| `debian/tests/control` (autopkgtest) | `test:` steps: `Test-Command` and `Tests` scripts (inlined, run in `$AUTOPKGTEST_TMP`); `Depends` mapped to Wolfi names |
+| `debian/tests/control` (autopkgtest) | `test:` steps: `Test-Command` and `Tests` scripts (inlined, run in `$AUTOPKGTEST_TMP`); `Depends` mapped to Wolfi names. A test whose dependencies are not in Wolfi is left out as a TODO comment |
 | `debian/patches/series` | Patches copied next to the recipe + `uses: patch` |
 | Extra binary packages + `*.install` | `subpackages` that move their files from `destdir` |
 | Main package `*.install` when nothing is installed by the build system (cargo, go, overridden `dh_auto_install`) | Copied from the source tree |
@@ -112,8 +117,8 @@ before installing to change the behaviour non-interactively.
 - Other `debian/rules` logic (`override_dh_*` beyond configure, build and
   install, or recipes that still need make/debhelper) is listed as a TODO with
   the original commands.
-- Package name mapping is a curated table plus heuristics; use `--check-wolfi`
-  to confirm names exist.
+- Package name mapping is a curated table plus heuristics, checked against
+  the Wolfi index unless `--no-check-wolfi` is given.
 - Tarball `debian/watch` files on sites other than GitHub are not interpreted; pass `--upstream-url`.
 - `dh --with` add-ons are reported, not converted.
 - Debian-repacked tarballs (`+dfsg`/`+ds`) without a `Files-Excluded` field
