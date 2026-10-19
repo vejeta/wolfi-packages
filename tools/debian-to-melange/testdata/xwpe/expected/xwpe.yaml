@@ -21,6 +21,9 @@ package:
       paths:
         - icons/xwpe.svg
         - icons/xwpe-small.svg
+  dependencies:
+    runtime:
+      - ttf-dejavu  # Debian: fontconfig-config depends on fonts-dejavu-core
 environment:
   contents:
     keyring:
@@ -73,7 +76,7 @@ test:
         - busybox
         - py3-pyte  # Debian: python3-pyte
         - py3-pytest  # Debian: python3-pytest
-        - glibc-locales  # Debian: locales-all
+        - glibc-locale-en  # Debian: locales-all
         - build-base  # Debian: gcc
         - glibc-dev  # Debian: libc6-dev
         - gfortran
@@ -82,12 +85,15 @@ test:
         - python3
         - py3-pillow  # Debian: python3-pil
         - xvfb-run  # Debian: xvfb
+        - xkbcomp  # Debian: xvfb
+        - xkeyboard-config  # Debian: xvfb
         - matchbox-window-manager
         - xdotool
         - x11-apps  # TODO(debian-to-melange): a Debian bundle; list the programs used (atobm, bitmap, bmtoa...)
         - x11-xserver-utils  # TODO(debian-to-melange): a Debian bundle; list the programs used (iceauth, sessreg, showrgb...)
         - xclip
         - imagemagick-7  # Debian: imagemagick
+        - netpbm  # Debian: imagemagick
   pipeline:
     - runs: |
         test -f /usr/share/doc/xwpe/copyright

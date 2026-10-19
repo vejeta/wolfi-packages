@@ -84,6 +84,7 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | Main package `*.install` when nothing is installed by the build system (cargo, go, overridden `dh_auto_install`) | Copied from the source tree |
 | dh-exec `src => dest` in `*.install` | Copied under the new name |
 | `*.dirs`, `*.links`, `*.docs`, `*.manpages`, `*.service` | `mkdir`, `ln -s`, `cp`, `install`; units in `/usr/lib/systemd/system` |
+| Build-depends on fontconfig or Xft | Runtime dependency on `ttf-dejavu` (Debian's fontconfig always brings a font; Wolfi's does not) |
 | `usr/sbin`, `sbin`, `bin`, `lib` destinations | `usr/bin`, `usr/lib` (Wolfi is usr-merged, with sbin merged into bin) |
 | Multiarch paths (`usr/lib/*/`, `$(DEB_HOST_MULTIARCH)`) | `usr/lib/` |
 | `preinst` / `postinst` / `prerm` / `postrm` | `scriptlets` (see below) |
