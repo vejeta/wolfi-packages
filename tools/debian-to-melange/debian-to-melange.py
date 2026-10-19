@@ -663,6 +663,8 @@ class Rules:
                     continue
                 subs = {ph: var for _sep, ph, var in
                         re.findall(r"s([/|@,])(.+?)\1\$\((\w+)\)\1", line)}
+                if not subs:
+                    continue  # literal values: generate_from_in() makes the file
                 found[os.path.basename(m.group(2))] = (os.path.basename(m.group(1)), subs)
         return found
 
@@ -955,6 +957,75 @@ def render_conffile(pkg, templates):
 
 # Debian's Essential packages, present on every autopkgtest testbed (GNU tools, dpkg)
 ESSENTIAL = ["bash", "coreutils", "diffutils", "dpkg", "findutils", "grep", "sed"]
+
+def alternatives(text):
+    """update-alternatives --install calls of a postinst: [(link, path, [(slave link, slave path)])],
+    the highest priority per link, as dpkg's automatic mode picks."""
+    best = {}
+    body = re.sub(r"\\\n", " ", text)
+    for m in re.finditer(r"update-alternatives\s+(?:--quiet\s+)?--install\s+(\S+)\s+\S+\s+(\S+)\s+(\S+)((?:\s+--slave\s+\S+\s+\S+\s+\S+)*)", body):
+        link, path, prio = m.group(1), m.group(2), m.group(3)
+        if not link.startswith("/") or not path.startswith("/"):
+            continue  # set from shell variables
+        prio = int(prio) if prio.isdigit() else -1
+        slaves = [(s[0], s[2]) for s in re.findall(r"--slave\s+(\S+)\s+(\S+)\s+(\S+)", m.group(4))
+                  if s[0].startswith("/") and s[2].startswith("/")]
+        if link not in best or prio > best[link][0]:
+            best[link] = (prio, path, slaves)
+    return [(link, path, slaves) for link, (_p, path, slaves) in best.items()]
+
+
+def alternatives_step(alts, root):
+    """Ship the links update-alternatives would make: apko does not run maintainer scripts."""
+    cmds = ['alt() {',
+            '  for s in "" .gz; do',
+            '    t="${2%.gz}$s" l="${1%.gz}$s"',
+            '    [ -e "{0}$t" ] && [ ! -e "{0}$l" ] || continue'.format(root),
+            '    mkdir -p "$(dirname "{0}$l")" && ln -s "$t" "{0}$l" && return'.format(root),
+            '  done',
+            '}']
+    for link, path, slaves in alts:
+        for l, p in [(link, path)] + slaves:
+            cmds.append("alt /{} /{}".format(usr_merge(l.lstrip("/")), usr_merge(p.lstrip("/"))))
+    return {"name": "Alternatives (links update-alternatives makes)", "runs": "\n".join(cmds) + "\n"}
+
+
+# Debian names of Essential packages, registered in the test's dpkg database too
+ESSENTIAL_ALIASES = {"perl-base": "perl", "libc6": "glibc", "libc-bin": "glibc"}
+
+
+def dpkg_database_step(aliases, deb_pkg):
+    """A Debian testbed has a dpkg database (dpkg-query -L/-W/-s, --control-path): register
+    the installed apk packages in it, also under the Debian names of the test's dependencies,
+    with the package's debconf templates from the source tree as dpkg installs them."""
+    pairs = " ".join("{}={}".format(d, w) for d, w in sorted(aliases.items()) if d != w)
+    return {"name": "dpkg database (as on a Debian testbed)", "runs": (
+        "db=/var/lib/dpkg\n"
+        'mkdir -p "$db/info" && touch "$db/status"\n'
+        "awk -v db=\"$db\" -v aliases='{0}' '\n"
+        "  BEGIN {{ n = split(aliases, a, \" \"); for (i = 1; i <= n; i++) {{ split(a[i], kv, \"=\"); alias[kv[2]] = alias[kv[2]] \" \" kv[1] }} }}\n"
+        "  function add(   m, j, f) {{\n"
+        "    m = split(pkg alias[pkg], names, \" \")\n"
+        "    for (j = 1; j <= m; j++) {{\n"
+        "      f = db \"/info/\" names[j] \".list\"\n"
+        "      printf \"%s\", files > f; close(f)\n"
+        "      gsub(/_/, \"~\", ver)\n"
+        "      printf \"Package: %s\\nStatus: install ok installed\\nPriority: optional\\nArchitecture: all\\nVersion: %s\\nMaintainer: Wolfi\\nDescription: %s (apk package %s)\\n\\n\", names[j], ver, names[j], pkg >> (db \"/status\")\n"
+        "    }}\n"
+        "    pkg = \"\"\n"
+        "  }}\n"
+        "  /^P:/ {{ pkg = substr($0, 3); files = \"\"; dir = \"\" }}\n"
+        "  /^V:/ {{ ver = substr($0, 3) }}\n"
+        "  /^F:/ {{ dir = substr($0, 3); files = files \"/\" dir \"\\n\" }}\n"
+        "  /^R:/ {{ files = files (dir == \"\" ? \"\" : \"/\" dir) \"/\" substr($0, 3) \"\\n\" }}\n"
+        "  /^$/ && pkg != \"\" {{ add() }}\n"
+        "  END {{ if (pkg != \"\") add() }}\n"
+        "' /lib/apk/db/installed\n"
+        "for t in debian/{1}.templates debian/templates; do\n"
+        "  # po-debconf's translatable fields (_Description, __Choices) in the C locale\n"
+        "  [ -f \"$t\" ] && sed '/^#/d; s/^__*//' \"$t\" > \"$db/info/{1}.templates\" && break\n"
+        "done\n").format(pairs, deb_pkg)}
+
 
 SCRIPT_DEPS = {}  # script label -> packages its commands come from
 KEEP_DEBCONF = set()  # packages whose maintainer scripts keep using debconf
@@ -1600,6 +1671,7 @@ class Converter:
             pkg["copyright"].insert(0, self.todo("debian/copyright is not machine-readable (DEP-5); set the SPDX license"))
 
         self.main_depends = main.get("depends") or ""
+        self.main_package = main["package"]
         runtime = self.map_deps(parse_relations(main.get("depends")) + parse_relations(main.get("pre-depends")), "runtime")
         if "${python3:Depends}" in (main.get("depends") or ""):
             reqs = python_requirements(self.tree)
@@ -1637,6 +1709,7 @@ class Converter:
             # the package installs its own /etc/<name>.conf
             conffile = "/etc/{}-debconf.conf".format(name)
         scripts, uses_debconf = self.scriptlets(main, True, name, templates, conffile, templated, var_refs)
+        main_alts = self.alternatives
         if self.script_deps:
             have = pkg.setdefault("dependencies", {}).setdefault("runtime", [])
             for d in self.script_deps:
@@ -1872,6 +1945,8 @@ class Converter:
             env_pkgs += [p for p in ("coreutils", "findutils") if p not in env_pkgs]
         if templates and uses_debconf:
             pipeline[-1]["runs"] += 'install -Dm644 {0}/{0}.conf "${{{{targets.destdir}}}}"{1}\n'.format(name, conffile)
+        if main_alts:
+            pipeline.append(alternatives_step(main_alts, "${{targets.destdir}}"))
         if any(b.get("architecture", "any") != "all" for b in binaries) and bs:
             # dh_strip; Wolfi recipes strip with the strip pipeline.
             pipeline.append({"uses": "strip"})
@@ -2055,6 +2130,7 @@ class Converter:
     def scriptlets(self, binary, is_main, name, templates, conffile, templated, var_refs):
         """Convert the maintainer scripts of one binary package."""
         scripts, uses_debconf = {}, False
+        self.alternatives = []
         for kind, targets in SCRIPT_MAP.items():
             text = self.pkgfile(binary["package"], kind, is_main)
             if text is None and is_main:
@@ -2067,6 +2143,8 @@ class Converter:
                         break
             if text is None:
                 continue
+            if kind == "postinst":
+                self.alternatives = alternatives(text)
             label = kind if is_main else "{}.{}".format(binary["package"], kind)
             body, dc = convert_script(text, label, name, templates if is_main else [], conffile, self.notes)
             if dc and not is_main:
@@ -2353,6 +2431,8 @@ class Converter:
         if deps:
             sub["dependencies"] = {"runtime": deps}
         scripts, _ = self.scriptlets(b, False, name, [], "", {}, {})
+        if self.alternatives:
+            sub["pipeline"].append(alternatives_step(self.alternatives, "${{targets.contextdir}}"))
         if self.script_deps:
             sub.setdefault("dependencies", {}).setdefault("runtime", [])
             sub["dependencies"]["runtime"] += [C(d, "used by the maintainer scripts") for d in self.script_deps]
@@ -2415,6 +2495,7 @@ class Converter:
         if not control:
             return [], []
         steps, packages = [], []
+        aliases = dict(ESSENTIAL_ALIASES)
         for i, para in enumerate(parse_deb822(control)):
             restrictions = para.get("restrictions", "").replace(",", " ").split()
             for r in restrictions:
@@ -2435,6 +2516,10 @@ class Converter:
             for d in mapped:
                 if d not in packages:
                     packages.append(d)
+            for alts in deps:
+                wolfi = self.map_deps([alts[:1]], "test")
+                if wolfi and not isinstance(wolfi[0], Comment):
+                    aliases.setdefault(alts[0], wolfi[0].value if isinstance(wolfi[0], C) else wolfi[0])
             for e in ESSENTIAL:
                 if e not in [p.value if isinstance(p, C) else p for p in packages]:
                     packages.append(C(e, "Essential in Debian, so on every testbed"))
@@ -2459,10 +2544,11 @@ class Converter:
                 if shell == "bash" and "bash" not in packages:
                     packages.append("bash")
                 steps.append({"name": "autopkgtest: " + test,
-                              "runs": env + guard('cd "$AUTOPKGTEST_TMP"\n' + script.split("\n", 1)[1 if script.startswith("#!") else 0].strip() + "\n")})
+                              "runs": env + guard(script.split("\n", 1)[1 if script.startswith("#!") else 0].strip() + "\n")})
         real = [st for st in steps if not isinstance(st, Comment)]
         if real:
             self.notes.append("autopkgtests converted to the test pipeline ({} steps)".format(len(real)))
+            steps.insert(0, dpkg_database_step(aliases, self.main_package))
             if self.source_steps:
                 # autopkgtest runs in the unpacked source tree
                 steps = [dict(st) for st in self.source_steps] + steps

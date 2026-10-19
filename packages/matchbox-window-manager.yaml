@@ -142,6 +142,17 @@ pipeline:
           mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
         done
       done
+  - name: Alternatives (links update-alternatives makes)
+    runs: |
+      alt() {
+        for s in "" .gz; do
+          t="${2%.gz}$s" l="${1%.gz}$s"
+          [ -e "${{targets.destdir}}$t" ] && [ ! -e "${{targets.destdir}}$l" ] || continue
+          mkdir -p "$(dirname "${{targets.destdir}}$l")" && ln -s "$t" "${{targets.destdir}}$l" && return
+        done
+      }
+      alt /usr/bin/x-window-manager /usr/bin/matchbox-window-manager
+      alt /usr/share/man/man1/x-window-manager.1.gz /usr/share/man/man1/matchbox-window-manager.1.gz
   - uses: strip
 update:
   enabled: true

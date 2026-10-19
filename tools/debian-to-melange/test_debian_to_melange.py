@@ -310,6 +310,16 @@ class HelperTest(unittest.TestCase):
         self.assertEqual(d2m.to_spdx("Apache-2.0"), "Apache-2.0")
         self.assertEqual(d2m.to_spdx("LGPL-2.1+ and BSD-3-clause"), "LGPL-2.1-or-later AND BSD-3-Clause")
 
+    def test_alternatives(self):
+        text = ("update-alternatives --install /usr/bin/fr fr /usr/bin/fr-a 50 \\\n"
+                "  --slave /usr/share/man/man1/fr.1.gz fr.1.gz /usr/share/man/man1/fr-a.1.gz\n"
+                "update-alternatives --install /usr/bin/fr fr /usr/bin/fr-b 30\n"
+                "update-alternatives --install $LINK x $PATH 10\n")
+        self.assertEqual(d2m.alternatives(text), [
+            ("/usr/bin/fr", "/usr/bin/fr-a", [("/usr/share/man/man1/fr.1.gz", "/usr/share/man/man1/fr-a.1.gz")])])
+        step = d2m.alternatives_step(d2m.alternatives(text), "${{targets.destdir}}")
+        self.assertIn("alt /usr/bin/fr /usr/bin/fr-a\n", step["runs"])
+
     def test_debian_upstream_version(self):
         self.assertEqual(d2m.debian_upstream_version("1:2.3.4+dfsg-2"), "2.3.4")
         self.assertEqual(d2m.debian_upstream_version("0.40.0-3+deb13u1"), "0.40.0")

@@ -80,7 +80,7 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | `Files-Excluded` in `debian/copyright` | `rm -rf` step after `fetch`, so the pristine tarball matches Debian's repack |
 | `debian/watch` (GitHub, git mode on any forge) | `git-checkout` with `tag` and `expected-commit` (resolved with `git ls-remote` when `--download` is given), and `update.github` or `update.git`. A `+gitYYYYMMDD` snapshot is pinned to the last commit of that day |
 | `debian/watch` with a plain tarball URL (PyPI, `@ARCHIVE_EXT@`) | `fetch` of the first URL that exists; `update.github` when the Homepage is on GitHub, otherwise the release-monitoring.org project with that name |
-| `debian/tests/control` (autopkgtest) | `test:` steps: the upstream source is checked out first (autopkgtest runs in the source tree), then `Test-Command` and `Tests` scripts (inlined, run in `$AUTOPKGTEST_TMP`); `Restrictions: flaky` failures are reported, not fatal; `Depends` mapped to Wolfi names, plus Debian's Essential packages (bash, coreutils, dpkg, …) that every testbed has. A test whose dependencies are not in Wolfi is left out as a TODO comment |
+| `debian/tests/control` (autopkgtest) | `test:` steps: the upstream source is checked out first (autopkgtest runs in the source tree), then `Test-Command` and `Tests` scripts (inlined, run in the source tree with `$AUTOPKGTEST_TMP` set); `Restrictions: flaky` failures are reported, not fatal; `Depends` mapped to Wolfi names, plus Debian's Essential packages (bash, coreutils, dpkg, …) that every testbed has. A test whose dependencies are not in Wolfi is left out as a TODO comment |
 | `debian/patches/series` | Patches copied next to the recipe + `uses: patch` |
 | Extra binary packages + `*.install` | `subpackages` that move their files from `destdir` |
 | Main package `*.install` when nothing is installed by the build system (cargo, go, overridden `dh_auto_install`) | Copied from the source tree |
@@ -89,7 +89,7 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | Build-depends on fontconfig or Xft | Runtime dependency on `ttf-dejavu` (Debian's fontconfig always brings a font; Wolfi's does not) |
 | `usr/sbin`, `sbin`, `bin`, `lib` destinations | `usr/bin`, `usr/lib` (Wolfi is usr-merged, with sbin merged into bin) |
 | Multiarch paths (`usr/lib/*/`, `$(DEB_HOST_MULTIARCH)`) | `usr/lib/` |
-| `preinst` / `postinst` / `prerm` / `postrm` | `scriptlets` (see below); commands they call (`update-alternatives`, `ucf`, `invoke-rc.d`, …) become runtime dependencies on the package that has them |
+| `preinst` / `postinst` / `prerm` / `postrm` | `scriptlets` (see below); commands they call (`update-alternatives`, `ucf`, `invoke-rc.d`, …) become runtime dependencies on the package that has them; the links `update-alternatives --install` would make (highest priority, slaves included) are shipped in the package, since apko does not run the scripts |
 | Other `override_dh_*` / `execute_*_dh_*` targets | Their own commands, after the build or on the installed files (`$(DEB_VERSION)`, `$$`, `$(RM)` expanded) |
 | `debian/foo.in` + `sed s/#X#/$(VAR)/` in `rules` | Script with `${{package.version}}` / `${{vars.x}}`; `VAR` becomes a melange `vars` entry |
 | debconf `templates` + `db_get` | `/etc/<name>.conf` with documented defaults; `db_get` reads from it |
