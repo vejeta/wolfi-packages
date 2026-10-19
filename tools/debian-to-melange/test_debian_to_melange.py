@@ -320,6 +320,21 @@ class HelperTest(unittest.TestCase):
         step = d2m.alternatives_step(d2m.alternatives(text), "${{targets.destdir}}")
         self.assertIn("alt /usr/bin/fr /usr/bin/fr-a\n", step["runs"])
 
+    def test_drop_foreign_fakechroot(self):
+        script = ("for v in a b; do\n"
+                  "\tmmdebstrap --variant=$v --mode=root unstable root.tar\n"
+                  "\ttouch fc.tar\n"
+                  "\trunuser -u u -- mmdebstrap --variant=$v --mode=fakechroot unstable fc.tar\n"
+                  "\tcmp root.tar fc.tar\n"
+                  "\trm root.tar fc.tar\n"
+                  "done\n")
+        out, dropped = d2m.drop_foreign_fakechroot(script)
+        self.assertTrue(dropped)
+        self.assertIn("--mode=root", out)
+        self.assertNotIn("fc.tar", out)
+        self.assertIn("\trm root.tar\n", out)
+        self.assertEqual(d2m.drop_foreign_fakechroot("true\n"), ("true\n", False))
+
     def test_debian_upstream_version(self):
         self.assertEqual(d2m.debian_upstream_version("1:2.3.4+dfsg-2"), "2.3.4")
         self.assertEqual(d2m.debian_upstream_version("0.40.0-3+deb13u1"), "0.40.0")

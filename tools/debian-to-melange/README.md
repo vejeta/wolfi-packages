@@ -80,7 +80,7 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | `Files-Excluded` in `debian/copyright` | `rm -rf` step after `fetch`, so the pristine tarball matches Debian's repack |
 | `debian/watch` (GitHub, git mode on any forge) | `git-checkout` with `tag` and `expected-commit` (resolved with `git ls-remote` when `--download` is given), and `update.github` or `update.git`. A `+gitYYYYMMDD` snapshot is pinned to the last commit of that day |
 | `debian/watch` with a plain tarball URL (PyPI, `@ARCHIVE_EXT@`) | `fetch` of the first URL that exists; `update.github` when the Homepage is on GitHub, otherwise the release-monitoring.org project with that name |
-| `debian/tests/control` (autopkgtest) | `test:` steps: the upstream source is checked out first (autopkgtest runs in the source tree), then `Test-Command` and `Tests` scripts (inlined, run in the source tree with `$AUTOPKGTEST_TMP` set); `Restrictions: flaky` failures are reported, not fatal; `Depends` mapped to Wolfi names, plus Debian's Essential packages (bash, coreutils, dpkg, …) that every testbed has. A test whose dependencies are not in Wolfi is left out as a TODO comment |
+| `debian/tests/control` (autopkgtest) | `test:` steps: the upstream source is checked out first (autopkgtest runs in the source tree), then `Test-Command` and `Tests` scripts (inlined, run in the source tree with `$AUTOPKGTEST_TMP` set); `Restrictions: flaky` failures are reported, not fatal; `Depends` mapped to Wolfi names, plus Debian's Essential packages (bash, coreutils, dpkg, …) that every testbed has. A test whose dependencies are not in Wolfi is left out as a TODO comment. The testbed is emulated: a dpkg database lists the installed apk packages (also under the Debian names of the test's dependencies, with the package's debconf templates), `debian/` of a non-native package is fetched when a test reads it, `AUTOPKGTEST_NORMAL_USER` is `build`, and commands the scripts call (`runuser`, `dpkg-parsechangelog`, …) are added. `mmdebstrap --mode=fakechroot` of a Debian chroot is left out (Wolfi's glibc is newer than the chroot's), the rest of that test kept |
 | `debian/patches/series` | Patches copied next to the recipe + `uses: patch` |
 | Extra binary packages + `*.install` | `subpackages` that move their files from `destdir` |
 | Main package `*.install` when nothing is installed by the build system (cargo, go, overridden `dh_auto_install`) | Copied from the source tree |
@@ -120,6 +120,26 @@ in `/etc/<name>.conf`, named `<PACKAGE>_<QUESTION>` and documented with the
 template text. `. /usr/share/debconf/confmodule` is replaced by sourcing that
 file, and `db_get pkg/question` by `RET="${VAR:-default}"`. Set the value
 before installing to change the behaviour non-interactively.
+
+### debian/rules details
+
+- `override_dh_x-arch` and `-indep` are merged into one step (one melange build makes
+  both), with their target-specific variables (`target: VAR=value`) joined.
+- `override_dh_install` is split at its `dh_install` call: commands before it run
+  before the install step, those after it on the installed files; other overrides
+  follow dh's sequence (dh_install, dh_installdocs, ..., dh_installman, ...).
+- `dh_install -pPKG -Xpattern` excludes are honoured; `dh_installman FILES` installs them.
+- `dh_gencontrol -Vname=value` substvars are put into Depends; a value chosen with
+  `$(shell test -e /usr/bin/X && echo A || echo B)` is A when X is a build dependency.
+- `dh --buildsystem=cmake+ninja` uses the cmake pipelines; CMake projects whose Debian
+  `.install` files use `usr/lib/<package>/` get `-DCMAKE_INSTALL_LIBEXECDIR=lib`.
+- Runtime dependencies Debian leaves implicit are added: `${perl:Depends}` (perl, and
+  perl-ph-headers when the Perl code requires `*.ph`), Essential packages named in
+  Breaks/Conflicts (libapt-pkg: dpkg), GNU `getopt` used by shell scripts
+  (util-linux-misc), and libraries with an unversioned soname (libdb-5.3.so), for which
+  melange derives no `so:` dependency.
+- `update-alternatives --install` in a postinst becomes the links themselves (the
+  highest priority wins), since apko does not run maintainer scripts.
 
 ## Known limitations
 

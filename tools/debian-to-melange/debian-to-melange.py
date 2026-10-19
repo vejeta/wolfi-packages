@@ -1054,6 +1054,29 @@ def essential_script_tools(data):
     return found
 
 
+def drop_foreign_fakechroot(script):
+    """mmdebstrap --mode=fakechroot runs the host's programs against the chroot's libraries;
+    a Debian chroot's glibc is older than Wolfi's, so that half of a test cannot work here.
+    Drop those lines (and the use of their output), keep the rest (--mode=root ...)."""
+    outputs = [l.split()[-1] for l in script.splitlines() if "--mode=fakechroot" in l and l.split()]
+    if not outputs:
+        return script, False
+    kept = []
+    for line in script.splitlines():
+        hits = [o for o in outputs if re.search(r"(^|\s){}(\s|$)".format(re.escape(o)), line)]
+        if not hits:
+            kept.append(line)
+        elif re.match(r"^\s*rm\s", line):
+            for o in hits:
+                line = re.sub(r"\s{}(?=\s|$)".format(re.escape(o)), "", line)
+            kept.append(line)
+        else:
+            note = re.match(r"^\s*", line).group(0) + ": # Wolfi: left out, the fakechroot mode needs a chroot glibc as new as the host's"
+            if not kept or kept[-1] != note:
+                kept.append(note)
+    return "\n".join(kept) + "\n", True
+
+
 def perl_ph_required(data):
     """Does Perl code in the source tarball require h2ph headers (require "syscall.ph")?"""
     if not data:
@@ -2902,8 +2925,12 @@ class Converter:
                 shell = "bash" if script.startswith("#!/bin/bash") or script.startswith("#!/usr/bin/env bash") else "sh"
                 if shell == "bash" and "bash" not in packages:
                     packages.append("bash")
-                steps.append({"name": "autopkgtest: " + test,
-                              "runs": env + guard(script.split("\n", 1)[1 if script.startswith("#!") else 0].strip() + "\n")})
+                body = script.split("\n", 1)[1 if script.startswith("#!") else 0].strip() + "\n"
+                body, dropped = drop_foreign_fakechroot(body)
+                if dropped:
+                    self.notes.append("autopkgtest '{}': mmdebstrap --mode=fakechroot left out (Wolfi's glibc is newer "
+                                      "than the Debian chroot's; host binaries cannot load its libraries)".format(test))
+                steps.append({"name": "autopkgtest: " + test, "runs": env + guard(body)})
         real = [st for st in steps if not isinstance(st, Comment)]
         for st in real:
             if "AUTOPKGTEST_NORMAL_USER" in st["runs"]:
