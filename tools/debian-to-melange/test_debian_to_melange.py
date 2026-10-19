@@ -350,10 +350,18 @@ class HelperTest(unittest.TestCase):
 
     def test_convert_script_flags_debian_only_tools(self):
         notes = []
-        body, _ = d2m.convert_script("#!/bin/sh\nupdate-alternatives --install a b c 1\n", "postinst",
+        body, _ = d2m.convert_script("#!/bin/sh\npy3compile -p foo\n", "postinst",
                                      "p", [], "/etc/p.conf", notes)
         self.assertIn(d2m.TODO, body)
-        self.assertTrue(any("update-alternatives" in n for n in notes))
+        self.assertTrue(any("py3compile" in n for n in notes))
+
+    def test_convert_script_records_tool_packages(self):
+        d2m.SCRIPT_DEPS.clear()
+        body, _ = d2m.convert_script("#!/bin/sh\nupdate-alternatives --install a b c 1\n"
+                                     "touch /var/lib/ucf/hashfile\n", "postinst", "p", [], "/etc/p.conf", [])
+        self.assertNotIn(d2m.TODO, body)
+        self.assertEqual(d2m.SCRIPT_DEPS, {"postinst": {"dpkg"}})  # not ucf: only a path
+        d2m.SCRIPT_DEPS.clear()
 
     def test_scalar_quoting(self):
         self.assertEqual(d2m.scalar("1.0"), "'1.0'")
