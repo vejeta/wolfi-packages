@@ -83,8 +83,9 @@ NAME_MAP = {
     "pandoc": "pandoc-cli",
     # OCaml: Wolfi's ocaml is the whole compiler and standard library, which
     # Debian splits; dune and findlib are packaged in Wolfi too
-    "ocaml": ["ocaml", "ocaml-compiler-libs", "ocaml-findlib-compat"],
-    "ocaml-nox": ["ocaml", "ocaml-compiler-libs", "ocaml-findlib-compat"],
+    # (ocamlopt assembles and links with gcc: Debian's ocaml depends on it, Wolfi's does not)
+    "ocaml": ["ocaml", "ocaml-compiler-libs", "ocaml-findlib-compat", "build-base"],
+    "ocaml-nox": ["ocaml", "ocaml-compiler-libs", "ocaml-findlib-compat", "build-base"],
     "ocaml-base": "ocaml",
     "ocaml-base-nox": "ocaml",
     "ocaml-interp": "ocaml",
@@ -1710,6 +1711,18 @@ class Converter:
             return []
         return [C("perl", "Debian: ${perl:Depends}")]
 
+    def ocaml_depends(self, binary, have):
+        """${ocaml:Depends}: dh_ocaml makes libfoo-ocaml-dev depend on its runtime libfoo-ocaml."""
+        if "${ocaml:Depends}" not in (binary.get("depends") or "") or not binary["package"].endswith("-dev"):
+            return []
+        rt = binary["package"][:-len("-dev")]
+        if rt not in self.rename:
+            return []
+        target = self.rename[rt]
+        if any((d.value if isinstance(d, C) else d) == target for d in have if not isinstance(d, Comment)):
+            return []
+        return [C(target, "Debian: ${ocaml:Depends}")]
+
     def essential_used(self, binary):
         """Debian never declares Depends on its Essential packages; a Breaks or Conflicts on
         one (libapt-pkg: Breaks dpkg (<< 1.20.8)) shows the package works with it."""
@@ -2130,6 +2143,7 @@ class Converter:
         runtime += self.unversioned_libs(main, source)
         runtime += self.essential_used(main)
         runtime += self.perl_depends(main, runtime)
+        runtime += self.ocaml_depends(main, runtime)
         if "${python3:Depends}" in (main.get("depends") or ""):
             reqs = python_requirements(self.tree)
             for mod in self.patch_imports():
@@ -3133,6 +3147,7 @@ class Converter:
         deps += self.unversioned_libs(b, self.source)
         deps += self.essential_used(b)
         deps += self.perl_depends(b, deps)
+        deps += self.ocaml_depends(b, deps)
         if deps:
             sub["dependencies"] = {"runtime": deps}
         scripts, _ = self.scriptlets(b, False, name, [], "", {}, {})
