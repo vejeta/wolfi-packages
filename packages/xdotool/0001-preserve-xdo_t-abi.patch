@@ -1,0 +1,27 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Thu, 14 May 2015 15:53:27 -0400
+Subject: preserve-xdo_t-abi
+
+Forwarded: https://groups.google.com/g/xdotool-users/c/URAP7wBmOaI/m/LI7kWazD-C0J
+
+---
+ xdo.h | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/xdo.h b/xdo.h
+index 80daea1..d9c2300 100644
+--- a/xdo.h
++++ b/xdo.h
+@@ -85,6 +85,12 @@ typedef struct xdo {
+   /** @internal Length of charcodes array */
+   int charcodes_len;
+ 
++  /** @internal UNUSED -- result from XGetModifierMapping */
++  XModifierKeymap *modmap;
++
++  /** @internal UNUSED -- current keyboard mapping (via XGetKeyboardMapping) */
++  KeySym *keymap;
++
+   /** @internal highest keycode value */
+   int keycode_high; /* highest and lowest keycodes */
+ 

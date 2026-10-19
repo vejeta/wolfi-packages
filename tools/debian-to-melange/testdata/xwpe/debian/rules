@@ -1,0 +1,14 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE=1
+
+export DEB_BUILD_MAINT_OPTIONS=hardening=+all
+
+# K&R C code (1993) needs these warning suppressions with modern GCC
+export DEB_CFLAGS_MAINT_APPEND=-Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-incompatible-pointer-types -Wno-old-style-declaration
+
+# This is introduced to support cross-building
+include /usr/share/dpkg/architecture.mk
+
+%:
+	dh $@

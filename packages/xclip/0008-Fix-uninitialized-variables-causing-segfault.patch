@@ -1,0 +1,33 @@
+From: hackerb9 <hackerb9@users.noreply.github.com>
+Date: Sat, 29 Jan 2022 09:58:10 -0800
+Subject: Fix uninitialized variables causing segfault
+
+Bug: https://github.com/astrand/xclip/issues/131
+Applied-Upstream: https://github.com/astrand/xclip/commit/b372f73579d30f9ba998ffd0a73694e7abe2c313
+
+---
+ xclip.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/xclip.c b/xclip.c
+index 5fc760c..875ceb6 100644
+--- a/xclip.c
++++ b/xclip.c
+@@ -211,7 +211,7 @@ doOptTarget(void)
+ static int
+ doIn(Window win, const char *progname)
+ {
+-    unsigned char *sel_buf;	/* buffer for selection data */
++    unsigned char *sel_buf = NULL;	/* buffer for selection data */
+     unsigned long sel_len = 0;	/* length of sel_buf */
+     unsigned long sel_all = 0;	/* allocated size of sel_buf */
+     XEvent evt;			/* X Event Structures */
+@@ -439,7 +439,7 @@ static int
+ doOut(Window win)
+ {
+     Atom sel_type = None;
+-    unsigned char *sel_buf;	/* buffer for selection data */
++    unsigned char *sel_buf = NULL;	/* buffer for selection data */
+     unsigned long sel_len = 0;	/* length of sel_buf */
+     XEvent evt;			/* X Event Structures */
+     unsigned int context = XCLIB_XCOUT_NONE;

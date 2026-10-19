@@ -1,0 +1,44 @@
+Source: pyte
+Section: python
+Priority: optional
+Maintainer: Andrej Shadura <andrewsh@debian.org>
+Build-Depends:
+    dh-sequence-python3,
+    python3-setuptools,
+    python3-all,
+    python3-pytest,
+    python3-pytest-runner,
+    python3-sphinx,
+    debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+Homepage: https://github.com/selectel/pyte
+Vcs-Browser: https://salsa.debian.org/python-team/packages/pyte
+Vcs-Git: https://salsa.debian.org/python-team/packages/pyte.git
+
+Package: python3-pyte
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}
+Suggests: python-pyte-doc
+Description: simple VTXXX-compatible terminal emulator (Python 3)
+ pyte is an in-memory VTXXX-compatible terminal emulator, where XXX stands
+ for a series of video terminals, developed by DEC between 1970 and 1995.
+ .
+ pyte is as a fork of vt102, which was an incomplete pure Python
+ implementation of VT100 terminal.
+ .
+ This is the Python 3 version of the package.
+
+Package: python-pyte-doc
+Section: doc
+Architecture: all
+Depends: ${misc:Depends}, ${sphinxdoc:Depends}
+Multi-Arch: foreign
+Description: simple VTXXX-compatible terminal emulator (documentation)
+ pyte is an in-memory VTXXX-compatible terminal emulator, where XXX stands
+ for a series of video terminals, developed by DEC between 1970 and 1995.
+ .
+ pyte is as a fork of vt102, which was an incomplete pure Python
+ implementation of VT100 terminal.
+ .
+ This package only contains the documentation.

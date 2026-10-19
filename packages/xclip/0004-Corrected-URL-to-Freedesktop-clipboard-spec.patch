@@ -1,0 +1,22 @@
+From: astrand <astrand@cendio.se>
+Date: Thu, 7 Dec 2017 21:25:55 +0100
+Subject: Corrected URL to Freedesktop clipboard spec
+
+Applied-Upstream: https://github.com/astrand/xclip/commit/08a5ed8ed45165b1ba1bfd31e3110a07b58db22d
+---
+ README | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/README b/README
+index ac3e720..6183bd3 100644
+--- a/README
++++ b/README
+@@ -97,7 +97,7 @@ SELECTIONS
+ ==========
+ 
+ For a good overview of what selections are about, have a look at 
+-<http://www.freedesktop.org/standards/clipboards.txt>. Short version:
++<https://specifications.freedesktop.org/clipboards-spec/clipboards-latest.txt>. Short version:
+ 
+ * XA_PRIMARY contains the last text you highlighted
+ * Middle click pastes XA_PRIMARY

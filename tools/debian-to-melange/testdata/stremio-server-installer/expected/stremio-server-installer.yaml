@@ -126,10 +126,15 @@ environment:
     packages:
       - busybox
 pipeline:
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      for f in copyright stremio-server-installer.conf; do mv stremio-server-installer/$f .recipe-files/; done
+      rmdir stremio-server-installer 2>/dev/null || true
   - name: Install files
     runs: |
-      install -Dm644 stremio-server-installer/copyright "${{targets.destdir}}"/usr/share/doc/stremio-server-installer/copyright
-      install -Dm644 stremio-server-installer/stremio-server-installer.conf "${{targets.destdir}}"/etc/stremio-server-installer.conf
+      install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/stremio-server-installer/copyright
+      install -Dm644 .recipe-files/stremio-server-installer.conf "${{targets.destdir}}"/etc/stremio-server-installer.conf
 update:
   enabled: false
   manual: true

@@ -1,0 +1,55 @@
+pyte (0.8.0-3) unstable; urgency=medium
+
+  [ Ondřej Nový ]
+  * d/control: Update Vcs-* fields with new Debian Python Team Salsa
+    layout.
+
+  [ Andrej Shadura ]
+  * Bump debhelper from old 12 to 13.
+  * Use dh-sequence-python3.
+  * Update standards version to 4.6.2, no changes needed.
+  * Apply multi-arch hints.
+    + python-pyte-doc: Add Multi-Arch: foreign.
+  * Remove constraints unnecessary since buster:
+    + Build-Depends: Drop versioned constraint on python3-setuptools.
+
+  [ Florian Ernst ]
+  * Fix intersphinx_mapping to point to docs shipped by the python3-doc package
+    (Closes: #1090126)
+
+ -- Andrej Shadura <andrewsh@debian.org>  Tue, 14 Jan 2025 09:34:54 +0100
+
+pyte (0.8.0-2) unstable; urgency=medium
+
+  [ Adrian Bunk ]
+  * Revert upstream change that requires internet access during
+    the build. (Closes: #959954)
+
+ -- Andrej Shadura <andrewsh@debian.org>  Sat, 20 Jun 2020 16:53:48 +0200
+
+pyte (0.8.0-1) unstable; urgency=medium
+
+  * New upstream release (Closes: #916564).
+  * Update copyrights.
+  * Use secure URI in Homepage field..
+  * Bump debhelper from old 9 to 12.
+  * Set debhelper-compat version in Build-Depends.
+  * Set upstream metadata fields: Bug-Database, Bug-Submit, Repository, Repository-Browse.
+  * d/control: Add Vcs-* field.
+  * Bump Standards-Version to 4.5.0.
+  * Add Rules-Requires-Root: no.
+
+ -- Andrej Shadura <andrewsh@debian.org>  Sun, 05 Apr 2020 13:07:48 +0200
+
+pyte (0.4.8-1.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Drop python2 support; Closes: #937557
+
+ -- Sandro Tosi <morph@debian.org>  Sat, 04 Jan 2020 17:51:23 -0500
+
+pyte (0.4.8-1) unstable; urgency=low
+
+  * Initial release.
+
+ -- Andrew Shadura <andrewsh@debian.org>  Sun, 07 Sep 2014 22:26:50 +0200

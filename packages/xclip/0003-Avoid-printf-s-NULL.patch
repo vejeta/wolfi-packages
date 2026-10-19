@@ -1,0 +1,25 @@
+From: Theo Buehler <tb@openbsd.org>
+Date: Wed, 22 Nov 2017 08:15:22 +0100
+Subject: Avoid printf "%s" NULL
+
+Applied-Upstream: https://github.com/astrand/xclip/commit/40fdadcaa64fe788e8c562159fea08d3e6effd5e
+
+If the DISPLAY environment variable is unset, the error message tries to
+print a NULL pointer with %s. Avoid this by checking display for NULL.
+---
+ xcprint.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/xcprint.c b/xcprint.c
+index 7a5f051..e81c79a 100644
+--- a/xcprint.c
++++ b/xcprint.c
+@@ -86,7 +86,7 @@ errxdisplay(char *display)
+     if (display == NULL)
+ 	display = getenv("DISPLAY");
+ 
+-    fprintf(stderr, "Error: Can't open display: %s\n", display);
++    fprintf(stderr, "Error: Can't open display: %s\n", display ? display : "(null)");
+     exit(EXIT_FAILURE);
+ }
+ 

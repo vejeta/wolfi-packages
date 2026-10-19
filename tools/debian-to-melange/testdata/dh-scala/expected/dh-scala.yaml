@@ -12,13 +12,6 @@ package:
   description: Debhelper build system for Scala libraries
   copyright:
     - license: GPL-3.0-or-later
-    - license: GPL-3.0-or-later
-      paths:
-        - lib/Debian/DhScala/Make/Copyright.pm
-        - t/lib.pl
-        - t/make-copyright.t
-        - t/make-package.t
-        - t/make.expected/debian/copyright
     - license: FSFAP
       paths:
         - .perltidyrc
@@ -44,6 +37,11 @@ environment:
       - perl
       - xz  # Debian: xz-utils
 pipeline:
+  - name: Move the recipe files out of the build tree
+    runs: |
+      mkdir -p .recipe-files
+      for f in copyright; do mv dh-scala/$f .recipe-files/; done
+      rmdir dh-scala 2>/dev/null || true
   # TODO(debian-to-melange): port debian/rules override_dh_auto_build: mkdir -p man && $(POD2MAN) --section=1 --name=dh_scala dh_scala man/dh_scala.1 && $(POD2MAN) --section=1 --name=dh-make-scala dh-make-scala man/dh-make-scala.1 && $(POD2MAN) --section=5 --name=scala-b
   - name: Install files
     runs: |
@@ -61,7 +59,7 @@ pipeline:
       install -Dm644 man/dh-scala.7 -t "${{targets.destdir}}/usr/share/man/man7"
       install -Dm644 README.md -t "${{targets.destdir}}/usr/share/doc/dh-scala"
       install -Dm644 doc/guide.md -t "${{targets.destdir}}/usr/share/doc/dh-scala"
-      install -Dm644 dh-scala/copyright "${{targets.destdir}}"/usr/share/doc/dh-scala/copyright
+      install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/dh-scala/copyright
 subpackages:
   - name: dh-make-scala
     description: Start Debian packages of Scala libraries from Maven Central
@@ -83,6 +81,14 @@ subpackages:
         - perl-xml-libxml  # Debian: libxml-libxml-perl
         - licensecheck
         - xz  # Debian: xz-utils
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            dh-make-scala --version || (dh-make-scala --help 2>&1 || true) | grep -qi -e usage -e dh-make-scala
 update:
   enabled: false
   manual: true
@@ -94,16 +100,11 @@ test:
         - busybox
         - build-base  # Debian: build-essential
         - scala-2.12  # Debian: scala
-        - build-base  # Debian: build-essential
         - scala-2.13
-        - build-base  # Debian: build-essential
         - scala-3.8  # Debian: scala3
-        - build-base  # Debian: build-essential
-        - scala-3.8  # Debian: scala3
-        - build-base  # Debian: build-essential
-        - scala-2.12  # Debian: scala
   pipeline:
     - runs: |
+        dh_scala --version || (dh_scala --help 2>&1 || true) | grep -qi -e usage -e dh_scala
         test -f /usr/share/doc/dh-scala/copyright
     - name: 'autopkgtest: debian/tests/build-library 2.12'
       runs: |

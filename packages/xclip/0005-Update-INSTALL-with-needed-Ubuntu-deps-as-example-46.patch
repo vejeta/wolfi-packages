@@ -1,0 +1,32 @@
+From: ahjota <the.tsunami@gmail.com>
+Date: Mon, 9 Apr 2018 11:21:06 -0700
+Subject: Update INSTALL with needed Ubuntu deps (as example) (#46)
+
+Applied-Upstream: https://github.com/astrand/xclip/commit/6026cee00dbdda542704f5c0c5b683e9bfba6b9a
+
+* Update INSTALL with needed Ubuntu deps (as example)
+
+Per https://github.com/astrand/xclip/issues/42 the install could be clearer.
+---
+ INSTALL | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/INSTALL b/INSTALL
+index fc8dd2b..e6ea697 100644
+--- a/INSTALL
++++ b/INSTALL
+@@ -28,6 +28,14 @@ This means you will need a C compiler, C development environment, xlib
+ development environment, make, etc. All of these should be available as
+ packages for most useful distributions.
+ 
++For example, in Ubuntu 16.04 LTS you will need to install the following
++packages before the installation will succeed.
++
++libx11-dev
++libxmu-headers
++libxt-dev
++libxmu-dev
++
+ PLATFORMS
+ =========
+ 

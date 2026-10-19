@@ -1,0 +1,427 @@
+xwpe (1.6.6-1) unstable; urgency=medium
+
+  * New upstream release.
+  * LSP semantic tokens now render in 24-bit truecolor on capable terminals
+    and under X11 (e.g. methods in orange, types in teal), falling back to
+    the 16-colour palette where truecolor is unavailable.
+  * Scala debugging auto-pins the Bloop/BSP JVM, matching Metals.
+  * X11: do not paint the fluid scrollbar over a modal dialog or menu.
+
+ -- Juan Manuel Méndez Rey <juan.mendezr@proton.me>  Mon, 22 Jun 2026 03:24:22 +0200
+
+xwpe (1.6.5-1) unstable; urgency=medium
+
+  * New upstream release (bundles 1.6.4 and 1.6.5).
+  * Upstream highlights since 1.6.3: embedded VT terminal (libvterm)
+    with the Borland Alt-F5 User Screen; GNU Algol 68 (ga68) compiler
+    and gdb debug; an LSP client for C/C++, Python, Go, Rust and Scala
+    (clangd / pyright-pylsp / gopls / rust-analyzer / Metals); a DAP
+    debugger client (Go via Delve, Rust via gdb, Scala via Bloop).
+  * Upstream UX: inlay hints and semantic colours fill asynchronously
+    without freezing the editor; a dead language or debug server no
+    longer pins the CPU; a bare Esc is a no-op and F10 opens the menu
+    (Turbo Vision faithful); Help > Info finds the installed manual for
+    any --prefix; unified OS clipboard (^C/^V via OSC 52 in the
+    terminal, PRIMARY+CLIPBOARD in X11).
+  * d/control: add libvterm-dev and libjson-c-dev to Build-Depends
+    (embedded terminal; DAP/LSP JSON-RPC). Expand Suggests with lldb,
+    ga68, algol68g, golang-go, delve and rustc.
+  * d/tests/control: omit fp-compiler from the autopkgtest Test-Depends
+    (Free Pascal is not built on s390x/riscv64, where an unsatisfiable
+    dep fails the whole run as badpkg; the suite has no Pascal
+    scenario); stretch the GUI/timing waits with XWPE_TEST_WAIT_SCALE=3
+    and mark those suites flaky so a CI-load timing flake never blocks
+    migration; add xclip to the X11 Test-Depends.
+  * d/patches: drop x11-tests-poll-for-built-executable.patch (merged
+    upstream in 1.6.5); the series is now empty.
+
+ -- Juan Manuel Méndez Rey <juan.mendezr@proton.me>  Sat, 20 Jun 2026 04:03:22 +0200
+
+xwpe (1.6.3-1) unstable; urgency=medium
+
+  * New upstream release 1.6.3.
+    - X11: a covered window's scrollbar no longer bleeds through the window
+      stacked over it, even with three windows in a triple overlap.
+    - Debugger: event-driven interactive debugging (type into a program
+      blocked on fgets/scanf directly in the Messages window); Perl (perl -c)
+      and COBOL (cobc) support; gdb/jdb/pdb backends.
+    - The long-standing "debugging leaks memory" bug is fixed; verified with
+      a valgrind sweep over gdb, pdb and jdb (0 bytes definitely lost).
+    - Console: Borland "User Screen" (Alt-F5) restored; full GPM mouse
+      (pointer, click, window move/resize) on the bare Linux console.
+    - Dead-key compose and UTF-8 in the editor, debug console and dialogs.
+    - X11 no longer exits when the legacy "8x13" core font is missing: with
+      Xft built in it falls back cleanly, so xwpe starts on a minimal X
+      server with no core fonts (no xfonts-base needed).
+    - Per-menu regression coverage in both front-ends (pyte for wpe, headless
+      Xft for xwpe), plus a headless X11 GUI test harness.
+  * Upstream build portability (helps non-Debian rebuilds and strict linkers):
+    libfreetype is now linked explicitly and the icon-data header ships in
+    the dist tarball.
+  * Build with the Cairo/Pango renderer enabled: add libcairo2-dev,
+    libpango1.0-dev and libfreetype-dev to Build-Depends so the X11 binary
+    gets the fluid scrollbars and the overlapping-window scrollbar-clip fix
+    (previously the Debian build fell back to the Xft-only path).
+  * Add libxext-dev to Build-Depends (X11/extensions/sync.h, used by the
+    resize sync counter); fixes a clean-room FTBFS.
+  * Suggests: fonts-terminus -- a Unicode-capable console font for the
+    box/scrollbar glyphs on a bare Linux text console (terminal emulators
+    use their own font).  See the new manual section.
+  * Add an autopkgtest (debian/tests/control) that runs the upstream test
+    suite against the installed wpe (pyte) and xwpe (headless X11) binaries.
+    Depend on libc6-dev in both stanzas: the Run tests compile and link a
+    tiny C program, and gcc alone cannot link an executable without the C
+    runtime startup objects (Scrt1.o et al.). The X11 stanza listed only gcc,
+    so on a minimal testbed the link failed, the executable was never
+    produced, and the two Run tests failed; the console stanza linked only
+    because g++/gfortran pulled libc6-dev in transitively.
+  * Add patch x11-tests-poll-for-built-executable.patch: the X11 Run tests
+    poll for the built executable with a timeout instead of a fixed sleep
+    (robustness on loaded runners). Test-only; forwarded upstream, to be
+    dropped at the next upstream release.
+
+ -- Juan Manuel Méndez Rey <juan.mendezr@proton.me>  Sat, 06 Jun 2026 17:29:35 +0200
+
+xwpe (1.6.2-1) unstable; urgency=medium
+
+  [ Juan Manuel Méndez Rey ]
+  * New upstream release (1.6.0 + 1.6.1 + 1.6.2, first upload since rescue).
+    - New upstream maintainer: Juan Manuel Mendez Rey, with Dennis Payne's
+      blessing. Upstream moved to https://codeberg.org/mendezr/xwpe
+    - Xft font rendering in X11 mode: anti-aliased TrueType fonts, color
+      emoji via Noto Color Emoji, fontconfig fallback. (Closes: #1098180)
+    - Pixmap double-buffering in X11: zero flicker on resize.
+    - Full UTF-8 display in terminal and X11 mode via SCREENCELL buffer
+      model with CELL_WIDE support for emoji and CJK. (Closes: #1137613)
+    - Terminal resize support via KEY_RESIZE. (Closes: #1137649)
+    - Keyboard mapping fix for modern PC keyboards. (Closes: #1137650)
+    - Compiler integration: gcc, g++, gfortran, fpc, javac, python3,
+      pdflatex with error navigation. (Closes: #228820)
+    - Debugger resurrection: gdb, jdb (Java), pdb (Python) with
+      integrated output to Messages buffer.
+    - ncurses mouse for terminal emulators; GPM migrated to
+      ncurses-managed integration.
+    - New upstream icon set: two-tier SVG (full + small for low-res),
+      .desktop entry with proper Categories/MimeType/Icon fields.
+      Build-time rasterization via rsvg-convert (librsvg2-bin).
+    - Fixed 33-year-old Redo crash (SIGSEGV after search/replace undo).
+    - Modern autotools build (configure.ac + Makefile.am); dh_autoreconf
+      now works.
+    - All former Debian patches integrated upstream; drop all patches.
+    - 12-chapter Texinfo manual; 33 automated tests.
+  * Add Build-Depends: pkgconf, libxft-dev,
+    libfontconfig-dev.
+  * Update Build-Depends: libncursesw5-dev to libncurses-dev.
+  * Simplify debian/rules: drop all overrides.
+  * Update Homepage, Vcs-*, debian/watch for Codeberg upstream.
+  * Add Suggests: gpm [linux-any], python3, texlive-latex-base.
+  * Remove deprecated debian/menu (xwpe.desktop replaces it).
+  * Update debian/copyright for new upstream.
+
+  [ Andreas Tille ]
+  * Remove debian/README.Debian since the package is obviously maintained
+    again
+
+  [ Juan Manuel Mendez Rey ]
+  * Move to team maintenance: Maintainer is Debian Commons, Uploaders:
+    Lovergine, Mendez Rey.
+  * Vcs-* point to debian/xwpe on Salsa (team namespace).
+
+ -- Juan Manuel Méndez Rey <juan.mendezr@proton.me>  Sat, 06 Jun 2026 17:29:35 +0200
+
+xwpe (1.5.30a-4.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+
+  [ Andreas Tille ]
+  * Maintain package in Debian team on Salsa with maintainer conset
+  * Secure URI in Homepage and Source
+  * d/watch: version=5
+  * Standards-Version: 4.7.4 (Removed Priority field)
+  * Drop libncurses5-dev as alternative from Build-Depends
+  * Fix clean target
+    Closes: #1048448
+
+  [ Helmut Grohne ]
+  * Fix FTCBFS: Let dh_auto_configure pass --host to ./configure.
+    Closes: #947491
+
+  [ Robert Millan ]
+  * Replace hardcoded list of non-Linux architectures
+    Closes: #634813
+
+  [ Juan Manuel Méndez Rey ]
+  * Fix FTBFS with GCC 15: skip dh_autoreconf (configure.in incompatible
+    with autoconf 2.73) and call configure directly. (Closes: #1098180)
+  * Fix terminal left in bad state after wpe exits.
+  * Fix X11 support: pass --with-x and multiarch library path to configure.
+  * Fix blhc hardening: merge CPPFLAGS into CFLAGS and LDFLAGS into LIBS
+    since the old Makefile.in only uses those two variables.
+
+ -- Juan Manuel Méndez Rey <juan.mendezr@proton.me>  Mon, 25 May 2026 09:15:00 +0200
+
+xwpe (1.5.30a-4) unstable; urgency=medium
+
+  * Added a new patch missing_protos for a few implicit internal declarations.
+    (closes: #1066254)
+  * Policy bumped to 4.6.2.
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Sat, 23 Mar 2024 16:41:41 +0100
+
+xwpe (1.5.30a-3) unstable; urgency=medium
+
+  * Package revamped with debhelper 13 and policy 4.5.1.
+  * Now d/rules uses dh targets extensively.
+  * Patched revised to remove dpatch scent.
+  * Added one more patch to cope with -Werror=format-security.
+  * d/copyright reformatted in machine-readable format.
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Thu, 14 Jan 2021 18:20:36 +0100
+
+xwpe (1.5.30a-2.1) unstable; urgency=low
+
+  [ Jari Aalto ]
+  * Non-maintainer upload.
+    - Update to packaging format "3.0 (quilt)".
+  * debian/compat
+    - Update to 7.
+  * debian/control
+    - (Build-Depends): update obsolete x-dev t o x11proto-core-dev.
+      (important; Closes: #579037).
+      Update to debhelper 7.1. Remove dpatch.
+    - (Homepage): Add new field.
+    - (Standards-Version): Update to 3.8.4.
+  * debian/copyright
+    - Point to GPL-2.
+  * debian/menu
+    - Add missing double quotes to values.
+    - Update obsolete "Apps/" to "Applications/".
+  * debian/README.Debian
+    - Fix spelling.
+  * debian/rules
+    - Remoeve dpatch; obsoleted by new packaging format.
+  * debian/source/format
+    - New file.
+  * debian/watch
+     - New file.
+
+ -- Jari Aalto <jari.aalto@cante.net>  Sun, 09 May 2010 02:49:50 +0300
+
+xwpe (1.5.30a-2) unstable; urgency=high
+
+  * Forcing NCURSES definition due to a configuration bug which rendered the
+    ncurses based wpe unusable. Urgency due to importance of the issue for
+    general use. Thanks dulsi@identicalsoftware.com.
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Fri, 24 Nov 2006 17:22:29 +0100
+
+xwpe (1.5.30a-1) unstable; urgency=medium
+
+  * New upstream version with a few minor fixes.
+  * Policy bumped to 3.7.2 without changes.
+  * Moved to DH compat 5, using a debian/compat file.
+  * Now excluding gpm support for GNU/kFreeBSD and Hurd.
+    (closes: #375423)
+  * Updated copyright file.
+  * Added a README.Debian file.
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Thu,  2 Nov 2006 15:25:04 +0100
+
+xwpe (1.5.29a-5) unstable; urgency=high
+
+  * Changing tmp destdir to xwpe for dhelper compatibility.
+    That caused missing binaries in -4 :-(
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Mon, 13 Feb 2006 12:36:16 +0100
+
+xwpe (1.5.29a-4) unstable; urgency=low
+
+  * Policy changed to 3.6.2 (no changes)
+  * Compatibility level set to 4 for debhelper. Added ${misc:Depends}.
+  * Removed xlibs-dev dependency and changed in xorg deps.
+    (closes: #346860)
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Mon, 16 Jan 2006 10:56:58 +0100
+
+xwpe (1.5.29a-3) unstable; urgency=low
+
+  * Added dpatch support.
+  * Policy bumped to 3.6.1, without changes.
+  * Added patch:
+  	tparm_proto.dpatch
+    (closes: #264169)
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Thu, 19 Aug 2004 16:25:08 +0200
+
+xwpe (1.5.29a-2) unstable; urgency=low
+
+  * Added gdb as a suggested pkg.
+    (closes: #155339)
+  * Policy version updated.
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Thu, 10 Oct 2002 16:05:36 +0200
+
+xwpe (1.5.29a-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Mon,  7 Oct 2002 11:43:15 +0200
+
+xwpe (1.5.26a-4) unstable; urgency=low
+
+  * New maintainer.
+    (closes: #85054)
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Mon, 28 Jan 2002 14:04:06 +0100
+
+xwpe (1.5.26a-3) unstable; urgency=low
+
+  * Orphaned this package.
+
+ -- Adrian Bunk <bunk@fs.tum.de>  Fri, 25 Jan 2002 14:42:34 +0100
+
+xwpe (1.5.26a-2) unstable; urgency=low
+
+  * New maintainer. (closes: #68097)
+
+ -- Adrian Bunk <bunk@fs.tum.de>  Sun,  4 Feb 2001 12:04:17 +0100
+
+xwpe (1.5.26a-1) unstable; urgency=low
+
+  * New upstream version.
+
+ -- Matej Vela <vela@debian.org>  Thu,  4 Jan 2001 16:44:04 +0100
+
+xwpe (1.5.25a-1) unstable; urgency=low
+
+  * New upstream version.
+  * Applied the WpeGetCurrentDir patch.
+  * debian/control: Forgot to add xlibs-dev to build dependancies.
+  * Conforms to Standards version 3.2.1:
+    * debian/rules: Supports `debug' and `nostrip' build options.
+
+ -- Matej Vela <vela@debian.org>  Mon, 18 Dec 2000 04:31:46 +0100
+
+xwpe (1.5.23a-2) unstable; urgency=low
+
+  * Fix buffer overflow handling MANPATH (closes: #68433).
+
+ -- Mark Brown <broonie@debian.org>  Sun, 22 Oct 2000 15:14:20 +0100
+
+xwpe (1.5.23a-1) unstable; urgency=low
+
+  * New upstream version.
+  * debian/control: Updated build dependancies.
+
+ -- Matej Vela <vela@debian.org>  Tue, 11 Apr 2000 06:38:10 +0200
+
+xwpe (1.5.22a-1) unstable; urgency=low
+
+  * New upstream version.
+  * Conforms to Standards version 3.1.1.
+
+ -- Matej Vela <vela@debian.org>  Mon, 27 Dec 1999 17:43:00 +0100
+
+xwpe (1.5.21a-1) unstable; urgency=low
+
+  * New upstream version.
+  * Since convertrc is gone:
+    * Removed debian/README.Debian.
+    * debian/rules:
+      * Code for handling convertrc removed.
+      * Calling ./configure with `--libdir=/usr/share' because
+        everything in @libdir@/xwpe is architecture-independant now.
+  * Conforms to Standards version 3.1.0:
+    * debian/control: Added build dependancies, making config.cache
+      checks in debian/rules unnecessary.
+
+ -- Matej Vela <vela@debian.org>  Fri, 19 Nov 1999 06:25:45 +0100
+
+xwpe (1.5.20a-1) unstable; urgency=low
+
+  * New upstream version.
+  * debian/rules:
+    * Calling ./configure with `--mandir=...' for FHS compliance.
+    * Aborting if libgpm isn't found by ./configure, to prevent
+      auto-builders from not including the (optional) GPM support.
+    * Removed dh_installmanpages since the Makefile takes care of it.
+  * Makefile.in (forwarded upstream):
+    * Correctly use the paths provided by ./configure.
+    * Removing convertrc in clean.
+    * Creating destination directories using `mkdir -p' to avoid
+      problems with non-existant parent directories.
+    * Added targets install_convertrc and distclean (previously
+      handled by debian/rules).
+  * we_fl_unix.c: Changed the default MANPATH to man-db's default,
+    `/usr/man:/usr/share/man:/usr/X11R6/man:/usr/local/man'.
+  * unixkeys.h: Changed the default INFOPATH to
+    `/usr/share/info:/usr/local/info:/usr/info' for FHS compliance.
+  * we_fl_fkt.c: Fixed a few bugs in e_mk_info_path, one of which
+    prevented using the above INFOPATH (forwarded upstream).
+  * Wrote debian/README.Debian, explaining how to update the
+    configuration file format.
+  * debian/copyright: Updated upstream URL and e-mail.
+
+ -- Matej Vela <vela@debian.org>  Wed, 27 Oct 1999 19:34:41 +0200
+
+xwpe (1.5.19a-1) unstable; urgency=low
+
+  * New upstream version.
+  * Conforms to Standards version 3.0.1:
+    * Changed debian/copyright to reference
+      `/usr/share/common-licenses/GPL'.
+
+ -- Matej Vela <vela@debian.org>  Mon, 13 Sep 1999 01:26:04 +0200
+
+xwpe (1.5.18a-1) unstable; urgency=low
+
+  * New upstream version.
+  * Conforms to Standards version 2.5.1.
+
+ -- Matej Vela <vela@debian.org>  Mon,  7 Jun 1999 21:02:09 +0200
+
+xwpe (1.5.17a-1) unstable; urgency=low
+
+  * New upstream version.
+  * Incorporated glibc 2.1 patch from Christian Meder.  Closes:
+    Bug#32224.
+
+ -- Matej Vela <vela@debian.org>  Thu, 13 May 1999 17:05:08 +0200
+
+xwpe (1.5.16a-0.1) unstable; urgency=low
+
+  * Package is orphaned, changed the maintainer to Debian QA Group.
+  * Completely redid the packaging (using debhelper), fixing a few bugs.
+  * New upstream version, dubbed alpha but maintained. Included is
+    old rc file converter, too, as /usr/lib/xwpe/convertrc.
+
+ -- Josip Rodin <jrodin@jagor.srce.hr>  Sun, 21 Mar 1999 19:18:47 +0100
+
+xwpe (1.4.2-2.1.1) frozen unstable; urgency=low
+
+  * non maintainer, sparc only upload
+  * disable a string optimization with glibc2.1
+
+ -- Christian Meder <meder@isr.uni-stuttgart.de>  Thu,  7 Jan 1999 00:14:50 +0100
+
+xwpe (1.4.2-2.1) unstable; urgency=low
+
+  * Non-maintainer release.
+  * Libc6 compile.
+
+ -- Martin Mitchell <martin@debian.org>  Mon,  3 Nov 1997 20:18:35 +1100
+
+xwpe (1.4.2-2) unstable; urgency=low
+
+  * Added a menu entry
+  * Changed description to reflect the fact xwpe is an editor.
+
+ -- Igor Grobman <igor@debian.org>  Sat, 8 Mar 1997 13:57:42 -0500
+
+xwpe (1.4.2-1) unstable; urgency=low
+
+  * Initial Release in new packaging format
+  * New maintainer
+  * New upstream release
+
+ -- Igor Grobman <igor@vaca.net>  Sat, 11 Jan 1997 10:47:57 -0500

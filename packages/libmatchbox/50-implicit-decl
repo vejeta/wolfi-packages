@@ -1,0 +1,15 @@
+Description: Fix implicit function declaration
+Index: libmatchbox-1.12+git20170224/libmb/mbpixbuf.c
+===================================================================
+--- libmatchbox-1.12+git20170224.orig/libmb/mbpixbuf.c	2020-06-15 14:38:11.830805291 +0100
++++ libmatchbox-1.12+git20170224/libmb/mbpixbuf.c	2020-06-15 14:38:11.826805288 +0100
+@@ -27,6 +27,9 @@
+ 
+ #include <setjmp.h>
+ 
++extern int
++mb_want_warnings(void);
++
+ #define BYTE_ORD_24_RGB  0
+ #define BYTE_ORD_24_RBG  1
+ #define BYTE_ORD_24_BRG  2

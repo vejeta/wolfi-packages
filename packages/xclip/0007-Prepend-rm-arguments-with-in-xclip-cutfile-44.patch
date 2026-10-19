@@ -1,0 +1,23 @@
+From: Mateusz Piotrowski <mpp302@gmail.com>
+Date: Tue, 7 Aug 2018 13:22:44 +0200
+Subject: Prepend rm arguments with -- in xclip-cutfile (#44)
+
+Applied-Upstream: https://github.com/astrand/xclip/commit/b161f2c5df3212ab18a2361e59d75d23a1efc676
+
+It makes xclip-cutfile more robust since the final rm will not treat any
+of its arguments as flags. All the arguments passed to rm are going to
+be treated as file names.
+---
+ xclip-cutfile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/xclip-cutfile b/xclip-cutfile
+index cc66d65..cf6109a 100755
+--- a/xclip-cutfile
++++ b/xclip-cutfile
+@@ -12,4 +12,4 @@ xclip-copyfile "$@"
+ if [ "x$1" = "x-p" ]; then
+     shift
+ fi
+-rm "$@"
++rm -- "$@"

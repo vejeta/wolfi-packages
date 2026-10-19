@@ -1,6 +1,6 @@
 # Wolfi Community Packages
 
-[![Packages](https://img.shields.io/badge/packages-45-brightgreen)](#available-packages)
+[![Packages](https://img.shields.io/badge/packages-46-brightgreen)](#available-packages)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
@@ -64,6 +64,7 @@ packages and `APKINDEX` are published on SourceForge.
 | vlc | 3.0.24 | VLC media player with the Qt5 interface (MKV, DVD, Blu-ray, VA-API, libass subtitles) | GPL-2.0-or-later |
 | webkitgtk-6.0 | 2.54.1 | WebKitGTK web engine, GTK4 API (webkitgtk-6.0) | LGPL-2.0-or-later AND BSD-2-Clause |
 | xdg-dbus-proxy | 0.1.9 | Filtering D-Bus proxy (used by the WebKitGTK sandbox) | LGPL-2.1-or-later |
+| xwpe | 1.6.6 | Borland-style programming environment and editor for the console and X11; converted from the [Debian package](https://tracker.debian.org/pkg/xwpe) with `debian-to-melange` | GPL-2.0-only |
 | zimg | 3.0.6 | Scaling, colorspace conversion, and dithering library | WTFPL |
 
 The recipes in [`packages/`](packages/) are the reference for versions.

@@ -50,7 +50,7 @@ def case_args(name):
 
 
 def convert(name, out):
-    argv = ["--debian-dir", os.path.join(TESTDATA, name, "debian"), "--out", out] + case_args(name)
+    argv = ["--debian-dir", os.path.join(TESTDATA, name, "debian"), "--out", out, "--no-check-wolfi"] + case_args(name)
     with redirect_stderr(io.StringIO()):
         rc = d2m.main(argv)
     return rc
@@ -156,7 +156,7 @@ class StremioTest(unittest.TestCase):
         self.assertIn("cargo build --release --features offline-build", self.text)
         self.assertIn("install -D -m755 target/release/stremio-linux-shell "
                       "${{targets.destdir}}/usr/libexec/stremio/stremio-bin", self.text)
-        self.assertIn("stremio/stremio-wrapper ${{targets.destdir}}/usr/bin/stremio", self.text)
+        self.assertIn(".recipe-files/stremio-wrapper ${{targets.destdir}}/usr/bin/stremio", self.text)
         self.assertNotIn("dh-cargo-built-using", self.text)
         self.assertTrue(os.path.isfile(os.path.join(self.tmp, "stremio", "stremio-wrapper")))
 
@@ -176,7 +176,11 @@ class StremioTest(unittest.TestCase):
         self.assertIn("TODO(debian-to-melange): set expected-commit", self.text)
 
     def test_patches_live_in_package_directory(self):
-        self.assertIn("patches: stremio/0001-disable-image-exr-feature.patch", self.text)
+        # copied next to the recipe, then moved out of the build tree
+        self.assertTrue(os.path.isfile(os.path.join(self.tmp, "stremio", "0001-disable-image-exr-feature.patch")))
+        self.assertIn("for f in 0001-disable-image-exr-feature.patch", self.text)
+        self.assertIn("patches: .recipe-files/0001-disable-image-exr-feature.patch", self.text)
+        self.assertIn('"${{targets.destdir}}"/usr/share/doc/stremio/copyright', self.text)
 
 
 class JvmPackagesTest(unittest.TestCase):
@@ -215,7 +219,7 @@ class JvmPackagesTest(unittest.TestCase):
         out = tempfile.mkdtemp()
         try:
             with redirect_stderr(io.StringIO()) as err:
-                d2m.main(["--debian-dir", os.path.join(TESTDATA, "scala-2.13", "debian"), "--out", out])
+                d2m.main(["--debian-dir", os.path.join(TESTDATA, "scala-2.13", "debian"), "--out", out, "--no-check-wolfi"])
         finally:
             shutil.rmtree(out)
         self.assertIn("self-hosting", err.getvalue())
@@ -225,6 +229,23 @@ class JvmPackagesTest(unittest.TestCase):
         self.assertIn("perl-archive-zip  # Debian: libarchive-zip-perl", text)
         self.assertIn("openjdk-25-default-jdk  # Debian: default-jdk-headless", text)
         self.assertIn("autopkgtest: debian/tests/build-library 2.13", text)
+
+
+class GitWatchTest(unittest.TestCase):
+    """debian/watch v5 in git mode on a forge other than GitHub (xwpe, Codeberg)."""
+
+    def test_codeberg_git_checkout(self):
+        with tempfile.TemporaryDirectory() as out:
+            convert("xwpe", out)
+            with open(os.path.join(out, "xwpe.yaml")) as fh:
+                text = fh.read()
+        self.assertIn("repository: https://codeberg.org/mendezr/xwpe.git", text)
+        self.assertIn("tag: v${{package.version}}", text)
+        self.assertIn("update:\n  enabled: true\n  git:\n    strip-prefix: v", text)
+        self.assertNotIn("example.invalid", text)
+        self.assertIn("- xorgproto  # Debian: x11proto-core-dev", text)
+        test_env = text.split("\ntest:", 1)[1]
+        self.assertEqual(test_env.count("- glibc-locales"), 1)
 
 
 class ScalaBuildTest(unittest.TestCase):

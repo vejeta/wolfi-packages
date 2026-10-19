@@ -1,0 +1,200 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: xwpe
+Upstream-Contact: Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+Source: https://codeberg.org/mendezr/xwpe
+Comment:
+ xwpe was originally written by Fred Kruse (1993-1997). The xwpe-alpha
+ continuation was maintained by Dennis Payne (2000-2006). Juan Manuel
+ Mendez Rey took over upstream maintenance in 2026 with Dennis Payne's
+ blessing, rescuing the project from a 20-year dormancy.
+
+Files: *
+Copyright: 1993-1997 Fred Kruse <fkr@cs.tu-berlin.de>
+           2000-2006 Dennis Payne <dulsi@identicalsoftware.com>
+           2018 Guus Bonnema <gbonnema@xs4all.nl>
+           2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: GPL-2
+Comment:
+ Most source files carry "Copyright (C) 1993 Fred Kruse" headers.
+ Some files (WeExpArr.c/h, WeLinux.c, WeProg.h, WeString.h, WeXterm.h,
+ Xwpe.h, makro.h, options.h, model.h, Makefile.in, configure.in,
+ syntax_def, help.key_eng, xwpe.desktop, xwpe.spec) lack explicit
+ copyright headers. This was common in early 1990s C code. These files
+ are attributed to Fred Kruse based on git history showing them in the
+ original release, and the README stating "Copyright (C) 1993 Fred Kruse".
+ we_gpm.c is a new file in v1.6.0 by Juan Manuel Méndez Rey, also
+ without an explicit header.
+ Dennis Payne maintained the xwpe-alpha fork (1.5.0-1.5.30a), integrating
+ patches from approximately 25 contributors (see AUTHORS and CHANGELOG for
+ full credits). Per 1990s FOSS convention, contributors submitted patches
+ to the GPL-2 project without formal copyright assignment; their
+ contributions are licensed under GPL-2 by virtue of submission to a GPL-2
+ project. Contributors (from CHANGELOG and mailing list archives):
+ Stefan Hille (messages.h), Alex Buell, Alexander Neundorf, Anthony
+ Barbachan, Arjan van Dijk, Brian K. White, Brian O'Donnell, Duane
+ Penzien, Fritz (Y2K patch), German Garcia, Guido Draheim, Harry Berman,
+ Kenn Flynn, Mark Loftis, Mark Spieth, Martin Zampach, Matej Vela,
+ Oliver Wilson, Paulo Cesar Pereira de Andrade (i18n), Pedro (file manager
+ cleanup), Roman Levenstein, Ronald Holzloehner, Sebastiano Suraci (GPM),
+ Yarick Rastrigin, and Alexei Pavlov.
+ Guus Bonnema contributed two bug fixes via the amagnasco GitHub fork
+ (GPM prototype rename, low-memory crash fix), cherry-picked with full
+ attribution into v1.5.31.
+ Juan Manuel Méndez Rey contributed the SCREENCELL buffer model, UTF-8
+ display, terminal resize, keyboard mapping, GPM safety check (v1.6.0),
+ modern autotools (v1.6.1), Xft font rendering with color emoji and Pixmap
+ double-buffering, CELL_WIDE buffer model for wide characters, compiler
+ integration for 9 languages, debugger resurrection (gdb/jdb/pdb),
+ ncurses mouse, Python/LaTeX/Perl/COBOL support, Texinfo manual (v1.6.2),
+ cursor-relative error navigation, Unicode box-drawing glyphs (v1.6.3).
+
+Files: messages.h
+Copyright: 1997 Stefan Hille
+License: GPL-2
+
+Files: we_wind.c
+Copyright: 1993 Fred Kruse <fkr@cs.tu-berlin.de>
+           2010 Jari Aalto <jari.aalto@cante.net>
+           2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: GPL-2
+Comment:
+ Jari Aalto contributed a parenthesised strcpy() call to defeat an unsafe
+ glibc macro expansion (Debian patch).
+
+Files: we_debug.c we_fl_unix.c we_prog.c
+Copyright: 1993 Fred Kruse <fkr@cs.tu-berlin.de>
+           2010-2024 Francesco Paolo Lovergine <frankie@debian.org>
+           2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: GPL-2
+Comment:
+ Francesco Paolo Lovergine contributed format-security fixes, disabled
+ a conflicting K&R tparm() prototype, and added a missing prototype for
+ print_to_end_of_buffer() (Debian patches).
+
+Files: we_main.c
+Copyright: 1993 Fred Kruse <fkr@cs.tu-berlin.de>
+           2017 Guus Bonnema <gbonnema@xs4all.nl>
+           2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: GPL-2
+Comment:
+ Guus Bonnema fixed a segfault on early MALLOC failure.
+
+Files: edit.h
+Copyright: 1993 Fred Kruse <fkr@cs.tu-berlin.de>
+           2017 Guus Bonnema <gbonnema@xs4all.nl>
+           2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: GPL-2
+Comment:
+ Guus Bonnema fixed a link error caused by a typo (WpeGpmInit ->
+ WpeGpmMouseInit).
+
+Files: syntax_def
+Copyright: 1997-2006 Dennis Payne <dulsi@identicalsoftware.com>
+           2000 Brian White <linut@squonk.net>
+           2000 Colin Smith <colin@melly.europe.dg.com>
+           2000 Felix Stohr <stohr@iap.fr>
+           2000 Edward Popkov <evpopkov@carry.neonet.lv>
+           2000 Rick <null@acm.org>
+           2000 Mathias Gumz <mathias.gumz@student.uni-magdeburg.de>
+           2000 Fernando Matos <fernandoamg@brfree.com.br>
+           2000 Kenn Flynn <flynnk@rpi.edu>
+           2000 Mark Loftis <mloftis@lanminds.com>
+           2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: GPL-2
+Comment:
+ Language definitions were contributed to the xwpe project via
+ identicalsoftware.com/xwpe/extrasyntax.html during the Payne era.
+ Per convention of that era, contributors submitted definitions to a
+ GPL-2 project without formal copyright assignment.
+ Brian White: Basic, BBX. Felix Stohr: Fortran 90, IDL, Super Mongo.
+ Edward Popkov: Free Pascal. Rick: PHP3 (modernized to PHP 8 by Mendez).
+ Mathias Gumz: SmallEiffel. Fernando Matos: Tcl/Tk.
+ Colin Smith: Bourne Shell (original). Kenn Flynn: HTML (original).
+ Mark Loftis: Python (original).
+ Shell, HTML, Makefile, SQL, Python, LaTeX, Perl, COBOL definitions
+ written by Mendez in 2026.
+
+Files: tests/*
+Copyright: 2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: GPL-2
+Comment:
+ Automated test suite using pyte (VT100 terminal emulator) and pytest.
+ New in v1.6.0.
+
+Files: tools/compiletest.c
+Copyright: 2000-2006 Dennis Payne <dulsi@identicalsoftware.com>
+License: GPL-2
+Comment:
+ No explicit copyright header. Attribution based on git history and
+ the file being part of the xwpe-alpha build tooling.
+
+Files: old/*
+Copyright: 1993-1997 Fred Kruse <fkr@cs.tu-berlin.de>
+License: GPL-2
+Comment:
+ Legacy files (DOS port, German man page and help) retained for
+ historical reference.
+
+Files: debian/*
+Copyright: 2002-2024 Francesco Paolo Lovergine <frankie@debian.org>
+           2010 Jari Aalto <jari.aalto@cante.net>
+           2019 Helmut Grohne <helmut@subdivi.de>
+           2019 Robert Millan <rmh@debian.org>
+           2024 Andreas Tille <tille@debian.org>
+           2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: GPL-2
+
+Files: io.codeberg.mendezr.xwpe.metainfo.xml
+Copyright: 2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: FSFAP
+Comment:
+ The AppStream metadata file declares metadata_license: FSFAP (the FSF
+ All-Permissive License), the license recommended for metadata files.
+
+Files: icons/xwpe.svg icons/xwpe-small.svg
+Copyright: 2026 Juan Manuel Méndez Rey <juan.mendezr@proton.me>
+License: Expat
+Comment:
+ Original icon artwork for xwpe; design direction and final decisions by
+ the maintainer.  The "xwpe" wordmark glyphs were outlined from DejaVu Sans
+ Mono Bold (Bitstream Vera Fonts copyright, Bitstream Inc. + DejaVu changes;
+ DFSG-free).  Outlined glyph shapes are embedded as static <path> data so the
+ rendered result does not depend on any installed font.
+
+License: Expat
+ Permission is hereby granted, free of charge, to any person obtaining a
+ copy of this software and associated documentation files (the "Software"),
+ to deal in the Software without restriction, including without limitation
+ the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ and/or sell copies of the Software, and to permit persons to whom the
+ Software is furnished to do so, subject to the following conditions:
+ .
+ The above copyright notice and this permission notice shall be included
+ in all copies or substantial portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ IN THE SOFTWARE.
+
+License: GPL-2
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License version 2 as
+ published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ General Public License for more details.
+ .
+ On Debian systems the complete text of the GNU General Public License
+ version 2 can be found in "/usr/share/common-licenses/GPL-2".
+
+License: FSFAP
+ Copying and distribution of this file, with or without modification, are
+ permitted in any medium without royalty provided the copyright notice and
+ this notice are preserved. This file is offered as-is, without any warranty.
+

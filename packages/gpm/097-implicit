@@ -1,0 +1,25 @@
+---
+ src/daemon/add_mouse.c |    1 +
+ src/headers/gpmInt.h   |    1 +
+ 2 files changed, 2 insertions(+)
+
+--- a/src/daemon/add_mouse.c
++++ b/src/daemon/add_mouse.c
+@@ -26,6 +26,7 @@
+ #include "headers/daemon.h"
+ 
+ #include <stdlib.h> /* malloc() */
++#include <string.h> /* strcmp() */
+ 
+ /* DESCR:   add this to the list of mice. initialization follows later */
+ /* RETURN:  - */
+--- a/src/headers/gpmInt.h
++++ b/src/headers/gpmInt.h
+@@ -94,6 +94,7 @@ extern time_t opt_age_limit;
+ /*....................................... Prototypes */
+ 
+        /* mice.c */
++extern int M_listMice(void);
+ extern int M_listTypes(void);
+        /* special.c */
+ int processSpecial(Gpm_Event *event);
