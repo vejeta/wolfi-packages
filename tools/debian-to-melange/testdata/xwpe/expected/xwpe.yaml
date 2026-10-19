@@ -56,6 +56,12 @@ pipeline:
       mkdir -p .recipe-files
       for f in copyright; do mv xwpe/$f .recipe-files/; done
       rmdir xwpe 2>/dev/null || true
+  # TODO(debian-to-melange): set expected-commit for tag v1.6.6 (re-run with --download, or git ls-remote)
+  - uses: git-checkout
+    with:
+      repository: https://codeberg.org/mendezr/xwpe.git
+      tag: v${{package.version}}
+      expected-commit: '0000000000000000000000000000000000000000'
   - name: 'Debian''s include/ncursesw'
     runs: |
       mkdir -p /usr/include/ncursesw
@@ -64,12 +70,6 @@ pipeline:
         [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h
       done
       true
-  # TODO(debian-to-melange): set expected-commit for tag v1.6.6 (re-run with --download, or git ls-remote)
-  - uses: git-checkout
-    with:
-      repository: https://codeberg.org/mendezr/xwpe.git
-      tag: v${{package.version}}
-      expected-commit: '0000000000000000000000000000000000000000'
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/xwpe"
@@ -115,14 +115,6 @@ test:
     - runs: |
         test -f /usr/share/doc/xwpe/copyright
     - uses: test/tw/ldd-check
-    - name: 'Debian''s include/ncursesw'
-      runs: |
-        mkdir -p /usr/include/ncursesw
-        for h in curses.h ncurses.h ncurses_dll.h term.h term_entry.h termcap.h tic.h unctrl.h \
-                 panel.h menu.h form.h eti.h etip.h cursesapp.h cursesf.h cursesm.h cursesp.h cursesw.h cursslk.h; do
-          [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h
-        done
-        true
     - uses: git-checkout
       with:
         repository: https://codeberg.org/mendezr/xwpe.git

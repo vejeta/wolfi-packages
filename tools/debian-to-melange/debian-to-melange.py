@@ -2130,15 +2130,6 @@ class Converter:
 
         # ---- pipeline -----------------------------------------------------
         pipeline = []
-        if any(alts[0].startswith(("libncurses-dev", "libncursesw")) for alts in parse_relations(source.get("build-depends"))):
-            # Debian has the wide-character headers under include/ncursesw as well; Wolfi only in include
-            pipeline.append({"name": "Debian's include/ncursesw", "runs": (
-                "mkdir -p /usr/include/ncursesw\n"
-                "for h in curses.h ncurses.h ncurses_dll.h term.h term_entry.h termcap.h tic.h unctrl.h \\\n"
-                "         panel.h menu.h form.h eti.h etip.h cursesapp.h cursesf.h cursesm.h cursesp.h cursesw.h cursslk.h; do\n"
-                "  [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h\n"
-                "done\n"
-                "true\n")})
         self.source_steps = []
         if native and a.from_debian and [n for n in self.top if n != "debian"]:
             # a Debian-native program (ucf ...): its source is the Debian tarball
@@ -2173,6 +2164,15 @@ class Converter:
                     if is_archive(data):
                         self.source_data = data
                         break
+        if any(alts[0].startswith(("libncurses-dev", "libncursesw")) for alts in parse_relations(source.get("build-depends"))):
+            # Debian has the wide-character headers under include/ncursesw as well; Wolfi only in include
+            pipeline.append({"name": "Debian's include/ncursesw", "runs": (
+                "mkdir -p /usr/include/ncursesw\n"
+                "for h in curses.h ncurses.h ncurses_dll.h term.h term_entry.h termcap.h tic.h unctrl.h \\\n"
+                "         panel.h menu.h form.h eti.h etip.h cursesapp.h cursesf.h cursesm.h cursesp.h cursesw.h cursslk.h; do\n"
+                "  [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h\n"
+                "done\n"
+                "true\n")})
         for dep in essential_script_tools(getattr(self, "source_data", None)):
             # Debian's Essential packages back these commands everywhere; Wolfi's busybox lacks them
             pkg.setdefault("dependencies", {}).setdefault("runtime", []).append(
