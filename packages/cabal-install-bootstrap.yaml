@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# cabal-install, the Haskell build tool, is written in Haskell and builds
+# with itself: this is the upstream static binary, to build the cabal-install
+# recipe from source and the Haskell programs (shellcheck, pandoc) with
+# ghc-bootstrap. Only a build dependency, like Alpine's cabal-stage0.
+package:
+  name: cabal-install-bootstrap
+  version: '3.18.2.0'
+  epoch: 0
+  description: The Haskell build tool cabal, upstream binary for bootstrapping
+  copyright:
+    - license: BSD-3-Clause
+  target-architecture:
+    - x86_64
+    - aarch64
+  dependencies:
+    runtime:
+      - ghc-bootstrap
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - busybox
+      - xz
+pipeline:
+  - if: ${{build.arch}} == 'x86_64'
+    uses: fetch
+    with:
+      uri: https://downloads.haskell.org/~cabal/cabal-install-${{package.version}}/cabal-install-${{package.version}}-x86_64-linux-unknown.tar.xz
+      expected-sha256: b4f4c83135da77cfc18ccd6056398ca714a2dad86d5f635621ffdda8f9afe587
+      strip-components: 0
+  - if: ${{build.arch}} == 'aarch64'
+    uses: fetch
+    with:
+      uri: https://downloads.haskell.org/~cabal/cabal-install-${{package.version}}/cabal-install-${{package.version}}-aarch64-linux-unknown.tar.xz
+      expected-sha256: e4d940131ab0b78943a4b5ce64a9ef5acc452ea849df197787eaeecb1c3bf276
+      strip-components: 0
+  - name: Install the binary
+    runs: |
+      install -Dm755 cabal "${{targets.destdir}}"/usr/lib/ghc-bootstrap/bin/cabal
+      mkdir -p "${{targets.destdir}}"/usr/bin
+      ln -s ../lib/ghc-bootstrap/bin/cabal "${{targets.destdir}}"/usr/bin/cabal-bootstrap
+      ln -s ../lib/ghc-bootstrap/bin/cabal "${{targets.destdir}}"/usr/bin/cabal
+      mkdir -p "${{targets.destdir}}"/usr/share/licenses/cabal-install-bootstrap
+      echo "cabal-install ${{package.version}}: BSD-3-Clause, https://github.com/haskell/cabal/blob/master/LICENSE" \
+        > "${{targets.destdir}}"/usr/share/licenses/cabal-install-bootstrap/README
+update:
+  enabled: true
+  release-monitor:
+    identifier: 243
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - runs: |
+        cabal-bootstrap --version | grep -q "${{package.version}}"
+        # cabal finds the bootstrap compiler next to itself
+        export PATH=/usr/lib/ghc-bootstrap/bin:$PATH
+        cabal --numeric-version
+        ghc --numeric-version

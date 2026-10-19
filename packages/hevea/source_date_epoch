@@ -1,0 +1,40 @@
+Author: Johannes Schauer <josch@debian.org>, modified by
+  Ralf Treinen <treinen@debian.org>
+Description: honour SOURCE_DATE_EPOCH environment variable
+Debian-bug: #870585
+Index: hevea/xxdate.exe
+===================================================================
+--- hevea.orig/xxdate.exe	2018-12-04 21:08:38.907529301 +0100
++++ hevea/xxdate.exe	2018-12-04 21:14:54.589451676 +0100
+@@ -1,17 +1,19 @@
+ #! /bin/sh
++SDE="@${SOURCE_DATE_EPOCH:-$(date +%s)}"
++TZSWITCH="${SOURCE_DATE_EPOCH:+--utc}" 
+ cat <<EOF
+ %% TeX counters
+-\newcounter{year}\setcounter{year}{`date +"%Y" 2> /dev/null || date | awk '{print $NF}'`}
+-\newcounter{month}\setcounter{month}{`date +"%m"`}
+-\newcounter{day}\setcounter{day}{`date +"%d"`}
+-\newcounter{time}\setcounter{time}{60 * `date +"%H"` + `date +"%M"`}
++\newcounter{year}\setcounter{year}{`date $TZSWITCH --date=$SDE +"%Y" 2> /dev/null || date $TZSWITCH --date=$SDE | awk '{print $NF}'`}
++\newcounter{month}\setcounter{month}{`date $TZSWITCH --date=$SDE +"%m"`}
++\newcounter{day}\setcounter{day}{`date $TZSWITCH --date=$SDE +"%d"`}
++\newcounter{time}\setcounter{time}{60 * `date $TZSWITCH --date=$SDE +"%H"` + `date $TZSWITCH --date=$SDE +"%M"`}
+ %% Extras
+-\newcounter{hour}\setcounter{hour}{`date +"%H"`}
++\newcounter{hour}\setcounter{hour}{`date $TZSWITCH --date=$SDE +"%H"`}
+ \newcounter{Hour}\setcounter{Hour}{\value{hour}-(\value{hour}/12)*12}
+-\newcounter{weekday}\setcounter{weekday}{`date +"%w"`}
+-\newcounter{minute}\setcounter{minute}{`date +"%M"`}
+-\newcounter{second}\setcounter{second}{`date +"%S"`}
++\newcounter{weekday}\setcounter{weekday}{`date $TZSWITCH --date=$SDE +"%w"`}
++\newcounter{minute}\setcounter{minute}{`date $TZSWITCH --date=$SDE +"%M"`}
++\newcounter{second}\setcounter{second}{`date $TZSWITCH --date=$SDE +"%S"`}
+ \def\ampm{\ifthenelse{\value{hour}>12}{PM}{AM}}
+-\def\timezone{`date +"%Z" 2> /dev/null || date | awk '{print $5}'`}
+-\def\heveadate{`date`}
+-EOF
+\ No newline at end of file
++\def\timezone{`date $TZSWITCH --date=$SDE +"%Z" 2> /dev/null || date $TZSWITCH --date=$SDE | awk '{print $5}'`}
++\def\heveadate{`date $TZSWITCH --date=$SDE`}
++EOF

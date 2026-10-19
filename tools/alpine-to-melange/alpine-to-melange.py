@@ -72,6 +72,10 @@ NAME_MAP = {
     "cargo": "rust",
     "tar": "gnutar",
     "muon": "meson",
+    # Haskell: the bootstrap compiler and cabal of this repository
+    "ghc": "ghc-bootstrap",
+    "cabal": "cabal-install-bootstrap",
+    "pandoc": "pandoc-cli",
     "gpm-dev": "libgpm-dev",
     # Alpine's xmlto pulls in the DocBook XSL stylesheets; Wolfi's are in docbook-xml
     "xmlto": ["xmlto", "docbook-xml"],
@@ -688,6 +692,7 @@ class Converter:
             env_pkgs = [C(RUST_OPENSSL, "Alpine: openssl-dev; openssl-sys predates OpenSSL 4") if
                         (d.value if isinstance(d, C) else d) == "openssl-dev" else d for d in env_pkgs]
             plain = [d.value if isinstance(d, C) else d for d in env_pkgs]
+        extra_env = {}
         if "gobject-introspection-dev" in plain and "glib-gir" not in plain:
             # Alpine ships GLib's .gir files in glib-dev; Wolfi splits them out.
             env_pkgs.append(C("glib-gir", "GLib .gir files (part of glib-dev on Alpine)"))
@@ -696,6 +701,8 @@ class Converter:
             "repositories": ["https://packages.wolfi.dev/os"],
             "packages": env_pkgs,
         }}
+        if extra_env:
+            environment["environment"] = extra_env
 
         # ---- pipeline ----------------------------------------------------
         pipeline = []

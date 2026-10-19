@@ -1578,7 +1578,8 @@ class Converter:
             line = rules.expand(line)
             line = re.sub(r"(?<![\w/.])\./debian/", "debian/", line)  # ./debian/foo is debian/foo
             # dh_listpackages in the shell: the binary packages; debian/$pkg: their output directory
-            line = re.sub(r"\bdh_listpackages\b", "printf '%s\\n' " + " ".join(sorted(self.rename)), line)
+            pkgs_list = "printf '%s\\n' " + " ".join(sorted(self.rename))
+            line = re.sub(r"\bdh_listpackages\b", lambda m: pkgs_list, line)
             line = re.sub(r"(?<![\w/.$])debian/\$", "${{targets.outdir}}/$", line)
             # pybuild's build directory: py/pip-build-install installs straight into destdir
             line = re.sub(r"\$\(shell pybuild --print build_dir[^)]*\)",
