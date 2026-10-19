@@ -68,6 +68,9 @@ NAME_MAP = {
     "gtk+3.0-dev": "gtk-3-dev",
     "py3-setuptools": "py3-setuptools",
     "linux-headers": "linux-headers",
+    # Wolfi's rust ships cargo; its clang ships libclang (bindgen)
+    "cargo": "rust",
+    "clang-dev": "clang",
 }
 
 # abuild default subpackage handlers -> melange pipelines
@@ -535,6 +538,9 @@ class Converter:
         # musl's iconv leaves usr/lib/charset.alias; glibc builds do not
         text = re.sub(r"\brm\s+(?!-\w*f)([^\n]*charset\.alias)", r"rm -f \1", text)
         pre = ['{}="{}"'.format(n, v) for n, v in PREAMBLE_VARS if n in used]
+        if re.search(r"\bcargo\b[^\n]*--target[= ]\"?\$\{?CTARGET", text):
+            # Alpine's rust knows its own triplets (x86_64-alpine-linux-musl); Wolfi's, rust's own
+            pre = [p if not p.startswith("CTARGET=") else 'CTARGET="${{host.triplet.rust}}"' for p in pre]
         pre += ["{}={}".format(n, v) for n, v in helpers if n in used]
         pre += funcs
         if "source" in used and apk_source(self.apk):

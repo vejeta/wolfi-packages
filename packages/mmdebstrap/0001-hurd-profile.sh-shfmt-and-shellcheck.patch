@@ -1,0 +1,172 @@
+From c38acc76a74eebe8b8ed1a5f2d3da440a45b6c32 Mon Sep 17 00:00:00 2001
+From: Johannes Schauer Marin Rodrigues <josch@mister-muffin.de>
+Date: Sat, 3 Oct 2026 23:41:46 +0200
+Subject: [PATCH] hurd-profile.sh: shfmt and shellcheck
+
+---
+ hurd-profile.sh | 129 +++++++++++++++++++++++++-----------------------
+ 1 file changed, 66 insertions(+), 63 deletions(-)
+
+diff --git a/hurd-profile.sh b/hurd-profile.sh
+index 5b3e238..ba6ad69 100644
+--- a/hurd-profile.sh
++++ b/hurd-profile.sh
+@@ -1,89 +1,92 @@
++# shellcheck shell=sh
+ set -eux
+ 
+ cleanup() {
+-	dir="$1"
+-	# these entries must NOT have a final slash or otherwise a stat() is performed
+-	# which will activate the translator behind it
+-	for f in ./servers/acpi ./servers/crash-dump-core ./servers/crash-kill ./servers/crash-suspend ./servers/default-pager ./servers/exec ./servers/password ./servers/shutdown ./servers/socket/1 ./servers/socket/2 ./servers/socket/26 ./servers/socket/local ./servers/socket/inet ./servers/socket/inet6 ./servers/crash ./servers/bus/pci; do
+-		if ! showtrans --quiet "$dir/$f"; then
+-			echo "E: showtrans failed for $dir/$f" >&2
+-			continue
+-		fi
+-		# FIXME: run showtrans with --zero once that's possible
+-		# Run through xxd to preserve NULL bytes
+-		translator=$(showtrans --no-prefix "$dir/$f" | xxd -p)
+-		settrans -fg "$dir/$f"
+-		# only run stat after 'settrans -fg' to not activate the translator and to
+-		# get the permission bits behind it
+-		{
+-			printf "%s" "$f $(stat -c %a "$dir/$f") "
+-			printf "%s" "$translator" | xxd -r -p
+-		} >>"${dir}.settrans"
+-		rm "$dir/$f"
+-	done
+-	rm "$dir/servers/startup"
+-	rmdir "$dir/servers/bus"
+-	rmdir "$dir/servers/socket"
+-	rmdir "$dir/servers"
+-	for f in "$dir/dev/"*; do
+-		showtrans -pt $f || continue
+-		translator=$(showtrans --no-prefix "$f" | xxd -p)
+-		settrans -fg $f
+-		{
+-			printf "%s" ".${f##$dir} $(stat -c %a "$f") "
+-			printf "%s" "$translator" | xxd -r -p
+-		} >>"${dir}.settrans"
+-	done
+-	rm -rf "$dir"
++  dir="$1"
++  # these entries must NOT have a final slash or otherwise a stat() is performed
++  # which will activate the translator behind it
++  for f in ./servers/acpi ./servers/crash-dump-core ./servers/crash-kill ./servers/crash-suspend ./servers/default-pager ./servers/exec ./servers/password ./servers/shutdown ./servers/socket/1 ./servers/socket/2 ./servers/socket/26 ./servers/socket/local ./servers/socket/inet ./servers/socket/inet6 ./servers/crash ./servers/bus/pci; do
++    if ! showtrans --quiet "$dir/$f"; then
++      echo "E: showtrans failed for $dir/$f" >&2
++      continue
++    fi
++    # FIXME: run showtrans with --zero once that's possible
++    # Run through xxd to preserve NULL bytes
++    translator=$(showtrans --no-prefix "$dir/$f" | xxd -p)
++    settrans -fg "$dir/$f"
++    # only run stat after 'settrans -fg' to not activate the translator and to
++    # get the permission bits behind it
++    {
++      printf "%s" "$f $(stat -c %a "$dir/$f") "
++      printf "%s" "$translator" | xxd -r -p
++    } >>"${dir}.settrans"
++    rm "$dir/$f"
++  done
++  rm "$dir/servers/startup"
++  rmdir "$dir/servers/bus"
++  rmdir "$dir/servers/socket"
++  rmdir "$dir/servers"
++  for f in "$dir/dev/"*; do
++    showtrans -pt "$f" || continue
++    translator=$(showtrans --no-prefix "$f" | xxd -p)
++    settrans -fg "$f"
++    {
++      printf "%s" ".${f##"$dir"} $(stat -c %a "$f") "
++      printf "%s" "$translator" | xxd -r -p
++    } >>"${dir}.settrans"
++  done
++  rm -rf "$dir"
+ }
+ 
+ my_hurd_debootstrap() {
+ 
+-	trap poweroff EXIT INT TERM
++  trap poweroff EXIT INT TERM
+ 
+-	export http_proxy=http://10.0.2.2:8080
++  export http_proxy=http://10.0.2.2:8080
+ 
+-	time debootstrap --keyring=/usr/share/keyrings/debian-ports-archive-keyring.pgp --variant=minbase --extra-suites=unreleased unstable chroot-debootstrap http://ftp.ports.debian.org/debian-ports/
+-	cleanup ./chroot-debootstrap
+-	SOURCE_DATE_EPOCH={{ SOURCE_DATE_EPOCH }} mmdebstrap --variant=extract --include=base-files,base-passwd,debianutils,hurd,libc-bin,coreutils,dash,sed,bash --verbose --format=directory '' ./chroot-mmdebstrap 'deb http://ftp.ports.debian.org/debian-ports unreleased main' 'deb http://ftp.ports.debian.org/debian-ports unstable main'
+-	mv ./chroot-mmdebstrap/usr/bin/settrans ./chroot-mmdebstrap/usr/bin/settrans.orig
+-	cat <<'END' >./chroot-mmdebstrap/usr/bin/settrans
++  time debootstrap --keyring=/usr/share/keyrings/debian-ports-archive-keyring.pgp --variant=minbase --extra-suites=unreleased unstable chroot-debootstrap http://ftp.ports.debian.org/debian-ports/
++  cleanup ./chroot-debootstrap
++  # shellcheck disable=SC1083
++  SOURCE_DATE_EPOCH={{ SOURCE_DATE_EPOCH }} mmdebstrap --variant=extract --include=base-files,base-passwd,debianutils,hurd,libc-bin,coreutils,dash,sed,bash --verbose --format=directory '' ./chroot-mmdebstrap 'deb http://ftp.ports.debian.org/debian-ports unreleased main' 'deb http://ftp.ports.debian.org/debian-ports unstable main'
++  mv ./chroot-mmdebstrap/usr/bin/settrans ./chroot-mmdebstrap/usr/bin/settrans.orig
++  cat <<'END' >./chroot-mmdebstrap/usr/bin/settrans
+ #!/bin/sh
+ set -eu
+ { printf "$(pwd) $0 "; printf "%s\0" "$@"; echo; } | tee -a /tmp/settrans.log>&2
+ exec /usr/bin/settrans.orig "$@"
+ END
+-	chmod +x ./chroot-mmdebstrap/usr/bin/settrans
+-	mv ./chroot-mmdebstrap/usr/bin/chmod ./chroot-mmdebstrap/usr/bin/chmod.orig
+-	cat <<'END' >./chroot-mmdebstrap/usr/bin/chmod
++  chmod +x ./chroot-mmdebstrap/usr/bin/settrans
++  mv ./chroot-mmdebstrap/usr/bin/chmod ./chroot-mmdebstrap/usr/bin/chmod.orig
++  cat <<'END' >./chroot-mmdebstrap/usr/bin/chmod
+ #!/bin/sh
+ set -eu
+ { printf "$(pwd) $0 "; printf "%s\0" "$@"; echo; } | tee -a /tmp/settrans.log>&2
+ exec /usr/bin/chmod.orig "$@"
+ END
+-	chmod +x ./chroot-mmdebstrap/usr/bin/chmod
+-	for p in /dev /servers /proc; do
+-		settrans -a "./chroot-mmdebstrap/$p" /hurd/firmlink "$p"
+-	done
+-	chroot ./chroot-mmdebstrap /usr/lib/hurd/setup-translators -k
+-	for p in /dev /servers /proc; do
+-		settrans -fg "./chroot-mmdebstrap/$p"
+-	done
+-	# no need to call cleanup here because setup-translators worked on the
+-	# bind-mounts which we unmounted above
+-	mv ./chroot-mmdebstrap/tmp/settrans.log extract.settrans
+-	rm -rf ./chroot-mmdebstrap
+-	# compare this tarball against one created on the outside with chrootless
+-	SOURCE_DATE_EPOCH={{ SOURCE_DATE_EPOCH }} mmdebstrap --variant=minbase --verbose '' ./chroot-mmdebstrap.tar 'deb http://ftp.ports.debian.org/debian-ports unreleased main' 'deb http://ftp.ports.debian.org/debian-ports unstable main'
+-	echo success >/success
+-	poweroff
++  chmod +x ./chroot-mmdebstrap/usr/bin/chmod
++  for p in /dev /servers /proc; do
++    settrans -a "./chroot-mmdebstrap/$p" /hurd/firmlink "$p"
++  done
++  chroot ./chroot-mmdebstrap /usr/lib/hurd/setup-translators -k
++  for p in /dev /servers /proc; do
++    settrans -fg "./chroot-mmdebstrap/$p"
++  done
++  # no need to call cleanup here because setup-translators worked on the
++  # bind-mounts which we unmounted above
++  mv ./chroot-mmdebstrap/tmp/settrans.log extract.settrans
++  rm -rf ./chroot-mmdebstrap
++  # compare this tarball against one created on the outside with chrootless
++  # shellcheck disable=SC1083
++  SOURCE_DATE_EPOCH={{ SOURCE_DATE_EPOCH }} mmdebstrap --variant=minbase --verbose '' ./chroot-mmdebstrap.tar 'deb http://ftp.ports.debian.org/debian-ports unreleased main' 'deb http://ftp.ports.debian.org/debian-ports unstable main'
++  echo success >/success
++  poweroff
+ }
+ 
+ if [ -e /started ]; then
+-	echo "I: already started" >&2
++  echo "I: already started" >&2
+ else
+-	touch /started
+-	my_hurd_debootstrap
++  touch /started
++  my_hurd_debootstrap
+ fi
+ 
+ set +eux
+-- 
+2.55.0
+

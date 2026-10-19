@@ -4,7 +4,6 @@
 # Conversion notes:
 # - Debian repacks the upstream tarball (1:2.3.4+dfsg-2); check debian/copyright Files-Excluded before using the pristine upstream source
 # - set expected-commit for tag v2.3.4 (re-run with --download, or git ls-remote)
-# - port debian/rules override_dh_install: dh_install && rm -f debian/tmp/usr/lib/*/libfoo.la
 # - autopkgtests converted to the test pipeline (2 steps)
 package:
   name: libfoo
@@ -33,6 +32,8 @@ environment:
       - zlib-dev  # Debian: zlib1g-dev
       - openssl-dev  # Debian: libssl-dev
       - py3-sphinx  # Debian: python3-sphinx
+      - coreutils
+      - findutils
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -53,10 +54,12 @@ pipeline:
       opts: -DFOO_ENABLE_TESTS=OFF -DFOO_WITH_SSL=ON
   - uses: cmake/build
   - uses: cmake/install
-  # TODO(debian-to-melange): port debian/rules override_dh_install: dh_install && rm -f debian/tmp/usr/lib/*/libfoo.la
   - name: Install files
     runs: |
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/libfoo/copyright
+  - name: From debian/rules override_dh_install
+    runs: |
+      rm -f ${{targets.destdir}}/usr/lib/*/libfoo.la
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
