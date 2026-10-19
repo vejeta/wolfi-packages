@@ -118,7 +118,9 @@ SAME = {"meson", "cmake", "make", "autoconf", "automake", "libtool", "gettext", 
 def _reverse_name_map():
     rev = {}
     for deb, wolfi in d2m.NAME_MAP.items():
-        rev.setdefault(wolfi, deb)
+        # a Debian package may map to several Wolfi ones (xvfb -> xvfb-run, xkbcomp, ...)
+        for w in (wolfi if isinstance(wolfi, list) else [wolfi]):
+            rev.setdefault(w, deb)
     return rev
 
 
