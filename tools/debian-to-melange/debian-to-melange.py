@@ -306,6 +306,7 @@ class WolfiIndex:
         self.names = None
         self.community = set()
         self.unversioned_so = {}  # package -> sonames without a version (libdb-5.3.so)
+        self.providers = {}  # cmd:foo / so:libfoo.so.1 -> a package that provides it
         if not enabled:
             return
         spec = importlib.util.spec_from_file_location("pkg_check", PKG_CHECK)
@@ -329,10 +330,27 @@ class WolfiIndex:
             names.add(e.get("P"))
             for prov in e.get("p", "").split():
                 names.add(re.split(r"[=<>~]", prov, maxsplit=1)[0])
+                key = re.split(r"[=<>~]", prov, maxsplit=1)[0]
+                if key.startswith(("cmd:", "so:")):
+                    self.providers.setdefault(key, e.get("P"))
                 so = re.match(r"^so:(lib[^=]*\.so)=", prov)
                 if so and so.group(1) not in self.unversioned_so.get(e.get("P"), []):
                     self.unversioned_so.setdefault(e.get("P"), []).append(so.group(1))
         return names
+
+    def provider_of(self, debian_name):
+        """The Wolfi package that provides cmd:<name>, or so:<lib>.so.<N> for a Debian libfooN."""
+        if not self.names:
+            return None
+        if "cmd:" + debian_name in self.providers:
+            return self.providers["cmd:" + debian_name]
+        m = re.match(r"^(lib[a-z0-9+.-]*?[a-z+])-?(\d[\d.]*)(t64)?$", debian_name)
+        if m:
+            for base in (m.group(1), m.group(1).replace("-", "_")):
+                so = "so:{}.so.{}".format(base, m.group(2))
+                if so in self.providers:
+                    return self.providers[so]
+        return None
 
     def has(self, name):
         if self.names is None:
@@ -1095,6 +1113,20 @@ def perl_ph_required(data):
     return False
 
 
+DEBIAN_COMMANDS = {}
+
+
+def debian_commands(pkg):
+    """Commands (/usr/bin, /usr/sbin, /bin, /sbin) a Debian binary package ships, from packages.debian.org."""
+    if pkg not in DEBIAN_COMMANDS:
+        try:
+            page = http_get("https://packages.debian.org/sid/amd64/{}/filelist".format(pkg)).decode("utf-8", "replace")
+        except Exception:
+            page = ""
+        DEBIAN_COMMANDS[pkg] = sorted({m for m in re.findall(r"(?:^|>)/(?:usr/)?s?bin/([\w.+-]+)$", page, re.M)})
+    return DEBIAN_COMMANDS[pkg]
+
+
 def gencontrol_substvars(rules, source):
     """-Vname=value of dh_gencontrol in debian/rules; a value chosen by
     $(shell test -e /usr/bin/X && echo A || echo B) is A when X is a build dependency."""
@@ -1763,6 +1795,29 @@ class Converter:
                             break
                     if chosen and chosen[2]:
                         break
+            if chosen is None or (chosen and chosen[2] is False):
+                # Wolfi names it otherwise: the package with the command of that name
+                # (perltidy -> perl-tidy), or with the library of a Debian lib package
+                # (libgdbm-compat4 -> libgdbm_compat.so.4 -> gdbm)
+                for alt in alts:
+                    prov = self.wolfi.provider_of(alt)
+                    if prov:
+                        chosen = (prov, alt, True)
+                        break
+                if (chosen is None or chosen[2] is False) and getattr(self.args, "download", False):
+                    # the commands the Debian package ships (iputils-ping: ping -> iputils)
+                    for alt in alts:
+                        provs = []
+                        for cmd in debian_commands(alt):
+                            prov = self.wolfi.providers.get("cmd:" + cmd)
+                            if prov and prov not in provs:
+                                provs.append(prov)
+                        if provs:
+                            chosen = (provs[0], alt, True)
+                            for extra in provs[1:]:
+                                if not any(o == extra or (isinstance(o, C) and o.value == extra) for o in out):
+                                    out.append(C(extra, "commands of Debian's " + alt))
+                            break
             if chosen is None:
                 # Nothing matched in the index: keep the best guess, flagged.
                 chosen = (dep_candidates(alts[0])[0], alts[0], False)
@@ -2882,6 +2937,8 @@ class Converter:
         aliases = dict(ESSENTIAL_ALIASES)
         for i, para in enumerate(parse_deb822(control)):
             restrictions = para.get("restrictions", "").replace(",", " ").split()
+            if "hint-testsuite-triggers" in restrictions:
+                continue  # never run: it only lists packages whose uploads trigger the tests
             for r in restrictions:
                 if r in ("isolation-machine", "breaks-testbed", "needs-reboot"):
                     self.notes.append("autopkgtest restriction '{}' cannot be honoured by melange test".format(r))
