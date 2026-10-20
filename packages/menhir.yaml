@@ -82,14 +82,14 @@ pipeline:
       dune build -p menhirLib,menhirSdk,menhir,menhirCST,menhirGLR -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" menhirLib menhirSdk menhir menhirCST menhirGLR
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" --etcdir=/etc --datadir=/usr/share/ocaml-dune/data --docdir=/usr/share/ocaml-dune/doc --mandir=/usr/share/ocaml-dune/man menhirLib menhirSdk menhir menhirCST menhirGLR
   - name: Install files
     runs: |
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/menhir
   - name: From debian/rules execute_after_dh_ocamllibinstall
     runs: |
       mkdir -p ${{targets.outdir}}/menhir-doc/usr/share/ocaml-dune/doc/menhir
-      mv ${{targets.outdir}}/libmenhir-ocaml-dev/usr/share/ocaml-dune/doc/menhir/manual* ${{targets.outdir}}/menhir-doc/usr/share/ocaml-dune/doc/menhir
+      mv ${{targets.destdir}}/usr/share/ocaml-dune/doc/menhir/manual* ${{targets.outdir}}/menhir-doc/usr/share/ocaml-dune/doc/menhir
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
@@ -105,6 +105,51 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/menhirLib"
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/menhirLib ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/menhirLib && find . -type f) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/menhirLib/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/menhirLib/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/menhirLib/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/menhirLib; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/menhirSdk ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/menhirSdk && find . -type f) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/menhirSdk/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/menhirSdk/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/menhirSdk/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/menhirSdk; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/menhir ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/menhir && find . -type f) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/menhir/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/menhir/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/menhir/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/menhir; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/menhirCST ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/menhirCST && find . -type f) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/menhirCST/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/menhirCST/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/menhirCST/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/menhirCST; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/menhirGLR ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/menhirGLR && find . -type f) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/menhirGLR/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/menhirGLR/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/menhirGLR/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/menhirGLR; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
   - name: menhir-doc
     description: Documentation of the Menhir parser generator for OCaml
     pipeline:

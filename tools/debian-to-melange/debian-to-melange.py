@@ -2573,6 +2573,11 @@ class Converter:
             if re.match(r"^(override|execute_after|execute_before)_dh_", target) and not target.startswith("override_dh_auto_"):
                 # dh_foo plus commands of its own
                 cmds = self.port_recipe(rules, recipe, name, main["package"])
+                if cmds and target.endswith("_dh_ocamllibinstall") and self.dh_ocaml_config().get("dh_ocamllibinstall"):
+                    # dh_ocamllibinstall has moved the files to lib*-ocaml(-dev); here the
+                    # subpackages are split after the main pipeline, so they are still in destdir
+                    cmds = [re.sub(r"\$\{\{targets\.outdir\}\}/lib[\w.+-]+-ocaml(?:-dev)?(?=/)", "${{targets.destdir}}", c)
+                            for c in cmds]
                 if cmds:
                     step = {"name": "From debian/rules " + target, "runs": "\n".join(cmds) + "\n"}
                     if re.match(r"^execute_(after_dh_auto_configure|before_dh_auto_build)$", target):
@@ -3011,6 +3016,66 @@ class Converter:
             return [self.todo("compute expected-sha256 (re-run with --download)"), step]
         return [step]
 
+    def dh_ocaml_config(self):
+        """debian/dh-ocaml.conf.json (dh-ocaml 3.4+), or {}."""
+        try:
+            return json.loads(self.read("dh-ocaml.conf.json") or "{}")
+        except ValueError:
+            return {}
+
+    def ocamllibinstall(self, deb_pkg):
+        """dh_ocamllibinstall: the files of each findlib package of debian/debian-dune go to
+        lib<X>-ocaml-dev, its META, archives for dynamic loading and stubs to lib<X>-ocaml."""
+        conf = self.dh_ocaml_config()
+        if not conf.get("dh_ocamllibinstall"):
+            return []
+        pkgs = list(self.rename)
+        devs = [p for p in pkgs if re.match(r"^lib.+-ocaml-dev$", p)]
+        if not devs:
+            return []
+        main_lib = devs[0][len("lib"):-len("-ocaml-dev")]
+        findlib = []
+        for line in (self.read("debian-dune") or self.read("debian-findlib") or "").splitlines():
+            words = line.split()
+            if words:
+                findlib.append((words[0], words[1] if len(words) > 1 else main_lib))
+        run_files = r"\( -name META -o -name '*.cma' -o -name '*.cmxs' \)"
+        dest, ctx = '"${{targets.destdir}}"', '"${{targets.contextdir}}"'
+        cmds = []
+        for f, x in findlib:
+            if x.startswith("!"):
+                dev = x[1:]
+                run = dev[:-len("-dev")] if dev.endswith("-dev") else dev
+            else:
+                dev, run = "lib{}-ocaml-dev".format(x), "lib{}-ocaml".format(x)
+            if run not in pkgs:
+                run = dev
+            lib = "{}/usr/lib/ocaml/{}".format(dest, f)
+            if deb_pkg == run and run != dev:
+                cmds.append("[ -d {lib} ] && (cd {lib} && find . -type f {rf}) | while read -r p; do\n"
+                            "  mkdir -p {ctx}/usr/lib/ocaml/{f}/$(dirname \"$p\")\n"
+                            "  mv {lib}/\"$p\" {ctx}/usr/lib/ocaml/{f}/\"$p\"\n"
+                            "done; true".format(lib=lib, rf=run_files, ctx=ctx, f=f))
+                cmds.append("for a in {lib}/lib*.a; do\n"
+                            "  [ -e \"$a\" ] || continue\n"
+                            "  s=$(basename \"$a\" .a); s=${{s#lib}}\n"
+                            "  d={dest}/usr/lib/ocaml/stublibs/dll$s.so\n"
+                            "  [ -e \"$d\" ] && mkdir -p {ctx}/usr/lib/ocaml/stublibs && mv \"$d\" {ctx}/usr/lib/ocaml/stublibs/\n"
+                            "done; true".format(lib=lib, dest=dest, ctx=ctx))
+            if deb_pkg == dev:
+                # file by file: the directory may exist already (debian/*.dirs)
+                cmds.append("[ -d {lib} ] && (cd {lib} && find . -type f{rf}) | while read -r p; do\n"
+                            "  mkdir -p {ctx}/usr/lib/ocaml/{f}/$(dirname \"$p\")\n"
+                            "  mv {lib}/\"$p\" {ctx}/usr/lib/ocaml/{f}/\"$p\"\n"
+                            "done; true".format(lib=lib, rf=" ! " + run_files if run != dev else "", ctx=ctx, f=f))
+                # dune layout 1: usr/share/ocaml-dune/<section>/<package>
+                cmds.append("for d in {dest}/usr/share/ocaml-dune/*/{f}; do\n"
+                            "  [ -d \"$d\" ] || continue\n"
+                            "  r=${{d#{dest}/}}\n"
+                            "  mkdir -p {ctx}/$(dirname \"$r\") && mv \"$d\" {ctx}/\"$r\"\n"
+                            "done".format(dest=dest, ctx=ctx, f=f))
+        return cmds
+
     def ocaml_dune_steps(self, build_override, install_override):
         """dh-ocaml's ocaml_dune build system: dune build/install of the opam packages."""
         # debian/debian-dune names the opam packages dh-ocaml builds; else all of them
@@ -3023,9 +3088,14 @@ class Converter:
                           "runs": "dune build {} -j $(nproc) @install\n".format(p)})
         if not install_override:
             # the libraries go to the standard library directory, where ocamlfind looks
+            layout = ""
+            if self.dh_ocaml_config().get("dune_layout_version") == 1:
+                # dh-ocaml's layout 1: data, docs and man pages of each package under ocaml-dune
+                layout = (" --etcdir=/etc --datadir=/usr/share/ocaml-dune/data --docdir=/usr/share/ocaml-dune/doc"
+                          " --mandir=/usr/share/ocaml-dune/man")
             steps.append({"name": "Install", "runs": (
-                'dune install --destdir="${{{{targets.destdir}}}}" --prefix=/usr --libdir="$(ocamlc -where)" '
-                '{}\n').format(" ".join(pkgs)).replace(" \n", "\n")})
+                'dune install --destdir="${{{{targets.destdir}}}}" --prefix=/usr --libdir="$(ocamlc -where)"{} '
+                '{}\n').format(layout, " ".join(pkgs)).replace(" \n", "\n")})
         return steps
 
     def debian_native_url(self, source):
@@ -3250,6 +3320,8 @@ class Converter:
             desc = desc.replace("${source:Synopsis}", (self.source.get("description") or "").split("\n", 1)[0].strip())
         sub = {"name": self.rename.get(b["package"], b["package"]), "description": desc[:1].upper() + desc[1:]}
         cmds = self.install_lines(b, False, False, "${{targets.contextdir}}")
+        if self.pkgfile(b["package"], "install", False) is None:
+            cmds += self.ocamllibinstall(b["package"])
         filled = "${{{{targets.outdir}}}}/{}".format(sub["name"])
         if cmds:
             sub["pipeline"] = [{"runs": "\n".join(cmds) + "\n"}]
