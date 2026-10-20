@@ -64,7 +64,12 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/liblogs-ocaml-dev"
-      cp -a doc/*/* "${{targets.destdir}}/usr/share/doc/liblogs-ocaml-dev/"
+      if ls -d "${{targets.destdir}}"/doc/*/* >/dev/null 2>&1; then
+        mv "${{targets.destdir}}"/doc/*/* "${{targets.destdir}}/usr/share/doc/liblogs-ocaml-dev/"
+        rmdir "${{targets.destdir}}/doc/*" "${{targets.destdir}}/doc" 2>/dev/null || true
+      else
+        cp -a doc/*/* "${{targets.destdir}}/usr/share/doc/liblogs-ocaml-dev/"
+      fi
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/liblogs-ocaml-dev
 subpackages:
   - name: liblogs-ocaml

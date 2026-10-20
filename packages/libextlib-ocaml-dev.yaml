@@ -91,6 +91,7 @@ test:
     contents:
       packages:
         - busybox
+        - libextlib-ocaml  # Debian's @: the binary packages of the source
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml

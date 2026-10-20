@@ -65,7 +65,12 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libfmt-ocaml-dev"
-      cp -a doc/fmt/* "${{targets.destdir}}/usr/share/doc/libfmt-ocaml-dev/"
+      if ls -d "${{targets.destdir}}"/doc/fmt/* >/dev/null 2>&1; then
+        mv "${{targets.destdir}}"/doc/fmt/* "${{targets.destdir}}/usr/share/doc/libfmt-ocaml-dev/"
+        rmdir "${{targets.destdir}}/doc/fmt" "${{targets.destdir}}/doc" 2>/dev/null || true
+      else
+        cp -a doc/fmt/* "${{targets.destdir}}/usr/share/doc/libfmt-ocaml-dev/"
+      fi
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libfmt-ocaml-dev
 subpackages:
   - name: libfmt-ocaml

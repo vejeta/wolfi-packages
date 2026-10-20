@@ -56,7 +56,12 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libreact-ocaml-dev"
-      cp -a doc/react/* "${{targets.destdir}}/usr/share/doc/libreact-ocaml-dev/"
+      if ls -d "${{targets.destdir}}"/doc/react/* >/dev/null 2>&1; then
+        mv "${{targets.destdir}}"/doc/react/* "${{targets.destdir}}/usr/share/doc/libreact-ocaml-dev/"
+        rmdir "${{targets.destdir}}/doc/react" "${{targets.destdir}}/doc" 2>/dev/null || true
+      else
+        cp -a doc/react/* "${{targets.destdir}}/usr/share/doc/libreact-ocaml-dev/"
+      fi
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libreact-ocaml-dev
 subpackages:
   - name: libreact-ocaml

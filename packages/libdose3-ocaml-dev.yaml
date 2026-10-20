@@ -271,9 +271,24 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/doc/dose-doc"
           cp -a _build/default/_doc/_html/* "${{targets.contextdir}}/usr/share/doc/dose-doc/"
-          cp -a doc/apt-cudf/* "${{targets.contextdir}}/usr/share/doc/dose-doc/"
-          cp -a doc/apt-external-solvers.primer/apt-external-solvers.html "${{targets.contextdir}}/usr/share/doc/dose-doc/"
-          cp -a doc/debcheck.primer/debcheck-primer.html "${{targets.contextdir}}/usr/share/doc/dose-doc/"
+          if ls -d "${{targets.destdir}}"/doc/apt-cudf/* >/dev/null 2>&1; then
+            mv "${{targets.destdir}}"/doc/apt-cudf/* "${{targets.contextdir}}/usr/share/doc/dose-doc/"
+            rmdir "${{targets.destdir}}/doc/apt-cudf" "${{targets.destdir}}/doc" 2>/dev/null || true
+          else
+            cp -a doc/apt-cudf/* "${{targets.contextdir}}/usr/share/doc/dose-doc/"
+          fi
+          if ls -d "${{targets.destdir}}/doc/apt-external-solvers.primer/apt-external-solvers.html" >/dev/null 2>&1; then
+            mv "${{targets.destdir}}/doc/apt-external-solvers.primer/apt-external-solvers.html" "${{targets.contextdir}}/usr/share/doc/dose-doc/"
+            rmdir "${{targets.destdir}}/doc/apt-external-solvers.primer" "${{targets.destdir}}/doc" 2>/dev/null || true
+          else
+            cp -a doc/apt-external-solvers.primer/apt-external-solvers.html "${{targets.contextdir}}/usr/share/doc/dose-doc/"
+          fi
+          if ls -d "${{targets.destdir}}/doc/debcheck.primer/debcheck-primer.html" >/dev/null 2>&1; then
+            mv "${{targets.destdir}}/doc/debcheck.primer/debcheck-primer.html" "${{targets.contextdir}}/usr/share/doc/dose-doc/"
+            rmdir "${{targets.destdir}}/doc/debcheck.primer" "${{targets.destdir}}/doc" 2>/dev/null || true
+          else
+            cp -a doc/debcheck.primer/debcheck-primer.html "${{targets.contextdir}}/usr/share/doc/dose-doc/"
+          fi
 update:
   enabled: true
   release-monitor:

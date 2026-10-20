@@ -344,6 +344,11 @@ test:
     contents:
       packages:
         - busybox
+        - libqcheck-core-ocaml  # Debian's @: the binary packages of the source
+        - libqcheck-core-ocaml-dev  # Debian's @: the binary packages of the source
+        - libqcheck-ocaml-dev  # Debian's @: the binary packages of the source
+        - libqcheck-ounit-ocaml  # Debian's @: the binary packages of the source
+        - libqcheck-ounit-ocaml-dev  # Debian's @: the binary packages of the source
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml

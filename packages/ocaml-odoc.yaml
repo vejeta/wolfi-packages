@@ -180,6 +180,10 @@ test:
     contents:
       packages:
         - busybox
+        - libodoc-ocaml  # Debian's @: the binary packages of the source
+        - libodoc-ocaml-dev  # Debian's @: the binary packages of the source
+        - libodoc-parser-ocaml  # Debian's @: the binary packages of the source
+        - libodoc-parser-ocaml-dev  # Debian's @: the binary packages of the source
         - bash  # Essential in Debian, so on every testbed
         - coreutils  # Essential in Debian, so on every testbed
         - diffutils  # Essential in Debian, so on every testbed

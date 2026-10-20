@@ -57,8 +57,18 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libfpath-ocaml-dev"
-      cp -a doc/fpath/CHANGES.md "${{targets.destdir}}/usr/share/doc/libfpath-ocaml-dev/"
-      cp -a doc/fpath/README.md "${{targets.destdir}}/usr/share/doc/libfpath-ocaml-dev/"
+      if ls -d "${{targets.destdir}}/doc/fpath/CHANGES.md" >/dev/null 2>&1; then
+        mv "${{targets.destdir}}/doc/fpath/CHANGES.md" "${{targets.destdir}}/usr/share/doc/libfpath-ocaml-dev/"
+        rmdir "${{targets.destdir}}/doc/fpath" "${{targets.destdir}}/doc" 2>/dev/null || true
+      else
+        cp -a doc/fpath/CHANGES.md "${{targets.destdir}}/usr/share/doc/libfpath-ocaml-dev/"
+      fi
+      if ls -d "${{targets.destdir}}/doc/fpath/README.md" >/dev/null 2>&1; then
+        mv "${{targets.destdir}}/doc/fpath/README.md" "${{targets.destdir}}/usr/share/doc/libfpath-ocaml-dev/"
+        rmdir "${{targets.destdir}}/doc/fpath" "${{targets.destdir}}/doc" 2>/dev/null || true
+      else
+        cp -a doc/fpath/README.md "${{targets.destdir}}/usr/share/doc/libfpath-ocaml-dev/"
+      fi
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libfpath-ocaml-dev
 subpackages:
   - name: libfpath-ocaml
@@ -78,6 +88,7 @@ test:
     contents:
       packages:
         - busybox
+        - libfpath-ocaml  # Debian's @: the binary packages of the source
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
