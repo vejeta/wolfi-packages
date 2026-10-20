@@ -61,15 +61,15 @@ pipeline:
   - name: Install
     runs: |
       dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" time_now
+  - name: From debian/rules execute_after_dh_auto_install
+    runs: |
+      find ${{targets.destdir}}/ -name LICENSE.md -delete
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libtime-now-ocaml"
       mv "${{targets.destdir}}/usr/doc/time_now/CHANGES.md" "${{targets.destdir}}/usr/share/doc/libtime-now-ocaml/"
       rmdir "${{targets.destdir}}/usr/doc/time_now" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libtime-now-ocaml
-  - name: From debian/rules execute_after_dh_auto_install
-    runs: |
-      find ${{targets.destdir}}/ -name LICENSE.md -delete
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do

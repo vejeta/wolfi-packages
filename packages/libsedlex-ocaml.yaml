@@ -55,14 +55,14 @@ pipeline:
   - name: Install
     runs: |
       dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" sedlex
-  - name: Install files
-    runs: |
-      install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/libsedlex-ocaml
   - name: From debian/rules execute_after_dh_auto_install
     runs: |
       sed -i 's/uchar//g' ${{targets.destdir}}/usr/lib/ocaml/sedlex/META
       sed -i 's/uchar//g' ${{targets.destdir}}/usr/lib/ocaml/sedlex/dune-package
       sed -i 's/"uchar"//g' ${{targets.destdir}}/usr/lib/ocaml/sedlex/opam
+  - name: Install files
+    runs: |
+      install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/libsedlex-ocaml
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do

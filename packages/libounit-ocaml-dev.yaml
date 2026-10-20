@@ -36,6 +36,9 @@ environment:
       - libxml2-utils
       - coreutils
       - findutils
+  environment:
+    OCAMLFIND_DESTDIR: /home/build/debian/tmp//usr/lib/ocaml
+    OCAMLFIND_LDCONF: ignore
 pipeline:
   - uses: git-checkout
     with:
@@ -48,6 +51,10 @@ pipeline:
   - name: Install
     runs: |
       dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ounit2
+  - name: From debian/rules execute_after_dh_auto_install
+    runs: |
+      mkdir -p ${{targets.destdir}}/usr/lib/ocaml
+      make install-ounit version=2.2.7
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libounit-ocaml-dev/examples"
@@ -56,10 +63,6 @@ pipeline:
       mv "${{targets.destdir}}"/usr/doc/ounit2/* "${{targets.destdir}}/usr/share/doc/libounit-ocaml-dev/"
       rmdir "${{targets.destdir}}/usr/doc/ounit2" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.txt -t "${{targets.destdir}}"/usr/share/licenses/libounit-ocaml-dev
-  - name: From debian/rules execute_after_dh_auto_install
-    runs: |
-      mkdir -p ${{targets.destdir}}/usr/lib/ocaml
-      make install-ounit version=2.2.7
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do

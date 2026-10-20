@@ -7,23 +7,7 @@
 # Debian packaging: https://github.com/kilobyte/arch-test/tree/debian
 #
 # Conversion notes:
-# - build dependency 'binutils-x86-64-linux-gnu' (Debian 'binutils-x86-64-linux-gnu') not found in Wolfi; left out
-# - build dependency 'binutils-aarch64-linux-gnu' (Debian 'binutils-aarch64-linux-gnu') not found in Wolfi; left out
-# - build dependency 'binutils-arm-linux-gnueabihf' (Debian 'binutils-arm-linux-gnueabihf') not found in Wolfi; left out
-# - build dependency 'binutils-m68k-linux-gnu' (Debian 'binutils-m68k-linux-gnu') not found in Wolfi; left out
-# - build dependency 'binutils-powerpc-linux-gnu' (Debian 'binutils-powerpc-linux-gnu') not found in Wolfi; left out
-# - build dependency 'binutils-powerpc64le-linux-gnu' (Debian 'binutils-powerpc64le-linux-gnu') not found in Wolfi; left out
-# - build dependency 'binutils-s390x-linux-gnu' (Debian 'binutils-s390x-linux-gnu') not found in Wolfi; left out
-# - build dependency 'binutils-sh4-linux-gnu' (Debian 'binutils-sh4-linux-gnu') not found in Wolfi; left out
-# - build dependency 'binutils-sparc64-linux-gnu' (Debian 'binutils-sparc64-linux-gnu') not found in Wolfi; left out
-# - build dependency 'binutils-alpha-linux-gnu' (Debian 'binutils-alpha-linux-gnu') not found in Wolfi; left out
-# - build dependency 'binutils-hppa-linux-gnu' (Debian 'binutils-hppa-linux-gnu') not found in Wolfi; left out
-# - build dependency 'binutils-riscv64-linux-gnu' (Debian 'binutils-riscv64-linux-gnu') not found in Wolfi; left out
-# - build dependency 'binutils-loongarch64-linux-gnu' (Debian 'binutils-loongarch64-linux-gnu') not found in Wolfi; left out
-# - build dependency 'binutils-arc-linux-gnu' (Debian 'binutils-arc-linux-gnu') not found in Wolfi; left out
-# - build dependency 'binutils-mingw-w64-i686' (Debian 'binutils-mingw-w64-i686') not found in Wolfi; left out
 # - build dependency 'mingw-w64-i686-dev' (Debian 'mingw-w64-i686-dev') not found in Wolfi; left out
-# - build dependency 'binutils-mingw-w64-x86-64' (Debian 'binutils-mingw-w64-x86-64') not found in Wolfi; left out
 # - build dependency 'mingw-w64-x86-64-dev' (Debian 'mingw-w64-x86-64-dev') not found in Wolfi; left out
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
 # - autopkgtests converted to the test pipeline (2 steps)
@@ -43,23 +27,23 @@ environment:
     packages:
       - build-base
       - busybox
-      # TODO(debian-to-melange): binutils-x86-64-linux-gnu is not in Wolfi (Debian: binutils-x86-64-linux-gnu); left out
-      # TODO(debian-to-melange): binutils-aarch64-linux-gnu is not in Wolfi (Debian: binutils-aarch64-linux-gnu); left out
-      # TODO(debian-to-melange): binutils-arm-linux-gnueabihf is not in Wolfi (Debian: binutils-arm-linux-gnueabihf); left out
-      # TODO(debian-to-melange): binutils-m68k-linux-gnu is not in Wolfi (Debian: binutils-m68k-linux-gnu); left out
-      # TODO(debian-to-melange): binutils-powerpc-linux-gnu is not in Wolfi (Debian: binutils-powerpc-linux-gnu); left out
-      # TODO(debian-to-melange): binutils-powerpc64le-linux-gnu is not in Wolfi (Debian: binutils-powerpc64le-linux-gnu); left out
-      # TODO(debian-to-melange): binutils-s390x-linux-gnu is not in Wolfi (Debian: binutils-s390x-linux-gnu); left out
-      # TODO(debian-to-melange): binutils-sh4-linux-gnu is not in Wolfi (Debian: binutils-sh4-linux-gnu); left out
-      # TODO(debian-to-melange): binutils-sparc64-linux-gnu is not in Wolfi (Debian: binutils-sparc64-linux-gnu); left out
-      # TODO(debian-to-melange): binutils-alpha-linux-gnu is not in Wolfi (Debian: binutils-alpha-linux-gnu); left out
-      # TODO(debian-to-melange): binutils-hppa-linux-gnu is not in Wolfi (Debian: binutils-hppa-linux-gnu); left out
-      # TODO(debian-to-melange): binutils-riscv64-linux-gnu is not in Wolfi (Debian: binutils-riscv64-linux-gnu); left out
-      # TODO(debian-to-melange): binutils-loongarch64-linux-gnu is not in Wolfi (Debian: binutils-loongarch64-linux-gnu); left out
-      # TODO(debian-to-melange): binutils-arc-linux-gnu is not in Wolfi (Debian: binutils-arc-linux-gnu); left out
-      # TODO(debian-to-melange): binutils-mingw-w64-i686 is not in Wolfi (Debian: binutils-mingw-w64-i686); left out
+      - binutils-x86-64-linux-gnu  # Wolfi Community Packages
+      - binutils-aarch64-linux-gnu  # Wolfi Community Packages
+      - binutils-arm-linux-gnueabihf  # Wolfi Community Packages
+      - binutils-m68k-linux-gnu  # Wolfi Community Packages
+      - binutils-powerpc-linux-gnu  # Wolfi Community Packages
+      - binutils-powerpc64le-linux-gnu  # Wolfi Community Packages
+      - binutils-s390x-linux-gnu  # Wolfi Community Packages
+      - binutils-sh4-linux-gnu  # Wolfi Community Packages
+      - binutils-sparc64-linux-gnu  # Wolfi Community Packages
+      - binutils-alpha-linux-gnu  # Wolfi Community Packages
+      - binutils-hppa-linux-gnu  # Wolfi Community Packages
+      - binutils-riscv64-linux-gnu  # Wolfi Community Packages
+      - binutils-loongarch64-linux-gnu  # Wolfi Community Packages
+      - binutils-arc-linux-gnu  # Wolfi Community Packages
+      - binutils-mingw-w64-i686  # Wolfi Community Packages
       # TODO(debian-to-melange): mingw-w64-i686-dev is not in Wolfi (Debian: mingw-w64-i686-dev); left out
-      # TODO(debian-to-melange): binutils-mingw-w64-x86-64 is not in Wolfi (Debian: binutils-mingw-w64-x86-64); left out
+      - binutils-mingw-w64-x86-64  # Wolfi Community Packages
       # TODO(debian-to-melange): mingw-w64-x86-64-dev is not in Wolfi (Debian: mingw-w64-x86-64-dev); left out
       - coreutils
       - findutils
