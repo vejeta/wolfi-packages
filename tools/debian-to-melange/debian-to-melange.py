@@ -119,7 +119,7 @@ NAME_MAP = {
     "libversion-perl": "perl",
     "libpod-simple-perl": "perl",
     "libencode-perl": "perl",
-    "libpod-parser-perl": "perl",
+    "libpod-parser-perl": "perl-pod-parser",  # left perl core in 5.32 (Pod::PlainText)
     "libtest-simple-perl": "perl",
     "stunnel4": "stunnel",
     "db-util": "db-utils",
@@ -1642,6 +1642,7 @@ BUILDSYSTEM_FILES = [
     ("setup.py", "pybuild"),
     ("go.mod", "golang"),
     ("Cargo.toml", "cargo"),
+    ("Build.PL", "perl_build"),  # debhelper tries perl_build before perl_makemaker
     ("Makefile.PL", "perl_makemaker"),
     ("Makefile", "makefile"),
     ("GNUmakefile", "makefile"),  # debhelper looks for GNUmakefile, makefile and Makefile
@@ -2511,9 +2512,9 @@ class Converter:
         base = ["build-base", "busybox"] if bs else ["busybox"]
         if bs == "pybuild":
             base += ["python3", "py3-pip", "py3-wheel"]
-        if bs == "perl_makemaker":
+        if bs in ("perl_makemaker", "perl_build"):
             # Debian's perl has the headers XS probes look for (List::MoreUtils)
-            base += ["perl", "perl-dev"]
+            base += ["perl", "perl-dev"] + (["perl-module-build"] if bs == "perl_build" else [])
         if bs == "ocaml_dune":
             # dune runs (bash ...) actions with bash
             base += [p for p in ("ocaml", "ocaml-dune", "ocaml-findlib", "ocamlfind", "ocaml-findlib-compat", "bash")
@@ -2741,6 +2742,13 @@ class Converter:
             if re.search(r"^Package:", config, re.M | re.I):
                 pipeline.append(self.todo("the Package fields of scala-build name Debian packages; "
                                           "use melange package names, or remove them"))
+        elif bs == "perl_build" and not install_override:
+            # dh_auto_configure/build/install with Module::Build, into Wolfi's vendor directories
+            pipeline.append({"name": "Build and install (Build.PL)", "runs": (
+                "perl Build.PL installdirs=vendor create_packlist=0\n"
+                "./Build\n"
+                "./Build install destdir=\"${{targets.destdir}}\"\n")})
+            pipeline.append({"uses": "perl/cleanup"})
         elif bs == "makefile":
             cmds = [] if build_override else ["make -j$(nproc)"]
             if not install_override:
@@ -3982,7 +3990,7 @@ class Converter:
         if binary.get("architecture", "any") != "all":
             test["pipeline"].append({"uses": "test/tw/ldd-check"})
         cpan = re.match(r"https?://metacpan\.org/(?:release|dist)/([\w-]+)", getattr(self, "homepage", ""))
-        if main and cpan and getattr(self, "bs", None) == "perl_makemaker":
+        if main and cpan and getattr(self, "bs", None) in ("perl_makemaker", "perl_build"):
             test["environment"]["contents"]["packages"].append("perl")
             # the Debian Perl team names it for autopkgtest-pkg-perl; else metacpan's main module
             module = (self.read("tests/pkg-perl/use-name") or "").split("\n")[0].strip() \

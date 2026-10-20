@@ -23,13 +23,14 @@ package:
       - perl-file-which  # Debian: libfile-which-perl
       - perl-list-someutils  # Wolfi Community Packages (Debian: liblist-someutils-perl)
       - perl-module-pluggable  # Debian: libmodule-pluggable-perl
-      - perl  # Debian: libpod-parser-perl
+      - perl-pod-parser  # Debian: libpod-parser-perl
       - perl-pod-spell  # Wolfi Community Packages (Debian: libpod-spell-perl)
       - perl-ppi  # Debian: libppi-perl
       - perl-ppix-quotelike  # Wolfi Community Packages (Debian: libppix-quotelike-perl)
       - perl-ppix-regexp  # Wolfi Community Packages (Debian: libppix-regexp-perl)
       - perl-ppix-utils  # Wolfi Community Packages (Debian: libppix-utils-perl)
       - perl-readonly  # Debian: libreadonly-perl
+      - perl  # Debian: libscalar-list-utils-perl
       - perl-string-format  # Wolfi Community Packages (Debian: libstring-format-perl)
       - perl-tidy  # Debian: perltidy
 environment:
@@ -39,33 +40,26 @@ environment:
     repositories:
       - https://packages.wolfi.dev/os
     packages:
+      - build-base
       - busybox
-      - perl-module-build  # Debian: libmodule-build-perl
+      - perl
+      - perl-dev
+      - perl-module-build
       - perl-b-keywords  # Wolfi Community Packages (Debian: libb-keywords-perl)
-      - perl-config-tiny  # Wolfi Community Packages (Debian: libconfig-tiny-perl)
-      - perl-exception-class  # Debian: libexception-class-perl
-      - perl-file-which  # Debian: libfile-which-perl
       - perl-list-someutils  # Wolfi Community Packages (Debian: liblist-someutils-perl)
-      - perl-module-pluggable  # Debian: libmodule-pluggable-perl
-      - perl  # Debian: libpod-parser-perl
-      - perl-pod-spell  # Wolfi Community Packages (Debian: libpod-spell-perl)
-      - perl-ppi  # Debian: libppi-perl
-      - perl-ppix-quotelike  # Wolfi Community Packages (Debian: libppix-quotelike-perl)
-      - perl-ppix-regexp  # Wolfi Community Packages (Debian: libppix-regexp-perl)
-      - perl-ppix-utils  # Wolfi Community Packages (Debian: libppix-utils-perl)
-      - perl-readonly  # Debian: libreadonly-perl
-      - perl-string-format  # Wolfi Community Packages (Debian: libstring-format-perl)
-      - perl-test-pod-coverage  # Debian: libtest-pod-coverage-perl
-      - perl-test-pod  # Debian: libtest-pod-perl
-      - perl-tidy  # Debian: perltidy
       - coreutils
       - findutils
-      - perl
 pipeline:
   - uses: fetch
     with:
       uri: https://cpan.metacpan.org/authors/id/P/PE/PETDANCE/Perl-Critic-${{package.version}}.tar.gz
       expected-sha256: 572a7c8758ba1c0ab6daf0bd40297c4f0dcf1516f084522df2c2bf04d525e232
+  - name: Build and install (Build.PL)
+    runs: |
+      perl Build.PL installdirs=vendor create_packlist=0
+      ./Build
+      ./Build install destdir="${{targets.destdir}}"
+  - uses: perl/cleanup
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/perl-perl-critic/examples"
@@ -77,6 +71,14 @@ pipeline:
   - name: From debian/rules override_dh_installexamples
     runs: |
       sed -i '1s|^#!/usr/bin/env perl|#!/usr/bin/perl|' ${{targets.destdir}}/usr/share/doc/perl-perl-critic/examples/ppidump
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
 update:
   enabled: true
   release-monitor:
@@ -86,6 +88,10 @@ test:
     contents:
       packages:
         - busybox
+        - perl
   pipeline:
     - runs: |
         test -f /usr/share/licenses/perl-perl-critic/LICENSE
+    - name: Load the module
+      runs: |
+        perl -MPerl::Critic -e1

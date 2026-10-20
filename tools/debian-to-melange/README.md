@@ -70,6 +70,7 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | Upstream `COPYING`, `LICENSE`, … | Installed in `/usr/share/licenses/<name>`, and checked by the test |
 | Architecture-dependent binaries | `strip` step and a `test/tw/ldd-check` test |
 | `dh $@ --buildsystem=…` or detected build files | `cmake/*`, `meson/*`, `autoconf/*`, `py/pip-build-install`, `go/build`, `cargo/build`, `scala/build` (dh-scala, with `debian/scala-build` copied next to the recipe), plain `make` |
+| `libfoo-perl` with `Build.PL` (Module::Build) | `perl Build.PL installdirs=vendor`, `./Build`, `./Build install`, as debhelper's perl_build |
 | `libfoo-perl` (Makefile.PL) | `perl-<CPAN distribution>`; `perl/make`, `autoconf/make`, `autoconf/make-install`, `perl/cleanup`; sources from CPAN; Debian's `usr/share/perl5` and `usr/lib/*/perl5` are Wolfi's `vendor_perl`; a test that loads the module named in `debian/tests/pkg-perl/use-name` |
 | Debian-native programs (ucf, debconf, init-system-helpers) | Source from the Debian archive; perl and dpkg-dev in the build, as debhelper brings them |
 | `python3-foo` (pybuild, `Architecture: all`) | The Wolfi layout: empty `py3-foo`, one `py3.X-foo` per supported Python (those with all the dependencies), `py3-supported-foo`; `${python3:Depends}` from upstream's `install_requires`/`dependencies`; `python/import` tests |
