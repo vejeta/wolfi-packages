@@ -60,7 +60,7 @@ class SourceForgeReadmeTest(unittest.TestCase):
     def test_repository_readme_renders(self):
         with open(os.path.join(sf.ROOT, "README.md"), encoding="utf-8") as fh:
             text = sf.render(fh.read(), "2026-10-20")
-        self.assertIn("downloads.sourceforge.net/project/wolfi", text)
+        self.assertIn("https://wolfi.vejeta.com", text)
         self.assertNotRegex(text, r"\]\((?!https?:|#|mailto:)[^)]+\.md\)")
 
 

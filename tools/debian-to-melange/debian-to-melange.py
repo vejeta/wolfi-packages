@@ -339,7 +339,7 @@ def dep_candidates(name):
 
 
 # Packages published by this repository (Wolfi Community Packages).
-COMMUNITY_INDEX = "https://downloads.sourceforge.net/project/wolfi/{arch}/APKINDEX.tar.gz"
+COMMUNITY_INDEX = "https://wolfi.vejeta.com/{arch}/APKINDEX.tar.gz"
 
 
 NCURSESW_USERS = None

@@ -102,7 +102,7 @@ Users can verify packages with:
 ```bash
 # Download public key
 wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
-  https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
+  https://wolfi.vejeta.com/keys/vejeta-wolfi.rsa.pub
 
 # Verify packages
 apk verify stremio
