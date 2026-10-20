@@ -1,0 +1,28 @@
+--- a/python/afdko/comparefamily.py
++++ b/python/afdko/comparefamily.py
+@@ -1646 +1646 @@
+-		if font.copyrightStr1 and re.search("[ \t,]\d\d\d,*\d\d\d[ \t.,]", font.copyrightStr1):
++		if font.copyrightStr1 and re.search(r"[ \t,]\d\d\d,*\d\d\d[ \t.,]", font.copyrightStr1):
+@@ -3531,4 +3531,4 @@
+-				temp1 = re.sub(" *[21][980]\d\d,* *", "", font.copyrightStr1)
+-				temp2 =	 re.sub(" *[21][980]\d\d,* *", "", font1.copyrightStr1)
+-				temp1 = re.sub("\s+", " ", temp1)
+-				temp2 =	 re.sub("\s+", " ", temp2)
++				temp1 = re.sub(r" *[21][980]\d\d,* *", "", font.copyrightStr1)
++				temp2 =	 re.sub(r" *[21][980]\d\d,* *", "", font1.copyrightStr1)
++				temp1 = re.sub(r"\s+", " ", temp1)
++				temp2 =	 re.sub(r"\s+", " ", temp2)
+@@ -3545,4 +3545,4 @@
+-				temp1 = re.sub(" *[21][980]\d\d,* *", "", font.trademarkStr1)
+-				temp2 =	 re.sub(" *[21][980]\d\d,* *", "", font1.trademarkStr1)
+-				temp1 = re.sub("\s+", " ", temp1)
+-				temp2 =	 re.sub("\s+", " ", temp2)
++				temp1 = re.sub(r" *[21][980]\d\d,* *", "", font.trademarkStr1)
++				temp2 =	 re.sub(r" *[21][980]\d\d,* *", "", font1.trademarkStr1)
++				temp1 = re.sub(r"\s+", " ", temp1)
++				temp2 =	 re.sub(r"\s+", " ", temp2)
+--- a/python/afdko/proofpdf.py
++++ b/python/afdko/proofpdf.py
+@@ -611 +611 @@
+-				raise OptionParseError("Option Error: in \" -select_hints %s\,  one of the indices in the argument list is not an integer." %   sys.argv[i])
++				raise OptionParseError("Option Error: in \" -select_hints %s\",  one of the indices in the argument list is not an integer." %   sys.argv[i])

@@ -1,0 +1,14 @@
+Description: Use system library of vk_mem_alloc.h.
+Forwarded: not-needed
+Author: Filip Strömbäck <filip@fprg.se>
+--- a/src/gpu/vk/vulkanmemoryallocator/VulkanMemoryAllocatorWrapper.h
++++ b/src/gpu/vk/vulkanmemoryallocator/VulkanMemoryAllocatorWrapper.h
+@@ -45,7 +45,7 @@
+ #pragma clang diagnostic ignored "-Wc++98-compat-extra-semi"
+ #endif
+ 
+-#include "vk_mem_alloc.h"  // NO_G3_REWRITE
++#include <vk_mem_alloc.h>  // NO_G3_REWRITE
+ 
+ #if defined(__clang__)
+ #pragma clang diagnostic pop

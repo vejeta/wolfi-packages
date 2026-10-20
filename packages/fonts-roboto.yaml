@@ -7,7 +7,6 @@
 # Debian packaging: https://salsa.debian.org/fonts-team/fonts-roboto
 #
 # Conversion notes:
-# - build dependency 'py3-nototools' (Debian 'python3-nototools') not found in Wolfi; left out
 # - build dependency 'py3-vttlib' (Debian 'python3-vttlib') not found in Wolfi; left out
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
 package:
@@ -36,8 +35,7 @@ environment:
       - py3-pip
       - py3-wheel
       - fontmake
-      - python-as-3.13  # Debian: python-is-python3
-      # TODO(debian-to-melange): py3-nototools is not in Wolfi (Debian: python3-nototools); left out
+      - py3-supported-notofonttools  # Debian: python3-nototools
       - py3-supported-setuptools  # Debian: python3-setuptools
       # TODO(debian-to-melange): py3-vttlib is not in Wolfi (Debian: python3-vttlib); left out
       - coreutils
@@ -73,9 +71,9 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/truetype/roboto/unhinted"
-          mv "${{targets.destdir}}"/fonts/unhinted/static/RobotoCondensed-*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/roboto/unhinted/"
+          cp -a fonts/unhinted/static/RobotoCondensed-*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/roboto/unhinted/"
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF"
-          mv "${{targets.destdir}}"/fonts/unhinted/static/Roboto-*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/"
+          cp -a fonts/unhinted/static/Roboto-*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/"
 update:
   enabled: true
   github:
@@ -93,4 +91,5 @@ test:
         test -f /usr/share/doc/fonts-roboto/copyright
     - uses: python/import
       with:
+        python: python3
         imports: import fonts_roboto

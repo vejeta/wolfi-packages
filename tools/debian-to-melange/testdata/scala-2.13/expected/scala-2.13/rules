@@ -1,0 +1,115 @@
+#!/usr/bin/make -f
+include /usr/share/dpkg/pkg-info.mk
+include /usr/share/dpkg/architecture.mk
+
+# Upstream version without the +ds repack suffix, and its series (2.13).
+VERSION = $(firstword $(subst +, ,$(DEB_VERSION_UPSTREAM)))
+SERIES = $(word 1,$(subst ., ,$(VERSION))).$(word 2,$(subst ., ,$(VERSION)))
+
+# Two-pass self-host build (no sbt):
+#   pass 1 STARR = scala-2.13 from the archive (Build-Depends), or, for the
+#                  one-time bootstrap with the pkg.scala.stage0 profile,
+#                  upstream's pinned STARR jars from $(SCALA_STAGE0)
+#   pass 2 STARR = the pass-1 output; only pass-2 jars are shipped
+# The 2.13.17 STARR cannot compile the 2.13.18 library on JDK >= 26
+# (Comparator max/min clash), so the stage0 build uses JDK 25; 2.13.18 itself
+# handles newer JDKs, so normal builds use default-jdk.
+SCALA_STAGE0 ?= /usr/share/scala-2.13-stage0
+ifneq ($(filter pkg.scala.stage0,$(DEB_BUILD_PROFILES)),)
+STARR0_JARS = $(SCALA_STAGE0)/scala-library.jar $(SCALA_STAGE0)/scala-reflect.jar $(SCALA_STAGE0)/scala-compiler.jar
+export JAVA_HOME = /usr/lib/jvm/java-25-openjdk-$(DEB_HOST_ARCH)
+else
+STARR0_JARS = /usr/share/java/scala-library-$(SERIES).jar /usr/share/java/scala-reflect-$(SERIES).jar /usr/share/java/scala-compiler-$(SERIES).jar
+export JAVA_HOME = /usr/lib/jvm/default-java
+endif
+export PATH := $(JAVA_HOME)/bin:$(PATH)
+
+# Version-independent aliases of the build dependencies.
+ASM = /usr/share/maven-repo/org/scala-lang/modules/scala-asm/debian/scala-asm-debian.jar
+JLINE3 = /usr/share/java/jline3.jar
+
+SEED = $(CURDIR)/debian/starr0
+STARR1 = $(CURDIR)/debian/starr1
+OUT1 = $(CURDIR)/debian/buildout1
+OUT2 = $(CURDIR)/debian/buildout2
+J2 = $(OUT2)/jars
+MAN = $(CURDIR)/debian/manout
+DRV = sh debian/build-driver.sh
+CMDS = scala scalac scaladoc fsc scalap
+
+D = debian/scala-2.13
+DLIB = debian/scala-library-2.13
+SD = /usr/share/scala-$(SERIES)
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	# Stage the pass-1 STARR (build-time only, never shipped). The three
+	# jars are copied under the names the driver expects.
+	rm -rf $(SEED) && mkdir -p $(SEED)/lib
+	set -e; for j in $(STARR0_JARS); do \
+	  n=$$(basename $$j | sed -E 's/-$(SERIES)\.jar$$/.jar/'); \
+	  cp -L $$j $(SEED)/lib/$$n; \
+	done
+	# Pass 1: build the jars from that STARR.
+	$(DRV) $(CURDIR) $(SEED) $(ASM) $(JLINE3) $(OUT1) $(VERSION)
+	# Pass 2: self-host from the pass-1 jars.
+	rm -rf $(STARR1) && mkdir -p $(STARR1)/lib
+	cp $(OUT1)/jars/scala-library.jar $(OUT1)/jars/scala-reflect.jar \
+	   $(OUT1)/jars/scala-compiler.jar $(STARR1)/lib/
+	$(DRV) $(CURDIR) $(STARR1) $(ASM) $(JLINE3) $(OUT2) $(VERSION)
+	# Manual pages from upstream's sources in src/manual, compiled and run
+	# with the pass-2 compiler.
+	rm -rf $(MAN) && mkdir -p $(MAN)/classes
+	java -cp $(J2)/scala-library.jar:$(J2)/scala-reflect.jar:$(J2)/scala-compiler.jar:$(ASM) \
+	  scala.tools.nsc.Main -nowarn -d $(MAN)/classes -classpath $(J2)/scala-library.jar \
+	  src/manual/scala/tools/docutil/ManPage.scala \
+	  src/manual/scala/tools/docutil/EmitManPage.scala \
+	  src/manual/scala/man1/*.scala
+	set -e; for c in $(CMDS); do \
+	  java -cp $(MAN)/classes:$(J2)/scala-library.jar \
+	    scala.tools.docutil.EmitManPage scala.man1.$$c $(MAN)/$$c.1; \
+	done
+	# POMs for the Maven repository (installed by maven-repo-helper).
+	for p in scala-library scala-reflect scala-compiler; do \
+	  sed "s/@VERSION@/$(VERSION)/g" debian/poms/$$p.pom.xml.in > debian/poms/$$p.pom.xml; \
+	done
+
+override_dh_auto_test:
+
+override_dh_auto_install:
+	# scala-library, scala-reflect and scala-compiler are installed by
+	# maven-repo-helper (debian/*.poms) as /usr/share/java/<name>-$(VERSION).jar
+	# and in /usr/share/maven-repo; no unversioned names, which belong to
+	# the default Scala (the scala and scala-library packages).
+	install -d $(D)/usr/share/java
+	install -m644 $(J2)/scalap.jar $(D)/usr/share/java/scalap-$(VERSION).jar
+	install -d $(D)$(SD)/bin
+	install -m755 debian/scalac $(D)$(SD)/bin/scalac
+	install -m755 debian/scala-runner $(D)$(SD)/bin/scala
+	install -m755 debian/scaladoc $(D)$(SD)/bin/scaladoc
+	install -m755 debian/fsc $(D)$(SD)/bin/fsc
+	install -m755 debian/scalap-wrapper $(D)$(SD)/bin/scalap
+	install -d $(D)$(SD)/man/man1
+	set -e; for c in $(CMDS); do \
+	  install -m644 $(MAN)/$$c.1 $(D)$(SD)/man/man1/$$c.1; \
+	done
+	gzip -9n $(D)$(SD)/man/man1/*.1
+
+execute_after_dh_link:
+	# Series links (<name>-2.13.jar), and the commands as <cmd>-2.13.
+	dh_link -pscala-library-2.13 \
+	  usr/share/java/scala-library-$(VERSION).jar usr/share/java/scala-library-$(SERIES).jar \
+	  usr/share/java/scala-reflect-$(VERSION).jar usr/share/java/scala-reflect-$(SERIES).jar
+	dh_link -pscala-2.13 \
+	  usr/share/java/scala-compiler-$(VERSION).jar usr/share/java/scala-compiler-$(SERIES).jar \
+	  usr/share/java/scalap-$(VERSION).jar usr/share/java/scalap-$(SERIES).jar
+	set -e; for c in $(CMDS); do \
+	  dh_link -pscala-2.13 $(SD)/bin/$$c usr/bin/$$c-$(SERIES); \
+	  dh_link -pscala-2.13 $(SD)/man/man1/$$c.1.gz usr/share/man/man1/$$c-$(SERIES).1.gz; \
+	done
+
+override_dh_auto_clean:
+	rm -rf debian/buildout1 debian/buildout2 debian/starr0 debian/starr1 \
+	  debian/manout debian/poms/*.pom.xml

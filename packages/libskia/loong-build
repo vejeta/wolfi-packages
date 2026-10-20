@@ -1,0 +1,27 @@
+Description: Patches to make loong64 build work with GCC.
+Author: Filip Strömbäck <filip@fprg.se>
+Forwarded: https://skia-review.googlesource.com/c/skia/+/1199836
+--- a/gn/skia/BUILD.gn
++++ b/gn/skia/BUILD.gn
+@@ -147,6 +147,9 @@
+       "-mlsx",
+       "-Wno-switch-default",
+     ]
++    if (!is_clang && !is_win) {
++      cflags += [ "-flax-vector-conversions" ]
++    }
+   }
+ 
+   if (malloc != "" && !is_win) {
+--- a/src/opts/SkOpts_SetTarget.h
++++ b/src/opts/SkOpts_SetTarget.h
+@@ -139,6 +139,9 @@
+ 
+         #if defined(__clang__)
+           #pragma clang attribute push(__attribute__((target("lasx"))), apply_to=function)
++        #elif defined(__GNUC__)
++          #pragma GCC push_options
++          #pragma GCC target("lsx,lasx")
+         #endif
+ 
+     #else

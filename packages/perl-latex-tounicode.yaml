@@ -41,13 +41,13 @@ pipeline:
   - uses: autoconf/make
   - uses: autoconf/make-install
   - uses: perl/cleanup
+  - name: From debian/rules execute_before_dh_installman
+    runs: |
+      make -f Makefile.TDS ltx2unitxt.1
   - name: Install files
     runs: |
       install -Dm644 ltx2unitxt.1 -t "${{targets.destdir}}/usr/share/man/man1"
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/perl-latex-tounicode
-  - name: From debian/rules execute_before_dh_installman
-    runs: |
-      make -f Makefile.TDS ltx2unitxt.1
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do

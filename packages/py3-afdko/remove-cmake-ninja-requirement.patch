@@ -1,0 +1,23 @@
+From: =?utf-8?b?IllhbyBXZWkgKOmtj+mKmOW7tyki?= <mwei@debian.org>
+Date: Sat, 10 Jul 2021 17:48:55 +0800
+Subject: Remove ninja and cmake requirement from setup_requires
+
+---
+ setup.py | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/setup.py b/setup.py
+index 79712cc..5b77117 100644
+--- a/setup.py
++++ b/setup.py
+@@ -198,9 +198,7 @@ def main():
+           setup_requires=[
+               'wheel',
+               'setuptools_scm',
+-              'scikit-build',
+-              'cmake',
+-              'ninja'
++              'scikit-build'
+           ],
+           tests_require=[
+               'pytest',

@@ -1,0 +1,30 @@
+From: Boyuan Yang <byang@debian.org>
+Date: Mon, 16 Feb 2026 20:12:45 -0500
+Subject: Fix test_set_axis_range passing int where Cython expects float
+
+The set_axis_range Cython method declares def_value as float|None, which
+in Cython is a strict type check and does not accept int. Two test
+parametrizations passed int literals (100, 300) instead of floats (100.0,
+300.0), causing TypeError at runtime.
+
+Last-Update: 2026-02-16
+Forwarded: https://github.com/harfbuzz/uharfbuzz/issues/278
+---
+ tests/test_uharfbuzz.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/tests/test_uharfbuzz.py b/tests/test_uharfbuzz.py
+index 5ccf5e6..09c2542 100644
+--- a/tests/test_uharfbuzz.py
++++ b/tests/test_uharfbuzz.py
+@@ -1767,8 +1767,8 @@ class TestSubsetInput:
+         [
+             ["wght", None, None, None],
+             ["wght", 100.0, 400.0, 200.0],
+-            ["wght", None, 300.0, 100],
+-            ["wght", None, None, 300],
++            ["wght", None, 300.0, 100.0],
++            ["wght", None, None, 300.0],
+             ["wght", 10.0, None, 50.0],
+             ["wght", None, None, 50.0],
+             ["wght", 10.0, None, None],

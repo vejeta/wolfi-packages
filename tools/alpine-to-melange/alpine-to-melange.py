@@ -308,6 +308,17 @@ def glob_regex(pattern):
 # Conversion
 # ==========================================================================
 
+def cargo_lock(tarball):
+    """The top-level Cargo.lock of a source tarball, or None."""
+    import io
+    import tarfile
+    with tarfile.open(fileobj=io.BytesIO(tarball)) as tar:
+        for m in tar:
+            if m.isfile() and re.match(r"^[^/]+/Cargo\.lock$", m.name):
+                return tar.extractfile(m).read().decode("utf-8", "replace")
+    return None
+
+
 def applied_patches(tarball, patches):
     """The patches (name -> text) that the source tarball already contains: their reverse
     applies (patch -R --dry-run) to the files they touch, extracted from the tarball."""
@@ -650,6 +661,21 @@ class Converter:
 
     # -- main ----------------------------------------------------------------
 
+    def openssl_sys_supports_openssl4(self, apk, sources):
+        """Whether the Cargo.lock of the main tarball pins openssl-sys 0.9.114 or later,
+        the first release that builds against OpenSSL 4 (sequoia-sq 1.4.1: 0.9.117;
+        its build dependency capnproto-dev pulls in openssl-dev, which conflicts with
+        openssl-3.6-dev). Unknown without --download."""
+        remote = [apk.expand(u) for _f, u in sources if u]
+        if not getattr(self.args, "download", False) or not remote:
+            return False
+        try:
+            lock = cargo_lock(http_get(remote[0]))
+        except Exception:
+            return False
+        m = re.search(r'name = "openssl-sys"\nversion = "0\.9\.(\d+)"', lock or "")
+        return bool(m) and int(m.group(1)) >= 114
+
     def convert(self):
         apk, a = self.apk, self.args
         self.name = name = a.name or apk.get("pkgname")
@@ -741,7 +767,8 @@ class Converter:
             d for d in self.map_deps(build_names, "build")
             if (d.value if isinstance(d, C) else d) not in ("build-base", "busybox", "bash")]
         plain = [d.value if isinstance(d, C) else d for d in env_pkgs]
-        if "rust" in plain and "openssl-dev" in plain and self.wolfi.has(RUST_OPENSSL):
+        if "rust" in plain and "openssl-dev" in plain and self.wolfi.has(RUST_OPENSSL) and \
+                not self.openssl_sys_supports_openssl4(apk, sources):
             # the openssl-sys crate supports a new OpenSSL major only in later
             # releases than the Cargo.lock of most programs pins
             env_pkgs = [C(RUST_OPENSSL, "Alpine: openssl-dev; openssl-sys predates OpenSSL 4") if

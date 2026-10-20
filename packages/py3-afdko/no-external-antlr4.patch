@@ -1,0 +1,55 @@
+From: =?utf-8?b?IllhbyBXZWkgKOmtj+mKmOW7tyki?= <mwei@debian.org>
+Date: Sat, 10 Jul 2021 18:06:59 +0800
+Subject: Do not use external antlr4 to generate parser
+
+---
+ CMakeLists.txt                       | 10 +++++-----
+ c/makeotf/lib/hotconv/CMakeLists.txt |  8 ++++++--
+ 2 files changed, 11 insertions(+), 7 deletions(-)
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -36,11 +36,11 @@
+ # https://www.antlr.org/download/antlr4-cpp-runtime-4.9.3-source.zip
+ # set(ANTLR4_ZIP_REPOSITORY "/path_to_antlr4_archive/a4.zip")
+ 
+-add_definitions(-DANTLR4CPP_STATIC)
+-set(ANTLR4_WITH_STATIC_CRT OFF)
+-# 4.9.3 is the latest ANTLR4 version
+-set(ANTLR4_TAG tags/4.9.3)
+-include(ExternalAntlr4Cpp)
++#add_definitions(-DANTLR4CPP_STATIC)
++#set(ANTLR4_WITH_STATIC_CRT OFF)
++## 4.9.3 is the latest ANTLR4 version
++#set(ANTLR4_TAG tags/4.9.3)
++#include(ExternalAntlr4Cpp)
+ 
+ 
+ if (DEFINED ENV{FORCE_BUILD_LIBXML2})
+--- a/c/makeotf/lib/hotconv/CMakeLists.txt
++++ b/c/makeotf/lib/hotconv/CMakeLists.txt
+@@ -67,9 +67,13 @@
+     winansi.h
+ )
+ 
++SET(ANTLR4_NAMES antlr4-runtime)
++find_library(ANTLR4_LIBRARY NAMES ${ANTLR4_NAMES})
++set(ANTLR4_INCLUDE_DIR /usr/include/antlr4-runtime)
++
+ set_property(TARGET hotconv PROPERTY C_STANDARD 99)
+-target_include_directories(hotconv PRIVATE AFTER $<$<COMPILE_LANGUAGE:CXX>:${ANTLR4_INCLUDE_DIRS}>)
+-target_link_libraries(hotconv PUBLIC antlr4_static)
++target_include_directories(hotconv PRIVATE AFTER $<$<COMPILE_LANGUAGE:CXX>:${ANTLR4_INCLUDE_DIR}>)
++target_link_libraries(hotconv PRIVATE ${ANTLR4_LIBRARY})
+ 
+ target_link_libraries(hotconv PUBLIC ${CHOSEN_LIBXML2_LIBRARY})
+ 
+--- a/c/makeotf/lib/cffread/CMakeLists.txt
++++ b/c/makeotf/lib/cffread/CMakeLists.txt
+@@ -8,6 +8,5 @@
+     add_dependencies(makeotf_cffread ${LIBXML2_TARGET})
+ endif()
+ 
+-target_link_libraries(makeotf_cffread PUBLIC antlr4_static)
+ 
+ target_compile_definitions(makeotf_cffread PRIVATE $<$<CONFIG:Debug>:CFF_DEBUG=1> CFF_T13_SUPPORT=0)

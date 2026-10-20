@@ -27,9 +27,11 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - busybox
-      - py3.12-fonttools-bin  # Debian: fonttools
-      - gftools
-      - python-as-3.13  # Debian: python-is-python3
+      - py3.13-fonttools-bin  # Debian: fonttools
+      - gftools  # Debian: gftools
+      - py3-supported-vttlib  # Debian: gftools
+      - python3  # Debian: python-is-python3
+      - bash  # the source has bash scripts; Essential in Debian
       - coreutils
       - findutils
 pipeline:
@@ -54,6 +56,8 @@ pipeline:
       bash sources/build.sh
   - name: Install files
     runs: |
+      mkdir -p "${{targets.destdir}}/usr/share/fonts/truetype/open-sans"
+      cp -a fonts/ttf/*.ttf "${{targets.destdir}}/usr/share/fonts/truetype/open-sans/"
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/fonts-open-sans/copyright
 update:
   enabled: true

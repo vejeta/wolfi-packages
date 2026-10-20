@@ -1,0 +1,57 @@
+From: Boyuan Yang <byang@debian.org>
+Date: Mon, 17 Jun 2024 12:55:30 -0400
+Subject: Purge usage of distutils
+
+---
+ setup.py | 15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/setup.py b/setup.py
+index 151c045..8818a26 100755
+--- a/setup.py
++++ b/setup.py
+@@ -2,9 +2,10 @@
+ 
+ import sys
+ from setuptools import setup, Command, find_packages
+-from distutils import log
++import logging
+ import contextlib
+ 
++log = logging.getLogger(__name__)
+ 
+ @contextlib.contextmanager
+ def capture_logger(name):
+@@ -49,8 +50,8 @@ class bump_version(Command):
+                 if part is None:
+                     part = attr
+                 else:
+-                    from distutils.errors import DistutilsOptionError
+-                    raise DistutilsOptionError(
++                    from setuptools.errors import OptionError
++                    raise OptionError(
+                         "version part options are mutually exclusive")
+         self.part = part or "patch"
+ 
+@@ -115,8 +116,8 @@ class release(bump_version):
+             import re
+             current_version = self.distribution.metadata.get_version()
+             if not re.search(r"\.dev[0-9]+", current_version):
+-                from distutils.errors import DistutilsSetupError
+-                raise DistutilsSetupError(
++                from setputools.errors import SetupError
++                raise SetupError(
+                     "current version (%s) has no '.devN' suffix.\n       "
+                     "Run 'setup.py bump_version', or use any of "
+                     "--major, --minor, --patch options" % current_version)
+@@ -131,8 +132,8 @@ class release(bump_version):
+                 message = sys.stdin.read()
+ 
+         if not message.strip():
+-            from distutils.errors import DistutilsSetupError
+-            raise DistutilsSetupError("release notes message is empty")
++            from setuptools.errors import SetupError
++            raise SetupError("release notes message is empty")
+ 
+         self.message = "Release {new_version}\n\n%s" % (message)
+ 
