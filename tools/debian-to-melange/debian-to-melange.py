@@ -1574,6 +1574,7 @@ class Converter:
         self.notes = []
         self.git_source = None  # (repository URL, tag prefix) from debian/watch
         self.aux = {}          # filename -> content (bytes or str) for <out>/<name>/
+        self.aux_exec = set()  # those of them that are executable in debian/
         self.install_excludes = {}  # Debian binary package (or "*") -> dh_install -X patterns
         self.rename = {}       # Debian binary package name -> melange package name
         self.upstream_installs = True  # does the build system install into destdir?
@@ -1691,6 +1692,8 @@ class Converter:
                 if os.path.isfile(path) and os.path.getsize(path) < 1 << 20 and f not in ("changelog", "control"):
                     with open(path, "rb") as fh:
                         self.aux[f] = fh.read()
+                    if os.access(path, os.X_OK):
+                        self.aux_exec.add(f)
             self.debian_dir = True
         for raw in lines:
             line = raw.strip()
@@ -1757,6 +1760,8 @@ class Converter:
                     return m.group(0)
                 with open(path, "rb") as fh:
                     self.aux[os.path.basename(rel)] = fh.read()
+                if os.access(path, os.X_OK):
+                    self.aux_exec.add(os.path.basename(rel))
                 return "{}/{}".format(name, os.path.basename(rel))
             line = re.sub(r"(?<![\w/$.])debian/([\w.+-]+)", aux, line)
             line = line.replace("${{targets.destdir}}//", "${{targets.destdir}}/")
@@ -2474,7 +2479,9 @@ class Converter:
             or bool(install_override and any("${{targets.destdir}}" in l or l == self.PIPELINE_MARK
                                              for l in install_override))
             # the ocaml_dune steps install into destdir unless an override does it
-            or (bs == "ocaml_dune" and not install_override))
+            or (bs == "ocaml_dune" and not install_override)
+            # debian/tmp is a link to destdir when Debian's files are kept in debian/
+            or getattr(self, "debian_dir", False))
         if ported.get("override_dh_auto_configure"):
             # several build directories: configure each as debian/rules does
             if bs == "autoconf" and self.needs_autoreconf(source):
@@ -2886,7 +2893,12 @@ class Converter:
                     d=self.RECIPE_FILES, files=files, n=name)}
         if getattr(self, "debian_dir", False):
             # debian/rules works on files in debian/ by computed names
-            move["runs"] += "mkdir -p debian && cp -a {}/. debian/\n".format(self.RECIPE_FILES)
+            move["runs"] += ("mkdir -p debian && cp -a {}/. debian/\n"
+                             "# the scripts are executable in Debian's tree\n"
+                             "for f in debian/*; do [ -f \"$f\" ] && head -c2 \"$f\" | grep -q '#!' && chmod +x \"$f\"; done\n"
+                             "# what Debian's scripts install into debian/tmp is the package's\n"
+                             "mkdir -p \"${{{{targets.destdir}}}}\" && ln -sfn \"${{{{targets.destdir}}}}\" debian/tmp\n"
+                             ).format(self.RECIPE_FILES)
         # first: the sources may contain a file named like the directory
         return [move] + steps
 
@@ -3620,7 +3632,14 @@ def watch_tarball_urls(watch, source, version):
     pat = re.search(r"(?mi)^Matching-Pattern:\s*(\S+)", watch)
     if src and pat and not re.search(r"(?mi)^Mode:\s*git", watch):
         # debian/watch v5: Source (a page) and Matching-Pattern (relative to it)
-        url = urllib.parse.urljoin(src.group(1).split("?", 1)[0], pat.group(1))
+        base, rel = src.group(1).split("?", 1)[0], pat.group(1)
+        # (by hand: urljoin takes the regex's [...] for an IPv6 host)
+        if re.match(r"^https?://", rel):
+            url = rel
+        elif rel.startswith("/"):
+            url = re.match(r"^https?://[^/]+", base).group(0) + rel
+        else:
+            url = base.rsplit("/", 1)[0] + "/" + rel
         url = url.replace("@PACKAGE@", source).replace("@ANY_VERSION@", version)
         exts = [""]
         if url.endswith("@ARCHIVE_EXT@"):
@@ -3816,7 +3835,7 @@ def spdx_header(license_id, author):
     return lines + [""]
 
 
-def write_output(name, recipe, header, aux, out, to_stdout):
+def write_output(name, recipe, header, aux, out, to_stdout, aux_exec=()):
     text = "\n".join(["# " + l if l else "#" for l in header]) + "\n"
     text += "\n".join(emit(recipe)) + "\n"
     if to_stdout:
@@ -3833,6 +3852,7 @@ def write_output(name, recipe, header, aux, out, to_stdout):
             mode = "wb" if isinstance(content, bytes) else "w"
             with open(os.path.join(auxdir, fname), mode, **({} if mode == "wb" else {"encoding": "utf-8"})) as fh:
                 fh.write(content)
+            os.chmod(os.path.join(auxdir, fname), 0o755 if fname in aux_exec else 0o644)
     print("wrote {}{}".format(path, " and {}/".format(os.path.join(out, name)) if aux else ""), file=sys.stderr)
     return text
 
@@ -3882,7 +3902,7 @@ def main(argv=None):
         conv = Converter(tree, top, args, WolfiIndex(args.check_wolfi))
         name, recipe, header = conv.convert()
         header = spdx_header(args.spdx_license, args.author) + header
-        text = write_output(name, recipe, header, conv.aux, args.out, args.stdout)
+        text = write_output(name, recipe, header, conv.aux, args.out, args.stdout, conv.aux_exec)
         for n in conv.notes:
             print("note: " + n, file=sys.stderr)
         built = report_build(args, name)
