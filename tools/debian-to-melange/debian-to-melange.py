@@ -3295,6 +3295,14 @@ class Converter:
                 if doc.startswith("usr/doc/"):
                     cmds.append('rmdir "${{{{targets.destdir}}}}/{}" "${{{{targets.destdir}}}}/usr/doc" '
                                 '2>/dev/null || true'.format(os.path.dirname(doc.rstrip("/"))))
+            elif doc and self.upstream_installs and re.match(r"^doc/[^/]+/", doc):
+                # dh_installdocs looks in the source tree and in debian/tmp (opam-installer
+                # --prefix=debian/tmp leaves doc/<package> there)
+                cmds.append('mkdir -p "{0}"\nif ls -d {1} >/dev/null 2>&1; then\n  mv {1} "{0}/"\n'
+                            '  rmdir "${{{{targets.destdir}}}}/{2}" "${{{{targets.destdir}}}}/{3}" 2>/dev/null || true\n'
+                            'else\n  cp -a {4} "{0}/"\nfi'.format(
+                                docdir, shell_path("${{targets.destdir}}", doc), os.path.dirname(doc.rstrip("/")),
+                                doc.split("/", 1)[0], self.debian_file(doc)))
             elif doc:
                 # dh_installdocs takes them from the source tree; may be directories
                 cmds.append('mkdir -p "{0}"\ncp -a {1} "{0}/"'.format(docdir, self.debian_file(doc)))

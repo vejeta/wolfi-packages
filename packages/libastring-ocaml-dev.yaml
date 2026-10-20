@@ -55,7 +55,12 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libastring-ocaml-dev"
-      cp -a doc/astring/* "${{targets.destdir}}/usr/share/doc/libastring-ocaml-dev/"
+      if ls -d "${{targets.destdir}}"/doc/astring/* >/dev/null 2>&1; then
+        mv "${{targets.destdir}}"/doc/astring/* "${{targets.destdir}}/usr/share/doc/libastring-ocaml-dev/"
+        rmdir "${{targets.destdir}}/doc/astring" "${{targets.destdir}}/doc" 2>/dev/null || true
+      else
+        cp -a doc/astring/* "${{targets.destdir}}/usr/share/doc/libastring-ocaml-dev/"
+      fi
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libastring-ocaml-dev
 subpackages:
   - name: libastring-ocaml
