@@ -81,6 +81,10 @@ NAME_MAP = {
     "ghc": "ghc-bootstrap",
     "cabal-install": "cabal-install-bootstrap",
     "pandoc": "pandoc-cli",
+    # TeX Live: Debian's base and binaries packages have the DVI drivers (dvips),
+    # which Alpine's texlive (and this repository's) splits into texlive-dvi
+    "texlive-base": ["texlive", "texlive-dvi"],
+    "texlive-binaries": ["texlive", "texlive-dvi"],
     # OCaml: Wolfi's ocaml is the whole compiler and standard library, which
     # Debian splits; dune and findlib are packaged in Wolfi too
     # (ocamlopt assembles and links with gcc, and -output-obj with -lzstd: Debian's ocaml

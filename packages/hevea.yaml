@@ -21,7 +21,8 @@ package:
     runtime:
       - ghostscript
       - netpbm  # Wolfi Community Packages
-      - texlive  # Wolfi Community Packages (Debian: texlive-base)
+      - texlive  # Debian: texlive-base
+      - texlive-dvi  # Debian: texlive-base
       - imagemagick-7  # Debian: imagemagick
 environment:
   contents:
