@@ -56,7 +56,7 @@ pipeline:
       dune build -p ppxlib -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ppxlib
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" --etcdir=/etc --datadir=/usr/share/ocaml-dune/data --docdir=/usr/share/ocaml-dune/doc --mandir=/usr/share/ocaml-dune/man ppxlib
   - name: Install files
     runs: |
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libppxlib-ocaml-dev

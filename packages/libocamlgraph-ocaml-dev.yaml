@@ -65,8 +65,6 @@ environment:
       - libxslt  # Debian: xsltproc
       - po4a  # Wolfi Community Packages
       - ocaml-odoc  # Wolfi Community Packages
-      - coreutils
-      - findutils
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -83,13 +81,13 @@ pipeline:
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
       dune build -p ocamlgraph -j $(nproc) @install
-  - name: Install
-    runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ocamlgraph
   - name: From debian/rules execute_after_dh_auto_build
     runs: |
       dune build -pocamlgraph @doc
       find _build/default/_doc/_html -name "*.dune-keep" -delete
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" ocamlgraph
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/lib/ocaml"
