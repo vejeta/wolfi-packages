@@ -112,7 +112,7 @@ melange test packages/<name>.yaml --arch x86_64 \
 ```
 
 If your package depends on others from this repository, build those first (or
-add `https://downloads.sourceforge.net/project/wolfi` with
+add `https://wolfi.vejeta.com` with
 `--repository-append` and its key with `--keyring-append`).
 
 ## 5. Pull request checklist

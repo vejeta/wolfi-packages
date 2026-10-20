@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# https://wolfi.vejeta.com is the address users configure; it redirects to where
+# the packages are stored (SourceForge). Check that both indexes and the signing
+# key are reachable through it, every week and when the documentation changes.
+name: Repository URL
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - 'README.md'
+      - '.github/workflows/repository-url.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: wolfi.vejeta.com serves the repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Indexes and key through the redirect
+        run: |
+          set -eu
+          base=https://wolfi.vejeta.com
+          for path in x86_64/APKINDEX.tar.gz aarch64/APKINDEX.tar.gz keys/vejeta-wolfi.rsa.pub; do
+            echo "== $base/$path"
+            # the address answers with a redirect to the storage
+            curl -fsSI "$base/$path" | grep -i '^location:'
+            # and the file behind it downloads
+            curl -fsSL --retry 3 -o "/tmp/$(basename "$path")" "$base/$path"
+            ls -l "/tmp/$(basename "$path")"
+          done
+          # the indexes are signed with this repository's key
+          tar -tzf /tmp/APKINDEX.tar.gz | grep -qx '.SIGN.RSA.vejeta-wolfi.rsa.pub'
+          grep -q 'BEGIN PUBLIC KEY' /tmp/vejeta-wolfi.rsa.pub

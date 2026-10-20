@@ -416,10 +416,10 @@ jobs:
           ```bash
           # Add repository signing key
           wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
-            https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
+            https://wolfi.vejeta.com/keys/vejeta-wolfi.rsa.pub
 
           # Add repository to /etc/apk/repositories
-          echo "https://downloads.sourceforge.net/project/wolfi" >> /etc/apk/repositories
+          echo "https://wolfi.vejeta.com" >> /etc/apk/repositories
 
           # Update package index
           apk update

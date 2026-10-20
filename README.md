@@ -53,20 +53,27 @@ Scala libraries can be built from a dh-scala `scala-build` file with the
 Repository base URL and signing key:
 
 ```
-Repository: https://downloads.sourceforge.net/project/wolfi
-Key:        https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
+Repository: https://wolfi.vejeta.com
+Key:        https://wolfi.vejeta.com/keys/vejeta-wolfi.rsa.pub
 Browse:     https://sourceforge.net/projects/wolfi/files/
 ```
 
 `apk`, melange and apko append the architecture (`x86_64/`, `aarch64/`) to the
 base URL automatically.
 
+`wolfi.vejeta.com` is the repository's address: it redirects to where the
+packages are stored, SourceForge today, so the storage can change without
+changing the address. Systems set up with
+`https://downloads.sourceforge.net/project/wolfi` keep working; switching
+them to `https://wolfi.vejeta.com` (same key) makes them independent of the
+storage.
+
 ### On a running Wolfi system
 
 ```bash
 wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
-  https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
-echo "https://downloads.sourceforge.net/project/wolfi" >> /etc/apk/repositories
+  https://wolfi.vejeta.com/keys/vejeta-wolfi.rsa.pub
+echo "https://wolfi.vejeta.com" >> /etc/apk/repositories
 apk update
 apk add mpv stremio        # or stremio-qt5 for the Qt5 shell
 ```
@@ -92,10 +99,10 @@ environment:
   contents:
     keyring:
       - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-      - https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
+      - https://wolfi.vejeta.com/keys/vejeta-wolfi.rsa.pub
     repositories:
       - https://packages.wolfi.dev/os
-      - https://downloads.sourceforge.net/project/wolfi
+      - https://wolfi.vejeta.com
     packages:
       - build-base
       - mpv-dev
@@ -111,10 +118,10 @@ pipeline:
 contents:
   keyring:
     - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
-    - https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
+    - https://wolfi.vejeta.com/keys/vejeta-wolfi.rsa.pub
   repositories:
     - https://packages.wolfi.dev/os
-    - https://downloads.sourceforge.net/project/wolfi
+    - https://wolfi.vejeta.com
   packages:
     - wolfi-base
     - mpv
@@ -132,8 +139,8 @@ archs:
 FROM cgr.dev/chainguard/wolfi-base
 
 RUN wget -O /etc/apk/keys/vejeta-wolfi.rsa.pub \
-      https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub \
- && echo "https://downloads.sourceforge.net/project/wolfi" >> /etc/apk/repositories \
+      https://wolfi.vejeta.com/keys/vejeta-wolfi.rsa.pub \
+ && echo "https://wolfi.vejeta.com" >> /etc/apk/repositories \
  && apk add --no-cache mpv
 ```
 
@@ -257,15 +264,16 @@ official Wolfi starts shipping a package, the recipe here is retired (see
 ## Infrastructure
 
 ```
-GitHub Actions                       SourceForge
-  melange build, in waves      --->  signed APKs + APKINDEX
-  RSA signing, APKINDEX              https://sourceforge.net/projects/wolfi/
+GitHub Actions                       SourceForge                                  wolfi.vejeta.com
+  melange build, in waves      --->  signed APKs + APKINDEX               <---  302 redirect: the address
+  RSA signing, APKINDEX              https://sourceforge.net/projects/wolfi/      users configure
   rsync over SSH
 ```
 
 - [`build-packages.yml`](.github/workflows/build-packages.yml): builds the changed recipes, or those given in `package_filter`, in dependency order.
 - [`sign-and-publish.yml`](.github/workflows/sign-and-publish.yml): signs, indexes and publishes a build run (full or `incremental=true`).
 - [`cleanup-old-packages.yml`](.github/workflows/cleanup-old-packages.yml): removes superseded versions.
+- [`repository-url.yml`](.github/workflows/repository-url.yml): checks every week that `wolfi.vejeta.com` serves the indexes and the key.
 
 ```bash
 # Build one package and publish it incrementally
@@ -275,6 +283,9 @@ gh workflow run sign-and-publish.yml -f run_id=<RUN_ID> -f incremental=true -R v
 
 SourceForge hosts the packages because it has no per-file size limit
 (qt5-qtwebengine is about 300 MB) and a mirror network.
+`wolfi.vejeta.com` (Apache, `Redirect 302 / https://downloads.sourceforge.net/project/wolfi/`)
+is the address in the documentation, so moving the storage does not change
+what users have configured.
 
 ## Contact
 
