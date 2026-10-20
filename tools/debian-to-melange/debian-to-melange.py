@@ -1537,6 +1537,16 @@ TEX_SETUP_STEP = {"name": "TeX Live set up (the install triggers of texmf-dist a
     "fmtutil-sys --all >/dev/null 2>&1 || true\n")}
 
 
+# Debian has the wide-character curses headers under include/ncursesw as well; Wolfi only in include
+NCURSESW_STEP = {"name": "Debian's include/ncursesw", "runs": (
+    "mkdir -p /usr/include/ncursesw\n"
+    "for h in curses.h ncurses.h ncurses_dll.h term.h term_entry.h termcap.h tic.h unctrl.h \\\n"
+    "         panel.h menu.h form.h eti.h etip.h cursesapp.h cursesf.h cursesm.h cursesp.h cursesw.h cursslk.h; do\n"
+    "  [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h\n"
+    "done\n"
+    "true\n")}
+
+
 def uses_tex(packages):
     """Does an environment install TeX Live (its formats need the setup step)?"""
     return any(re.match(r"^(texlive|texmf-dist)(-|$)", d.value if isinstance(d, C) else d)
@@ -2412,13 +2422,8 @@ class Converter:
                for alts in parse_relations(source.get("build-depends"))):
             # (also for the libraries built that way: their headers include <ncursesw/curses.h>)
             # Debian has the wide-character headers under include/ncursesw as well; Wolfi only in include
-            pipeline.append({"name": "Debian's include/ncursesw", "runs": (
-                "mkdir -p /usr/include/ncursesw\n"
-                "for h in curses.h ncurses.h ncurses_dll.h term.h term_entry.h termcap.h tic.h unctrl.h \\\n"
-                "         panel.h menu.h form.h eti.h etip.h cursesapp.h cursesf.h cursesm.h cursesp.h cursesw.h cursslk.h; do\n"
-                "  [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h\n"
-                "done\n"
-                "true\n")})
+            pipeline.append(dict(NCURSESW_STEP))
+            self.uses_ncursesw = True
         if uses_tex(env_pkgs):
             pipeline.append(dict(TEX_SETUP_STEP))
         for alts in parse_relations(source.get("build-depends")):
@@ -3575,15 +3580,20 @@ class Converter:
             if "AUTOPKGTEST_NORMAL_USER" in st["runs"]:
                 # autopkgtest's unprivileged user: melange's test environment has "build"
                 # and / as on a Debian testbed (0755): sandboxes may make it 0700
+                # and the source tree readable by that user, as autopkgtest leaves it
                 st["runs"] = st["runs"].replace(env, env + "export AUTOPKGTEST_NORMAL_USER=build\n"
                                                 "chmod 755 / 2>/dev/null || true\n"
-                                                'chmod 1777 "$AUTOPKGTEST_TMP"\n', 1)
+                                                'chmod 1777 "$AUTOPKGTEST_TMP"\n'
+                                                'chmod -R a+rX "$PWD" 2>/dev/null || true\n', 1)
             for tool, pkgs in TEST_TOOLS.items():
                 if re.search(r"(^|[\s;&|(`])" + re.escape(tool) + r"\b", st["runs"], re.M):
                     packages += [p for p in pkgs if p not in [q.value if isinstance(q, C) else q for q in packages]]
         if real:
             self.notes.append("autopkgtests converted to the test pipeline ({} steps)".format(len(real)))
             steps.insert(0, dpkg_database_step(aliases, self.main_package))
+            if getattr(self, "uses_ncursesw", False):
+                # the tests build against the package's headers, which include <ncursesw/curses.h>
+                steps.insert(1, dict(NCURSESW_STEP))
             if any(re.search(r"apt-cache policy|apt_pkg\.SourceList|/etc/apt/sources\.list|/etc/debian_version",
                              st.get("runs", "")) for st in real):
                 # the test reads the testbed's apt sources (the distribution it runs on) and

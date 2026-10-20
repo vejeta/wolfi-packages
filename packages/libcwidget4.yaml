@@ -7,8 +7,6 @@
 # Debian packaging: https://salsa.debian.org/cwidget-team/cwidget
 #
 # Conversion notes:
-# - build dependency 'ikiwiki' (Debian 'ikiwiki') not found in Wolfi; left out
-# - build dependency 'perl-html-scrubber' (Debian 'libhtml-scrubber-perl') not found in Wolfi; left out
 # - build dependency 'perl-image-magick' (Debian 'libimage-magick-perl') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/c/cwidget/cwidget_0.5.18.orig.tar.xz), which disappears from the pool when Debian updates
 # - runtime dependency 'libjs-jquery': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
@@ -34,8 +32,8 @@ environment:
       - ncurses-dev  # Debian: libncurses-dev
       - libsigc++-dev  # Wolfi Community Packages (Debian: libsigc++-2.0-dev)
       - doxygen
-      # TODO(debian-to-melange): ikiwiki is not in Wolfi (Debian: ikiwiki); left out
-      # TODO(debian-to-melange): perl-html-scrubber is not in Wolfi (Debian: libhtml-scrubber-perl); left out
+      - ikiwiki  # Wolfi Community Packages
+      - perl-html-scrubber  # Wolfi Community Packages (Debian: libhtml-scrubber-perl)
       # TODO(debian-to-melange): perl-image-magick is not in Wolfi (Debian: libimage-magick-perl); left out
       - coreutils
       - findutils
@@ -187,9 +185,18 @@ test:
           # po-debconf's translatable fields (_Description, __Choices) in the C locale
           [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/libcwidget4.templates" && break
         done
+    - name: 'Debian''s include/ncursesw'
+      runs: |
+        mkdir -p /usr/include/ncursesw
+        for h in curses.h ncurses.h ncurses_dll.h term.h term_entry.h termcap.h tic.h unctrl.h \
+                 panel.h menu.h form.h eti.h etip.h cursesapp.h cursesf.h cursesm.h cursesp.h cursesw.h cursslk.h; do
+          [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h
+        done
+        true
     - name: 'autopkgtest: compile-example-testcwidget'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         # Author: Manuel A. Fernandez Montecelo <mafm@debian.org>
         #

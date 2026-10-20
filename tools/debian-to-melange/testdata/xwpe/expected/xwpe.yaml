@@ -147,6 +147,14 @@ test:
           # po-debconf's translatable fields (_Description, __Choices) in the C locale
           [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/xwpe.templates" && break
         done
+    - name: 'Debian''s include/ncursesw'
+      runs: |
+        mkdir -p /usr/include/ncursesw
+        for h in curses.h ncurses.h ncurses_dll.h term.h term_entry.h termcap.h tic.h unctrl.h \
+                 panel.h menu.h form.h eti.h etip.h cursesapp.h cursesf.h cursesm.h cursesp.h cursesw.h cursslk.h; do
+          [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h
+        done
+        true
     - name: 'autopkgtest: XWPE_TEST_WAIT_SCALE=3 WPE_BIN=/usr/bin/wpe python3 -m pytes'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
