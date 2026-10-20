@@ -58,7 +58,8 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libocplib-endian-ocaml-dev"
-      mv "${{targets.destdir}}"/usr/doc/ocplib-endian/* "${{targets.destdir}}/usr/share/doc/libocplib-endian-ocaml-dev/"
+      for f in "${{targets.destdir}}"/usr/doc/ocplib-endian/*; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/libocplib-endian-ocaml-dev/"; done
+      rm -rf "${{targets.destdir}}"/usr/doc/ocplib-endian/*
       rmdir "${{targets.destdir}}/usr/doc/ocplib-endian" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/libocplib-endian-ocaml-dev/copyright
   - name: Usr-merge (sbin into bin)

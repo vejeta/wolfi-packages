@@ -118,7 +118,8 @@ subpackages:
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libparmap-ocaml-dev"
-          mv "${{targets.destdir}}"/usr/doc/parmap/* "${{targets.contextdir}}/usr/share/doc/libparmap-ocaml-dev/"
+          for f in "${{targets.destdir}}"/usr/doc/parmap/*; do cp -a "$f" "${{targets.contextdir}}/usr/share/doc/libparmap-ocaml-dev/"; done
+          rm -rf "${{targets.destdir}}"/usr/doc/parmap/*
           rmdir "${{targets.destdir}}/usr/doc/parmap" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
     dependencies:
       runtime:

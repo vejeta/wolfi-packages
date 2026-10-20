@@ -52,7 +52,8 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libsexplib0-ocaml-dev"
-      mv "${{targets.destdir}}/usr/doc/sexplib0/README.md" "${{targets.destdir}}/usr/share/doc/libsexplib0-ocaml-dev/"
+      for f in "${{targets.destdir}}/usr/doc/sexplib0/README.md"; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/libsexplib0-ocaml-dev/"; done
+      rm -rf "${{targets.destdir}}/usr/doc/sexplib0/README.md"
       rmdir "${{targets.destdir}}/usr/doc/sexplib0" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libsexplib0-ocaml-dev
   - name: Usr-merge (sbin into bin)
@@ -80,7 +81,8 @@ subpackages:
           done
           true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libsexplib0-ocaml"
-          mv "${{targets.destdir}}"/usr/doc/sexplib0/* "${{targets.contextdir}}/usr/share/doc/libsexplib0-ocaml/"
+          for f in "${{targets.destdir}}"/usr/doc/sexplib0/*; do cp -a "$f" "${{targets.contextdir}}/usr/share/doc/libsexplib0-ocaml/"; done
+          rm -rf "${{targets.destdir}}"/usr/doc/sexplib0/*
           rmdir "${{targets.destdir}}/usr/doc/sexplib0" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
 update:
   enabled: true

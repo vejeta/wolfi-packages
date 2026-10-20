@@ -60,7 +60,8 @@ pipeline:
       mkdir -p "${{targets.destdir}}/usr/share/doc/libounit-ocaml-dev/examples"
       cp -a examples/* "${{targets.destdir}}/usr/share/doc/libounit-ocaml-dev/examples/"
       mkdir -p "${{targets.destdir}}/usr/share/doc/libounit-ocaml-dev"
-      mv "${{targets.destdir}}"/usr/doc/ounit2/* "${{targets.destdir}}/usr/share/doc/libounit-ocaml-dev/"
+      for f in "${{targets.destdir}}"/usr/doc/ounit2/*; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/libounit-ocaml-dev/"; done
+      rm -rf "${{targets.destdir}}"/usr/doc/ounit2/*
       rmdir "${{targets.destdir}}/usr/doc/ounit2" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.txt -t "${{targets.destdir}}"/usr/share/licenses/libounit-ocaml-dev
   - name: Usr-merge (sbin into bin)

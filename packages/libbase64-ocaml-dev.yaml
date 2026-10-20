@@ -54,7 +54,8 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libbase64-ocaml-dev"
-      mv "${{targets.destdir}}"/usr/doc/base64/* "${{targets.destdir}}/usr/share/doc/libbase64-ocaml-dev/"
+      for f in "${{targets.destdir}}"/usr/doc/base64/*; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/libbase64-ocaml-dev/"; done
+      rm -rf "${{targets.destdir}}"/usr/doc/base64/*
       rmdir "${{targets.destdir}}/usr/doc/base64" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libbase64-ocaml-dev
   - name: Usr-merge (sbin into bin)

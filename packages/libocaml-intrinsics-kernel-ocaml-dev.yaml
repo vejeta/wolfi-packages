@@ -51,7 +51,8 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libocaml-intrinsics-kernel-ocaml-dev"
-      mv "${{targets.destdir}}"/usr/doc/ocaml_intrinsics_kernel/* "${{targets.destdir}}/usr/share/doc/libocaml-intrinsics-kernel-ocaml-dev/"
+      for f in "${{targets.destdir}}"/usr/doc/ocaml_intrinsics_kernel/*; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/libocaml-intrinsics-kernel-ocaml-dev/"; done
+      rm -rf "${{targets.destdir}}"/usr/doc/ocaml_intrinsics_kernel/*
       rmdir "${{targets.destdir}}/usr/doc/ocaml_intrinsics_kernel" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libocaml-intrinsics-kernel-ocaml-dev
   - name: Usr-merge (sbin into bin)

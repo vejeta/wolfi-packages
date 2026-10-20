@@ -61,7 +61,8 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libyojson-ocaml-dev"
-      mv "${{targets.destdir}}"/usr/doc/yojson/* "${{targets.destdir}}/usr/share/doc/libyojson-ocaml-dev/"
+      for f in "${{targets.destdir}}"/usr/doc/yojson/*; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/libyojson-ocaml-dev/"; done
+      rm -rf "${{targets.destdir}}"/usr/doc/yojson/*
       rmdir "${{targets.destdir}}/usr/doc/yojson" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libyojson-ocaml-dev
   - name: Usr-merge (sbin into bin)

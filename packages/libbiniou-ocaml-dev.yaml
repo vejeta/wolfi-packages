@@ -62,7 +62,8 @@ pipeline:
     runs: |
       install -Dm644 .recipe-files/bdump.1 -t "${{targets.destdir}}/usr/share/man/man1"
       mkdir -p "${{targets.destdir}}/usr/share/doc/libbiniou-ocaml-dev"
-      mv "${{targets.destdir}}"/usr/doc/biniou/* "${{targets.destdir}}/usr/share/doc/libbiniou-ocaml-dev/"
+      for f in "${{targets.destdir}}"/usr/doc/biniou/*; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/libbiniou-ocaml-dev/"; done
+      rm -rf "${{targets.destdir}}"/usr/doc/biniou/*
       rmdir "${{targets.destdir}}/usr/doc/biniou" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/libbiniou-ocaml-dev
   - name: Usr-merge (sbin into bin)

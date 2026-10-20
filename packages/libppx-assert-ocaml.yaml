@@ -139,7 +139,8 @@ subpackages:
           done
           true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libppx-assert-ocaml-dev"
-          mv "${{targets.destdir}}"/usr/doc/ppx_assert/* "${{targets.contextdir}}/usr/share/doc/libppx-assert-ocaml-dev/"
+          for f in "${{targets.destdir}}"/usr/doc/ppx_assert/*; do cp -a "$f" "${{targets.contextdir}}/usr/share/doc/libppx-assert-ocaml-dev/"; done
+          rm -rf "${{targets.destdir}}"/usr/doc/ppx_assert/*
           rmdir "${{targets.destdir}}/usr/doc/ppx_assert" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
     dependencies:
       runtime:

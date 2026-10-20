@@ -58,7 +58,8 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libgraphics-ocaml-dev"
-      mv "${{targets.destdir}}"/usr/doc/graphics/* "${{targets.destdir}}/usr/share/doc/libgraphics-ocaml-dev/"
+      for f in "${{targets.destdir}}"/usr/doc/graphics/*; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/libgraphics-ocaml-dev/"; done
+      rm -rf "${{targets.destdir}}"/usr/doc/graphics/*
       rmdir "${{targets.destdir}}/usr/doc/graphics" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/libgraphics-ocaml-dev
   - name: Usr-merge (sbin into bin)

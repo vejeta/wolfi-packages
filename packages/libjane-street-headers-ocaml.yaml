@@ -103,7 +103,8 @@ subpackages:
           done
           true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libjane-street-headers-ocaml-dev"
-          mv "${{targets.destdir}}"/usr/doc/jane-street-headers/* "${{targets.contextdir}}/usr/share/doc/libjane-street-headers-ocaml-dev/"
+          for f in "${{targets.destdir}}"/usr/doc/jane-street-headers/*; do cp -a "$f" "${{targets.contextdir}}/usr/share/doc/libjane-street-headers-ocaml-dev/"; done
+          rm -rf "${{targets.destdir}}"/usr/doc/jane-street-headers/*
           rmdir "${{targets.destdir}}/usr/doc/jane-street-headers" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
     dependencies:
       runtime:

@@ -56,7 +56,8 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/librresult-ocaml-dev"
-      mv "${{targets.destdir}}"/usr/doc/rresult/* "${{targets.destdir}}/usr/share/doc/librresult-ocaml-dev/"
+      for f in "${{targets.destdir}}"/usr/doc/rresult/*; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/librresult-ocaml-dev/"; done
+      rm -rf "${{targets.destdir}}"/usr/doc/rresult/*
       rmdir "${{targets.destdir}}/usr/doc/rresult" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/librresult-ocaml-dev
 subpackages:

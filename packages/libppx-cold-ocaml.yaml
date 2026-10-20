@@ -106,7 +106,8 @@ subpackages:
           done
           true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libppx-cold-ocaml-dev"
-          mv "${{targets.destdir}}"/usr/doc/ppx_cold/* "${{targets.contextdir}}/usr/share/doc/libppx-cold-ocaml-dev/"
+          for f in "${{targets.destdir}}"/usr/doc/ppx_cold/*; do cp -a "$f" "${{targets.contextdir}}/usr/share/doc/libppx-cold-ocaml-dev/"; done
+          rm -rf "${{targets.destdir}}"/usr/doc/ppx_cold/*
           rmdir "${{targets.destdir}}/usr/doc/ppx_cold" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
     dependencies:
       runtime:

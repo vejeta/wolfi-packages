@@ -67,7 +67,8 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libtime-now-ocaml"
-      mv "${{targets.destdir}}/usr/doc/time_now/CHANGES.md" "${{targets.destdir}}/usr/share/doc/libtime-now-ocaml/"
+      for f in "${{targets.destdir}}/usr/doc/time_now/CHANGES.md"; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/libtime-now-ocaml/"; done
+      rm -rf "${{targets.destdir}}/usr/doc/time_now/CHANGES.md"
       rmdir "${{targets.destdir}}/usr/doc/time_now" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libtime-now-ocaml
   - name: Usr-merge (sbin into bin)

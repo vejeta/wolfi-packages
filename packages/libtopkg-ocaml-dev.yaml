@@ -73,7 +73,8 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libtopkg-ocaml-dev"
-      mv "${{targets.destdir}}"/usr/doc/topkg/* "${{targets.destdir}}/usr/share/doc/libtopkg-ocaml-dev/"
+      for f in "${{targets.destdir}}"/usr/doc/topkg/*; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/libtopkg-ocaml-dev/"; done
+      rm -rf "${{targets.destdir}}"/usr/doc/topkg/*
       rmdir "${{targets.destdir}}/usr/doc/topkg" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libtopkg-ocaml-dev
 update:

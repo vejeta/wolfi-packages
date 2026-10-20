@@ -78,7 +78,8 @@ pipeline:
     runs: |
       install -Dm644 .recipe-files/odoc.1 -t "${{targets.destdir}}/usr/share/man/man1"
       mkdir -p "${{targets.destdir}}/usr/share/doc/ocaml-odoc"
-      mv "${{targets.destdir}}"/usr/doc/odoc/* "${{targets.destdir}}/usr/share/doc/ocaml-odoc/"
+      for f in "${{targets.destdir}}"/usr/doc/odoc/*; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/ocaml-odoc/"; done
+      rm -rf "${{targets.destdir}}"/usr/doc/odoc/*
       rmdir "${{targets.destdir}}/usr/doc/odoc" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/ocaml-odoc
   - name: Usr-merge (sbin into bin)
@@ -134,7 +135,8 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libodoc-parser-ocaml-dev"
-          mv "${{targets.destdir}}"/usr/doc/odoc-parser/* "${{targets.contextdir}}/usr/share/doc/libodoc-parser-ocaml-dev/"
+          for f in "${{targets.destdir}}"/usr/doc/odoc-parser/*; do cp -a "$f" "${{targets.contextdir}}/usr/share/doc/libodoc-parser-ocaml-dev/"; done
+          rm -rf "${{targets.destdir}}"/usr/doc/odoc-parser/*
           rmdir "${{targets.destdir}}/usr/doc/odoc-parser" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
           [ -d "${{targets.destdir}}"/usr/lib/ocaml/odoc-parser ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/odoc-parser && find . -type f ! \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
             mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/odoc-parser/$(dirname "$p")

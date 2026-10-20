@@ -130,7 +130,8 @@ subpackages:
           done
           true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libqcheck-ocaml-dev"
-          mv "${{targets.destdir}}"/usr/doc/qcheck/* "${{targets.contextdir}}/usr/share/doc/libqcheck-ocaml-dev/"
+          for f in "${{targets.destdir}}"/usr/doc/qcheck/*; do cp -a "$f" "${{targets.contextdir}}/usr/share/doc/libqcheck-ocaml-dev/"; done
+          rm -rf "${{targets.destdir}}"/usr/doc/qcheck/*
           rmdir "${{targets.destdir}}/usr/doc/qcheck" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
     dependencies:
       runtime:

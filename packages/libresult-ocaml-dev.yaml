@@ -54,7 +54,8 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libresult-ocaml-dev"
-      mv "${{targets.destdir}}"/usr/doc/result/* "${{targets.destdir}}/usr/share/doc/libresult-ocaml-dev/"
+      for f in "${{targets.destdir}}"/usr/doc/result/*; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/libresult-ocaml-dev/"; done
+      rm -rf "${{targets.destdir}}"/usr/doc/result/*
       rmdir "${{targets.destdir}}/usr/doc/result" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/libresult-ocaml-dev
   - name: Usr-merge (sbin into bin)
