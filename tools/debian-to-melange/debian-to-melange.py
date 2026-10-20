@@ -1439,11 +1439,71 @@ SCRIPT_DEPS = {}  # script label -> packages its commands come from
 KEEP_DEBCONF = set()  # packages whose maintainer scripts keep using debconf
 
 
+SYSTEM_USERS = []  # (user, home, group) that the maintainer scripts of the converted package create
+
+
+def system_user(words):
+    """Debian's adduser --system [--group] [--home H] [--ingroup G] NAME: (name, home, group), or None."""
+    if "--system" not in words:
+        return None
+    name, home, group, it = None, "/nonexistent", None, iter(words)
+    for w in it:
+        if w in ("--home", "--ingroup", "--shell", "--gecos", "--uid", "--gid", "--comment"):
+            val = next(it, "")
+            if w == "--home":
+                home = val
+            elif w == "--ingroup":
+                group = val
+        elif w.startswith("--home="):
+            home = w.split("=", 1)[1]
+        elif w.startswith("--ingroup="):
+            group = w.split("=", 1)[1]
+        elif w == "--group":
+            group = True
+        elif not w.startswith("-"):
+            name = w
+    if not name or "$" in name:
+        return None
+    return name, home, (name if group is True else group)
+
+
+def useradd_command(user):
+    """The shadow commands for one system user, as Debian's adduser --system makes it."""
+    name, home, group = user
+    cmds = []
+    if group:
+        cmds.append("{{ getent group {0} >/dev/null || groupadd --system {0}; }}".format(group))
+    cmds.append("{{ getent passwd {0} >/dev/null || useradd --system --home-dir {1} --no-create-home "
+                "--shell /usr/sbin/nologin{2} {0}; }}".format(name, home, " --gid " + group if group else ""))
+    return " && ".join(cmds)
+
+
+def convert_adduser(text):
+    """adduser --system ... (Debian's adduser, options busybox and shadow lack) -> useradd."""
+    def repl(m):
+        logical = m.group(2).replace("\\\n", " ")
+        parts = re.split(r"(\|\||&&|;|\|)", logical, maxsplit=1)
+        cmd, sep, rest = (parts + ["", ""])[:3]
+        try:
+            words = shlex.split(cmd)
+        except ValueError:
+            return m.group(0)
+        user = system_user(words)
+        if not user:
+            return m.group(0)
+        SYSTEM_USERS.append(user)
+        return m.group(1) + "(" + useradd_command(user) + ")" + ((" " + sep + rest) if sep else "")
+    return re.sub(r"(?m)^([ \t]*)adduser\b((?:[^\n\\]|\\\n|\\.)*)", repl, text)
+
+
 def convert_script(text, kind, pkg, templates, conffile, notes):
     """Rewrite a Debian maintainer script body for apk."""
     names = {t["name"]: env_name(pkg, t["name"]) for t in templates}
     body = []
     uses_debconf = False
+    if re.search(r"(?m)^\s*adduser\b(?:.*\\\n)*.*--system", text):
+        text = convert_adduser(text)
+        SCRIPT_DEPS.setdefault(kind, set()).add("shadow")
     for line in text.splitlines():
         s = line.strip()
         if s == "#DEBHELPER#":
@@ -1678,6 +1738,7 @@ class Converter:
         self.wolfi = wolfi
         self.notes = []
         self.git_source = None  # (repository URL, tag prefix) from debian/watch
+        SYSTEM_USERS.clear()
         self.aux = {}          # filename -> content (bytes or str) for <out>/<name>/
         self.aux_exec = set()  # those of them that are executable in debian/
         self.install_excludes = {}  # Debian binary package (or "*") -> dh_install -X patterns
@@ -3881,6 +3942,11 @@ class Converter:
                     return "(\n{}) || echo 'autopkgtest marked flaky failed (ignored)'\n".format(cmd)
                 if "skippable" in restrictions:
                     # Restrictions: skippable -- exit status 77 means the test was skipped
+                    if re.search(r"(^|[\s;&|(`])sudo\b", cmd, re.M):
+                        # the test regains root with sudo, which the sandbox's no_new_privs forbids (mmdebstrap)
+                        cmd = ("if grep -q '^NoNewPrivs:[[:space:]]*1' /proc/self/status; then\n"
+                               "  echo 'sudo cannot work here: the sandbox sets no_new_privs'; exit 77\n"
+                               "fi\n") + cmd
                     return ("rc=0\n(\n{}) || rc=$?\n"
                             "if [ $rc = 77 ]; then echo 'autopkgtest skipped (exit status 77)'; else exit $rc; fi\n").format(cmd)
                 return cmd
@@ -3928,6 +3994,13 @@ class Converter:
                     packages.append(C(dep, "used by the source's shell scripts; Essential in Debian"))
             self.notes.append("autopkgtests converted to the test pipeline ({} steps)".format(len(real)))
             steps.insert(0, dpkg_database_step(aliases, self.main_package))
+            users = list(dict.fromkeys(SYSTEM_USERS))
+            if users:
+                # the users the maintainer scripts create; melange test, like apko, does not run them (apt's _apt)
+                steps.insert(1, {"name": "System users of the maintainer scripts",
+                                 "runs": "\n".join(useradd_command(u) for u in users) + "\n"})
+                if "shadow" not in [q.value if isinstance(q, C) else q for q in packages]:
+                    packages.append(C("shadow", "useradd, for the users of the maintainer scripts"))
             if getattr(self, "uses_ncursesw", False):
                 # the tests build against the package's headers, which include <ncursesw/curses.h>
                 steps.insert(1, dict(NCURSESW_STEP))

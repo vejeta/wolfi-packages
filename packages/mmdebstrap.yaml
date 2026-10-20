@@ -212,6 +212,9 @@ test:
         chmod -R a+rX "$PWD" 2>/dev/null || true
         rc=0
         (
+        if grep -q '^NoNewPrivs:[[:space:]]*1' /proc/self/status; then
+          echo 'sudo cannot work here: the sandbox sets no_new_privs'; exit 77
+        fi
         set -exu
 
         # dump information about the autopkgtest runner

@@ -29,6 +29,7 @@ package:
         - CMake/FindLFS.cmake
   dependencies:
     runtime:
+      - shadow  # used by the maintainer scripts
       - sequoia-sqv  # Wolfi Community Packages (Debian: sqv)
       - libapt-pkg7.0
       - db  # libdb-5.3.so: unversioned soname, no so: dependency
@@ -44,8 +45,7 @@ package:
 
       if [ "$1" = 'configure' ] && [ -z "$DPKG_ROOT" ] && ! getent passwd _apt >/dev/null; then
       	# add unprivileged user for the apt methods
-      	adduser --force-badname --system --home /nonexistent  \
-      	    --no-create-home --quiet _apt || true
+      	({ getent passwd _apt >/dev/null || useradd --system --home-dir /nonexistent --no-create-home --shell /usr/sbin/nologin _apt; }) || true
       fi
 
       if [ "$1" = "configure" ] && [ -n "$2" ] && dpkg --compare-versions -- "$2" le-nl "2.4.5~"; then
@@ -63,8 +63,7 @@ package:
 
       if [ "$1" = 'configure' ] && [ -z "$DPKG_ROOT" ] && ! getent passwd _apt >/dev/null; then
       	# add unprivileged user for the apt methods
-      	adduser --force-badname --system --home /nonexistent  \
-      	    --no-create-home --quiet _apt || true
+      	({ getent passwd _apt >/dev/null || useradd --system --home-dir /nonexistent --no-create-home --shell /usr/sbin/nologin _apt; }) || true
       fi
 
       if [ "$1" = "configure" ] && [ -n "$2" ] && dpkg --compare-versions -- "$2" le-nl "2.4.5~"; then
@@ -416,6 +415,7 @@ test:
         - w3m
         - python3
         - make
+        - shadow  # useradd, for the users of the maintainer scripts
   pipeline:
     - runs: |
         apt --version || (apt --help 2>&1 || true) | grep -qi -e usage -e apt
@@ -457,6 +457,9 @@ test:
           # po-debconf's translatable fields (_Description, __Choices) in the C locale
           [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/apt.templates" && break
         done
+    - name: System users of the maintainer scripts
+      runs: |
+        { getent passwd _apt >/dev/null || useradd --system --home-dir /nonexistent --no-create-home --shell /usr/sbin/nologin _apt; }
     - name: 'autopkgtest: pkg-config-test'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
