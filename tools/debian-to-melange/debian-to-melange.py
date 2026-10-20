@@ -74,6 +74,11 @@ NAME_MAP = {
     "xsltproc": "libxslt",
     "sqv": "sequoia-sqv",
     "sq": "sequoia-sq",
+    # Debian splits the chameleon's commands; this repository's sequoia-chameleon-gnupg has both
+    "gpgv-sq": "sequoia-chameleon-gnupg",
+    "gpg-sq": "sequoia-chameleon-gnupg",
+    # Debian's googletest is the source to build it with; Wolfi has it built
+    "googletest": "gtest-dev",
     "python3-gi": "py3-gobject3",
     "gir1.2-glib-2.0": "gobject-introspection",
     "libgmock-dev": "gtest-dev",  # googletest ships gmock too
@@ -3527,14 +3532,18 @@ class Converter:
             # Debian's testbeds run in C.UTF-8 (trietool, and any tool that converts text, needs it)
             env = 'export AUTOPKGTEST_TMP="$(mktemp -d)"\nexport LANG="${LANG:-C.UTF-8}"\nset +o pipefail 2>/dev/null || true\n'
             def guard(cmd):
-                if "flaky" not in restrictions:
-                    return cmd
-                # Restrictions: flaky -- a failure is reported, not fatal
-                return "(\n{}) || echo 'autopkgtest marked flaky failed (ignored)'\n".format(cmd)
+                if "flaky" in restrictions:
+                    # Restrictions: flaky -- a failure is reported, not fatal
+                    return "(\n{}) || echo 'autopkgtest marked flaky failed (ignored)'\n".format(cmd)
+                if "skippable" in restrictions:
+                    # Restrictions: skippable -- exit status 77 means the test was skipped
+                    return ("rc=0\n(\n{}) || rc=$?\n"
+                            "if [ $rc = 77 ]; then echo 'autopkgtest skipped (exit status 77)'; else exit $rc; fi\n").format(cmd)
+                return cmd
             if "test-command" in para:
                 steps.append({"name": "autopkgtest: {}".format(para["test-command"].strip().split("\n")[0][:60]),
                               "runs": env + guard(para["test-command"].strip() + "\n")})
-            for test in para.get("tests", "").split():
+            for test in [t for t in re.split(r"[\s,]+", para.get("tests", "")) if t]:  # "Tests: a, b"
                 script = self.read(os.path.join(para.get("tests-directory", "tests"), test))
                 if script is None:
                     continue
@@ -3570,6 +3579,21 @@ class Converter:
         if real:
             self.notes.append("autopkgtests converted to the test pipeline ({} steps)".format(len(real)))
             steps.insert(0, dpkg_database_step(aliases, self.main_package))
+            if any(re.search(r"apt-cache policy|apt_pkg\.SourceList|/etc/apt/sources\.list|/etc/debian_version",
+                             st.get("runs", "")) for st in real):
+                # the test reads the testbed's apt sources (the distribution it runs on) and
+                # /etc/debian_version: a Debian unstable testbed
+                steps.insert(1, {"name": "apt sources (as on a Debian unstable testbed)", "runs": (
+                    "[ -e /etc/debian_version ] || echo forky/sid > /etc/debian_version\n"
+                    "if [ ! -s /etc/apt/sources.list ] && [ -z \"$(ls /etc/apt/sources.list.d 2>/dev/null)\" ]; then\n"
+                    "  mkdir -p /etc/apt/sources.list.d\n"
+                    "  printf 'Types: deb\\nURIs: http://deb.debian.org/debian\\nSuites: unstable\\nComponents: main\\n"
+                    "Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg\\n' > /etc/apt/sources.list.d/debian.sources\n"
+                    "fi\n"
+                    "apt-get update\n")})
+                for p in ("apt", "debian-archive-keyring"):
+                    if p not in [q.value if isinstance(q, C) else q for q in packages]:
+                        packages.append(C(p, "the Debian testbed's apt sources"))
             if any("py3versions" in st.get("runs", "") for st in real):
                 # Debian's py3versions (python3 package): the Python 3 versions to test with
                 steps.insert(1, {"name": "py3versions (as on a Debian testbed)", "runs": (
