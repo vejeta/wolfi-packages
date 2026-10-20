@@ -35,7 +35,7 @@ packages and `APKINDEX` are published on SourceForge.
 | Perl and Python | 55 Perl modules (the Perl::Critic chain, ikiwiki's dependencies), black, pycodestyle, pyflakes, python-apt, python-debian |
 | Fonts | 47 font packages (Debian's fonts-*, needed by TeX Live and the test suites) |
 | Documentation | docbook-xsl and docbook-xsl-ns (Debian's DocBook XSL stylesheets, with their images), docbook5-xml |
-| Others | ikiwiki, elinks, expect, moreutils, genext2fs, squashfs-tools-ng, capnproto, xwpe, algol68g |
+| Others | ikiwiki, elinks, expect (Tcl 9, from Debian), moreutils, genext2fs, squashfs-tools-ng, capnproto, xwpe, algol68g |
 
 Many of them are converted from their Debian or Alpine packaging with the
 [tools](#tools) of this repository, autopkgtests included, and built and

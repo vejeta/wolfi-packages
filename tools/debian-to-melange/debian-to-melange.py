@@ -385,6 +385,11 @@ def recipe_names(directory):
     return names
 
 
+def version_key(version):
+    """Sortable key of an apk version (9.1.0-r2): its numbers."""
+    return [int(n) for n in re.findall(r"\d+", version)]
+
+
 class WolfiIndex:
     """Optional lookup of package names in the Wolfi APKINDEX (via pkg-check).
 
@@ -397,6 +402,7 @@ class WolfiIndex:
         self.community = set()
         self.unversioned_so = {}  # package -> sonames without a version (libdb-5.3.so)
         self.providers = {}  # cmd:foo / so:libfoo.so.1 -> a package that provides it
+        self.current = {}  # the same, for the newest version of each package only (tclsh9.1, not 8.6)
         if not enabled:
             return
         spec = importlib.util.spec_from_file_location("pkg_check", PKG_CHECK)
@@ -416,7 +422,17 @@ class WolfiIndex:
 
     def _load(self, mod, url):
         names = set()
-        for e in mod.parse_apkindex(mod.fetch(url, True)):
+        newest = {}
+        entries = list(mod.parse_apkindex(mod.fetch(url, True)))
+        for e in entries:
+            key = version_key(e.get("V", ""))
+            if e.get("P") not in newest or key > newest[e.get("P")][0]:
+                newest[e.get("P")] = (key, e)
+        for _key, e in newest.values():
+            for prov in e.get("p", "").split():
+                if prov.startswith("cmd:"):
+                    self.current.setdefault(re.split(r"[=<>~]", prov, maxsplit=1)[0], e.get("P"))
+        for e in entries:
             names.add(e.get("P"))
             for prov in e.get("p", "").split():
                 names.add(re.split(r"[=<>~]", prov, maxsplit=1)[0])
@@ -543,7 +559,7 @@ SPDX_MAP = {
     "apache-2.0": "Apache-2.0", "apache-2": "Apache-2.0",
     "mpl-1.1": "MPL-1.1", "mpl-2.0": "MPL-2.0",
     "isc": "ISC", "zlib": "Zlib", "artistic": "Artistic-1.0-Perl",
-    "public-domain": "LicenseRef-public-domain", "cc0-1.0": "CC0-1.0",
+    "public-domain": "LicenseRef-public-domain", "pd": "LicenseRef-public-domain", "cc0-1.0": "CC0-1.0",
     "wtfpl": "WTFPL", "bsl-1.0": "BSL-1.0", "unlicense": "Unlicense",
 }
 
@@ -592,7 +608,9 @@ def guess_license(text):
 
 def parse_copyright(text):
     """Return [(spdx, [paths])] for non-debian/* paragraphs, main first."""
-    if not text or "Format:" not in text.split("\n", 1)[0] + text[:200]:
+    # DEP-5, or its Files/License stanzas without the Format line (expect)
+    if not text or ("Format:" not in text.split("\n", 1)[0] + text[:200]
+                    and not any("files" in p and "license" in p for p in parse_deb822(text))):
         lic = guess_license(text)
         return [(lic, ["*"])] if lic else []
     result = []
@@ -603,6 +621,8 @@ def parse_copyright(text):
         if all(f.startswith("debian/") for f in files):
             continue
         lic = to_spdx(para["license"].split("\n", 1)[0])
+        if lic in ("PD", "LicenseRef-public-domain") and re.search(r"National Institute of Standards|NIST", para.get("copyright", "") + para["license"]):
+            lic = "NIST-PD"  # the public domain notice of U.S. government work at NIST
         result.append((lic, files))
     result.sort(key=lambda r: 0 if r[1] == ["*"] else 1)
     return result
@@ -712,6 +732,10 @@ class Rules:
                 name, op, val = m.groups()
                 if line.startswith("export") and name not in self.exports:
                     self.exports.append(name)
+                # $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE): the variable dpkg-architecture prints
+                val = re.sub(r"\$\(shell\s+dpkg-architecture\s+-q\s*(\w+)\s*\)", r"$(\1)", val)
+                if val.strip() == "$({})".format(name):
+                    continue  # DEB_HOST_GNU_TYPE := $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE): the build's
                 if op == "+=":
                     self.vars[name] = (self.vars.get(name, "") + " " + val).strip()
                 elif op != "?=" or name not in self.vars:
@@ -900,6 +924,8 @@ def brace_expand(word):
 def norm_path(path):
     """Debian multiarch paths -> Wolfi paths (usr/lib/<triplet>/ -> usr/lib/)."""
     path = path.strip("/")
+    # Debian's Tcl packages (usr/lib/tcltk/<triplet>/expect5.45.4): Wolfi's tcl looks in usr/lib
+    path = re.sub(r"(^|/)lib/tcltk/(?:\*|\$[({]DEB_HOST_MULTIARCH[)}]|[a-z0-9_]+-linux-gnu[a-z]*)(/|$)", r"\1lib\2", path)
     path = re.sub(r"(^|/)lib/(?:\*(?=/)|\$[({]DEB_HOST_MULTIARCH[)}]|[a-z0-9_]+-linux-gnu[a-z]*)(/|$)",
                   r"\1lib\2", path).rstrip("/")
     # Perl modules: Debian's vendor directories are Wolfi's vendor_perl, and
@@ -1205,6 +1231,25 @@ def essential_script_tools(data, tests=False):
     except (tarfile.TarError, OSError, EOFError):
         return []
     return found
+
+
+def makefiles_with_werror(data):
+    """Top-level makefiles of the source that build with -Werror."""
+    if not data:
+        return []
+    import io
+    import tarfile
+    found = []
+    try:
+        with tarfile.open(fileobj=io.BytesIO(data)) as tar:
+            for m in tar:
+                parts = m.name.split("/")
+                if m.isfile() and len(parts) == 2 and re.match(r"^(GNUmakefile|[Mm]akefile|config\.mk|\w+\.mk)$", parts[1]) \
+                        and re.search(rb"-Werror\b(?!=)", tar.extractfile(m).read()):
+                    found.append(parts[1])
+    except (tarfile.TarError, OSError, EOFError):
+        return []
+    return sorted(found)
 
 
 def bash_scripts(data):
@@ -1599,6 +1644,8 @@ BUILDSYSTEM_FILES = [
     ("Cargo.toml", "cargo"),
     ("Makefile.PL", "perl_makemaker"),
     ("Makefile", "makefile"),
+    ("GNUmakefile", "makefile"),  # debhelper looks for GNUmakefile, makefile and Makefile
+    ("makefile", "makefile"),
 ]
 
 BUILD_PIPELINES = {
@@ -1697,6 +1744,12 @@ class Converter:
         """usr/lib/$(DEB_HOST_MULTIARCH) is usr/lib on Wolfi (and usr/include/<triplet> usr/include);
         the triplet elsewhere is the host's."""
         triplet = r"\$[({]DEB_(?:HOST_MULTIARCH|(?:HOST|BUILD)_GNU_TYPE)[)}]"
+        # Debian's Tcl package directory (usr/lib/tcltk/<triplet>): Wolfi's tcl looks in usr/lib;
+        # links from there to the library ("../../../<triplet>/libexpect.so") then point next door
+        if re.search(r"usr/lib/tcltk/" + triplet, line):
+            # two directories less: usr/lib/tcltk/<triplet>/x -> usr/lib/x, usr/lib/<triplet> -> usr/lib
+            line = re.sub(r"((?:\.\./)+)" + triplet + r"/", lambda m: "../" * max(m.group(1).count("../") - 2, 0), line)
+        line = re.sub(r"(^|/|\s|=)usr/lib/tcltk/" + triplet, r"\1usr/lib", line)
         line = re.sub(r"(^|/|\s|=)(usr/lib|usr/include)/" + triplet, r"\1\2", line)
         return re.sub(triplet, "${{host.triplet.gnu}}", line)
 
@@ -1722,6 +1775,29 @@ class Converter:
                     text = text.replace(pat, repl)
                 else:
                     self.generated[m.group(5)] = text
+        # pattern rules: "debian/%.links: debian/%.links.in" + sed -e ... $< > $@ (expect)
+        for target, recipe in rules.targets.items():
+            pm = re.match(r"^debian/(\S*)%(\S*)$", target)
+            body = " ".join(l.strip().lstrip("@-") for l in recipe)
+            sm = re.match(r"^sed\s+((?:-e\s+(['\"]).*?\2\s+)+)\$<\s*>\s*\$@$", body)
+            if not pm or not sm:
+                continue
+            exprs = re.findall(r"-e\s+(['\"])s(.)(.*?)\2(.*?)\2[gi]*\1", sm.group(1))
+            for f in self._listdir(self.deb):
+                out = f[:-3] if f.endswith(".in") else None
+                if not out or not out.startswith(pm.group(1)) or not out.endswith(pm.group(2)):
+                    continue
+                text = self.read(f) or ""
+                for _q, _sep, pat, repl in exprs:
+                    if repl in ("$(DEB_HOST_MULTIARCH)", "${DEB_HOST_MULTIARCH}"):
+                        text = text.replace("/" + pat, "")  # Wolfi's usr/lib has no multiarch directory
+                        continue
+                    repl = rules.expand(repl)
+                    if "$(" in repl or "${" in repl:
+                        break
+                    text = text.replace(pat, repl)
+                else:
+                    self.generated[out] = text
 
     def port_recipe(self, rules, lines, name, deb_pkg):
         """Translate a debian/rules recipe into shell for a melange step.
@@ -1774,6 +1850,15 @@ class Converter:
                 continue  # debhelper bookkeeping (Built-Using, substvars...)
             line = rules.expand(line)
             line = re.sub(r"(?<![\w/.])\./debian/", "debian/", line)  # ./debian/foo is debian/foo
+            if re.search(r"[;&|]\s*dh_auto_|\bdo\s+dh_auto_", line):
+                # dh_auto_* inside a shell loop (expect: for v in $(TCLVERSIONS); do dh_auto_configure -B...)
+                def auto(m):
+                    text = " ".join(m.group(0).split())
+                    # the build directory, not a package's (debian/$v is not ${{targets.outdir}}/$v)
+                    text = re.sub(r"(\s-B\s*|--builddir(?:ectory)?[= ])(?:\$\(CURDIR\)/)?debian/", r"\1./debian/", text)
+                    cmd = self.dh_auto_command(self.multiarch(text))
+                    return m.group(0) if cmd is None or cmd == self.PIPELINE_MARK else " " + cmd + " "
+                line = re.sub(r"\bdh_auto_(?:configure|build|install|test)\b[^;]*", auto, line)
             # dh_listpackages in the shell: the binary packages; debian/$pkg: their output directory
             pkgs_list = "printf '%s\\n' " + " ".join(sorted(self.rename))
             line = re.sub(r"\bdh_listpackages\b", lambda m: pkgs_list, line)
@@ -1801,6 +1886,7 @@ class Converter:
             line = re.sub(r"target/\$\(DEB_HOST_RUST_TYPE\)/", "target/", line)
             line = line.replace("usr/share/doc/{}/".format(deb_pkg), "usr/share/doc/{}/".format(self.rename.get(deb_pkg, deb_pkg)))
             line = line.replace("$(CURDIR)/", "").replace("$(CURDIR)", ".")
+            line = line.replace("$$(", "\x01(")  # the shell's $(cmd), not make's
             line = line.replace("$$", "$")  # make's escape for the shell's $
             line = line.replace("${{targets.destdir}}/usr/sbin/", "${{targets.destdir}}/usr/bin/")  # usr-merged
             def aux(m):
@@ -1829,6 +1915,17 @@ class Converter:
             if "$(" in line:
                 return None
             line = re.sub(r"\x00SHELL\((.*?)\)\x00", r"$(\1)", line)
+            line = line.replace("\x01(", "$(")
+            mv = re.match(r"^mv\s+(\S+)\s+(\S+?)/?$", line)
+            if mv and os.path.dirname(mv.group(1).rstrip("/")) == mv.group(2):
+                continue  # a move to where it is already (after the paths were made Wolfi's)
+            if getattr(self, "dropped_versions", ()):
+                # some variants are not built (expect's Tcl 8.6 libexpect): only what is there
+                if mv and not re.search(r"[*?\[$`]", mv.group(1).replace("${{targets.destdir}}", "")):
+                    line = 'if [ -e {0} ]; then {1}; fi'.format(mv.group(1), line)
+                lnk = re.match(r"^ln\s+-s\s+(\S+)\s+(\S+)$", line)
+                if lnk and not lnk.group(1).startswith("/") and not re.search(r"[*?$`]", lnk.group(1)):
+                    line = 'if [ -e "$(dirname {2})/{0}" ]; then {1}; fi'.format(lnk.group(1), line, lnk.group(2))
             words = line.split()
             if words and words[0] in ("install", "cp") and not re.search(r"\s-[a-zA-Z]*[dDt]\b", line) \
                     and words[-1].startswith("${{targets."):
@@ -1995,7 +2092,7 @@ class Converter:
                     "build": "cmake --build {} -j$(nproc)".format(builddir),
                     "install": "{} cmake --install {}".format(dest, builddir)}[step]
         if bs in ("autoconf", "makefile"):
-            return {"configure": "mkdir -p {0} && (cd {0} && ../configure --prefix=/usr --sysconfdir=/etc "
+            return {"configure": "mkdir -p {0} && (top=$PWD && cd {0} && \"$top\"/configure --prefix=/usr --sysconfdir=/etc "
                                  "--localstatedir=/var {1})".format(builddir, args).strip(),
                     "build": "make -C {} -j$(nproc)".format(builddir),
                     "install": "make -C {} install {}".format(builddir, dest)}[step]
@@ -2043,6 +2140,9 @@ class Converter:
     def map_deps(self, relations, kind):
         out, comments = [], []
         for alts in relations:
+            if any(re.search(r"[A-Za-z]{}(?![\d.])".format(re.escape(v)), alts[0])
+                   for v in getattr(self, "dropped_versions", ())):
+                continue  # tcl8.6-dev, for a variant that is not built
             if len(alts) == 1 and isinstance(NAME_MAP.get(alts[0]), list):
                 for m in NAME_MAP[alts[0]]:
                     if not any(o == m or (isinstance(o, C) and o.value == m) for o in out):
@@ -2064,6 +2164,15 @@ class Converter:
                 continue
             chosen = None
             for alt in alts:
+                tcl = re.match(r"^(?:lib)?(tcl|tk)(\d+\.\d+)(-dev)?$", alt)
+                if tcl and self.wolfi.names is not None:
+                    # Debian's tcl9.1-dev: Wolfi's tcl-dev, when its tcl is that version
+                    base = self.wolfi.current.get("cmd:{}{}".format("tclsh" if tcl.group(1) == "tcl" else "wish",
+                                                                    tcl.group(2)))
+                    chosen = (base + (tcl.group(3) or ""), alt, True) if base else (alt, alt, False)
+                    if base:
+                        break
+                    continue
                 if kind == "test" and alt in ("debconf", "ucf"):
                     pass  # an autopkgtest that exercises them gets the real ones
                 elif alt in DROP or alt.startswith(DROP_PREFIXES) or alt.startswith("${"):
@@ -2188,6 +2297,7 @@ class Converter:
         BUILD_CONTEXT["DEB_BUILD_PROFILES"] = " ".join(profiles)
         BUILD_CONTEXT["DEB_BUILD_OPTIONS"] = " ".join(p for p in profiles if p in ("nocheck", "nodoc"))
         rules = Rules(self.read("rules") or "")
+        self.drop_unavailable_versions(rules, source)
         for k, v in gencontrol_substvars(rules, source).items():
             # dh_gencontrol -Vname=value: substvars set by debian/rules
             for b in binaries:
@@ -2470,6 +2580,23 @@ class Converter:
             # Debian has the wide-character headers under include/ncursesw as well; Wolfi only in include
             pipeline.append(dict(NCURSESW_STEP))
             self.uses_ncursesw = True
+        if re.search(r"/usr/share/misc/config\.(guess|sub)", self.read("rules") or ""):
+            # Debian's autotools-dev; Wolfi's automake has them
+            if "automake" not in [e.value if isinstance(e, C) else e for e in env_pkgs]:
+                env_pkgs.append(C("automake", "config.guess and config.sub (Debian: autotools-dev)"))
+            pipeline.append({"name": "Debian's /usr/share/misc/config.guess and config.sub (autotools-dev)", "runs": (
+                "mkdir -p /usr/share/misc\n"
+                "for f in config.guess config.sub; do\n"
+                "  ln -sf \"$(ls /usr/share/automake-*/$f | tail -1)\" /usr/share/misc/$f\n"
+                "done\n")})
+        tcls = sorted({m.group(1, 2) for f in ("build-depends", "build-depends-arch", "build-depends-indep")
+                       for alts in parse_relations(source.get(f)) for a in alts[:1]
+                       for m in [re.match(r"^(tcl|tk)(\d+\.\d+)-dev$", a)] if m and self.available(a)})
+        if tcls:
+            # Debian's tcl9.1-dev: tclConfig.sh in usr/lib/tcl9.1, headers in usr/include/tcl9.1; Wolfi's in usr/lib, usr/include
+            pipeline.append({"name": "Debian's Tcl/Tk layout", "runs": "".join(
+                "mkdir -p /usr/lib/{0}{1} && ln -sf ../{0}Config.sh /usr/lib/{0}{1}/{0}Config.sh\n"
+                "[ -e /usr/include/{0}{1} ] || ln -s . /usr/include/{0}{1}\n".format(n, v) for n, v in tcls)})
         if uses_tex(env_pkgs):
             pipeline.append(dict(TEX_SETUP_STEP))
         for alts in parse_relations(source.get("build-depends")):
@@ -2517,7 +2644,8 @@ class Converter:
         self.pipeline_used = False
         builddirs = {d for r in overrides.values() for l in r
                      for d in re.findall(r"\s(?:-B\s*|--builddir(?:ectory)?[= ])(\S+)", " " + l) if "udeb" not in d}
-        self.multi_builddir = len(builddirs) > 1
+        # (or one built from a variable: for v in $(TCLVERSIONS) ... -B debian/$$v)
+        self.multi_builddir = len(builddirs) > 1 or any("$" in d for d in builddirs)
         self.python_module = rules.vars.get("PYBUILD_NAME") if bs == "pybuild" else None
         if bs == "pybuild":
             # what can be imported: setuptools' top_level.txt, else the distribution name
@@ -2581,6 +2709,12 @@ class Converter:
             pipeline.append(entry)
             if not build_override:
                 pipeline.append({"uses": BUILD_PIPELINES[bs][1]})
+        if bs == "makefile":
+            werror = makefiles_with_werror(getattr(self, "source_data", None)) or self.tree_makefiles_with_werror()
+            if werror:
+                # Wolfi's compiler and C library are newer than Debian's: new warnings must not fail the build
+                pipeline.append({"name": "Drop -Werror from the upstream makefiles (a newer toolchain than Debian's)",
+                                 "runs": "sed -i 's/ -Werror\\b\\([^=]\\|$\\)/\\1/g' {}\n".format(" ".join(werror))})
         if build_override:
             pipeline += self.override_steps(build_override, "Build (from debian/rules override_dh_auto_build)")
         if bs == "ocaml_dune":
@@ -3382,8 +3516,18 @@ class Converter:
             parts = line.split("#", 1)[0].split()
             if len(parts) == 2:
                 target, link = usr_merge(norm_path(parts[0])), usr_merge(norm_path(parts[1]))
-                cmds.append('mkdir -p "{0}/{2}"\nln -sf /{1} "{0}/{3}"'.format(
-                    destdir, target, os.path.dirname(link), link))
+                if any(re.search(r"(?<![\d.]){}(?![\d])".format(re.escape(v)), target + " " + link)
+                       for v in getattr(self, "dropped_versions", ())):
+                    continue  # for a version not built (expect8.6.1.gz)
+                if target.startswith("usr/share/man/") and target.endswith(".gz"):
+                    # dh_compress gzips man pages; Wolfi's are not compressed
+                    target, link = target[:-3], link[:-3] if link.endswith(".gz") else link
+                ln = 'mkdir -p "{0}/{2}"\nln -sf /{1} "{0}/{3}"'.format(destdir, target, os.path.dirname(link), link)
+                if getattr(self, "dropped_versions", ()):
+                    # only to what was built: some builds are left out (the Tcl 8.6 libexpect)
+                    ln = 'if [ -n "$(ls -d "${{{{targets.destdir}}}}/{0}" "${{{{targets.outdir}}}}"/*/{0} 2>/dev/null)" ]; then\n  {1}\nfi'.format(
+                        target, ln.replace("\n", "\n  "))
+                cmds.append(ln)
         unit = self.read("{}.service".format(binary["package"])) or (self.read("service") if main else None)
         if unit is not None:
             # dh_installsystemd
@@ -3473,6 +3617,55 @@ class Converter:
                 except OSError:
                     pass
         return files
+
+    def drop_unavailable_versions(self, rules, source):
+        """TCLVERSIONS = 8.6 9.1 (expect builds for each Tcl): only the versions whose build
+        dependencies (tcl8.6-dev, tcl9.1-dev) Wolfi has; a variable naming a dropped version
+        (tclv = 8.6, the default) takes the one left."""
+        if self.wolfi.names is None:
+            return
+        deps = [alts[0] for f in ("build-depends", "build-depends-arch", "build-depends-indep")
+                for alts in parse_relations(source.get(f))]
+        dropped, kept = set(), set()
+        for name, val in list(rules.vars.items()):
+            toks = val.split()
+            if len(toks) < 2 or not all(re.match(r"^\d+\.\d+$", t) for t in toks):
+                continue
+            keep = []
+            for t in toks:
+                with_t = [d for d in deps if re.search(r"(?<![\d.]){}(?![\d.])".format(re.escape(t)), d)]
+                if with_t and not any(self.available(d) for d in with_t):
+                    dropped.add(t)
+                else:
+                    keep.append(t)
+            if keep and len(keep) < len(toks):
+                rules.vars[name] = " ".join(keep)
+                kept |= set(keep)
+                self.notes.append("debian/rules {}: only {} (Wolfi has not the others' dependencies)".format(
+                    name, " ".join(keep)))
+        self.dropped_versions = sorted(dropped)
+        if len(kept) == 1:
+            for name, val in list(rules.vars.items()):
+                if val.strip() in dropped:
+                    rules.vars[name] = next(iter(kept))
+
+    def available(self, dep):
+        tcl = re.match(r"^(?:lib)?(tcl|tk)(\d+\.\d+)(-dev)?$", dep)
+        if tcl:
+            return bool(self.wolfi.current.get("cmd:{}{}".format("tclsh" if tcl.group(1) == "tcl" else "wish", tcl.group(2))))
+        return any(self.wolfi.has(c) for c in dep_candidates(dep)) or bool(self.wolfi.provider_of(dep))
+
+    def tree_makefiles_with_werror(self):
+        found = []
+        for f in sorted(self.top):
+            if re.match(r"^(GNUmakefile|[Mm]akefile|config\.mk|\w+\.mk)$", f):
+                try:
+                    with open(os.path.join(self.tree, f), "rb") as fh:
+                        if re.search(rb"-Werror\b(?!=)", fh.read()):
+                            found.append(f)
+                except OSError:
+                    pass
+        return found
 
     def autoreconf_tools(self):
         tools = ["autoconf", "automake"]
@@ -3607,6 +3800,13 @@ class Converter:
             restrictions = para.get("restrictions", "").replace(",", " ").split()
             if "hint-testsuite-triggers" in restrictions:
                 continue  # never run: it only lists packages whose uploads trigger the tests
+            dropped = [v for v in getattr(self, "dropped_versions", ())
+                       if re.search(r"[A-Za-z]{}(?![\d.])".format(re.escape(v)), para.get("test-command", "") + " " +
+                                    " ".join(d[0] for d in parse_relations(para.get("depends", ""))))]
+            if dropped:
+                self.notes.append("autopkgtest '{}' left out: it is for {} (not built)".format(
+                    (para.get("test-command") or para.get("tests", "")).strip()[:60], ", ".join(dropped)))
+                continue
             for r in restrictions:
                 if r in ("isolation-machine", "breaks-testbed", "needs-reboot"):
                     self.notes.append("autopkgtest restriction '{}' cannot be honoured by melange test".format(r))

@@ -90,6 +90,7 @@ environment:
     repositories:
       - https://packages.wolfi.dev/os
     packages:
+      - build-base
       - busybox
       - gettext
       - po4a  # Wolfi Community Packages
@@ -110,9 +111,30 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/GNUmakefile_remove---force-from-po4a-call .recipe-files/reproducible_build.patch
+  - name: 'Drop -Werror from the upstream makefiles (a newer toolchain than Debian''s)'
+    runs: |
+      sed -i 's/ -Werror\b\([^=]\|$\)/\1/g' GNUmakefile
+  - name: Build (from debian/rules override_dh_auto_build)
+    runs: |
+      make -j$(nproc) prefix=/usr sysconfdir=/etc
+  - name: Install (from debian/rules override_dh_auto_install)
+    runs: |
+      make install DESTDIR="${{targets.destdir}}" PREFIX=/usr prefix=/usr sysconfdir=/etc
   - name: Install files
     runs: |
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/dctrl-tools
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
+  - name: Remove libtool archives
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
+  - uses: strip
 update:
   enabled: true
   github:

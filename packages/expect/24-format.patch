@@ -1,3 +1,7 @@
+From: Sergei Golovan
+Subject: Patch fixes calls to fprintf() and sprintf().
+Last-Modified: Sun, 26 Apr 2026 18:09:33 +0300
+
 --- a/exp_clib.c
 +++ b/exp_clib.c
 @@ -1483,8 +1483,8 @@

@@ -1,8 +1,7 @@
 Author: Sergei Golovan <sgolovan@debian.org>
 Description: This dirty hack fixes segfaults if Tcl is built with stubs
  and Expect is used directly from C program.
-Bug: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=588817
-Example:
+ Example:
  #include <stdio.h>
  #include <tcl8.5/expect.h>
  int main()
@@ -15,7 +14,7 @@ Example:
      while ((datum = getc (pipe)) != EOF)
  	printf("%c",datum);
  }
-Example:
+ Example:
  #include <stdio.h>
  #include "expect.h"
  main()
@@ -35,6 +34,7 @@ Example:
      printf("Normal Exit\n");
      return 0;
  }
+Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=588817
 
 --- a/exp_clib.c
 +++ b/exp_clib.c

@@ -382,3 +382,14 @@ Description: Fixes sample expect shebang and excapes dashes.
  
  .fi
  I encourage you to write
+--- a/example/decryptdir.man
++++ b/example/decryptdir.man
+@@ -19,7 +19,7 @@
+ 
+ .SH NOTES
+ When encrypting, you are prompted twice for the password as a
+-precautionary measure.  It would be a disaster to encrypt files a
++precautionary measure.  It would be a disaster to encrypt files with a
+ password that wasn't what you intended.
+ 
+ In contrast, when decrypting, you are only prompted once.  If it's the

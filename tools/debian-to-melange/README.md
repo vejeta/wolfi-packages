@@ -88,6 +88,9 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | `*.dirs`, `*.links`, `*.docs`, `*.examples`, `*.manpages`, `*.service` | `mkdir`, `ln -s`, `cp`, `install`; units in `/usr/lib/systemd/system` |
 | `*.xmlcatalogs` (`dh_installxmlcatalogs`) | The package's catalog installed, and scriptlets that add (and remove) its delegate entries in `/etc/xml/catalog` with libxml2's `xmlcatalog` (Wolfi has no xml-core) |
 | Build-depends on `libncurses-dev` | Debian's `include/ncursesw/` header directory (symlinks), in the build and the tests |
+| Variants built per version (`TCLVERSIONS = 8.6 9.1`) | Only the versions whose build dependencies Wolfi has; their tests, links and dependencies left out. `tclX.Y-dev` is `tcl-dev` when Wolfi's tcl is X.Y, with Debian's layout (`usr/lib/tclX.Y/tclConfig.sh`, `usr/include/tclX.Y`) linked in the build; Debian's `usr/lib/tcltk/<triplet>` is `usr/lib` |
+| `/usr/share/misc/config.guess` in `rules` (autotools-dev) | Linked from Wolfi's automake |
+| `-Werror` in the upstream makefiles (`GNUmakefile`, `Makefile`) | Dropped: Wolfi's toolchain is newer than Debian's |
 | Shell scripts with `#!/bin/bash` in the source | `bash` in the build environment (Essential in Debian) |
 | `getopt`, `setpriv` in the source's shell scripts | `util-linux-misc`, `setpriv` (busybox's lack options of Debian's Essential util-linux): runtime dependencies, and in the tests |
 | Build-depends on fontconfig or Xft | Runtime dependency on `ttf-dejavu` (Debian's fontconfig always brings a font; Wolfi's does not) |
