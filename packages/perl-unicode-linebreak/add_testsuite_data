@@ -1,0 +1,1537 @@
+Description: Add data for test suite packaged separately
+Author: Hatuka*nezumi - IKEDA Soji <hatuka@nezumi.nu>
+Origin: https://github.com/hatukanezumi/Unicode-LineBreak
+Forwarded: not-needed
+Last-Update: 2016-04-09
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+diff --unified -Naur a/test-data/amitagyong.in b/test-data/amitagyong.in
+--- a/test-data/amitagyong.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/amitagyong.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,11 @@
++佛說阿彌陁經
++……
++ᄯᅩ〮舍利弗아〮極樂國土애〮衆生나니〮ᄂᆞᆫ〮다〯阿鞞跋致니〮 [阿鞞跋致ᄂᆞᆫ〮믈리〮그우디〮아니〮타혼〮마〯리니〮므르디〮아니〮호〮미〮세〯ᄠᅳ〮디〮잇ᄂᆞ니〮空位예〮드〮러〮므르디〮아니〮홈〮과〮假行애〮드〮러〮므르디〮아니〮홈〮과〮中念에〮드〮러〮므르디〮아니〮홈〮괘〮라〮ᄒᆞᆫ念도〮相업〯수미〮空이〮니〮긔〯般若ᅟᅵ니〮두〯生死ᄅᆞᆯ〮여흴〮ᄊᆡ〮니라〮몯〯ᄀᆞᄌᆞᆫ〮法업〯수미〮假ᅟᅵ니〮假ᄂᆞᆫ〮빌〯씨〮니〮本來업〯슨〮거긔〮法이슈〮미〮비룸〮ᄀᆞᆮ〮ᄒᆞ니〮라〮긔〯解脫이〮니〮ᄒᆡᇰ〯뎌〮기〮ᄀᆞᄌᆞᆯ〮ᄊᆡ〮니라〮ᄒᆞ나토〮아니〮며〮다ᄅᆞ도〮아니〮호〮미〮中이〮니〮긔〯法身이〮니〮眞實ᄉᅠ境界ᄅᆞᆯ〮證ᄒᆞᆯᄊᆡ〮니라〮두〯生死ᄂᆞᆫ〮分段生死와〮變易生死ᅟᅵ니〮分ᄋᆞᆫ〮제여고ᇝ〮가〮니니〮목수〯믜〮그지〮라〮段ᄋᆞᆫ〮그티니〮모〮ᄆᆡ〮얼구리〮라〮變易ᄋᆞᆫ〮고텨〮ᄃᆞ욀씨〮니〮因이〮올ᄆᆞ〮며〮果ᅟᅵ밧골씨〮라〮] 그中에〮一生補處ᅟᅵ해〯이셔〮 [一生ᄋᆞᆫ〮ᄒᆞᆫ번날씨〮니〮ᄒᆞᆫ번다ᄅᆞᆫ地位예〮난後ᅟᅵ면〮妙覺地位예〮오ᄅᆞᆯ씨〮니〮等覺位ᄅᆞᆯ〮니르니〮라〮等覺애셔〮金剛乾慧예〮ᄒᆞᆫ번나면〮後에〮妙覺애〮오ᄅᆞᄂᆞ니〮나다〮ᄒᆞ〮논마〯ᄅᆞᆫ〮사라〮나다〮ᄒᆞ〮논마〯리〮아니〮라〮부텻지븨〮나다〮ᄒᆞ〮논ᄠᅳ〮디라〮補ᄂᆞᆫ〮보탈〮씨〮오〮處ᄂᆞᆫ〮고〮디니〮부텻고대〮와〮보탈〮씨〮라〮] 그數ᅟᅵ甚히〮하〮算數ᄋᆡ〮能히〮아로ᇙ〮디〮아니〮오〮오직〮無量無邊阿僧祇로〮닐오ᇙ〮디〮니라〮
++舍利弗아〮衆生이〮드르닌〮뎌〮나라〮해〮나고〮져〮發願호ᇙ〮디니〮엇〯뎨〮어뇨〮이〮ᄀᆞ〮ᄐᆞᆫᄆᆞᆺ〮어〮딘사〯ᄅᆞᆷᄃᆞᆯ〮콰〮ᄒᆞᆫᄃᆡ〮모ᄃᆞ〮릴ᄊᆡ〮니라〮
++舍利弗아〮죠〯고맛〮善根福德因緣으〮로〮뎌〮나라〮해〮나디〮몯〯ᄒᆞ〮ᄂᆞ니〮舍利弗아〮ᄒᆞ〮다가〮善男子善女人이〮 [善男子ᄂᆞᆫ〮이든〮남지니〮오〮善女人ᄋᆞᆫ〮이든〮겨〯지비라〮] 阿彌陀佛닐오〮ᄆᆞᆯ〮듣ᄌᆞᆸ〯고〮일후〮믈〮디니〮ᅀᆞᄫᅡ〮ᄒᆞᆯ리〮어나〮이트〮리〮어나〮사ᄋᆞ〮리〮어나〮나ᄋᆞ〮리〮어나〮다쐐〮어나〮여쐐〮어나〮닐웨〮어나〮ᄒᆞᆫᄆᆞᅀᆞᄆᆞ〮로〮섯디〮아니〮ᄒᆞ면〮그사〯ᄅᆞ미〮ᄒᆞ마〮命終ᄒᆞᆯ쩨阿彌陀佛이〮聖衆ᄃᆞᆯ콰〮로〮알ᄑᆡ〮와〮뵈시〮리니〮이〮사〯ᄅᆞᆷ命終ᄒᆞᇙ제ᄆᆞᅀᆞ미〮가ᄭᆞ〮디〮아니〮ᄒᆞ〮야〮즉〮재阿彌陀佛極樂國土애〮가〮나리〮니〮舍利弗아〮내〮이〮런利ᄅᆞᆯ〮볼ᄊᆡ〮이〮마〯ᄅᆞᆯ〮ᄒᆞ〮노니〮衆生이〮이〮말〯드르니〮ᄂᆞᆫ〮뎌〮나라〮해〮나고〮져〮發願호ᇙ〮디〮니라〮
++舍利弗아〮내〮이〮제阿彌陀佛ᄉᅠ不可思議功德利ᄅᆞᆯ〮 [不可思議ᄂᆞᆫ〮어루ᄉᆞ라ᇰ-ᄒᆞ〮야〮議論몯〯ᄒᆞᆯ씨〮니〮ᄀᆞ자ᇰ〮하〯ᄆᆞᆯ〮니르니〮라〮] 讚歎ᄒᆞ〮ᅀᆞᄫᅩᆷ〮ᄀᆞᆮ〮ᄒᆞ〮야〮東方애〮도〮阿閦鞞佛須彌相佛大須彌佛須彌光佛妙音佛이〮ᄀᆞ〮ᄐᆞ신〮恒河沙數諸佛이〮 [恒河沙ᄂᆞᆫ〮恒河앳〮몰애〮니〮부톄〯ᄌᆞ조〮이〮믌〮ᄀᆞ〯ᅀᅢ〮와〮說法ᄒᆞ〮실ᄊᆡ〮만〯ᄒᆞᆫ數를〮이〮몰애〮로〮가ᄌᆞᆯ〮벼〮니르시〮더〮니라〮] 各各그나라〮해〮廣長舌相ᄋᆞᆯ〮내〯샤〮 [廣長舌相ᄋᆞᆫ〮넙고〮긴〯혓야ᇰᄌᆡ〮라〮] 三千大千世界ᄅᆞᆯ〮다〯두프샤〮 [一千나라〮히〮小千界오〮一千小千界中千界오〮一千中千界大千界라〮] 誠實ᄒᆞᆫ마〯ᄅᆞᆯ〮니르시〮ᄂᆞ니〮 [誠實ᄋᆞᆫ거〯츠디〮아니〮ᄒᆞ〮야〮實ᄒᆞᆯ씨〯라〮] 너희衆生ᄃᆞᆯ〮히〮이〮不可思議功德일ᄏᆞ라〮讚歎ᄒᆞ〮샤ᄆᆞᆯ〮信호ᇙ〮디니〮一切諸佛護念ᄒᆞ〮시ᇙ〮經이〮라〮 [護念ᄋᆞᆫ〮護持ᄒᆞ〮야〮닛디〮아니〮ᄒᆞᆯ씨〮라〮]
++……
++
++Source:
++韓國書誌學會 (1993). “佛說阿彌陁經”, 季刊書誌學報 10.
++
+diff --unified -Naur a/test-data/amitagyong.out b/test-data/amitagyong.out
+--- a/test-data/amitagyong.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/amitagyong.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,34 @@
++佛說阿彌陁經
++……
++ᄯᅩ〮舍利弗아〮極樂國土애〮衆生나니〮ᄂᆞᆫ〮다〯阿鞞跋致니〮 [阿鞞跋致ᄂᆞᆫ〮믈리〮그우디〮아니〮타혼〮마〯리
++니〮므르디〮아니〮호〮미〮세〯ᄠᅳ〮디〮잇ᄂᆞ니〮空位예〮드〮러〮므르디〮아니〮홈〮과〮假行애〮드〮러〮므르디〮아니〮홈〮과〮
++中念에〮드〮러〮므르디〮아니〮홈〮괘〮라〮ᄒᆞᆫ念도〮相업〯수미〮空이〮니〮긔〯般若ᅟᅵ니〮두〯生死ᄅᆞᆯ〮여흴〮ᄊᆡ〮니라〮몯〯
++ᄀᆞᄌᆞᆫ〮法업〯수미〮假ᅟᅵ니〮假ᄂᆞᆫ〮빌〯씨〮니〮本來업〯슨〮거긔〮法이슈〮미〮비룸〮ᄀᆞᆮ〮ᄒᆞ니〮라〮긔〯解脫이〮니〮ᄒᆡᇰ〯뎌〮기〮
++ᄀᆞᄌᆞᆯ〮ᄊᆡ〮니라〮ᄒᆞ나토〮아니〮며〮다ᄅᆞ도〮아니〮호〮미〮中이〮니〮긔〯法身이〮니〮眞實ᄉᅠ境界ᄅᆞᆯ〮證ᄒᆞᆯᄊᆡ〮니라〮두〯
++生死ᄂᆞᆫ〮分段生死와〮變易生死ᅟᅵ니〮分ᄋᆞᆫ〮제여고ᇝ〮가〮니니〮목수〯믜〮그지〮라〮段ᄋᆞᆫ〮그티니〮모〮ᄆᆡ〮얼구리〮
++라〮變易ᄋᆞᆫ〮고텨〮ᄃᆞ욀씨〮니〮因이〮올ᄆᆞ〮며〮果ᅟᅵ밧골씨〮라〮] 그中에〮一生補處ᅟᅵ해〯이셔〮 [一生ᄋᆞᆫ〮ᄒᆞᆫ
++번날씨〮니〮ᄒᆞᆫ번다ᄅᆞᆫ地位예〮난後ᅟᅵ면〮妙覺地位예〮오ᄅᆞᆯ씨〮니〮等覺位ᄅᆞᆯ〮니르니〮라〮等覺애셔〮金剛
++乾慧예〮ᄒᆞᆫ번나면〮後에〮妙覺애〮오ᄅᆞᄂᆞ니〮나다〮ᄒᆞ〮논마〯ᄅᆞᆫ〮사라〮나다〮ᄒᆞ〮논마〯리〮아니〮라〮부텻지븨〮나
++다〮ᄒᆞ〮논ᄠᅳ〮디라〮補ᄂᆞᆫ〮보탈〮씨〮오〮處ᄂᆞᆫ〮고〮디니〮부텻고대〮와〮보탈〮씨〮라〮] 그數ᅟᅵ甚히〮하〮算數ᄋᆡ〮能히〮
++아로ᇙ〮디〮아니〮오〮오직〮無量無邊阿僧祇로〮닐오ᇙ〮디〮니라〮
++舍利弗아〮衆生이〮드르닌〮뎌〮나라〮해〮나고〮져〮發願호ᇙ〮디니〮엇〯뎨〮어뇨〮이〮ᄀᆞ〮ᄐᆞᆫᄆᆞᆺ〮어〮딘사〯ᄅᆞᆷᄃᆞᆯ〮콰〮ᄒᆞᆫᄃᆡ〮
++모ᄃᆞ〮릴ᄊᆡ〮니라〮
++舍利弗아〮죠〯고맛〮善根福德因緣으〮로〮뎌〮나라〮해〮나디〮몯〯ᄒᆞ〮ᄂᆞ니〮舍利弗아〮ᄒᆞ〮다가〮善男子善女人
++이〮 [善男子ᄂᆞᆫ〮이든〮남지니〮오〮善女人ᄋᆞᆫ〮이든〮겨〯지비라〮] 阿彌陀佛닐오〮ᄆᆞᆯ〮듣ᄌᆞᆸ〯고〮일후〮믈〮디니〮
++ᅀᆞᄫᅡ〮ᄒᆞᆯ리〮어나〮이트〮리〮어나〮사ᄋᆞ〮리〮어나〮나ᄋᆞ〮리〮어나〮다쐐〮어나〮여쐐〮어나〮닐웨〮어나〮ᄒᆞᆫᄆᆞᅀᆞᄆᆞ〮로〮
++섯디〮아니〮ᄒᆞ면〮그사〯ᄅᆞ미〮ᄒᆞ마〮命終ᄒᆞᆯ쩨阿彌陀佛이〮聖衆ᄃᆞᆯ콰〮로〮알ᄑᆡ〮와〮뵈시〮리니〮이〮사〯ᄅᆞᆷ命終
++ᄒᆞᇙ제ᄆᆞᅀᆞ미〮가ᄭᆞ〮디〮아니〮ᄒᆞ〮야〮즉〮재阿彌陀佛極樂國土애〮가〮나리〮니〮舍利弗아〮내〮이〮런利ᄅᆞᆯ〮볼ᄊᆡ〮
++이〮마〯ᄅᆞᆯ〮ᄒᆞ〮노니〮衆生이〮이〮말〯드르니〮ᄂᆞᆫ〮뎌〮나라〮해〮나고〮져〮發願호ᇙ〮디〮니라〮
++舍利弗아〮내〮이〮제阿彌陀佛ᄉᅠ不可思議功德利ᄅᆞᆯ〮 [不可思議ᄂᆞᆫ〮어루ᄉᆞ라ᇰ-ᄒᆞ〮야〮議論몯〯ᄒᆞᆯ씨〮
++니〮ᄀᆞ자ᇰ〮하〯ᄆᆞᆯ〮니르니〮라〮] 讚歎ᄒᆞ〮ᅀᆞᄫᅩᆷ〮ᄀᆞᆮ〮ᄒᆞ〮야〮東方애〮도〮阿閦鞞佛須彌相佛大須彌佛須彌光佛
++妙音佛이〮ᄀᆞ〮ᄐᆞ신〮恒河沙數諸佛이〮 [恒河沙ᄂᆞᆫ〮恒河앳〮몰애〮니〮부톄〯ᄌᆞ조〮이〮믌〮ᄀᆞ〯ᅀᅢ〮와〮說法ᄒᆞ〮실
++ᄊᆡ〮만〯ᄒᆞᆫ數를〮이〮몰애〮로〮가ᄌᆞᆯ〮벼〮니르시〮더〮니라〮] 各各그나라〮해〮廣長舌相ᄋᆞᆯ〮내〯샤〮 [廣長舌相ᄋᆞᆫ〮
++넙고〮긴〯혓야ᇰᄌᆡ〮라〮] 三千大千世界ᄅᆞᆯ〮다〯두프샤〮 [一千나라〮히〮小千界오〮一千小千界中千界오〮
++一千中千界大千界라〮] 誠實ᄒᆞᆫ마〯ᄅᆞᆯ〮니르시〮ᄂᆞ니〮 [誠實ᄋᆞᆫ거〯츠디〮아니〮ᄒᆞ〮야〮實ᄒᆞᆯ씨〯라〮] 너희
++衆生ᄃᆞᆯ〮히〮이〮不可思議功德일ᄏᆞ라〮讚歎ᄒᆞ〮샤ᄆᆞᆯ〮信호ᇙ〮디니〮一切諸佛護念ᄒᆞ〮시ᇙ〮經이〮라〮 [護念ᄋᆞᆫ〮
++護持ᄒᆞ〮야〮닛디〮아니〮ᄒᆞᆯ씨〮라〮]
++……
++
++Source:
++韓國書誌學會 (1993). “佛說阿彌陁經”, 季刊書誌學報 10.
++
+diff --unified -Naur a/test-data/ar.in b/test-data/ar.in
+--- a/test-data/ar.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ar.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++المادة 1
++يولد جميع الناس أحرارًا متساوين في الكرامة والحقوق. وقد وهبوا عقلاً وضميرًا وعليهم أن يعامل بعضهم بعضًا بروح الإخاء.
++
++المادة 2
++لكل إنسان حق التمتع بكافة الحقوق والحريات الواردة في هذا الإعلان، دون أي تمييز، كالتمييز بسبب العنصر أو اللون أو الجنس أو اللغة أو الدين أو الرأي السياسي أو أي رأي آخر، أو الأصل الوطني أو الإجتماعي أو الثروة أو الميلاد أو أي وضع آخر، دون أية تفرقة بين الرجال والنساء.
++وفضلاً عما تقدم فلن يكون هناك أي تمييز أساسه الوضع السياسي أو القانوني أو الدولي لبلد أو البقعة التي ينتمي إليها الفرد سواء كان هذا البلد أو تلك البقعة مستقلاً أو تحت الوصاية أو غير متمتع بالحكم الذاتي أو كانت سيادته خاضعة لأي قيد من القيود.
++
+diff --unified -Naur a/test-data/ar.out b/test-data/ar.out
+--- a/test-data/ar.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ar.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,14 @@
++المادة 1
++يولد جميع الناس أحرارًا متساوين في الكرامة والحقوق. وقد وهبوا عقلاً وضميرًا 
++وعليهم أن يعامل بعضهم بعضًا بروح الإخاء.
++
++المادة 2
++لكل إنسان حق التمتع بكافة الحقوق والحريات الواردة في هذا الإعلان، دون أي 
++تمييز، كالتمييز بسبب العنصر أو اللون أو الجنس أو اللغة أو الدين أو الرأي 
++السياسي أو أي رأي آخر، أو الأصل الوطني أو الإجتماعي أو الثروة أو الميلاد أو 
++أي وضع آخر، دون أية تفرقة بين الرجال والنساء.
++وفضلاً عما تقدم فلن يكون هناك أي تمييز أساسه الوضع السياسي أو القانوني أو 
++الدولي لبلد أو البقعة التي ينتمي إليها الفرد سواء كان هذا البلد أو تلك 
++البقعة مستقلاً أو تحت الوصاية أو غير متمتع بالحكم الذاتي أو كانت سيادته خاضعة 
++لأي قيد من القيود.
++
+diff --unified -Naur a/test-data/ecclesiazusae.CharactersMax.out b/test-data/ecclesiazusae.CharactersMax.out
+--- a/test-data/ecclesiazusae.CharactersMax.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ecclesiazusae.CharactersMax.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,19 @@
++ΑΡΙΣΤΟΦΑΝΟΥΣ ΕΚΚΛΗΣΙΑΖΟΥΣΑΙ
++...
++ΧΟ. ὦ, ὦ, ὥρα δή, ὦ φίλαι γυναῖκες, εἴπερ μέλλομεν τὸ χρῆμα δρᾶν, ἐπὶ τὸ 
++δεῖπνον ὑπανακινεῖν. Κρητικῶς οὖν τὼ πόδε καὶ σὺ κίνει.  ΗΜ. τοῦτο δρῶ.
++ΧΟ. καὶ τάσδε νῦν λαγαρὰς τοῖν σκελίσκοιν τὸν ῥυθμόν. τάχα γὰρ ἔπεισι 
++λοπαδοτεμαχοσελαχογαλεοκρανιολειψανοδριμυποτριμματοσιλφιολιπαρομελιτοκατακεχυμε
++νοκιχλεπικοσσυφοφαττοπεριστεραλεκτρυονοπτοπιφαλλιδοκιγκλοπελειολαγῳοσιραιοβαφητ
++ραγανοπτερυγών. σὺ δὲ ταῦτ᾿ ἀκροασάμενος ταχὺ καὶ ταχέως λαβὲ τρύβλιον. εἶτα 
++κόνισαι λαβὼν λέκιθον, ἵν᾿ ἐπιδειπνῇς.
++ΗΜ. ἀλλὰ λαιμάττουσί που.
++ΧΟ. αἴρεσθ᾿ ἄνω, ἰαί, εὐαί, δειπνήσομεν, εὐοῖ, εὐαί, εὐαί, ὡς ἐπὶ νίκῃ. εὐαί 
++εὐαί εὐαί εὐαί.
++
++Source:
++Wilhelm Dindorf (ed.) (1846). “Poetarum scenicorum Graecorum: Aeschyli, 
++Sophoclis, Euripidis, et Aristophanis fabulae quae exstant omnes, cum 
++deperditarum fabularum fragmentis necnon caeteris eorum scriptis”, J. Abrams 
++et C. Richards. pp. 707f.
++
+diff --unified -Naur a/test-data/ecclesiazusae.ColumnsMax.out b/test-data/ecclesiazusae.ColumnsMax.out
+--- a/test-data/ecclesiazusae.ColumnsMax.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ecclesiazusae.ColumnsMax.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,19 @@
++ΑΡΙΣΤΟΦΑΝΟΥΣ ΕΚΚΛΗΣΙΑΖΟΥΣΑΙ
++...
++ΧΟ. ὦ, ὦ, ὥρα δή, ὦ φίλαι γυναῖκες, εἴπερ μέλλομεν τὸ χρῆμα δρᾶν, ἐπὶ τὸ 
++δεῖπνον ὑπανακινεῖν. Κρητικῶς οὖν τὼ πόδε καὶ σὺ κίνει.  ΗΜ. τοῦτο δρῶ.
++ΧΟ. καὶ τάσδε νῦν λαγαρὰς τοῖν σκελίσκοιν τὸν ῥυθμόν. τάχα γὰρ ἔπεισι 
++λοπαδοτεμαχοσελαχογαλεοκρανιολειψανοδριμυποτριμματοσιλφιολιπαρομελιτοκατακεχ
++υμενοκιχλεπικοσσυφοφαττοπεριστεραλεκτρυονοπτοπιφαλλιδοκιγκλοπελειολαγῳοσιραι
++οβαφητραγανοπτερυγών. σὺ δὲ ταῦτ᾿ ἀκροασάμενος ταχὺ καὶ ταχέως λαβὲ 
++τρύβλιον. εἶτα κόνισαι λαβὼν λέκιθον, ἵν᾿ ἐπιδειπνῇς.
++ΗΜ. ἀλλὰ λαιμάττουσί που.
++ΧΟ. αἴρεσθ᾿ ἄνω, ἰαί, εὐαί, δειπνήσομεν, εὐοῖ, εὐαί, εὐαί, ὡς ἐπὶ νίκῃ. εὐαί 
++εὐαί εὐαί εὐαί.
++
++Source:
++Wilhelm Dindorf (ed.) (1846). “Poetarum scenicorum Graecorum: Aeschyli, 
++Sophoclis, Euripidis, et Aristophanis fabulae quae exstant omnes, cum 
++deperditarum fabularum fragmentis necnon caeteris eorum scriptis”, J. Abrams 
++et C. Richards. pp. 707f.
++
+diff --unified -Naur a/test-data/ecclesiazusae.ColumnsMin.out b/test-data/ecclesiazusae.ColumnsMin.out
+--- a/test-data/ecclesiazusae.ColumnsMin.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ecclesiazusae.ColumnsMin.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,21 @@
++ΑΡΙΣΤΟΦΑΝΟΥΣ ΕΚΚΛΗΣΙΑΖΟΥΣΑΙ
++...
++ΧΟ. ὦ, ὦ, ὥρα δή, ὦ φίλαι γυναῖκες, εἴπερ μέλλομεν τὸ χρῆμα δρᾶν, 
++ἐπὶ τὸ δεῖπνον ὑπανακινεῖν. Κρητικῶς οὖν τὼ πόδε καὶ σὺ κίνει.  
++ΗΜ. τοῦτο δρῶ.
++ΧΟ. καὶ τάσδε νῦν λαγαρὰς τοῖν σκελίσκοιν τὸν ῥυθμόν. τάχα γὰρ 
++ἔπεισι λοπαδοτεμαχοσελαχογαλεοκρανιολειψανοδριμυποτριμματοσιλφιολι
++παρομελιτοκατακεχυμενοκιχλεπικοσσυφοφαττοπεριστεραλεκτρυονοπτοπιφα
++λλιδοκιγκλοπελειολαγῳοσιραιοβαφητραγανοπτερυγών. σὺ δὲ ταῦτ᾿ 
++ἀκροασάμενος ταχὺ καὶ ταχέως λαβὲ τρύβλιον. εἶτα κόνισαι λαβὼν 
++λέκιθον, ἵν᾿ ἐπιδειπνῇς.
++ΗΜ. ἀλλὰ λαιμάττουσί που.
++ΧΟ. αἴρεσθ᾿ ἄνω, ἰαί, εὐαί, δειπνήσομεν, εὐοῖ, εὐαί, εὐαί, ὡς ἐπὶ 
++νίκῃ. εὐαί εὐαί εὐαί εὐαί.
++
++Source:
++Wilhelm Dindorf (ed.) (1846). “Poetarum scenicorum Graecorum: 
++Aeschyli, Sophoclis, Euripidis, et Aristophanis fabulae quae 
++exstant omnes, cum deperditarum fabularum fragmentis necnon 
++caeteris eorum scriptis”, J. Abrams et C. Richards. pp. 707f.
++
+diff --unified -Naur a/test-data/ecclesiazusae.in b/test-data/ecclesiazusae.in
+--- a/test-data/ecclesiazusae.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ecclesiazusae.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,10 @@
++ΑΡΙΣΤΟΦΑΝΟΥΣ ΕΚΚΛΗΣΙΑΖΟΥΣΑΙ
++...
++ΧΟ. ὦ, ὦ, ὥρα δή, ὦ φίλαι γυναῖκες, εἴπερ μέλλομεν τὸ χρῆμα δρᾶν, ἐπὶ τὸ δεῖπνον ὑπανακινεῖν. Κρητικῶς οὖν τὼ πόδε καὶ σὺ κίνει.  ΗΜ. τοῦτο δρῶ.
++ΧΟ. καὶ τάσδε νῦν λαγαρὰς τοῖν σκελίσκοιν τὸν ῥυθμόν. τάχα γὰρ ἔπεισι λοπαδοτεμαχοσελαχογαλεοκρανιολειψανοδριμυποτριμματοσιλφιολιπαρομελιτοκατακεχυμενοκιχλεπικοσσυφοφαττοπεριστεραλεκτρυονοπτοπιφαλλιδοκιγκλοπελειολαγῳοσιραιοβαφητραγανοπτερυγών. σὺ δὲ ταῦτ᾿ ἀκροασάμενος ταχὺ καὶ ταχέως λαβὲ τρύβλιον. εἶτα κόνισαι λαβὼν λέκιθον, ἵν᾿ ἐπιδειπνῇς.
++ΗΜ. ἀλλὰ λαιμάττουσί που.
++ΧΟ. αἴρεσθ᾿ ἄνω, ἰαί, εὐαί, δειπνήσομεν, εὐοῖ, εὐαί, εὐαί, ὡς ἐπὶ νίκῃ. εὐαί εὐαί εὐαί εὐαί.
++
++Source:
++Wilhelm Dindorf (ed.) (1846). “Poetarum scenicorum Graecorum: Aeschyli, Sophoclis, Euripidis, et Aristophanis fabulae quae exstant omnes, cum deperditarum fabularum fragmentis necnon caeteris eorum scriptis”, J. Abrams et C. Richards. pp. 707f.
++
+diff --unified -Naur a/test-data/ecclesiazusae.out b/test-data/ecclesiazusae.out
+--- a/test-data/ecclesiazusae.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ecclesiazusae.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,18 @@
++ΑΡΙΣΤΟΦΑΝΟΥΣ ΕΚΚΛΗΣΙΑΖΟΥΣΑΙ
++...
++ΧΟ. ὦ, ὦ, ὥρα δή, ὦ φίλαι γυναῖκες, εἴπερ μέλλομεν τὸ χρῆμα δρᾶν, ἐπὶ τὸ 
++δεῖπνον ὑπανακινεῖν. Κρητικῶς οὖν τὼ πόδε καὶ σὺ κίνει.  ΗΜ. τοῦτο δρῶ.
++ΧΟ. καὶ τάσδε νῦν λαγαρὰς τοῖν σκελίσκοιν τὸν ῥυθμόν. τάχα γὰρ ἔπεισι 
++λοπαδοτεμαχοσελαχογαλεοκρανιολειψανοδριμυποτριμματοσιλφιολιπαρομελιτοκατακεχυμενοκιχλεπικοσσυφοφαττοπεριστεραλεκτρυονοπτοπιφαλλιδοκιγκλοπελειολαγῳοσιραιοβαφητραγανοπτερυγών. 
++σὺ δὲ ταῦτ᾿ ἀκροασάμενος ταχὺ καὶ ταχέως λαβὲ τρύβλιον. εἶτα κόνισαι λαβὼν 
++λέκιθον, ἵν᾿ ἐπιδειπνῇς.
++ΗΜ. ἀλλὰ λαιμάττουσί που.
++ΧΟ. αἴρεσθ᾿ ἄνω, ἰαί, εὐαί, δειπνήσομεν, εὐοῖ, εὐαί, εὐαί, ὡς ἐπὶ νίκῃ. εὐαί 
++εὐαί εὐαί εὐαί.
++
++Source:
++Wilhelm Dindorf (ed.) (1846). “Poetarum scenicorum Graecorum: Aeschyli, 
++Sophoclis, Euripidis, et Aristophanis fabulae quae exstant omnes, cum 
++deperditarum fabularum fragmentis necnon caeteris eorum scriptis”, J. Abrams 
++et C. Richards. pp. 707f.
++
+diff --unified -Naur a/test-data/el.in b/test-data/el.in
+--- a/test-data/el.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/el.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++ΑΡΘΡΟ 1
++'Ολοι οι άνθρωποι γεννιούνται ελεύθεροι και ίσοι στην αξιοπρέπεια και τα δικαιώματα. Είναι προικισμένοι με λογική και συνείδηση, και οφείλουν να συμπεριφέρονται μεταξύ τους με πνεύμα αδελφοσύνης.
++
++ΑΡΘΡΟ 2
++Κάθε άνθρωπος δικαιούται να επικαλείται όλα τα δικαιώματα και όλες τις ελευθερίες που προκηρύσσει η παρούσα Διακήρυξη, χωρίς καμία απολύτως διάκριση, ειδικότερα ως προς τη φυλή, το χρώμα, το φύλο, τη γλώσσα, τις θρησκείες, τις πολιτικές ή οποιεσδήποτε άλλες πεποιθήσεις, την εθνική ή κοινωνική καταγωγή, την περιουσία, τη γέννηση ή οποιαδήποτε άλλη κατάσταση.
++Δεν θα μπορεί ακόμα να γίνεται καμία διάκριση εξαιτίας του πολιτικού, νομικού ή διεθνούς καθεστώτος της χώρας από την οποία προέρχεται κανείς, είτε πρόκειται για χώρα ή εδαφική περιοχή ανεξάρτητη, υπό κηδεμονία ή υπεξουσία, ή που βρίσκεται υπό οποιονδήποτε άλλον περιορισμό κυριαρχίας.
++
+diff --unified -Naur a/test-data/el.out b/test-data/el.out
+--- a/test-data/el.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/el.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,16 @@
++ΑΡΘΡΟ 1
++'Ολοι οι άνθρωποι γεννιούνται ελεύθεροι και ίσοι στην αξιοπρέπεια και τα 
++δικαιώματα. Είναι προικισμένοι με λογική και συνείδηση, και οφείλουν να 
++συμπεριφέρονται μεταξύ τους με πνεύμα αδελφοσύνης.
++
++ΑΡΘΡΟ 2
++Κάθε άνθρωπος δικαιούται να επικαλείται όλα τα δικαιώματα και όλες τις 
++ελευθερίες που προκηρύσσει η παρούσα Διακήρυξη, χωρίς καμία απολύτως 
++διάκριση, ειδικότερα ως προς τη φυλή, το χρώμα, το φύλο, τη γλώσσα, τις 
++θρησκείες, τις πολιτικές ή οποιεσδήποτε άλλες πεποιθήσεις, την εθνική ή 
++κοινωνική καταγωγή, την περιουσία, τη γέννηση ή οποιαδήποτε άλλη κατάσταση.
++Δεν θα μπορεί ακόμα να γίνεται καμία διάκριση εξαιτίας του πολιτικού, 
++νομικού ή διεθνούς καθεστώτος της χώρας από την οποία προέρχεται κανείς, 
++είτε πρόκειται για χώρα ή εδαφική περιοχή ανεξάρτητη, υπό κηδεμονία ή 
++υπεξουσία, ή που βρίσκεται υπό οποιονδήποτε άλλον περιορισμό κυριαρχίας.
++
+diff --unified -Naur a/test-data/flowedsp.in b/test-data/flowedsp.in
+--- a/test-data/flowedsp.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/flowedsp.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,25 @@
++> Thou villainous ill-breeding spongy dizzy-eyed 
++> reeky elf-skinned pigeon-egg! 
++>> Thou artless swag-bellied milk-livered 
++>> dismal-dreaming idle-headed scut!
++>>> Thou errant folly-fallen spleeny reeling-ripe 
++>>> unmuzzled ratsbane!
++>>>> Henceforth, the coding style is to be strictly 
++>>>> enforced, including the use of only upper case.
++>>>>> I've noticed a lack of adherence to the coding 
++>>>>> styles, of late.
++>>>>>> Any complaints?
++----
++`Take some more tea,' the March Hare said to Alice, very 
++earnestly.
++
++`I've had nothing yet,' Alice replied in an offended tone, `so 
++I can't take more.'
++
++`You mean you can't take LESS,' said the Hatter: `it's very 
++easy to take MORE than nothing.'
++----
++>>>Take some more tea.
++>>I've had nothing yet, so I can't take more.
++>You mean you can't take LESS, it's very easy to take 
++>MORE than nothing.
+diff --unified -Naur a/test-data/flowedsp.out b/test-data/flowedsp.out
+--- a/test-data/flowedsp.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/flowedsp.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,16 @@
++> Thou villainous ill-breeding spongy dizzy-eyed reeky elf-skinned pigeon-egg! 
++>> Thou artless swag-bellied milk-livered dismal-dreaming idle-headed scut!
++>>> Thou errant folly-fallen spleeny reeling-ripe unmuzzled ratsbane!
++>>>> Henceforth, the coding style is to be strictly enforced, including the use of only upper case.
++>>>>> I've noticed a lack of adherence to the coding styles, of late.
++>>>>>> Any complaints?
++----
++`Take some more tea,' the March Hare said to Alice, very earnestly.
++
++`I've had nothing yet,' Alice replied in an offended tone, `so I can't take more.'
++
++`You mean you can't take LESS,' said the Hatter: `it's very easy to take MORE than nothing.'
++----
++>>> Take some more tea.
++>> I've had nothing yet, so I can't take more.
++> You mean you can't take LESS, it's very easy to take MORE than nothing.
+diff --unified -Naur a/test-data/fr.ea.out b/test-data/fr.ea.out
+--- a/test-data/fr.ea.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/fr.ea.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,16 @@
++Article premier
++Tous les êtres humains naissent libres et égaux en dignité et en droits. 
++Ils sont doués de raison et de conscience et doivent agir les uns envers 
++les autres dans un esprit de fraternité.
++
++Article 2
++Chacun peut se prévaloir de tous les droits et de toutes les libertés 
++proclamés dans la présente Déclaration, sans distinction aucune, 
++notamment de race, de couleur, de sexe, de langue, de religion, d'opinion 
++politique ou de toute autre opinion, d'origine nationale ou sociale, de 
++fortune, de naissance ou de toute autre situation.
++De plus, il ne sera fait aucune distinction fondée sur le statut politique, 
++juridique ou international du pays ou du territoire dont une personne est 
++ressortissante, que ce pays ou territoire soit indépendant, sous tutelle, 
++non autonome ou soumis à une limitation quelconque de souveraineté.
++
+diff --unified -Naur a/test-data/fr.fixed.out b/test-data/fr.fixed.out
+--- a/test-data/fr.fixed.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/fr.fixed.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,21 @@
++Article premier
++
++Tous les êtres humains naissent libres et égaux en dignité et en droits. Ils
++sont doués de raison et de conscience et doivent agir les uns envers les
++autres dans un esprit de fraternité.
++
++
++Article 2
++
++Chacun peut se prévaloir de tous les droits et de toutes les libertés
++proclamés dans la présente Déclaration, sans distinction aucune, notamment
++de race, de couleur, de sexe, de langue, de religion, d'opinion politique ou
++de toute autre opinion, d'origine nationale ou sociale, de fortune, de
++naissance ou de toute autre situation.
++
++De plus, il ne sera fait aucune distinction fondée sur le statut politique,
++juridique ou international du pays ou du territoire dont une personne est
++ressortissante, que ce pays ou territoire soit indépendant, sous tutelle,
++non autonome ou soumis à une limitation quelconque de souveraineté.
++
++
+diff --unified -Naur a/test-data/fr.flowed.out b/test-data/fr.flowed.out
+--- a/test-data/fr.flowed.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/fr.flowed.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,21 @@
++Article premier 
++
++Tous les êtres humains naissent libres et égaux en dignité et en droits. Ils  
++sont doués de raison et de conscience et doivent agir les uns envers les  
++autres dans un esprit de fraternité. 
++
++
++Article 2 
++
++Chacun peut se prévaloir de tous les droits et de toutes les libertés  
++proclamés dans la présente Déclaration, sans distinction aucune, notamment  
++de race, de couleur, de sexe, de langue, de religion, d'opinion politique ou  
++de toute autre opinion, d'origine nationale ou sociale, de fortune, de  
++naissance ou de toute autre situation. 
++
++De plus, il ne sera fait aucune distinction fondée sur le statut politique,  
++juridique ou international du pays ou du territoire dont une personne est  
++ressortissante, que ce pays ou territoire soit indépendant, sous tutelle,  
++non autonome ou soumis à une limitation quelconque de souveraineté. 
++
++
+diff --unified -Naur a/test-data/fr.format.out b/test-data/fr.format.out
+--- a/test-data/fr.format.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/fr.format.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,18 @@
++    sot>Article premier<eop
++    sop>Tous les êtres humains naissent libres et égaux en dignité et en<eol
++    sol>droits. Ils sont doués de raison et de conscience et doivent agir<eol
++    sol>les uns envers les autres dans un esprit de fraternité.<eop
++    sop><eop
++    sop>Article 2<eop
++    sop>Chacun peut se prévaloir de tous les droits et de toutes les<eol
++    sol>libertés proclamés dans la présente Déclaration, sans distinction<eol
++    sol>aucune, notamment de race, de couleur, de sexe, de langue, de<eol
++    sol>religion, d'opinion politique ou de toute autre opinion, d'origine<eol
++    sol>nationale ou sociale, de fortune, de naissance ou de toute autre<eol
++    sol>situation.<eop
++    sop>De plus, il ne sera fait aucune distinction fondée sur le statut<eol
++    sol>politique, juridique ou international du pays ou du territoire dont<eol
++    sol>une personne est ressortissante, que ce pays ou territoire soit<eol
++    sol>indépendant, sous tutelle, non autonome ou soumis à une limitation<eol
++    sol>quelconque de souveraineté.<eop
++    sop><eot
+diff --unified -Naur a/test-data/fr.in b/test-data/fr.in
+--- a/test-data/fr.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/fr.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++Article premier
++Tous les êtres humains naissent libres et égaux en dignité et en droits. Ils sont doués de raison et de conscience et doivent agir les uns envers les autres dans un esprit de fraternité.
++
++Article 2
++Chacun peut se prévaloir de tous les droits et de toutes les libertés proclamés dans la présente Déclaration, sans distinction aucune, notamment de race, de couleur, de sexe, de langue, de religion, d'opinion politique ou de toute autre opinion, d'origine nationale ou sociale, de fortune, de naissance ou de toute autre situation.
++De plus, il ne sera fait aucune distinction fondée sur le statut politique, juridique ou international du pays ou du territoire dont une personne est ressortissante, que ce pays ou territoire soit indépendant, sous tutelle, non autonome ou soumis à une limitation quelconque de souveraineté.
++
+diff --unified -Naur a/test-data/fr.newline.out b/test-data/fr.newline.out
+--- a/test-data/fr.newline.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/fr.newline.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,16 @@
++Article premier
++Tous les êtres humains naissent libres et égaux en dignité et en droits. Ils
++sont doués de raison et de conscience et doivent agir les uns envers les
++autres dans un esprit de fraternité.
++
++Article 2
++Chacun peut se prévaloir de tous les droits et de toutes les libertés
++proclamés dans la présente Déclaration, sans distinction aucune, notamment
++de race, de couleur, de sexe, de langue, de religion, d'opinion politique ou
++de toute autre opinion, d'origine nationale ou sociale, de fortune, de
++naissance ou de toute autre situation.
++De plus, il ne sera fait aucune distinction fondée sur le statut politique,
++juridique ou international du pays ou du territoire dont une personne est
++ressortissante, que ce pays ou territoire soit indépendant, sous tutelle,
++non autonome ou soumis à une limitation quelconque de souveraineté.
++
+diff --unified -Naur a/test-data/fr.out b/test-data/fr.out
+--- a/test-data/fr.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/fr.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,16 @@
++Article premier
++Tous les êtres humains naissent libres et égaux en dignité et en droits. Ils 
++sont doués de raison et de conscience et doivent agir les uns envers les 
++autres dans un esprit de fraternité.
++
++Article 2
++Chacun peut se prévaloir de tous les droits et de toutes les libertés 
++proclamés dans la présente Déclaration, sans distinction aucune, notamment 
++de race, de couleur, de sexe, de langue, de religion, d'opinion politique ou 
++de toute autre opinion, d'origine nationale ou sociale, de fortune, de 
++naissance ou de toute autre situation.
++De plus, il ne sera fait aucune distinction fondée sur le statut politique, 
++juridique ou international du pays ou du territoire dont une personne est 
++ressortissante, que ce pays ou territoire soit indépendant, sous tutelle, 
++non autonome ou soumis à une limitation quelconque de souveraineté.
++
+diff --unified -Naur a/test-data/fr.plain.out b/test-data/fr.plain.out
+--- a/test-data/fr.plain.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/fr.plain.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,16 @@
++Article premier
++Tous les êtres humains naissent libres et égaux en dignité et en droits. Ils
++sont doués de raison et de conscience et doivent agir les uns envers les
++autres dans un esprit de fraternité.
++
++Article 2
++Chacun peut se prévaloir de tous les droits et de toutes les libertés
++proclamés dans la présente Déclaration, sans distinction aucune, notamment
++de race, de couleur, de sexe, de langue, de religion, d'opinion politique ou
++de toute autre opinion, d'origine nationale ou sociale, de fortune, de
++naissance ou de toute autre situation.
++De plus, il ne sera fait aucune distinction fondée sur le statut politique,
++juridique ou international du pays ou du territoire dont une personne est
++ressortissante, que ce pays ou territoire soit indépendant, sous tutelle,
++non autonome ou soumis à une limitation quelconque de souveraineté.
++
+diff --unified -Naur a/test-data/fr.wrap.out b/test-data/fr.wrap.out
+--- a/test-data/fr.wrap.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/fr.wrap.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,17 @@
++	Article premier
++	Tous les êtres humains naissent libres et égaux en dignité et en
++    droits. Ils sont doués de raison et de conscience et doivent agir les
++    uns envers les autres dans un esprit de fraternité.
++
++	Article 2
++	Chacun peut se prévaloir de tous les droits et de toutes les
++    libertés proclamés dans la présente Déclaration, sans distinction
++    aucune, notamment de race, de couleur, de sexe, de langue, de religion,
++    d'opinion politique ou de toute autre opinion, d'origine nationale ou
++    sociale, de fortune, de naissance ou de toute autre situation.
++	De plus, il ne sera fait aucune distinction fondée sur le statut
++    politique, juridique ou international du pays ou du territoire dont une
++    personne est ressortissante, que ce pays ou territoire soit indépendant,
++    sous tutelle, non autonome ou soumis à une limitation quelconque de
++    souveraineté.
++
+diff --unified -Naur a/test-data/he.in b/test-data/he.in
+--- a/test-data/he.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/he.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++סעיף א.
++כל בני אדם נולדו בני חורין ושווים בערכם ובזכויותיהם. כולם חוננו בתבונה ובמצפון, לפיכך חובה עליהם לנהוג איש ברעהו ברוח של אחוה.
++
++סעיף ב.
++כל אדם זכאי לזכויות ולחרויות שנקבעו בהכרזש זו ללא הפליה כלשהיא מטעמי גזע, צבע, מין, לשון, דח, דעה פוליטית או דעה בבעיות אחרות, בגלל מוצא לאומי או חברתי, קנין, לידה או מעמד אחר.
++גדולה מזו, לא יופלה אדם על פי מעמדה המדיני, על פי סמכותה או על פי מעמדה הבינלאומי של המדינה או הארץ שאליה הוא שייך, דין שהארץ היא עצמאית, ובין שהיא נתונה לנאמנות, בין שהיא נטולת שלטון עצמי ובין שריבונותה מוגבלת כל הגבלה אחרת.
++
+diff --unified -Naur a/test-data/he.out b/test-data/he.out
+--- a/test-data/he.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/he.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,13 @@
++סעיף א.
++כל בני אדם נולדו בני חורין ושווים בערכם ובזכויותיהם. כולם חוננו בתבונה 
++ובמצפון, לפיכך חובה עליהם לנהוג איש ברעהו ברוח של אחוה.
++
++סעיף ב.
++כל אדם זכאי לזכויות ולחרויות שנקבעו בהכרזש זו ללא הפליה כלשהיא מטעמי גזע, 
++צבע, מין, לשון, דח, דעה פוליטית או דעה בבעיות אחרות, בגלל מוצא לאומי או 
++חברתי, קנין, לידה או מעמד אחר.
++גדולה מזו, לא יופלה אדם על פי מעמדה המדיני, על פי סמכותה או על פי מעמדה 
++הבינלאומי של המדינה או הארץ שאליה הוא שייך, דין שהארץ היא עצמאית, ובין שהיא 
++נתונה לנאמנות, בין שהיא נטולת שלטון עצמי ובין שריבונותה מוגבלת כל הגבלה 
++אחרת.
++
+diff --unified -Naur a/test-data/ja-a.in b/test-data/ja-a.in
+--- a/test-data/ja-a.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ja-a.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++第1条(だいいちじょう)
++すべての人間(にんげん)は、生(う)まれながらにして自由(じゆう)であり、かつ、尊厳(そんげん)と権利(けんり)とについて平等(びょうどう)である。人間(にんげん)は、理性(りせい)と良心(りょうしん)とを授(さず)けられており、互(たが)いに同胞(どうほう)の精神(せいしん)をもって行動(こうどう)しなければならない。
++
++第2条(だいにじょう)
++すべて人(ひと)は、人種(じんしゅ)、皮膚(ひふ)の色(いろ)、性(せい)、言語(げんご)、宗教(しゅうきょう)、政治上(せいじじょう)その他(た)の意見(いけん)、国民的(こくみんてき)もしくは社会的(しゃかいてき)出身(しゅっしん)、財産(ざいさん)、門地(もんち)その他(た)の地位(ちい)又(また)はこれに類(るい)するいかなる事由(じゆう)による差別(さべつ)をも受(う)けることなく、この宣言(せんげん)に掲(かか)げるすべての権利(けんり)と自由(じゆう)とを享有(きょうゆう)することができる。
++さらに、個人(こじん)の属(ぞく)する国(くに)又(また)は地域(ちいき)が独立国(どくりつこく)であると、信託統治地域(しんたくとうちちいき)であると、非自治地域(ひじちちいき)であると、又(また)は他(ほか)のなんらかの主権制限(しゅけんせいげん)の下(もと)にあるとを問(と)わず、その国(くに)又(また)は地域(ちいき)の政治上(せいじじょう)、管轄上(かんかつじょう)又(また)は国際上(こくさいじょう)の地位(ちい)に基(もと)ずくいかなる差別(さべつ)もしてはならない。
++
+diff --unified -Naur a/test-data/ja-a.out b/test-data/ja-a.out
+--- a/test-data/ja-a.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ja-a.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,21 @@
++第1条(だいいちじょう)
++すべての人間(にんげん)は、生(う)まれながらにして自由(じゆう)であり、かつ、尊
++厳(そんげん)と権利(けんり)とについて平等(びょうどう)である。人間(にんげん)
++は、理性(りせい)と良心(りょうしん)とを授(さず)けられており、互(たが)いに同胞
++(どうほう)の精神(せいしん)をもって行動(こうどう)しなければならない。
++
++第2条(だいにじょう)
++すべて人(ひと)は、人種(じんしゅ)、皮膚(ひふ)の色(いろ)、性(せい)、言語(げん
++ご)、宗教(しゅうきょう)、政治上(せいじじょう)その他(た)の意見(いけん)、国民
++的(こくみんてき)もしくは社会的(しゃかいてき)出身(しゅっしん)、財産(ざいさ
++ん)、門地(もんち)その他(た)の地位(ちい)又(また)はこれに類(るい)するいかなる
++事由(じゆう)による差別(さべつ)をも受(う)けることなく、この宣言(せんげん)に掲
++(かか)げるすべての権利(けんり)と自由(じゆう)とを享有(きょうゆう)することがで
++きる。
++さらに、個人(こじん)の属(ぞく)する国(くに)又(また)は地域(ちいき)が独立国(ど
++くりつこく)であると、信託統治地域(しんたくとうちちいき)であると、非自治地域
++(ひじちちいき)であると、又(また)は他(ほか)のなんらかの主権制限(しゅけんせい
++げん)の下(もと)にあるとを問(と)わず、その国(くに)又(また)は地域(ちいき)の政
++治上(せいじじょう)、管轄上(かんかつじょう)又(また)は国際上(こくさいじょう)の
++地位(ちい)に基(もと)ずくいかなる差別(さべつ)もしてはならない。
++
+diff --unified -Naur a/test-data/ja.fixed.out b/test-data/ja.fixed.out
+--- a/test-data/ja.fixed.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ja.fixed.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,19 @@
++第1条
++
++すべての人間は、生まれながらにして自由であり、かつ、尊厳と権利とについて平等
++である。人間は、理性と良心とを授けられており、互いに同胞の精神をもって行動し
++なければならない。
++
++
++第2条
++
++すべて人は、人種、皮膚の色、性、言語、宗教、政治上その他の意見、国民的もしく
++は社会的出身、財産、門地その他の地位又はこれに類するいかなる事由による差別を
++も受けることなく、この宣言に掲げるすべての権利と自由とを享有することができ
++る。
++
++さらに、個人の属する国又は地域が独立国であると、信託統治地域であると、非自治
++地域であると、又は他のなんらかの主権制限の下にあるとを問わず、その国又は地域
++の政治上、管轄上又は国際上の地位に基ずくいかなる差別もしてはならない。
++
++
+diff --unified -Naur a/test-data/ja.flowed.out b/test-data/ja.flowed.out
+--- a/test-data/ja.flowed.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ja.flowed.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,19 @@
++第1条 
++
++すべての人間は、生まれながらにして自由であり、かつ、尊厳と権利とについて平等 
++である。人間は、理性と良心とを授けられており、互いに同胞の精神をもって行動し 
++なければならない。 
++
++
++第2条 
++
++すべて人は、人種、皮膚の色、性、言語、宗教、政治上その他の意見、国民的もしく 
++は社会的出身、財産、門地その他の地位又はこれに類するいかなる事由による差別を 
++も受けることなく、この宣言に掲げるすべての権利と自由とを享有することができ 
++る。 
++
++さらに、個人の属する国又は地域が独立国であると、信託統治地域であると、非自治 
++地域であると、又は他のなんらかの主権制限の下にあるとを問わず、その国又は地域 
++の政治上、管轄上又は国際上の地位に基ずくいかなる差別もしてはならない。 
++
++
+diff --unified -Naur a/test-data/ja.format.out b/test-data/ja.format.out
+--- a/test-data/ja.format.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ja.format.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,15 @@
++    sot>第1条<eop
++    sop>すべての人間は、生まれながらにして自由であり、かつ、尊厳と権利とにつ<eol
++    sol>いて平等である。人間は、理性と良心とを授けられており、互いに同胞の精<eol
++    sol>神をもって行動しなければならない。<eop
++    sop><eop
++    sop>第2条<eop
++    sop>すべて人は、人種、皮膚の色、性、言語、宗教、政治上その他の意見、国民<eol
++    sol>的もしくは社会的出身、財産、門地その他の地位又はこれに類するいかなる<eol
++    sol>事由による差別をも受けることなく、この宣言に掲げるすべての権利と自由<eol
++    sol>とを享有することができる。<eop
++    sop>さらに、個人の属する国又は地域が独立国であると、信託統治地域である<eol
++    sol>と、非自治地域であると、又は他のなんらかの主権制限の下にあるとを問わ<eol
++    sol>ず、その国又は地域の政治上、管轄上又は国際上の地位に基ずくいかなる差<eol
++    sol>別もしてはならない。<eop
++    sop><eot
+diff --unified -Naur a/test-data/ja.in b/test-data/ja.in
+--- a/test-data/ja.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ja.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++第1条
++すべての人間は、生まれながらにして自由であり、かつ、尊厳と権利とについて平等である。人間は、理性と良心とを授けられており、互いに同胞の精神をもって行動しなければならない。
++
++第2条
++すべて人は、人種、皮膚の色、性、言語、宗教、政治上その他の意見、国民的もしくは社会的出身、財産、門地その他の地位又はこれに類するいかなる事由による差別をも受けることなく、この宣言に掲げるすべての権利と自由とを享有することができる。
++さらに、個人の属する国又は地域が独立国であると、信託統治地域であると、非自治地域であると、又は他のなんらかの主権制限の下にあるとを問わず、その国又は地域の政治上、管轄上又は国際上の地位に基ずくいかなる差別もしてはならない。
++
+diff --unified -Naur a/test-data/ja-k.in b/test-data/ja-k.in
+--- a/test-data/ja-k.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ja-k.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++だいいちじょう
++すべてのにんげんは、うまれながらにしてじゆうであり、かつ、そんげんとけんりとについてびょうどうである。にんげんは、りせいとりょうしんとをさずけられており、たがいにどうほうのせいしんをもってこうどうしなければならない。
++
++だいにじょう
++すべてひとは、じんしゅ、ひふのいろ、せい、げんご、しゅうきょう、せいじじょうそのたのいけん、こくみんてきもしくはしゃかいてきしゅっしん、ざいさん、もんちそのたのちいまたはこれにるいするいかなるじゆうによるさべつをもうけることなく、このせんげんにかかげるすべてのけんりとじゆうとをきょうゆうすることができる。
++さらに、こじんのぞくするくにまたはちいきがどくりつこくであると、しんたくとうちちいきであると、ひじちちいきであると、またはほかのなんらかのしゅけんせいげんのもとにあるとをとわず、そのくにまたはちいきのせいじじょう、かんかつじょうまたはこくさいじょうのちいにもとずくいかなるさべつもしてはならない。
++
+diff --unified -Naur a/test-data/ja-k.ns.out b/test-data/ja-k.ns.out
+--- a/test-data/ja-k.ns.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ja-k.ns.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,17 @@
++だいいちじょう
++すべてのにんげんは、うまれながらにしてじゆうであり、かつ、そんげんとけん
++りとについてびょうどうである。にんげんは、りせいとりょうしんとをさずけら
++れており、たがいにどうほうのせいしんをもってこうどうしなければならない。
++
++だいにじょう
++すべてひとは、じんしゅ、ひふのいろ、せい、げんご、しゅうきょう、せいじじ
++ょうそのたのいけん、こくみんてきもしくはしゃかいてきしゅっしん、ざいさ
++ん、もんちそのたのちいまたはこれにるいするいかなるじゆうによるさべつをも
++うけることなく、このせんげんにかかげるすべてのけんりとじゆうとをきょうゆ
++うすることができる。
++さらに、こじんのぞくするくにまたはちいきがどくりつこくであると、しんたく
++とうちちいきであると、ひじちちいきであると、またはほかのなんらかのしゅけ
++んせいげんのもとにあるとをとわず、そのくにまたはちいきのせいじじょう、か
++んかつじょうまたはこくさいじょうのちいにもとずくいかなるさべつもしてはな
++らない。
++
+diff --unified -Naur a/test-data/ja-k.out b/test-data/ja-k.out
+--- a/test-data/ja-k.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ja-k.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,17 @@
++だいいちじょう
++すべてのにんげんは、うまれながらにしてじゆうであり、かつ、そんげんとけん
++りとについてびょうどうである。にんげんは、りせいとりょうしんとをさずけら
++れており、たがいにどうほうのせいしんをもってこうどうしなければならない。
++
++だいにじょう
++すべてひとは、じんしゅ、ひふのいろ、せい、げんご、しゅうきょう、せいじ
++じょうそのたのいけん、こくみんてきもしくはしゃかいてきしゅっしん、ざいさ
++ん、もんちそのたのちいまたはこれにるいするいかなるじゆうによるさべつをも
++うけることなく、このせんげんにかかげるすべてのけんりとじゆうとをきょうゆ
++うすることができる。
++さらに、こじんのぞくするくにまたはちいきがどくりつこくであると、しんたく
++とうちちいきであると、ひじちちいきであると、またはほかのなんらかのしゅけ
++んせいげんのもとにあるとをとわず、そのくにまたはちいきのせいじじょう、か
++んかつじょうまたはこくさいじょうのちいにもとずくいかなるさべつもしてはな
++らない。
++
+diff --unified -Naur a/test-data/ja.out b/test-data/ja.out
+--- a/test-data/ja.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ja.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,14 @@
++第1条
++すべての人間は、生まれながらにして自由であり、かつ、尊厳と権利とについて平等
++である。人間は、理性と良心とを授けられており、互いに同胞の精神をもって行動し
++なければならない。
++
++第2条
++すべて人は、人種、皮膚の色、性、言語、宗教、政治上その他の意見、国民的もしく
++は社会的出身、財産、門地その他の地位又はこれに類するいかなる事由による差別を
++も受けることなく、この宣言に掲げるすべての権利と自由とを享有することができ
++る。
++さらに、個人の属する国又は地域が独立国であると、信託統治地域であると、非自治
++地域であると、又は他のなんらかの主権制限の下にあるとを問わず、その国又は地域
++の政治上、管轄上又は国際上の地位に基ずくいかなる差別もしてはならない。
++
+diff --unified -Naur a/test-data/ja.plain.out b/test-data/ja.plain.out
+--- a/test-data/ja.plain.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ja.plain.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,14 @@
++第1条
++すべての人間は、生まれながらにして自由であり、かつ、尊厳と権利とについて平等
++である。人間は、理性と良心とを授けられており、互いに同胞の精神をもって行動し
++なければならない。
++
++第2条
++すべて人は、人種、皮膚の色、性、言語、宗教、政治上その他の意見、国民的もしく
++は社会的出身、財産、門地その他の地位又はこれに類するいかなる事由による差別を
++も受けることなく、この宣言に掲げるすべての権利と自由とを享有することができ
++る。
++さらに、個人の属する国又は地域が独立国であると、信託統治地域であると、非自治
++地域であると、又は他のなんらかの主権制限の下にあるとを問わず、その国又は地域
++の政治上、管轄上又は国際上の地位に基ずくいかなる差別もしてはならない。
++
+diff --unified -Naur a/test-data/ja.wrap.out b/test-data/ja.wrap.out
+--- a/test-data/ja.wrap.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ja.wrap.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,15 @@
++	第1条
++	すべての人間は、生まれながらにして自由であり、かつ、尊厳と権利とにつ
++    いて平等である。人間は、理性と良心とを授けられており、互いに同胞の精神を
++    もって行動しなければならない。
++
++	第2条
++	すべて人は、人種、皮膚の色、性、言語、宗教、政治上その他の意見、国民
++    的もしくは社会的出身、財産、門地その他の地位又はこれに類するいかなる事由
++    による差別をも受けることなく、この宣言に掲げるすべての権利と自由とを享有
++    することができる。
++	さらに、個人の属する国又は地域が独立国であると、信託統治地域である
++    と、非自治地域であると、又は他のなんらかの主権制限の下にあるとを問わず、
++    その国又は地域の政治上、管轄上又は国際上の地位に基ずくいかなる差別もして
++    はならない。
++
+diff --unified -Naur a/test-data/ko.al.out b/test-data/ko.al.out
+--- a/test-data/ko.al.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ko.al.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,14 @@
++제 1 조
++모든 인간은 태어날 때부터 자유로우며 그 존엄과 권리에 있어 동등하다. 인간은 
++천부적으로 이성과 양심을 부여받았으며 서로 형제애의 정신으로 행동하여야 
++한다.
++
++제 2 조
++모든 사람은 인종, 피부색, 성, 언어, 종교, 정치적 또는 기타의 견해, 민족적 
++또는 사회적 출신, 재산, 출생 또는 기타의 신분과 같은 어떠한 종류의 차별이 
++없이, 이 선언에 규정된 모든 권리와 자유를 향유할 자격이 있다.
++더 나아가 개인이 속한 국가 또는 영토가 독립국, 신탁통치지역, 
++비자치지역이거나 또는 주권에 대한 여타의 제약을 받느냐에 관계없이, 그 국가 
++또는 영토의 정치적, 법적 또는 국제적 지위에 근거하여 차별이 있어서는 
++아니된다. 
++
+diff --unified -Naur a/test-data/ko-decomp.in b/test-data/ko-decomp.in
+--- a/test-data/ko-decomp.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ko-decomp.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++제 1 조
++모든 인간은 태어날 때부터 자유로우며 그 존엄과 권리에 있어 동등하다. 인간은 천부적으로 이성과 양심을 부여받았으며 서로 형제애의 정신으로 행동하여야 한다.
++
++제 2 조
++모든 사람은 인종, 피부색, 성, 언어, 종교, 정치적 또는 기타의 견해, 민족적 또는 사회적 출신, 재산, 출생 또는 기타의 신분과 같은 어떠한 종류의 차별이 없이, 이 선언에 규정된 모든 권리와 자유를 향유할 자격이 있다.
++더 나아가 개인이 속한 국가 또는 영토가 독립국, 신탁통치지역, 비자치지역이거나 또는 주권에 대한 여타의 제약을 받느냐에 관계없이, 그 국가 또는 영토의 정치적, 법적 또는 국제적 지위에 근거하여 차별이 있어서는 아니된다. 
++
+diff --unified -Naur a/test-data/ko-decomp.out b/test-data/ko-decomp.out
+--- a/test-data/ko-decomp.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ko-decomp.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,13 @@
++제 1 조
++모든 인간은 태어날 때부터 자유로우며 그 존엄과 권리에 있어 동등하다. 인간은 
++천부적으로 이성과 양심을 부여받았으며 서로 형제애의 정신으로 행동하여야 한
++다.
++
++제 2 조
++모든 사람은 인종, 피부색, 성, 언어, 종교, 정치적 또는 기타의 견해, 민족적 또
++는 사회적 출신, 재산, 출생 또는 기타의 신분과 같은 어떠한 종류의 차별이 없
++이, 이 선언에 규정된 모든 권리와 자유를 향유할 자격이 있다.
++더 나아가 개인이 속한 국가 또는 영토가 독립국, 신탁통치지역, 비자치지역이거
++나 또는 주권에 대한 여타의 제약을 받느냐에 관계없이, 그 국가 또는 영토의 정
++치적, 법적 또는 국제적 지위에 근거하여 차별이 있어서는 아니된다. 
++
+diff --unified -Naur a/test-data/ko.in b/test-data/ko.in
+--- a/test-data/ko.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ko.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++제 1 조
++모든 인간은 태어날 때부터 자유로우며 그 존엄과 권리에 있어 동등하다. 인간은 천부적으로 이성과 양심을 부여받았으며 서로 형제애의 정신으로 행동하여야 한다.
++
++제 2 조
++모든 사람은 인종, 피부색, 성, 언어, 종교, 정치적 또는 기타의 견해, 민족적 또는 사회적 출신, 재산, 출생 또는 기타의 신분과 같은 어떠한 종류의 차별이 없이, 이 선언에 규정된 모든 권리와 자유를 향유할 자격이 있다.
++더 나아가 개인이 속한 국가 또는 영토가 독립국, 신탁통치지역, 비자치지역이거나 또는 주권에 대한 여타의 제약을 받느냐에 관계없이, 그 국가 또는 영토의 정치적, 법적 또는 국제적 지위에 근거하여 차별이 있어서는 아니된다. 
++
+diff --unified -Naur a/test-data/ko.newline.out b/test-data/ko.newline.out
+--- a/test-data/ko.newline.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ko.newline.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,13 @@
++제 1 조
++모든 인간은 태어날 때부터 자유로우며 그 존엄과 권리에 있어 동등하다. 인간은
++천부적으로 이성과 양심을 부여받았으며 서로 형제애의 정신으로 행동하여야 한
++다.
++
++제 2 조
++모든 사람은 인종, 피부색, 성, 언어, 종교, 정치적 또는 기타의 견해, 민족적 또
++는 사회적 출신, 재산, 출생 또는 기타의 신분과 같은 어떠한 종류의 차별이 없
++이, 이 선언에 규정된 모든 권리와 자유를 향유할 자격이 있다.
++더 나아가 개인이 속한 국가 또는 영토가 독립국, 신탁통치지역, 비자치지역이거
++나 또는 주권에 대한 여타의 제약을 받느냐에 관계없이, 그 국가 또는 영토의 정
++치적, 법적 또는 국제적 지위에 근거하여 차별이 있어서는 아니된다.
++
+diff --unified -Naur a/test-data/ko.out b/test-data/ko.out
+--- a/test-data/ko.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ko.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,13 @@
++제 1 조
++모든 인간은 태어날 때부터 자유로우며 그 존엄과 권리에 있어 동등하다. 인간은 
++천부적으로 이성과 양심을 부여받았으며 서로 형제애의 정신으로 행동하여야 한
++다.
++
++제 2 조
++모든 사람은 인종, 피부색, 성, 언어, 종교, 정치적 또는 기타의 견해, 민족적 또
++는 사회적 출신, 재산, 출생 또는 기타의 신분과 같은 어떠한 종류의 차별이 없
++이, 이 선언에 규정된 모든 권리와 자유를 향유할 자격이 있다.
++더 나아가 개인이 속한 국가 또는 영토가 독립국, 신탁통치지역, 비자치지역이거
++나 또는 주권에 대한 여타의 제약을 받느냐에 관계없이, 그 국가 또는 영토의 정
++치적, 법적 또는 국제적 지위에 근거하여 차별이 있어서는 아니된다. 
++
+diff --unified -Naur a/test-data/quotes.fixed.out b/test-data/quotes.fixed.out
+--- a/test-data/quotes.fixed.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/quotes.fixed.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,23 @@
++> Thou villainous ill-breeding spongy dizzy-eyed reeky elf-skinned pigeon-egg!
++>> Thou artless swag-bellied milk-livered dismal-dreaming idle-headed scut!
++>>> Thou errant folly-fallen spleeny reeling-ripe unmuzzled ratsbane!
++>>>> Henceforth, the coding style is to be strictly enforced, including the use of only upper case.
++>>>>> I've noticed a lack of adherence to the coding styles, of late.
++>>>>>> Any complaints?
++----
++
++`Take some more tea,' the March Hare said to Alice, very earnestly.
++
++
++`I've had nothing yet,' Alice replied in an offended tone, `so I can't take
++more.'
++
++
++`You mean you can't take LESS,' said the Hatter: `it's very easy to take
++MORE than nothing.'
++
++----
++
++>>> Take some more tea.
++>> I've had nothing yet, so I can't take more.
++> You mean you can't take LESS, it's very easy to take MORE than nothing.
+diff --unified -Naur a/test-data/quotes.flowed.out b/test-data/quotes.flowed.out
+--- a/test-data/quotes.flowed.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/quotes.flowed.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,25 @@
++> Thou villainous ill-breeding spongy dizzy-eyed reeky elf-skinned pigeon- 
++> egg!
++>> Thou artless swag-bellied milk-livered dismal-dreaming idle-headed scut!
++>>> Thou errant folly-fallen spleeny reeling-ripe unmuzzled ratsbane!
++>>>> Henceforth, the coding style is to be strictly enforced, including the  
++>>>> use of only upper case.
++>>>>> I've noticed a lack of adherence to the coding styles, of late.
++>>>>>> Any complaints?
++---- 
++
++`Take some more tea,' the March Hare said to Alice, very earnestly. 
++
++
++`I've had nothing yet,' Alice replied in an offended tone, `so I can't take  
++more.' 
++
++
++`You mean you can't take LESS,' said the Hatter: `it's very easy to take  
++MORE than nothing.' 
++
++---- 
++
++>>> Take some more tea.
++>> I've had nothing yet, so I can't take more.
++> You mean you can't take LESS, it's very easy to take MORE than nothing.
+diff --unified -Naur a/test-data/quotes.in b/test-data/quotes.in
+--- a/test-data/quotes.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/quotes.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,16 @@
++> Thou villainous ill-breeding spongy dizzy-eyed reeky elf-skinned pigeon-egg! 
++>> Thou artless swag-bellied milk-livered dismal-dreaming idle-headed scut!
++>>> Thou errant folly-fallen spleeny reeling-ripe unmuzzled ratsbane!
++>>>> Henceforth, the coding style is to be strictly enforced, including the use of only upper case.
++>>>>> I've noticed a lack of adherence to the coding styles, of late.
++>>>>>> Any complaints?
++----
++`Take some more tea,' the March Hare said to Alice, very earnestly.
++
++`I've had nothing yet,' Alice replied in an offended tone, `so I can't take more.'
++
++`You mean you can't take LESS,' said the Hatter: `it's very easy to take MORE than nothing.'
++----
++>>> Take some more tea.
++>> I've had nothing yet, so I can't take more.
++> You mean you can't take LESS, it's very easy to take MORE than nothing.
+diff --unified -Naur a/test-data/quotes.norm.in b/test-data/quotes.norm.in
+--- a/test-data/quotes.norm.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/quotes.norm.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,16 @@
++> Thou villainous ill-breeding spongy dizzy-eyed reeky elf-skinned pigeon-egg!
++>> Thou artless swag-bellied milk-livered dismal-dreaming idle-headed scut!
++>>> Thou errant folly-fallen spleeny reeling-ripe unmuzzled ratsbane!
++>>>> Henceforth, the coding style is to be strictly enforced, including the use of only upper case.
++>>>>> I've noticed a lack of adherence to the coding styles, of late.
++>>>>>> Any complaints?
++----
++`Take some more tea,' the March Hare said to Alice, very earnestly.
++
++`I've had nothing yet,' Alice replied in an offended tone, `so I can't take more.'
++
++`You mean you can't take LESS,' said the Hatter: `it's very easy to take MORE than nothing.'
++----
++>>> Take some more tea.
++>> I've had nothing yet, so I can't take more.
++> You mean you can't take LESS, it's very easy to take MORE than nothing.
+diff --unified -Naur a/test-data/quotes.plain.out b/test-data/quotes.plain.out
+--- a/test-data/quotes.plain.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/quotes.plain.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,20 @@
++> Thou villainous ill-breeding spongy dizzy-eyed reeky elf-skinned pigeon-
++egg!
++>> Thou artless swag-bellied milk-livered dismal-dreaming idle-headed scut!
++>>> Thou errant folly-fallen spleeny reeling-ripe unmuzzled ratsbane!
++>>>> Henceforth, the coding style is to be strictly enforced, including the
++use of only upper case.
++>>>>> I've noticed a lack of adherence to the coding styles, of late.
++>>>>>> Any complaints?
++----
++`Take some more tea,' the March Hare said to Alice, very earnestly.
++
++`I've had nothing yet,' Alice replied in an offended tone, `so I can't take
++more.'
++
++`You mean you can't take LESS,' said the Hatter: `it's very easy to take
++MORE than nothing.'
++----
++>>> Take some more tea.
++>> I've had nothing yet, so I can't take more.
++> You mean you can't take LESS, it's very easy to take MORE than nothing.
+diff --unified -Naur a/test-data/README.test-data b/test-data/README.test-data
+--- a/test-data/README.test-data	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/README.test-data	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,206 @@
++Test data for line breaking
++===========================
++
++Files named ``*.in'' are input text. ``*.out'' are expected outputs.
++
++Default configuration is as following.  Overridden values are described
++by each test data.
++
++    charmax:        998
++    colmin:         0
++    colmax:         76
++    context:        NONEASTASIAN
++    format:         SIMPLE
++    hangul as AL:   no
++    legacy CM:      yes
++    virama sign:    behave as consonant joiner
++    newline:        "\n"
++    sizing:         UAX11
++    tailoring EAW:  none
++    tailoring LBC:  none
++    urgent breaking:none
++    preprocessing:  none
++
++01 Generic
++----------
++
++ar.in
++ar.out
++    Arabic
++el.in
++el.out
++    Greek
++fr.in
++fr.out
++    French
++he.in
++he.out
++    Hebrew
++ja.in
++ja.out
++    Japanese
++ja-a.in
++ja-a.out
++    Japanese (annotated readings)
++ja-k.in
++    Japanese (kana transcribed)
++ko.in
++ko.out
++    Korean
++ko-decomp.in
++ko-decomp.out
++    Korean (NFD)
++ru.in
++ru.out
++    Russian
++sa.in
++sa.out
++    Sanskrit
++th.in
++th.out
++    Thai
++vi.in
++vi.out
++    Vietnamese
++vi-decomp.in
++vi-decomp.out
++    Vietnamese (decomposed)
++zh.in
++zh.out
++    Chinese Mandarin
++
++02 Hangul text
++--------------
++
++amitagyong.in
++amitagyong.out
++    complex hangul syllables and conjoining jamo.
++    tailoring EAW:  U+302E and U+302F are nonspacing.
++ko.al.out
++    treat hangul syllables and conjoining jamo as alphabetic (AL).
++
++03 Tailoring Line Breaking Classes
++----------------------------------
++
++ja-k.in
++ja-k.out
++    colmax:         72
++ja-k.ns.out
++    colmax:         72
++    kana nonstarters (small kana) are assigned Line Breaking Class ``ID''.
++
++04 Folding/unfolding
++--------------------
++
++fr.fixed.out
++ja.fixed.out
++    same as default but an empty line is inserted after each paragraph.
++fr.flowed.out
++ja.flowed.out
++    RFC 3676 ``Format="FLOWED"; DelSp="YES"'' format.
++fr.plain.out
++ja.plain.out
++    same as default.
++quotes.in
++    unfolded e-mail text with one problematic line.
++quotes.norm.in
++    unfolded e-mail text without problematic lines.
++quotes.fixed.out
++quotes.flowed.out
++quotes.plain.out
++    folded e-mail text by three methods as above.
++
++05 Long lines
++-------------
++
++ecclesiazusae.in
++ecclesiazusae.out
++ecclesiazusae.CharactersMax.out
++    charmax:        79
++ecclesiazusae.ColumnsMax.out
++    urgent breaking:FORCE
++ecclesiazusae.ColumnsMin.out
++    colmin:         7
++    colmax:         66
++    urgent breaking:FORCE
++
++06 East Asian context
++---------------------
++
++fr.ea.out
++    context:        EASTASIAN
++
++07 n/a
++------
++
++08 n/a
++------
++
++09 URI
++------
++
++uri.in
++uri.break.out
++    colmax:         1
++    preprocessing:  break URIs according to some CMoS rules.
++uri.break.http.out
++    colmax:         1
++    preprocessing:  break HTTP URLs according to some CMoS rules; never 
++    break FTP URLs.
++uri.nonbreak.out
++    colmax:         1
++    preprocessing:  never break URIs.
++
++10 n/a
++------
++
++11 Formatting context
++---------------------
++
++fr.format.out
++ja.format.out
++    insert context names.
++fr.newline.out
++ko.newline.out
++    trim spaces at end of each lines.
++
++12 Indentation
++--------------
++
++fr.wrap.out
++ja.wrap.out
++    Paragraphs are indented by one horizontal tab ("\t") and other lines
++    are indented by four spaces ("    ").
++
++13 RFC 3676
++-----------
++
++fr.flowed.out
++ja.flowed.out
++    folding by RFC 3676 ``Format="FLOWED"; DelSp="YES"'' method.
++flowedsp.in
++flowedsp.out
++    unfolding RFC 3676 ``Format="FLOWED"; DelSp="NO"'' (obsoleted
++    RFC 2646) format.
++
++14 Non-South East Asian context
++-------------------------------
++
++th.al.out
++    treat South East Asian complex context (SA) as alphabetic (AL).
++
++15 n/a
++------
++
++16 n/a
++------
++
++Other useful test data
++----------------------
++
++* LineBreakTest.txt file in Unicode Character Database (UCD) may be
++  useful for regression test.  Current version of this file will be
++  found at:
++    http://www.unicode.org/Public/UNIDATA/auxiliary/LineBreakTest.txt
++
++$$
+diff --unified -Naur a/test-data/ru.in b/test-data/ru.in
+--- a/test-data/ru.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ru.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++Статья 1
++Все люди рождаются свободными и равными в своем достоинстве и правах. Они наделены разумом и совестью и должны поступать в отношении друг друга в духе братства.
++
++Статья 2
++Каждый человек должен обладать всеми правами и всеми свободами, провозглашенными настоящей Декларацией, без какого бы то ни было различия, как-то в отношении расы, цвета кожи, пола, языка, религии, политических или иных убеждений, национального или социального происхождения, имущественного, сословного или иного положения.
++Кроме того, не должно проводиться никакого различия на основе политического, правового или международного статуса страны или территории, к которой человек принадлежит, независимо от того, является ли эта территория независимой, подопечной, несамоуправляющейся или как-либо иначе ограниченной в своем суверенитете.
++
+diff --unified -Naur a/test-data/ru.out b/test-data/ru.out
+--- a/test-data/ru.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/ru.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,17 @@
++Статья 1
++Все люди рождаются свободными и равными в своем достоинстве и правах. Они 
++наделены разумом и совестью и должны поступать в отношении друг друга в духе 
++братства.
++
++Статья 2
++Каждый человек должен обладать всеми правами и всеми свободами, 
++провозглашенными настоящей Декларацией, без какого бы то ни было различия, 
++как-то в отношении расы, цвета кожи, пола, языка, религии, политических или 
++иных убеждений, национального или социального происхождения, имущественного, 
++сословного или иного положения.
++Кроме того, не должно проводиться никакого различия на основе политического, 
++правового или международного статуса страны или территории, к которой 
++человек принадлежит, независимо от того, является ли эта территория 
++независимой, подопечной, несамоуправляющейся или как-либо иначе ограниченной 
++в своем суверенитете.
++
+diff --unified -Naur a/test-data/sa.in b/test-data/sa.in
+--- a/test-data/sa.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/sa.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++अनुच्छेद: 1
++सर्वे मानवा: स्वतन्त्रा: समुत्पन्ना: वर्तन्ते अपि च, गौरवदृशा अधिकारदृशा च समाना: एव वर्तन्ते। एते सर्वे चेतना-तर्क-शक्तिभ्यां सुसम्पन्ना: सन्ति। अपि च, सर्वेऽपि बन्धुत्व-भावनया परस्परं व्यवहरन्तु।
++
++अनुच्छेद: 2
++अस्यां अभिघोषणायां निर्दिष्टा: सर्वेऽपि अधिकारा: सर्वाण्यपि च स्वातन्त्र्याणि, विनैव जाति-वर्ण-लिंग-भाषा-धर्म-राजनीतिक-तदितर-मन्तव्यादि-भेदम्, राष्ट्रीयं सामाजिकाधारं सम्पज्जन्म-तदितर स्तरञ्च अविगणय्य, अधिगन्तुं सर्वोऽपि जन: प्रभवति।
++एतदतिरिक्तम्, कस्याश्चिदपि प्रभुसत्ताया: नियमनान्तर्गतम्, स्वाधीनस्य आत्मप्रशासनेतर-तन्त्रस्य, न्यासितन्त्रस्य वा वास्तव्यस्य प्रदेशस्य देशस्य वा राजनीतिक-सीमा-निबन्धनान्ताराष्ट्रिक-स्तराधारेण न कोऽपि भेदो विधास्यते।
++
+diff --unified -Naur a/test-data/sa.out b/test-data/sa.out
+--- a/test-data/sa.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/sa.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,13 @@
++अनुच्छेद: 1
++सर्वे मानवा: स्वतन्त्रा: समुत्पन्ना: वर्तन्ते अपि च, गौरवदृशा अधिकारदृशा च समाना: एव 
++वर्तन्ते। एते सर्वे चेतना-तर्क-शक्तिभ्यां सुसम्पन्ना: सन्ति। अपि च, सर्वेऽपि बन्धुत्व-भावनया 
++परस्परं व्यवहरन्तु।
++
++अनुच्छेद: 2
++अस्यां अभिघोषणायां निर्दिष्टा: सर्वेऽपि अधिकारा: सर्वाण्यपि च स्वातन्त्र्याणि, विनैव जाति-
++वर्ण-लिंग-भाषा-धर्म-राजनीतिक-तदितर-मन्तव्यादि-भेदम्, राष्ट्रीयं सामाजिकाधारं सम्पज्जन्म-
++तदितर स्तरञ्च अविगणय्य, अधिगन्तुं सर्वोऽपि जन: प्रभवति।
++एतदतिरिक्तम्, कस्याश्चिदपि प्रभुसत्ताया: नियमनान्तर्गतम्, स्वाधीनस्य आत्मप्रशासनेतर-तन्त्रस्य, 
++न्यासितन्त्रस्य वा वास्तव्यस्य प्रदेशस्य देशस्य वा राजनीतिक-सीमा-निबन्धनान्ताराष्ट्रिक-
++स्तराधारेण न कोऽपि भेदो विधास्यते।
++
+diff --unified -Naur a/test-data/th.al.out b/test-data/th.al.out
+--- a/test-data/th.al.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/th.al.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,12 @@
++ข้อ 1
++มนุษย์ทั้งปวงเกิดมามีอิสระและเสมอภาคกันในศักดิ์ศรีและสิทธิ ต่างในตนมีเหตุผลและมโนธรรม 
++และควรปฏิบัติต่อกันด้วยจิตวิญญาณแห่งภราดรภาพ
++
++ข้อ 2
++ทุกคนย่อมมีสิทธิและอิสรภาพทั้งปวงตามที่กําหนดไว้ในปฏิญญานี้ โดยปราศจากการแบ่งแยกไม่ ว่าชนิดใด 
++อาทิ เชื้อชาติ ผิว เพศ ภาษา ศาสนา ความคิดเห็นทางการเมืองหรือทางอื่น พื้นเพทางชาติหรือ สังคม 
++ทรัพย์สิน การเกิด หรือสถานะอื่น
++นอกเหนือจากนี้ จะไม่มีการแบ่งแยกใด บนพื้นฐานของสถานะ ทางการเมือง ทางกฎหมาย 
++หรือทางการระหว่างประเทศของประเทศ หรือดินแดนที่บุคคลสังกัด ไม่ว่า ดินแดนนี้จะเป็นเอกราช 
++อยู่ในความพิทักษ์ มิได้ปกครองตนเอง หรืออยู่ภายใต้การจํากัดอธิปไตยอื่นใด
++
+diff --unified -Naur a/test-data/th.in b/test-data/th.in
+--- a/test-data/th.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/th.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++ข้อ 1
++มนุษย์ทั้งปวงเกิดมามีอิสระและเสมอภาคกันในศักดิ์ศรีและสิทธิ ต่างในตนมีเหตุผลและมโนธรรม และควรปฏิบัติต่อกันด้วยจิตวิญญาณแห่งภราดรภาพ
++
++ข้อ 2
++ทุกคนย่อมมีสิทธิและอิสรภาพทั้งปวงตามที่กําหนดไว้ในปฏิญญานี้ โดยปราศจากการแบ่งแยกไม่ ว่าชนิดใด อาทิ เชื้อชาติ ผิว เพศ ภาษา ศาสนา ความคิดเห็นทางการเมืองหรือทางอื่น พื้นเพทางชาติหรือ สังคม ทรัพย์สิน การเกิด หรือสถานะอื่น
++นอกเหนือจากนี้ จะไม่มีการแบ่งแยกใด บนพื้นฐานของสถานะ ทางการเมือง ทางกฎหมาย หรือทางการระหว่างประเทศของประเทศ หรือดินแดนที่บุคคลสังกัด ไม่ว่า ดินแดนนี้จะเป็นเอกราช อยู่ในความพิทักษ์ มิได้ปกครองตนเอง หรืออยู่ภายใต้การจํากัดอธิปไตยอื่นใด
++
+diff --unified -Naur a/test-data/th.out b/test-data/th.out
+--- a/test-data/th.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/th.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,12 @@
++ข้อ 1
++มนุษย์ทั้งปวงเกิดมามีอิสระและเสมอภาคกันในศักดิ์ศรีและสิทธิ ต่างในตนมีเหตุผลและมโนธรรม และควร
++ปฏิบัติต่อกันด้วยจิตวิญญาณแห่งภราดรภาพ
++
++ข้อ 2
++ทุกคนย่อมมีสิทธิและอิสรภาพทั้งปวงตามที่กําหนดไว้ในปฏิญญานี้ โดยปราศจากการแบ่งแยกไม่ ว่าชนิดใด 
++อาทิ เชื้อชาติ ผิว เพศ ภาษา ศาสนา ความคิดเห็นทางการเมืองหรือทางอื่น พื้นเพทางชาติหรือ สังคม 
++ทรัพย์สิน การเกิด หรือสถานะอื่น
++นอกเหนือจากนี้ จะไม่มีการแบ่งแยกใด บนพื้นฐานของสถานะ ทางการเมือง ทางกฎหมาย หรือทางการ
++ระหว่างประเทศของประเทศ หรือดินแดนที่บุคคลสังกัด ไม่ว่า ดินแดนนี้จะเป็นเอกราช อยู่ในความพิทักษ์ 
++มิได้ปกครองตนเอง หรืออยู่ภายใต้การจํากัดอธิปไตยอื่นใด
++
+diff --unified -Naur a/test-data/titin.bz b/test-data/titin.bz
+--- a/test-data/titin.bz	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/titin.bz	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,4 @@
++BZh91AY&SYY͎   � .��`` �    �D@     �a4�b�i�4�)��@i�S	���MRRzi���$�"��M�OS��Oꂌ�P��E)�@��h�����(�D���L�������E�iD�%��Y*E��X�(����Y	�&D��P���2���X�Bx��)�y)���~�Q�T_~4��-P�T�U,�a�M"b-Bi)��"i&&�4&�14&D�A�C�U5%2��Hd��O��"b��-	��4U��5)2��?��A2&"�4�biC(����U�7BjA�9\�_��?P�rE�����(*�ωV	��14&	�2&DИ�
++�&J�2�d�%X��*a0L��2&D�MRL��]H�?H�4�V�)�=&���BdL�"aS*�D�L*eQeD�S	�0L&Bh���I/�	��������q1Wj5Q�&D�.�T��ND�OtK��"d'"dxN"r&QdN'(�&J�D���𜉑1P�V��FeH�'	ȜD�b�"r&	�,LL ����:���(Bd'���D�V&�����ȜLJ���1W)\��-	����Ԥ�LL"dN��:"hL��8'Bj�2'�N&D�'�S���IW2&!�� ��j�v�XJS(���0�D��eK
++�;E�UEoE*�!��r��U怘�K�@�E@J�J�Ĩ�/P(��rE�����i	�eC�2&"d&?�)O��~���Ԕ�iR�!� �ҖUF�����%k	Qz!�R�[�0NDħ"e��N'���1?�O>�|'�^��S�'� �!=D�D�|'��	�L���	�O	��S���LM	�'W�='T�"�r'�x��'��Q2��12'�9�8��Oa0Oa?�N�諉ȞȞB~By	�N	Ȟ�x�ȟ��OI�'"a0ND⋉�"bLND���P��N�&��LD���'�~О>"z���E�'��O����!0ND��x��N&'�LM	�"}'"t'��'��C�0O	�V'��*��9��'��LOY"z��O	��&'�N��&'���I�'	�'О�x��>��`�IȞ�\�dM	���>�{"��ND�b`�LND��"~�bz��D�|D�������/胔\D�LL��9�X�E�b'"dO���q8'�����'���!>�xO�t'���M	�?	�q<D�'"}D���>)M%^�d'��N��P�"aS�O!0�O��OI�'����O<��/���By%XL���>Bi�0OQ9�/!0LM	�4&���O	�=D�ND�L��E�<D��'�8���r'Bz��'�U�R�"�$���H�
++9��@
+\ No newline at end of file
+diff --unified -Naur a/test-data/uri.break.http.out b/test-data/uri.break.http.out
+--- a/test-data/uri.break.http.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/uri.break.http.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,75 @@
++http://
++www
++.library
++.my
++.town
++.va
++.us/
++Catalogue/
++76523471236
++%2Fwen44
++--4
++.98
++http://
++info
++.cern
++.ch:8000/
++imaginary/
++test
++http://
++www
++.myu
++.edu/
++org/
++admin/
++people
++#andy
++http://
++info
++.my
++.org/
++AboutUs/
++Index/
++Phonebook
++?dobbins
++http://
++info
++.cern
++.ch/
++RDB/
++EMP
++?*
++%20where
++%20name
++%
++%3Ddobbins
++Yes, 
++Jim, 
++I 
++found 
++it 
++under 
++<URL:ftp://info.cern.ch/pub/www/doc;type=d> 
++but 
++you 
++can 
++probably 
++pick 
++it 
++up 
++from 
++<URL:ftp://ds.internic.net/rfc>.  
++Note 
++the 
++warning 
++in 
++<URL:
++http://
++ds
++.internic
++.net/
++instructions/
++overview
++.html
++#WARNING>.
++
+diff --unified -Naur a/test-data/uri.break.out b/test-data/uri.break.out
+--- a/test-data/uri.break.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/uri.break.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,89 @@
++http://
++www
++.library
++.my
++.town
++.va
++.us/
++Catalogue/
++76523471236
++%2Fwen44
++--4
++.98
++http://
++info
++.cern
++.ch:8000/
++imaginary/
++test
++http://
++www
++.myu
++.edu/
++org/
++admin/
++people
++#andy
++http://
++info
++.my
++.org/
++AboutUs/
++Index/
++Phonebook
++?dobbins
++http://
++info
++.cern
++.ch/
++RDB/
++EMP
++?*
++%20where
++%20name
++%
++%3Ddobbins
++Yes, 
++Jim, 
++I 
++found 
++it 
++under 
++<URL:
++ftp://
++info
++.cern
++.ch/
++pub/
++www/
++doc;type
++=
++d> 
++but 
++you 
++can 
++probably 
++pick 
++it 
++up 
++from 
++<URL:
++ftp://
++ds
++.internic
++.net/
++rfc>.  
++Note 
++the 
++warning 
++in 
++<URL:
++http://
++ds
++.internic
++.net/
++instructions/
++overview
++.html
++#WARNING>.
++
+diff --unified -Naur a/test-data/uri.in b/test-data/uri.in
+--- a/test-data/uri.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/uri.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++http://www.library.my.town.va.us/Catalogue/76523471236%2Fwen44--4.98
++http://info.cern.ch:8000/imaginary/test
++http://www.myu.edu/org/admin/people#andy
++http://info.my.org/AboutUs/Index/Phonebook?dobbins
++http://info.cern.ch/RDB/EMP?*%20where%20name%%3Ddobbins
++Yes, Jim, I found it under <URL:ftp://info.cern.ch/pub/www/doc;type=d> but you can probably pick it up from <URL:ftp://ds.internic.net/rfc>.  Note the warning in <URL:http://ds.internic.net/instructions/overview.html#WARNING>.
++
+diff --unified -Naur a/test-data/uri.nonbreak.out b/test-data/uri.nonbreak.out
+--- a/test-data/uri.nonbreak.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/uri.nonbreak.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,27 @@
++http://www.library.my.town.va.us/Catalogue/76523471236%2Fwen44--4.98
++http://info.cern.ch:8000/imaginary/test
++http://www.myu.edu/org/admin/people#andy
++http://info.my.org/AboutUs/Index/Phonebook?dobbins
++http://info.cern.ch/RDB/EMP?*%20where%20name%%3Ddobbins
++Yes, 
++Jim, 
++I 
++found 
++it 
++under 
++<URL:ftp://info.cern.ch/pub/www/doc;type=d> 
++but 
++you 
++can 
++probably 
++pick 
++it 
++up 
++from 
++<URL:ftp://ds.internic.net/rfc>.  
++Note 
++the 
++warning 
++in 
++<URL:http://ds.internic.net/instructions/overview.html#WARNING>.
++
+diff --unified -Naur a/test-data/vi-decomp.in b/test-data/vi-decomp.in
+--- a/test-data/vi-decomp.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/vi-decomp.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,6 @@
++Điều 1: Tất cả mọi người sinh ra đều được tự do và bình đẳng về nhân phẩm và quyền. Mọi con người đều được tạo hoá ban cho lý trí và lương tâm và cần phải đối xử với nhau trong tình bằng hữu.
++
++Điều 2: Mọi người đều được hưởng tất cả những quyền và tự do nêu trong Bản tuyên ngôn này, không phân biệt chủng tộc, màu da, giới tính, ngôn ngữ, tôn giáo, quan điểm chính trị hay các quan điểm khác, nguồn gốc quốc gia hay xã hội, tài sản, thành phần xuất thân hay địa vị xã hội.
++
++Ngoài ra, cũng không có bất cứ sự phân biệt nào về địa vị chính trị, pháp quyền hay quốc tế của quốc gia hay lãnh thổ mà một người xuất thân, cho dù quốc gia hay lãnh thổ đó được độc lập, được đặt dưới chế độ uỷ trị, chưa tự quản hay có chủ quyền hạn chế.
++
+diff --unified -Naur a/test-data/vi-decomp.out b/test-data/vi-decomp.out
+--- a/test-data/vi-decomp.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/vi-decomp.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,14 @@
++Điều 1: Tất cả mọi người sinh ra đều được tự do và bình đẳng về nhân phẩm và 
++quyền. Mọi con người đều được tạo hoá ban cho lý trí và lương tâm và cần 
++phải đối xử với nhau trong tình bằng hữu.
++
++Điều 2: Mọi người đều được hưởng tất cả những quyền và tự do nêu trong Bản 
++tuyên ngôn này, không phân biệt chủng tộc, màu da, giới tính, ngôn ngữ, tôn 
++giáo, quan điểm chính trị hay các quan điểm khác, nguồn gốc quốc gia hay xã 
++hội, tài sản, thành phần xuất thân hay địa vị xã hội.
++
++Ngoài ra, cũng không có bất cứ sự phân biệt nào về địa vị chính trị, pháp 
++quyền hay quốc tế của quốc gia hay lãnh thổ mà một người xuất thân, cho dù 
++quốc gia hay lãnh thổ đó được độc lập, được đặt dưới chế độ uỷ trị, chưa tự 
++quản hay có chủ quyền hạn chế.
++
+diff --unified -Naur a/test-data/vi.in b/test-data/vi.in
+--- a/test-data/vi.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/vi.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,6 @@
++Điều 1: Tất cả mọi người sinh ra đều được tự do và bình đẳng về nhân phẩm và quyền. Mọi con người đều được tạo hoá ban cho lý trí và lương tâm và cần phải đối xử với nhau trong tình bằng hữu.
++
++Điều 2: Mọi người đều được hưởng tất cả những quyền và tự do nêu trong Bản tuyên ngôn này, không phân biệt chủng tộc, màu da, giới tính, ngôn ngữ, tôn giáo, quan điểm chính trị hay các quan điểm khác, nguồn gốc quốc gia hay xã hội, tài sản, thành phần xuất thân hay địa vị xã hội.
++
++Ngoài ra, cũng không có bất cứ sự phân biệt nào về địa vị chính trị, pháp quyền hay quốc tế của quốc gia hay lãnh thổ mà một người xuất thân, cho dù quốc gia hay lãnh thổ đó được độc lập, được đặt dưới chế độ uỷ trị, chưa tự quản hay có chủ quyền hạn chế.
++
+diff --unified -Naur a/test-data/vi.out b/test-data/vi.out
+--- a/test-data/vi.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/vi.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,14 @@
++Điều 1: Tất cả mọi người sinh ra đều được tự do và bình đẳng về nhân phẩm và 
++quyền. Mọi con người đều được tạo hoá ban cho lý trí và lương tâm và cần 
++phải đối xử với nhau trong tình bằng hữu.
++
++Điều 2: Mọi người đều được hưởng tất cả những quyền và tự do nêu trong Bản 
++tuyên ngôn này, không phân biệt chủng tộc, màu da, giới tính, ngôn ngữ, tôn 
++giáo, quan điểm chính trị hay các quan điểm khác, nguồn gốc quốc gia hay xã 
++hội, tài sản, thành phần xuất thân hay địa vị xã hội.
++
++Ngoài ra, cũng không có bất cứ sự phân biệt nào về địa vị chính trị, pháp 
++quyền hay quốc tế của quốc gia hay lãnh thổ mà một người xuất thân, cho dù 
++quốc gia hay lãnh thổ đó được độc lập, được đặt dưới chế độ uỷ trị, chưa tự 
++quản hay có chủ quyền hạn chế.
++
+diff --unified -Naur a/test-data/zh.in b/test-data/zh.in
+--- a/test-data/zh.in	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/zh.in	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,7 @@
++第一条
++人人生而自由,在尊严和权利上一律平等。他们赋有理性和良心,并应以兄弟关系的精神相对待。
++
++第二条
++人人有资格享有本宣言所载的一切权利和自由,不分种族、肤色、性别、语言、宗教、政治或其他见解、国籍或社会出身、财产、出生或其他身分等任何区别。
++并且不得因一人所属的国家或领土的政治的、行政的或者国际的地位之不同而有所区别,无论该领土是独立领土、托管领土、非自治领土或者处于其他任何主权受限制的情况之下。
++
+diff --unified -Naur a/test-data/zh.out b/test-data/zh.out
+--- a/test-data/zh.out	1970-01-01 01:00:00.000000000 +0100
++++ b/test-data/zh.out	2016-04-08 23:50:58.000000000 +0200
+@@ -0,0 +1,11 @@
++第一条
++人人生而自由,在尊严和权利上一律平等。他们赋有理性和良心,并应以兄弟关系的精神
++相对待。
++
++第二条
++人人有资格享有本宣言所载的一切权利和自由,不分种族、肤色、性别、语言、宗教、
++政治或其他见解、国籍或社会出身、财产、出生或其他身分等任何区别。
++并且不得因一人所属的国家或领土的政治的、行政的或者国际的地位之不同而有所区
++别,无论该领土是独立领土、托管领土、非自治领土或者处于其他任何主权受限制的情
++况之下。
++

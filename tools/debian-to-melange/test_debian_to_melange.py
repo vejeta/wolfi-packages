@@ -303,6 +303,8 @@ class HelperTest(unittest.TestCase):
         rel = d2m.parse_relations("a (>= 1), b | c [amd64], ${misc:Depends}, d:any <!nocheck>")
         self.assertEqual(rel, [["a"], ["b", "c"], ["${misc:Depends}"], ["d"]])
         self.assertEqual(d2m.parse_relations("x <stage1>, y <!stage1>, z <stage1> <!nocheck>"), [["y"], ["z"]])
+        # the recipes build with the nocheck profile
+        self.assertEqual(d2m.parse_relations("a, t <!nocheck>, n <nocheck>", d2m.BUILD_PROFILES), [["a"], ["n"]])
 
     def test_to_spdx(self):
         self.assertEqual(d2m.to_spdx("GPL-2+"), "GPL-2.0-or-later")
@@ -373,6 +375,34 @@ class HelperTest(unittest.TestCase):
         self.assertEqual(rules.configure_opts(), ["-Dfoo=true", "-Dbar=1.2"])
         self.assertEqual(rules.template_substitutions(), {"postinst": ("postinst.in", {"@V@": "V"})})
 
+    def test_upstream_version_plus_digits(self):
+        self.assertEqual(d2m.debian_upstream_version("0.35.0+20060710.6"), "0.35.0.20060710.6")
+        self.assertEqual(d2m.debian_upstream_version("1.2+git20170224-1"), "1.2_git20170224")
+        self.assertEqual(d2m.debian_upstream_version("2.002+20231012+ds-1"), "2.002.20231012")
+        self.assertEqual(d2m.debian_upstream_version("2.13b171+ds-2"), "2.13_beta171")
+        # the tags keep the +
+        self.assertEqual(d2m.debian_upstream_version("2.002+20231012+ds-1", raw=True), "2.002+20231012")
+
+    def test_xml_catalogs(self):
+        cats = d2m.xml_catalogs(
+            "local;docbook-xsl/catalog.xml;/usr/share/xml/docbook/stylesheet/docbook-xsl/catalog.xml\n\n"
+            "root;uri;http://docbook.sourceforge.net/release/xsl/\n"
+            "package;uri;http://docbook.sourceforge.net/release/xsl/;/usr/share/xml/x/catalog.xml\n")
+        self.assertEqual(cats["local"], [("docbook-xsl/catalog.xml",
+                                          "usr/share/xml/docbook/stylesheet/docbook-xsl/catalog.xml")])
+        self.assertEqual(cats["package"], [("uri", "http://docbook.sourceforge.net/release/xsl/",
+                                            "/usr/share/xml/x/catalog.xml")])
+
+    def test_rules_arch_indep_configure(self):
+        # aptitude: a full build configures twice, -indep last, so the docs are built
+        rules = d2m.Rules(
+            "ifneq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))\n  OPTS_TESTS = --disable-tests\nendif\n"
+            "override_dh_auto_configure-arch:  OPTS_DOCS = --disable-docs\n"
+            "override_dh_auto_configure-indep: OPTS_DOCS =\n"
+            "override_dh_auto_configure-arch override_dh_auto_configure-indep:\n"
+            "\tdh_auto_configure -- --htmldir='$${docdir}/html' $(OPTS_DOCS) $(OPTS_TESTS)\n")
+        self.assertEqual(rules.configure_opts(), ["--htmldir='${docdir}/html'", "--disable-tests"])
+
     def test_convert_script_flags_debian_only_tools(self):
         notes = []
         body, _ = d2m.convert_script("#!/bin/sh\npy3compile -p foo\n", "postinst",
@@ -393,6 +423,27 @@ class HelperTest(unittest.TestCase):
         self.assertEqual(d2m.scalar("yes"), "'yes'")
         self.assertEqual(d2m.scalar("it's: x"), "'it''s: x'")
         self.assertEqual(d2m.scalar("plain-value"), "plain-value")
+
+    def test_dh_ocaml_subst(self):
+        self.assertEqual(d2m.dh_ocaml_subst("@OCamlStdlibDir@/csexp/META\nOPT: @OCamlStdlibDir@/csexp/*.a\n"
+                                            "DYN: @OCamlDllDir@/dllfoo.so\n"),
+                         "usr/lib/ocaml/csexp/META\nusr/lib/ocaml/csexp/*.a\nusr/lib/ocaml/stublibs/dllfoo.so\n")
+
+    def test_watch_v5_matching_pattern(self):
+        watch = ("Version: 5\n\nSource: https://gitlab.inria.fr/fpottier/@PACKAGE@/tags?sort=updated_desc\n"
+                 "Matching-Pattern: -/archive/v?\\d[\\d.]+/@PACKAGE@-@ANY_VERSION@@ARCHIVE_EXT@\n")
+        self.assertEqual(d2m.watch_tarball_urls(watch, "menhir", "20260209")[0],
+                         "https://gitlab.inria.fr/fpottier/menhir/-/archive/20260209/menhir-20260209.tar.gz")
+
+    def test_install_entries_expand_braces(self):
+        self.assertEqual(list(d2m.install_entries("usr/lib/ocaml/optint/*.{cma,cmxs}\n")),
+                         [("usr/lib/ocaml/optint/*.cma", "usr/lib/ocaml/optint", None),
+                          ("usr/lib/ocaml/optint/*.cmxs", "usr/lib/ocaml/optint", None)])
+
+    def test_ocaml_names_map_to_wolfi(self):
+        self.assertEqual(d2m.NAME_MAP["libstdlib-ocaml-dev"], ["ocaml", "ocaml-findlib-compat"])
+        self.assertEqual(d2m.NAME_MAP["libfindlib-ocaml-dev"], ["ocaml-findlib", "ocamlfind", "ocaml-findlib-compat"])
+        self.assertIn(("dune-project", "ocaml_dune"), d2m.BUILDSYSTEM_FILES)
 
 
 if __name__ == "__main__":

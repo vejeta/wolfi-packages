@@ -1,0 +1,4 @@
+name="bigarray"
+version="[distributed with OCaml 5.2 or above]"
+description="dummy backward-compatibility package for Stdlib"
+requires=""

@@ -1,0 +1,10 @@
+Index: aspcud/CMakeLists.txt
+===================================================================
+--- aspcud.orig/CMakeLists.txt	2025-09-28 20:16:57.476651809 +0200
++++ aspcud/CMakeLists.txt	2025-09-28 20:22:41.474841353 +0200
+@@ -1,4 +1,4 @@
+-cmake_minimum_required(VERSION 3.1)
++cmake_minimum_required(VERSION 3.10)
+ 
+ file(READ "libcudf/cudf/version.hh" cudfh)
+ string(REGEX MATCH "#define CUDF_VERSION \"([^\"]*)\"" cudfv ${cudfh})

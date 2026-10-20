@@ -1,0 +1,106 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# The OCaml libraries that come with dune and need no other library than
+# csexp: dune-configurator and dune's core libraries. Wolfi's ocaml-dune ships
+# the dune program only; Debian builds these in ocaml-dune and
+# ocaml-dune-configurator-builder. Here they are built from upstream dune, at
+# the version of Wolfi's ocaml-dune, and split into Debian's packages. The
+# other dune libraries, which need pp and re, are in ocaml-dune-libs.
+package:
+  name: ocaml-dune-configurator
+  version: '3.24.2'
+  epoch: 0
+  description: dune-configurator and the core OCaml libraries of dune
+  copyright:
+    - license: MIT
+  dependencies:
+    runtime:
+      - libdune-core-ocaml-dev
+      - libdune-configurator-ocaml-dev
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - build-base
+      - busybox
+      - ocaml
+      - ocaml-compiler-libs
+      - ocaml-dune
+      - ocaml-findlib
+      - ocamlfind
+      - libcsexp-ocaml-dev
+vars:
+  # the opam packages of each subpackage, as Debian splits them
+  core: dune-build-info ordering xdg fs-io top-closure
+  configurator: dune-configurator
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://github.com/ocaml/dune/releases/download/${{package.version}}/dune-${{package.version}}.tbz
+      expected-sha256: 472798691b0216daf538709f0f4703b3617ef24ad0866c9096068baaba4d762a
+  - name: Build
+    runs: |
+      pkgs="${{vars.core}} ${{vars.configurator}}"
+      dune build -p "$(echo $pkgs | tr ' ' ',')" @install
+  - name: Install
+    runs: |
+      dune install --release --destdir="${{targets.destdir}}" --prefix=/usr \
+        --libdir="$(ocamlfind printconf destdir)" \
+        ${{vars.core}} ${{vars.configurator}}
+      # the opam files and changelogs: the license is enough
+      rm -rf "${{targets.destdir}}"/usr/doc
+      install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/ocaml-dune-configurator
+  - uses: strip
+subpackages:
+  - name: libdune-core-ocaml-dev
+    description: OCaml libraries of dune (dune-build-info, ordering, xdg, fs-io, top-closure)
+    dependencies:
+      provides:
+        - libdune-core-ocaml=${{package.full-version}}
+      runtime:
+        - ocaml
+    pipeline:
+      - runs: |
+          lib=usr/lib/ocaml
+          for p in ${{vars.core}}; do
+            mkdir -p "${{targets.contextdir}}/$lib"
+            mv "${{targets.destdir}}/$lib/$p" "${{targets.contextdir}}/$lib/"
+          done
+  - name: libdune-configurator-ocaml-dev
+    description: Helper library for gathering system configuration
+    dependencies:
+      runtime:
+        - libcsexp-ocaml-dev
+        - ocaml
+    pipeline:
+      - runs: |
+          lib=usr/lib/ocaml
+          for p in ${{vars.configurator}}; do
+            mkdir -p "${{targets.contextdir}}/$lib"
+            mv "${{targets.destdir}}/$lib/$p" "${{targets.contextdir}}/$lib/"
+          done
+update:
+  enabled: true
+  github:
+    identifier: ocaml/dune
+    use-tag: true
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+        - ocaml
+        - ocaml-findlib
+        - ocamlfind
+        - libdune-core-ocaml-dev
+        - libdune-configurator-ocaml-dev
+  pipeline:
+    - name: The libraries are found by ocamlfind
+      runs: |
+        for p in dune-build-info ordering xdg fs-io top-closure dune-configurator; do
+          ocamlfind query "$p"
+        done

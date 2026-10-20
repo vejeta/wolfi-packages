@@ -1,0 +1,27 @@
+From: Bastian Germann <bage@debian.org>
+Date: Tue, 25 Mar 2025 17:54:39 +0100
+Bug-Debian: https://bugs.debian.org/1091283
+Subject: Conform to the tpyes of ZopfliCompress API
+---
+diff --git a/woff.c b/woff.c
+index dc77c42..3fde574 100644
+--- a/woff.c
++++ b/woff.c
+@@ -261,7 +261,7 @@ woffEncode(const uint8_t * sfntData, uint32_t sfntLen,
+   }
+ 
+   for (order = 0; order < numTables; ++order) {
+-    uLong sourceLen, destLen = 0;
++    size_t sourceLen, destLen = 0;
+ 
+     uint8_t* dest = NULL;
+     uint32_t sourceOffset;
+@@ -513,7 +513,7 @@ woffSetMetadata(const uint8_t * woffData, uint32_t * woffLen,
+                 uint32_t * pStatus)
+ {
+   const woffHeader * header;
+-  uLong compLen = 0;
++  size_t compLen = 0;
+   uint8_t * compData = NULL;
+   const uint8_t * privData = NULL;
+   uint32_t privLen = 0;

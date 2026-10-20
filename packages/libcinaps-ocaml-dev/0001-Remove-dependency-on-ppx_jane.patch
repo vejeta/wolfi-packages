@@ -1,0 +1,23 @@
+From: Stephane Glondu <steph@glondu.net>
+Date: Mon, 23 Sep 2024 15:22:42 +0200
+Subject: Remove dependency on ppx_jane
+
+---
+ test/dune | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/test/dune b/test/dune
+index 1d49e7d..1217d5b 100644
+--- a/test/dune
++++ b/test/dune
+@@ -2,8 +2,7 @@
+  (action (bash "%{bin:cinaps} -staged test_staged_gen.ml test_staged.ml")))
+ 
+ (executables (names test_staged_gen) (modules test_staged_gen)
+- (libraries cinaps.runtime)
+- (preprocess (pps ppx_jane -allow-toplevel-expression)))
++ (libraries cinaps.runtime))
+ 
+ (alias (name runtest) (deps test_staged_gen.exe)
+  (action (bash ./test_staged_gen.exe)))
+\ No newline at end of file

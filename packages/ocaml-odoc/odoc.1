@@ -1,0 +1,48 @@
+.mso an.tmac
+.TH "ODOC" 1 "" "Odoc %%VERSION%%" "Odoc Manual"
+.\" Disable hyphenation and ragged-right
+.nh
+.ad l
+.SH NAME
+odoc \- documentation generator for OCaml
+.SH SYNOPSIS
+.P
+\fBodoc\fR \fICOMMAND\fR \N'46'\N'46'\N'46'
+.SH COMMANDS
+.TP 4
+\fBcompile\fR
+Compile a cmti, cmt, cmi or mld file to an odoc file\N'46'
+.TP 4
+\fBcompile\N'45'deps\fR
+List units (with their digest) which needs to be compiled in order to compile this one\N'46' The unit itself and its digest is also reported in the output\N'46'
+.TP 4
+\fBcompile\N'45'targets\fR
+TODO: Fill in\N'46'
+.TP 4
+\fBcss\fR
+DEPRECATED: Use `odoc support\N'45'files\N'39' to copy the CSS file for the default theme\N'46'
+.TP 4
+\fBhtml\fR
+Generates an html file from an odoc one
+.TP 4
+\fBhtml\N'45'deps\fR
+lists the packages which need to be in odoc\N'39's load path to process html from the \N'46'odoc files in the given directory
+.TP 4
+\fBhtml\N'45'fragment\fR
+Generates an html fragment file from an mld one
+.TP 4
+\fBhtml\N'45'targets\fR
+TODO: Fill in\N'46'
+.TP 4
+\fBsupport\N'45'files\fR
+Copy the support files (e\N'46'g\N'46' default theme, JavaScript files) to the output directory\N'46'
+.TP 4
+\fBsupport\N'45'files\N'45'targets\fR
+Lists the names of the files that \N'39'odoc support\N'45'files\N'39' outputs\N'46'
+.SH OPTIONS
+.TP 4
+\fB\N'45'\N'45'help\fR[=\fIFMT\fR] (default=auto)
+Show this help in format \fIFMT\fR\N'46' The value \fIFMT\fR must be one of `auto\N'39', `pager\N'39', `groff\N'39' or `plain\N'39'\N'46' With `auto\N'39', the format is `pager` or `plain\N'39' whenever the \fBTERM\fR env var is `dumb\N'39' or undefined\N'46'
+.TP 4
+\fB\N'45'\N'45'version\fR
+Show version information\N'46'

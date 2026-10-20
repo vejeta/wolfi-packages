@@ -1,0 +1,127 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# The Windows headers and import libraries of mingw-w64, for i686 and x86_64,
+# as in Debian's mingw-w64-i686-dev and mingw-w64-x86-64-dev: enough to link
+# against Windows DLLs with binutils-cross (arch-test's Windows probes).
+# The import libraries are generated from mingw-w64-crt's .def files with
+# dlltool, as its Makefile does. The rest of the CRT (crt2.o, libmingw32,
+# libmingwex...) is compiled C and needs the mingw-w64 cross gcc, which is
+# not packaged yet.
+package:
+  name: mingw-w64
+  version: '14.0.0'
+  epoch: 0
+  description: Windows headers and import libraries for the MinGW-w64 toolchains
+  copyright:
+    - license: ZPL-2.1 AND LGPL-2.1-or-later AND LicenseRef-Public-Domain
+  dependencies:
+    runtime:
+      - mingw-w64-i686-dev
+      - mingw-w64-x86-64-dev
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - build-base
+      - busybox
+      - binutils-mingw-w64-i686
+      - binutils-mingw-w64-x86-64
+vars:
+  triplets: i686-w64-mingw32 x86_64-w64-mingw32
+data:
+  # subpackage suffix (Debian's mingw-w64-<suffix>-dev): GNU triplet
+  - name: targets
+    items:
+      i686: i686-w64-mingw32
+      x86-64: x86_64-w64-mingw32
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://downloads.sourceforge.net/project/mingw-w64/mingw-w64/mingw-w64-release/mingw-w64-v${{package.version}}.tar.bz2
+      expected-sha256: 6eaf921d9eb987d3820b364ea9775bc19b965ec81490b6fdd716526c28e1995c
+  - name: Headers
+    runs: |
+      for t in ${{vars.triplets}}; do
+        mkdir -p "build-headers-$t"
+        (
+          cd "build-headers-$t"
+          ../mingw-w64-headers/configure --host="$t" --prefix=/usr/"$t" --enable-sdk=all
+          make install DESTDIR="${{targets.destdir}}"
+        )
+      done
+  - name: Import libraries
+    runs: |
+      crt=mingw-w64-crt
+      for t in ${{vars.triplets}}; do
+        case "$t" in
+          i686-*)   dir=lib32; def=__i386__;   flags="--as-flags=--32 -m i386" ;;
+          x86_64-*) dir=lib64; def=__x86_64__; flags="--as-flags=--64 -m i386:x86-64" ;;
+        esac
+        defs="defs-$t" out="${{targets.destdir}}/usr/$t/lib"
+        mkdir -p "$defs" "$out"
+        # lib-common for every target, then the target's own .def files, which win;
+        # .def.in are preprocessed as the Makefile does, with the target's macro
+        for src in $crt/lib-common/*.def.in $crt/lib-common/*.def $crt/$dir/*.def.in $crt/$dir/*.def; do
+          [ -e "$src" ] || continue
+          n=$(basename "$src"); n=${n%.in}; n=${n%.def}
+          case "$src" in
+            *.in)
+              cpp -x c -undef -D$def "$src" -Wp,-w -P -I$crt/def-include > "$defs/$n.def"
+              # x86_64 has no stdcall decorations
+              [ "$dir" = lib64 ] && sed -i -E 's/^([^ ]+)@[0-9]+( |$)/\1\2/' "$defs/$n.def"
+              ;;
+            *) cp "$src" "$defs/$n.def" ;;
+          esac
+        done
+        for d in "$defs"/*.def; do
+          "$t-dlltool" $flags -k --as="$t-as" --input-def "$d" --output-lib "$out/lib$(basename "$d" .def).a"
+        done
+      done
+      install -Dm644 COPYING COPYING.MinGW-w64/COPYING.MinGW-w64.txt COPYING.MinGW-w64-runtime/COPYING.MinGW-w64-runtime.txt \
+        -t "${{targets.destdir}}"/usr/share/licenses/mingw-w64
+subpackages:
+  - range: targets
+    name: mingw-w64-${{range.key}}-dev
+    description: Windows headers and import libraries for ${{range.value}}
+    dependencies:
+      runtime:
+        - binutils-mingw-w64-${{range.key}}
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"/usr
+          mv "${{targets.destdir}}"/usr/${{range.value}} "${{targets.contextdir}}"/usr/
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - name: A Windows program links against kernel32
+          runs: |
+            test -f /usr/${{range.value}}/include/windows.h
+            # i686 symbols carry the stdcall decoration
+            case ${{range.value}} in
+              i686-*) p=_ s=_ExitProcess@4 ;;
+              *) p= s=ExitProcess ;;
+            esac
+            printf '.globl %smainCRTStartup\n%smainCRTStartup:\n  call %s\n' "$p" "$p" "$s" > t.s
+            ${{range.value}}-as t.s -o t.o
+            ${{range.value}}-ld t.o -lkernel32 -o t.exe
+            ${{range.value}}-objdump -p t.exe | grep -q 'DLL Name: KERNEL32.dll'
+update:
+  enabled: true
+  release-monitor:
+    identifier: 141402
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - runs: |
+        test -f /usr/x86_64-w64-mingw32/lib/libkernel32.a
+        test -f /usr/i686-w64-mingw32/lib/libkernel32.a

@@ -1,0 +1,26 @@
+Description: Fix spelling errors in manpages
+Author: Emmanuel Bouthenot <kolter@debian.org>
+Forwarded: no
+Last-Update: 2015-07-21
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/lib/Unicode/LineBreak.pod
++++ b/lib/Unicode/LineBreak.pod
+@@ -338,7 +338,7 @@
+ =item C<"UAX11">
+ 
+ Default method.
+-Sizes are computed by columns of each characters accoring to built-in
++Sizes are computed by columns of each characters according to built-in
+ character database.
+ 
+ =item C<undef>
+@@ -711,7 +711,7 @@
+ 
+ =item C<BACKWARD_QUOTES() =E<gt> LB_OP, FORWARD_QUOTES() =E<gt> LB_CL>
+ 
+-Some languages (Dutch, English, Italian, Portugese, Spanish, Turkish and
++Some languages (Dutch, English, Italian, Portuguese, Spanish, Turkish and
+ most East Asian) use rotated-9-style punctuations (E<0x2018> E<0x201C>) as
+ opening and 9-style punctuations (E<0x2019> E<0x201D>) as closing quotation
+ marks.

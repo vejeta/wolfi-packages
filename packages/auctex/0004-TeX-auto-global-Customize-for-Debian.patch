@@ -1,0 +1,31 @@
+From: "Davide G. M. Salvetti" <salve@debian.org>
+Date: Tue, 27 Dec 2011 22:48:11 +0100
+Subject: TeX-auto-global: Customize for Debian
+
+Use "debian-emacs-flavor", according to Debian Emacs policy.
+
+Forwarded: not-needed
+---
+ tex-site.el.in | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/tex-site.el.in b/tex-site.el.in
+index b9a73bd..c5da124 100644
+--- a/tex-site.el.in
++++ b/tex-site.el.in
+@@ -73,8 +73,8 @@ TeX-auto-* (automatically generated lisp).")
+   "The directory where the AUCTeX non-Lisp data is located.")
+ 
+ (defcustom TeX-auto-global
+-    @lispautodir@
+-  "Directory containing automatically generated information.
++    (concat "/var/lib/auctex/" (symbol-name debian-emacs-flavor) "/")
++  "*Directory containing automatically generated information.
+ 
+ For storing automatic extracted information about the TeX macros
+ shared by all users of a site."
+@@ -135,4 +135,3 @@ If not a regular release, the date of the last change.")
+ 
+ ;; Store bibitems when saving a BibTeX buffer
+ (add-hook 'bibtex-mode-hook #'BibTeX-auto-store)
+-

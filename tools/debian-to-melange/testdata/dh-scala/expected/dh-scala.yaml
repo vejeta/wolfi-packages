@@ -3,7 +3,6 @@
 # Debian packaging: https://salsa.debian.org/mendezr/dh-scala
 #
 # Conversion notes:
-# - port debian/rules override_dh_auto_build: mkdir -p man && $(POD2MAN) --section=1 --name=dh_scala dh_scala man/dh_scala.1 && $(POD2MAN) --section=1 --name=dh-make-scala dh-make-scala man/dh-make-scala.1 && $(POD2MAN) --section=5 --name=scala-b
 # - autopkgtests converted to the test pipeline (5 steps)
 package:
   name: dh-scala
@@ -17,9 +16,10 @@ package:
         - .perltidyrc
   dependencies:
     runtime:
+      - debhelper
       - openjdk-25-default-jdk  # Debian: default-jdk-headless
       - perl-archive-zip  # Debian: libarchive-zip-perl
-      - perl-dpkg  # Debian: libdpkg-perl
+      - dpkg-dev  # Debian: libdpkg-perl
       - perl  # Debian: ${perl:Depends}
 environment:
   contents:
@@ -29,14 +29,10 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - busybox
-      - git
       - perl-archive-zip  # Debian: libarchive-zip-perl
-      - perl-dpkg  # Debian: libdpkg-perl
-      - perl-file-stripnondeterminism  # Debian: libfile-stripnondeterminism-perl
+      - dpkg-dev  # Debian: libdpkg-perl
       - perl-xml-libxml  # Debian: libxml-libxml-perl
-      - licensecheck
       - perl
-      - xz  # Debian: xz-utils
       - coreutils
       - findutils
 pipeline:
@@ -45,7 +41,14 @@ pipeline:
       mkdir -p .recipe-files
       for f in copyright; do mv dh-scala/$f .recipe-files/; done
       rmdir dh-scala 2>/dev/null || true
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_build: mkdir -p man && $(POD2MAN) --section=1 --name=dh_scala dh_scala man/dh_scala.1 && $(POD2MAN) --section=1 --name=dh-make-scala dh-make-scala man/dh-make-scala.1 && $(POD2MAN) --section=5 --name=scala-b
+  - name: Build (from debian/rules override_dh_auto_build)
+    runs: |
+      mkdir -p man
+      pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=1 --name=dh_scala dh_scala man/dh_scala.1
+      pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=1 --name=dh-make-scala dh-make-scala man/dh-make-scala.1
+      pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=5 --name=scala-build scala-build.pod man/scala-build.5
+      pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=7 --name=dh-scala dh-scala.pod man/dh-scala.7
+      pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=3pm --name=Debian::Debhelper::Buildsystem::scala  	  lib/Debian/Debhelper/Buildsystem/scala.pm man/Debian::Debhelper::Buildsystem::scala.3pm
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/bin"
@@ -66,20 +69,36 @@ pipeline:
       cp -a README.md "${{targets.destdir}}/usr/share/doc/dh-scala/"
       cp -a doc/guide.md "${{targets.destdir}}/usr/share/doc/dh-scala/"
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/dh-scala/copyright
+  - name: Commands are executable (dh_fixperms)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        [ -d "$d/usr/bin" ] && find "$d/usr/bin" -type f -exec chmod 755 {} +
+      done
+      true
 subpackages:
   - name: dh-make-scala
     description: Start Debian packages of Scala libraries from Maven Central
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/bin"
-          mv "${{targets.destdir}}/dh-make-scala" "${{targets.contextdir}}/usr/bin/"
+          cp -a dh-make-scala "${{targets.contextdir}}/usr/bin/"
           mkdir -p "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala"
-          mv "${{targets.destdir}}/lib/Debian/DhScala/Make.pm" "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
-          mv "${{targets.destdir}}/lib/Debian/DhScala/Make" "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
+          if ls -d "${{targets.destdir}}/lib/Debian/DhScala/Make.pm" >/dev/null 2>&1; then
+            mv "${{targets.destdir}}/lib/Debian/DhScala/Make.pm" "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
+          else
+            cp -a lib/Debian/DhScala/Make.pm "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
+          fi
+          if ls -d "${{targets.destdir}}/lib/Debian/DhScala/Make" >/dev/null 2>&1; then
+            mv "${{targets.destdir}}/lib/Debian/DhScala/Make" "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
+          else
+            cp -a lib/Debian/DhScala/Make "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
+          fi
           install -Dm644 man/dh-make-scala.1 -t "${{targets.contextdir}}/usr/share/man/man1"
+          find "${{targets.contextdir}}/usr/bin" -type f -exec chmod 755 {} +
     dependencies:
       runtime:
         - ca-certificates-bundle  # Debian: ca-certificates
+        - dh-scala
         - git
         - perl-archive-zip  # Debian: libarchive-zip-perl
         - perl-io-socket-ssl  # Debian: libio-socket-ssl-perl
@@ -113,6 +132,7 @@ test:
         - dpkg  # Essential in Debian, so on every testbed
         - findutils  # Essential in Debian, so on every testbed
         - grep  # Essential in Debian, so on every testbed
+        - gzip  # Essential in Debian, so on every testbed
         - sed  # Essential in Debian, so on every testbed
         - scala-2.13
         - scala-3.8  # Debian: scala3
@@ -129,6 +149,7 @@ test:
           function add(   m, j, f) {
             m = split(pkg alias[pkg], names, " ")
             for (j = 1; j <= m; j++) {
+              if (seen[names[j]]++) continue  # one entry per name: dpkg rejects duplicates
               f = db "/info/" names[j] ".list"
               printf "%s", files > f; close(f)
               gsub(/_/, "~", ver)
@@ -147,23 +168,40 @@ test:
           # po-debconf's translatable fields (_Description, __Choices) in the C locale
           [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/dh-scala.templates" && break
         done
+        # / and /tmp as on a Debian testbed: sandboxes may make / 0700 (apt's _apt reads below it)
+        chmod 755 / 2>/dev/null || true
+        chmod 1777 /tmp 2>/dev/null || true
+        # base-files' vendor (dpkg-vendor, dpkg-buildpackage)
+        mkdir -p /etc/dpkg/origins
+        [ -e /etc/dpkg/origins/debian ] || printf 'Vendor: Debian\nVendor-URL: https://www.debian.org/\nBugs: debbugs://bugs.debian.org\n' > /etc/dpkg/origins/debian
+        [ -e /etc/dpkg/origins/default ] || ln -s debian /etc/dpkg/origins/default
     - name: 'autopkgtest: debian/tests/build-library 2.12'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
+        set +o pipefail 2>/dev/null || true
         debian/tests/build-library 2.12
     - name: 'autopkgtest: debian/tests/build-library 2.13'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
+        set +o pipefail 2>/dev/null || true
         debian/tests/build-library 2.13
     - name: 'autopkgtest: debian/tests/build-library 3'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
+        set +o pipefail 2>/dev/null || true
         debian/tests/build-library 3
     - name: 'autopkgtest: debian/tests/build-library cross'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
+        set +o pipefail 2>/dev/null || true
         debian/tests/build-library cross
     - name: 'autopkgtest: debian/tests/build-library no-buildsystem'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
+        set +o pipefail 2>/dev/null || true
         debian/tests/build-library no-buildsystem

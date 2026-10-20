@@ -1,0 +1,125 @@
+Description: Corrected incorrect capitalization of two Norwegian Bokmål strings.
+ Swapped content of listofequations og listoftables with their capitalized
+ versions.
+Author: Petter Reinholdtsen <pere@debian.org>
+Forwarded: https://github.com/docbook/xslt20-stylesheets/pull/158 https://github.com/docbook/xslt10-stylesheets/pull/211
+Reviewed-By: Petter Reinholdtsen <pere@debian.org>
+Last-Update: 2023-10-28
+---
+Index: docbook-xsl/docbook-xsl-ns/common/nb.xml
+===================================================================
+--- docbook-xsl.orig/docbook-xsl-ns/common/nb.xml	2023-10-28 11:21:32.700658724 +0200
++++ docbook-xsl/docbook-xsl-ns/common/nb.xml	2023-10-28 11:21:32.692658713 +0200
+@@ -185,16 +185,16 @@
+ <l:gentext key="productioneditor" text="Production Editor" lang="en"/>
+ <l:gentext key="technicaleditor" text="Technical Editor" lang="en"/>
+ <l:gentext key="translator" text="Translator" lang="en"/>
+-<l:gentext key="listofequations" text="Formeloversikt"/>
+-<l:gentext key="ListofEquations" text="formeloversikt"/>
++<l:gentext key="ListofEquations" text="Formeloversikt"/>
++<l:gentext key="listofequations" text="formeloversikt"/>
+ <l:gentext key="ListofExamples" text="Eksempeloversikt"/>
+ <l:gentext key="listofexamples" text="eksempeloversikt"/>
+ <l:gentext key="ListofFigures" text="Figuroversikt"/>
+ <l:gentext key="listoffigures" text="figuroversikt"/>
+ <l:gentext key="ListofProcedures" text="List of Procedures" lang="en"/>
+ <l:gentext key="listofprocedures" text="List of Procedures" lang="en"/>
+-<l:gentext key="listoftables" text="Tabelloversikt"/>
+-<l:gentext key="ListofTables" text="tabelloversikt"/>
++<l:gentext key="ListofTables" text="Tabelloversikt"/>
++<l:gentext key="listoftables" text="tabelloversikt"/>
+ <l:gentext key="ListofUnknown" text="???-oversikt"/>
+ <l:gentext key="listofunknown" text="???-oversikt"/>
+ <l:gentext key="nav-home" text="Hjem"/>
+@@ -1285,4 +1285,4 @@
+ <l:l i="260">Ẕ</l:l>
+ <l:l i="260">ẕ</l:l>
+ </l:letters>
+-</l:l10n>
+\ No newline at end of file
++</l:l10n>
+Index: docbook-xsl/docbook-xsl/common/nb.xml
+===================================================================
+--- docbook-xsl.orig/docbook-xsl/common/nb.xml	2023-10-28 11:21:32.700658724 +0200
++++ docbook-xsl/docbook-xsl/common/nb.xml	2023-10-28 11:22:03.476699025 +0200
+@@ -91,18 +91,18 @@
+ <l:gentext key="note" text="notat"/>
+ <l:gentext key="Part" text="Del"/>
+ <l:gentext key="part" text="del"/>
+-<l:gentext key="Poetry" text="Poetry" lang="en"/>
+-<l:gentext key="poetry" text="Poetry" lang="en"/>
++<l:gentext key="Poetry" text="Poesi"/>
++<l:gentext key="poetry" text="poesi"/>
+ <l:gentext key="Preface" text="Forord"/>
+ <l:gentext key="preface" text="forord"/>
+ <l:gentext key="Procedure" text="Prosedyre"/>
+ <l:gentext key="procedure" text="prosedyre"/>
+ <l:gentext key="ProductionSet" text="Produksjon"/>
+-<l:gentext key="PubDate" text="Publication Date" lang="en"/>
+-<l:gentext key="pubdate" text="Publication date" lang="en"/>
++<l:gentext key="PubDate" text="Utgivelsesdato"/>
++<l:gentext key="pubdate" text="utgivelsesdato"/>
+ <l:gentext key="Published" text="Publisert"/>
+ <l:gentext key="published" text="publisert"/>
+-<l:gentext key="Publisher" text="Publisher" lang="en"/>
++<l:gentext key="Publisher" text="Utgiver"/>
+ <l:gentext key="Qandadiv" text="Spørsmål og svar"/>
+ <l:gentext key="qandadiv" text="spørsmål og svar"/>
+ <l:gentext key="QandASet" text="Frequently Asked Questions" lang="en"/>
+@@ -112,7 +112,7 @@
+ <l:gentext key="refentry" text=""/>
+ <l:gentext key="Reference" text="Referanse"/>
+ <l:gentext key="reference" text="referanse"/>
+-<l:gentext key="References" text="References" lang="en"/>
++<l:gentext key="References" text="Referanser"/>
+ <l:gentext key="RefName" text="Navn"/>
+ <l:gentext key="refname" text="navn"/>
+ <l:gentext key="RefSection" text=""/>
+@@ -145,8 +145,8 @@
+ <l:gentext key="Step" text="Steg"/>
+ <l:gentext key="table" text="tabell"/>
+ <l:gentext key="Table" text="Tabell"/>
+-<l:gentext key="task" text="Task" lang="en"/>
+-<l:gentext key="Task" text="Task" lang="en"/>
++<l:gentext key="Task" text="Oppgave"/>
++<l:gentext key="task" text="oppgave"/>
+ <l:gentext key="tip" text="Tips"/>
+ <l:gentext key="TIP" text="TIPS"/>
+ <l:gentext key="Tip" text="Tips"/>
+@@ -156,7 +156,7 @@
+ <l:gentext key="and" text="og"/>
+ <l:gentext key="or" text="eller"/>
+ <l:gentext key="by" text="av"/>
+-<l:gentext key="optional-step" text="(Optional) " lang="en"/>
++<l:gentext key="optional-step" text="(Valgfritt) "/>
+ <l:gentext key="Edited" text="Redigert"/>
+ <l:gentext key="edited" text="redigert"/>
+ <l:gentext key="Editedby" text="Redigert av"/>
+@@ -185,16 +185,16 @@
+ <l:gentext key="productioneditor" text="Production Editor" lang="en"/>
+ <l:gentext key="technicaleditor" text="Technical Editor" lang="en"/>
+ <l:gentext key="translator" text="Translator" lang="en"/>
+-<l:gentext key="listofequations" text="Formeloversikt"/>
+-<l:gentext key="ListofEquations" text="formeloversikt"/>
++<l:gentext key="ListofEquations" text="Formeloversikt"/>
++<l:gentext key="listofequations" text="formeloversikt"/>
+ <l:gentext key="ListofExamples" text="Eksempeloversikt"/>
+ <l:gentext key="listofexamples" text="eksempeloversikt"/>
+ <l:gentext key="ListofFigures" text="Figuroversikt"/>
+ <l:gentext key="listoffigures" text="figuroversikt"/>
+ <l:gentext key="ListofProcedures" text="List of Procedures" lang="en"/>
+ <l:gentext key="listofprocedures" text="List of Procedures" lang="en"/>
+-<l:gentext key="listoftables" text="Tabelloversikt"/>
+-<l:gentext key="ListofTables" text="tabelloversikt"/>
++<l:gentext key="ListofTables" text="Tabelloversikt"/>
++<l:gentext key="listoftables" text="tabelloversikt"/>
+ <l:gentext key="ListofUnknown" text="???-oversikt"/>
+ <l:gentext key="listofunknown" text="???-oversikt"/>
+ <l:gentext key="nav-home" text="Hjem"/>
+@@ -1285,4 +1285,4 @@
+ <l:l i="260">Ẕ</l:l>
+ <l:l i="260">ẕ</l:l>
+ </l:letters>
+-</l:l10n>
+\ No newline at end of file
++</l:l10n>

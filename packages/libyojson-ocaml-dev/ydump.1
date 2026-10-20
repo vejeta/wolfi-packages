@@ -1,0 +1,104 @@
+.\" groff -man -Tascii ydump.1
+.\" ==========================================================================
+.\" ============= Synopsis ===================================================
+.\" ==========================================================================
+.TH YDUMP 1 "June 2013" YDUMP "User Manuals"
+.SH NAME
+ydump \- JSON pretty printer
+.SH SYNOPSIS
+.B ydump \fR[\fIOptions...\fR] [\fIfile\fR]
+.\" ==========================================================================
+.\" ============= Description ================================================
+.\" ==========================================================================
+.SH DESCRIPTION
+.B ydump
+pretty prints data in the extended
+.B JSON
+format of the
+.B yojson
+library. 
+.B JSON
+stands for JavaScript Object Notation and is a lightweight
+data-interchange format.
+.\" ==========================================================================
+.P
+.B ydump
+reads from standard input if the
+.I file
+argument is omitted.
+.\"
+.\" ==========================================================================
+.\" ================ Options =================================================
+.\" ==========================================================================
+.\"
+.SH OPTIONS
+.\" ===================== -o <file> ============================================
+.TP
+.B "-o <file>"
+pretty print to
+.I file
+instead of standard output
+.\" ===================== -std  ============================================
+.TP
+.B "-std"
+use
+.B JSON
+standard syntax only:
+Convert tuples and variants into standard
+.B JSON\fR,
+refuse to print
+NaN and infinities, require the root node to be either an object
+or an array.
+.\" ===================== -c  ============================================
+.TP
+.B "-c"
+compact output
+.\" ===================== -s  ============================================
+.TP
+.B "-s"
+streaming mode: read and write a sequence of
+.B JSON
+values instead of
+just one (this is the default).
+.\" ===================== -u  ============================================
+.TP
+.B "-u"
+disable streaming mode: A single
+.B JSON
+record is expected.
+.\" ===================== -sort  ============================================
+.TP
+.B "-sort"
+sort object fields (default: preserve internal field order)
+.\" ===================== -ob  ============================================
+.TP
+.B "-ob"
+convert to biniou format and pretty print that (experimental)
+.\" ===================== -version  ============================================
+.TP
+.B "-version"
+print version and exit
+.\" ===================== -help   ============================================
+.TP
+.B "-help | --help"
+print options
+.\"
+.\" ==========================================================================
+.\" ================ SEE ALSO ================================================
+.\" ==========================================================================
+.\"
+.SH SEE ALSO
+.TP
+the \fByojson\fR web site, \fIhttp://mjambon.com/yojson.html\fR
+.TP
+the \fBJSON\fR web site, \fIhttp://json.org/\fR
+.\"
+.\" ==========================================================================
+.\" ================ Author ==================================================
+.\" ==========================================================================
+.\"
+.SH AUTHOR
+This manual page was written by Sylvain Le Gall
+<gildor@debian.org> and Hendrik Tews <hendrik@askra.de>,
+specifically for the Debian project (and may be used by others).
+

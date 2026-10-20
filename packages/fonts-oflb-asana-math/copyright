@@ -1,0 +1,35 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Asana Math
+Source: https://www.ctan.org/tex-archive/fonts/Asana-Math/
+
+Files: *
+Copyright:
+ Copyright (c) 2007-2025 Apostolos Syropoulos <asyropoulos@yahoo.com>
+ with Reserved Font Name Asana Math.
+ Copyright (c) 2000 Young Ryu,
+ with Reserved Font Name pxfonts.
+ Copyright (c) 1997, 1999 Claudio Beccari,
+ with Reserved Font Name gsmn1000.
+License: OFL-1.1-RFN
+ On Debian systems, the complete text of the Open Font License version 1.1
+ can be found in the /usr/share/common-licenses/OFL-1.1 file.
+
+Files: debian/*
+Copyright: 2008 Nicolas Spalinger <nicolas.spalinger@sil.org>
+License: GPL-2+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version 2
+ of the License, or (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ can be found in /usr/share/common-licenses/GPL-2 file.

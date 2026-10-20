@@ -1,0 +1,27 @@
+From: Vagrant Cascadian <vagrant@reproducible-builds.org>
+Date: Fri, 25 Jun 2021 03:38:05 +0000
+Subject: Set timestamp on generated preview-latex.el file
+
+To avoid embedding timestamps in the shipped .el file.
+
+https://tests.reproducible-builds.org/debian/issues/timestamps_in_emacs_autoloads_issue.html
+https://bugs.debian.org/824050
+https://debbugs.gnu.org/cgi/bugreport.cgi?bug=22213
+
+Forwarded: not-needed
+---
+ Makefile.in | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Makefile.in b/Makefile.in
+index 6244269..47ea026 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -249,6 +249,7 @@ lisp:	tex-site.el $(AUCSRC) $(STYLESRC) $(PREVIEWSRC)
+ 
+ preview-latex.el: preview.el
+ 	rm -f preview-latex.el
++	touch --reference debian/copyright preview-latex.el ; \
+ 	-$(EMACS) -batch -no-site-file -no-init-file $(PREVIEW_AUTOLOAD) ; \
+ 	test -r $@ || { \
+ 	  echo ";; Auto-generated preview-latex.el" > $@ ; \

@@ -1,0 +1,25 @@
+From: Stephane Glondu <steph@glondu.net>
+Date: Fri, 8 Nov 2019 16:29:11 +0100
+Subject: Comment out unix_mcast tests
+
+They rely on network calls that are disabled in package building
+environments.
+---
+ test/unix/test_mcast.ml | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/test/unix/test_mcast.ml b/test/unix/test_mcast.ml
+index a44838f..2a03c0a 100644
+--- a/test/unix/test_mcast.ml
++++ b/test/unix/test_mcast.ml
+@@ -72,8 +72,10 @@ let test_mcast name join set_loop =
+ let suite =
+   suite "unix_mcast"
+     [
++(*
+       test_mcast "mcast-join-loop" true true;
+       test_mcast "mcast-nojoin-loop" false true;
+       test_mcast "mcast-join-noloop" true false;
+       test_mcast "mcast-nojoin-noloop" false false;
++*)
+     ]

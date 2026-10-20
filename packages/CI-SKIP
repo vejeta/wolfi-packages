@@ -5,3 +5,10 @@
 # elsewhere (Cirrus CI or locally) and published as usual.
 qt5-qtwebengine aarch64  # longer than the 6 h job limit on GitHub's ARM runners
 stremio-qt5 aarch64      # needs qt5-qtwebengine for aarch64, which is not built here
+# not built yet: dependencies still to port (nothing depends on these)
+auctex x86_64              # Debian's rules need eperl; configure needs kpsepath (texlive-binextra)
+auctex aarch64
+fonts-font-awesome x86_64  # fontTools needs brotli for WOFF2 (no py3-brotli in Wolfi); fonts-font-awesome-legacy
+fonts-font-awesome aarch64
+fonts-roboto-slab x86_64   # Debian's font build (gftools) fails on Wolfi
+fonts-roboto-slab aarch64

@@ -1,0 +1,33 @@
+From: "Davide G. M. Salvetti" <salve@debian.org>
+Date: Sat, 14 Jan 2012 22:57:11 +0100
+Subject: TeX-view-program-selection: Customize for Debian
+
+* tex.el (TeX-view-program-selection): Look for Evince and use it if
+  available, else look for Okular and use it if available, fall back to
+  xdvi or xpdf otherwise.
+
+Forwarded: not-needed
+---
+ tex.el | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/tex.el b/tex.el
+index 9328c52..eae884c 100644
+--- a/tex.el
++++ b/tex.el
+@@ -1396,10 +1396,12 @@ restarting Emacs."
+       (output-pdf "open")
+       (output-html "open")))
+    (t
+-    '(((output-dvi has-no-display-manager) "dvi2tty")
++    `(((output-dvi has-no-display-manager) "dvi2tty")
+       ((output-dvi style-pstricks) "dvips and gv")
+-      (output-dvi "xdvi")
+-      (output-pdf "Evince")
++      (output-dvi ,(if (executable-find "evince") "Evince"
++		     (if (executable-find "okular") "Okular" "xdvi")))
++      (output-pdf ,(if (executable-find "evince") "Evince"
++		     (if (executable-find "okular") "Okular" "xpdf")))
+       (output-html "xdg-open"))))
+   "Alist of predicates and viewers.
+ Each entry consists of a list with two elements.  The first

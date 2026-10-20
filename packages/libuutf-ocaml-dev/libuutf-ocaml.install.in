@@ -1,0 +1,3 @@
+@OCamlStdlibDir@/uutf/META
+@OCamlStdlibDir@/uutf/uutf.cma
+DYN: @OCamlStdlibDir@/uutf/uutf.cmxs

@@ -1,0 +1,46 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Open Sans
+Source: https://github.com/googlefonts/opensans
+Files-Excluded: docs fonts
+Comment: Remove built files
+
+Files: *
+Copyright:
+ Copyright 2020 The Open Sans Project Authors (https://github.com/googlefonts/opensans)
+License: OFL-1.1-no-RFN
+
+License: OFL-1.1-no-RFN
+ On Debian systems, the complete text of the Open Font License version 1.1
+ can be found in `/usr/share/common-licenses/OFL-1.1'.
+
+Files: original*
+ tools/vf2s.py
+Copyright:
+ Digitized data copyright (c) 2010-2018, Google Corporation.
+ Copyright 2019 Google, LLC
+License: Apache-2.0
+
+Files: debian/*
+Copyright:
+ Copyright (c) 2017, Gregor Riepl <onitake@gmail.com>
+License: Apache-2.0
+
+Files: debian/patches/*
+Copyright: Debian Fonts Task Force
+License: Apache-2.0 or OFL-1.1-no-RFN
+
+License: Apache-2.0
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+ .
+       http://www.apache.org/licenses/LICENSE-2.0
+ .
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ .
+ On Debian systems, the complete text of the Apache License Version 2.0
+ can be found in `/usr/share/common-licenses/Apache-2.0'.

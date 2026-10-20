@@ -1,0 +1,11 @@
+@OCamlStdlibDir@/topkg/opam
+@OCamlStdlibDir@/topkg/META
+@OCamlStdlibDir@/topkg/*.ml*
+@OCamlStdlibDir@/topkg/*.cmt*
+@OCamlStdlibDir@/topkg/*.cmi
+@OCamlStdlibDir@/topkg/*.cma
+DYN: @OCamlStdlibDir@/topkg/*.cmxs
+@OCamlStdlibDir@/topkg/*.cmti
+OPT: @OCamlStdlibDir@/topkg/*.a
+OPT: @OCamlStdlibDir@/topkg/*.cmx
+OPT: @OCamlStdlibDir@/topkg/*.cmxa

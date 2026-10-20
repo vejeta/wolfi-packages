@@ -1,0 +1,65 @@
+From: =?utf-8?q?St=C3=A9phane_Glondu?= <glondu@debian.org>
+Date: Mon, 29 Jun 2026 04:07:58 +0200
+Subject: Disable build of toplevel.{,bc}.js
+
+Its fails with:
+
+> File "toplevel/examples/lwt_toplevel/dune", line 54, characters 7-15:
+> 54 |  (name toplevel)
+>             ^^^^^^^^
+> (cd _build/default/toplevel/examples/lwt_toplevel && ../../../compiler/bin-js_of_ocaml/js_of_ocaml.exe --no-source-map -w no-missing-effects-backend --Werror --toplevel -o toplevel.bc.js toplevel.bc-for-jsoo -->
+> Warning [missing-primitive]: There are some missing primitives.
+> Dummy implementations (raising 'Failure' exception) will be used if they are not available at runtime.
+> You can prevent the generation of dummy implementations with the commandline option '--disable genprim'
+> Missing primitives:
+>   caml_ml_runtime_current_timestamp
+> ../../../compiler/bin-js_of_ocaml/js_of_ocaml.exe: all warnings being treated as errors
+---
+ manual/files/dune.inc               |  4 +---
+ toplevel/examples/lwt_toplevel/dune | 10 ++--------
+ 2 files changed, 3 insertions(+), 11 deletions(-)
+
+diff --git a/manual/files/dune.inc b/manual/files/dune.inc
+index b079103..09950b4 100644
+--- a/manual/files/dune.inc
++++ b/manual/files/dune.inc
+@@ -4,10 +4,8 @@
+  (targets (dir toplevel))
+  (deps
+   ../../toplevel/examples/lwt_toplevel/index.html
+-  ../../toplevel/examples/lwt_toplevel/toplevel.js
+-  ../../toplevel/examples/lwt_toplevel/toplevel.bc.js
+   ../../toplevel/examples/lwt_toplevel/test_dynlink.js)
+- (action (bash "mkdir -p toplevel && cp -r ../../toplevel/examples/lwt_toplevel/index.html ../../toplevel/examples/lwt_toplevel/toplevel.js ../../toplevel/examples/lwt_toplevel/toplevel.bc.js ../../toplevel/examples/lwt_toplevel/test_dynlink.js toplevel")))
++ (action (bash "mkdir -p toplevel && cp -r ../../toplevel/examples/lwt_toplevel/index.html ../../toplevel/examples/lwt_toplevel/test_dynlink.js toplevel")))
+ 
+ (rule
+  (alias doc-manual)
+diff --git a/toplevel/examples/lwt_toplevel/dune b/toplevel/examples/lwt_toplevel/dune
+index 70a2b20..dea587e 100644
+--- a/toplevel/examples/lwt_toplevel/dune
++++ b/toplevel/examples/lwt_toplevel/dune
+@@ -58,10 +58,7 @@
+  ;; Embedding the cmis as JS string literals overflows OCaml's 16 MB
+  ;; max_string_length on 32-bit. OCaml >= 5.1 compresses cmis on disk so
+  ;; the embedded literal stays small enough.
+- (enabled_if
+-  (or
+-   (>= %{ocaml_version} 5.1.0)
+-   (= %{arch_sixtyfour} true)))
++ (enabled_if false)
+  (js_of_ocaml
+   ;; We use the generated file in the doc. Let's not bloat it with sourcemap.
+   ;; Plus, the source map would be too large on 32-bit architectures
+@@ -218,10 +215,7 @@
+  ;; Embedding the cmis as JS string literals overflows OCaml's 16 MB
+  ;; max_string_length on 32-bit. OCaml >= 5.1 compresses cmis on disk so
+  ;; the embedded literal stays small enough.
+- (enabled_if
+-  (or
+-   (>= %{ocaml_version} 5.1.0)
+-   (= %{arch_sixtyfour} true)))
++ (enabled_if false)
+  (action
+   (run
+    %{bin:js_of_ocaml}

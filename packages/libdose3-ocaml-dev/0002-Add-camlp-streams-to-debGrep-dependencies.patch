@@ -1,0 +1,21 @@
+From: Stephane Glondu <steph@glondu.net>
+Date: Fri, 14 Jun 2024 13:48:14 +0200
+Subject: Add camlp-streams to debGrep dependencies
+
+---
+ tests/DebianPackages/dune | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tests/DebianPackages/dune b/tests/DebianPackages/dune
+index 122693e..484316d 100644
+--- a/tests/DebianPackages/dune
++++ b/tests/DebianPackages/dune
+@@ -20,7 +20,7 @@
+ 
+ (executable
+  (name debGrep)
+- (libraries extlib dose3.common dose3-extra.doseparse dose3-extra.debian)
++ (libraries extlib dose3.common dose3-extra.doseparse dose3-extra.debian camlp-streams)
+  (modules debGrep grep_argv_parser grep_argv_types))
+ 
+ (ocamlyacc grep_argv_parser)

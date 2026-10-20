@@ -32,6 +32,7 @@ Output: `packages/<name>.yaml` plus `packages/<name>/` with local sources
 | `--check-wolfi` | Verify dependency names against the Wolfi APKINDEX |
 | `--strict` | Exit 1 if any `TODO(alpine-to-melange)` remains |
 | `--download` | Allow network lookups to pin sources (`git ls-remote` for GitHub tags) |
+| `--source-url URL` | Build an upstream release instead of the APKBUILD's main source (texlive); with `--download`, Alpine's patches already in that release are left out (`patch -R --dry-run`) |
 | `--build` | Build the generated recipe with melange (bubblewrap runner, this repository's pipelines) and report the result; exit 3 if it fails |
 | `--melange PATH`, `--melange-opts "..."` | melange binary and extra `melange build` options for `--build` (e.g. `--cache-dir`) |
 

@@ -1,0 +1,22 @@
+From: Stephane Glondu <glondu@debian.org>
+Date: Thu, 21 May 2026 08:06:07 +0200
+Subject: Remove dependency on compiler-libs.optcomp
+
+---
+ src/loader/dune | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/src/loader/dune b/src/loader/dune
+index 33ecf26..43c6611 100644
+--- a/src/loader/dune
++++ b/src/loader/dune
+@@ -11,8 +11,7 @@
+   odoc-parser
+   syntax_highlighter
+   odoc_document
+-  odoc_utils
+-  compiler-libs.optcomp))
++  odoc_utils))
+ 
+ (library
+  (name odoc_loader)

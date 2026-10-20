@@ -1,0 +1,14 @@
+From: Bastian Germann <bage@debian.org>
+Subject: FreeSans: Use Adobe Glyph List like the rest of the fonts
+---
+--- a/sfd/FreeSans.sfd
++++ b/sfd/FreeSans.sfd
+@@ -4075,7 +4075,7 @@ MATH:RadicalDegreeBottomRaisePercent: 65
+ MATH:MinConnectorOverlap: 20
+ Encoding: Custom
+ UnicodeInterp: none
+-NameList: FreeSerif
++NameList: Adobe Glyph List
+ DisplaySize: -36
+ AntiAlias: 1
+ FitToEm: 1

@@ -383,6 +383,11 @@ jobs:
 
           echo "SSH configured for SourceForge with lftp support"
 
+      - name: README of the SourceForge files area
+        run: |
+          # SourceForge shows repo/README.md above the file list; it follows README.md of this repository
+          python3 scripts/sourceforge-readme.py --out repo/README.md
+
       - name: Sync to SourceForge
         run: |
           echo "=== Syncing repository to SourceForge ==="

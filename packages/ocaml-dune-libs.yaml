@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# The private OCaml libraries of dune (stdune, dyn, dune-glob, dune-site),
+# which some OCaml programs build with. Wolfi's ocaml-dune ships the dune
+# program only; Debian builds these in ocaml-dune-full-builder. Here they are
+# built from upstream dune, at the version of Wolfi's ocaml-dune. The
+# libraries they need from dune itself are in ocaml-dune-configurator.
+package:
+  name: ocaml-dune-libs
+  version: '3.24.2'
+  epoch: 0
+  description: Private OCaml libraries of the dune build system
+  copyright:
+    - license: MIT
+  dependencies:
+    runtime:
+      - libdune-ocaml-dev
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - build-base
+      - busybox
+      - ocaml
+      - ocaml-compiler-libs
+      - ocaml-dune
+      - ocaml-findlib
+      - ocamlfind
+      - libcsexp-ocaml-dev
+      - libdune-core-ocaml-dev
+      - libpp-ocaml-dev
+      - libre-ocaml-dev
+vars:
+  private: dune-private-libs dune-site stdune dyn dune-glob
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://github.com/ocaml/dune/releases/download/${{package.version}}/dune-${{package.version}}.tbz
+      expected-sha256: 472798691b0216daf538709f0f4703b3617ef24ad0866c9096068baaba4d762a
+  - name: Build
+    runs: |
+      pkgs="${{vars.private}}"
+      dune build -p "$(echo $pkgs | tr ' ' ',')" @install
+  - name: Install
+    runs: |
+      dune install --release --destdir="${{targets.destdir}}" --prefix=/usr \
+        --libdir="$(ocamlfind printconf destdir)" \
+        ${{vars.private}}
+      # the opam files and changelogs: the license is enough
+      rm -rf "${{targets.destdir}}"/usr/doc
+      install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/ocaml-dune-libs
+  - uses: strip
+subpackages:
+  - name: libdune-ocaml-dev
+    description: Private OCaml libraries of dune (stdune, dyn, dune-glob, dune-site)
+    dependencies:
+      provides:
+        - libdune-ocaml=${{package.full-version}}
+      runtime:
+        - libcsexp-ocaml-dev
+        - libdune-core-ocaml-dev
+        - libpp-ocaml-dev
+        - libre-ocaml-dev
+        - ocaml
+    pipeline:
+      - runs: |
+          lib=usr/lib/ocaml
+          for p in ${{vars.private}}; do
+            mkdir -p "${{targets.contextdir}}/$lib"
+            mv "${{targets.destdir}}/$lib/$p" "${{targets.contextdir}}/$lib/"
+          done
+          # the C stubs of these libraries
+          if [ -d "${{targets.destdir}}/$lib/stublibs" ]; then
+            mkdir -p "${{targets.contextdir}}/$lib"
+            mv "${{targets.destdir}}/$lib/stublibs" "${{targets.contextdir}}/$lib/"
+          fi
+update:
+  enabled: true
+  github:
+    identifier: ocaml/dune
+    use-tag: true
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+        - ocaml
+        - ocaml-findlib
+        - ocamlfind
+        - libdune-ocaml-dev
+  pipeline:
+    - name: The libraries are found by ocamlfind
+      runs: |
+        for p in dune-private-libs dune-site stdune dyn dune-glob; do
+          ocamlfind query "$p"
+        done

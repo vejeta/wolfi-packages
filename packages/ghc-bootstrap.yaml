@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# GHC is written in Haskell: building it needs a GHC. This is the upstream
+# binary distribution (built on Debian 12, glibc), installed as is, to build
+# the ghc recipe from source. Like Alpine's ghc-bootstrap, it is only a
+# build dependency.
+package:
+  name: ghc-bootstrap
+  version: '9.14.1'
+  epoch: 0
+  description: The Glasgow Haskell Compiler, upstream binary distribution for bootstrapping
+  copyright:
+    - license: BSD-3-Clause
+  target-architecture:
+    - x86_64
+    - aarch64
+  options:
+    # the binary distribution is not rebuilt here: keep it as GHC ships it
+    no-provides: true
+  dependencies:
+    runtime:
+      - build-base
+      - gmp-dev
+      - libffi-dev
+      - ncurses
+      - numactl
+      - perl
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - build-base
+      - busybox
+      - bash
+      - gmp-dev
+      - libffi-dev
+      - ncurses-dev
+      - numactl-dev
+      - perl
+      - xz
+pipeline:
+  - if: ${{build.arch}} == 'x86_64'
+    uses: fetch
+    with:
+      uri: https://downloads.haskell.org/~ghc/${{package.version}}/ghc-${{package.version}}-x86_64-deb12-linux.tar.xz
+      expected-sha256: 60f7ab75f28df892729fbaff3a54f58ee3ad7e731929f1b2f3eb0208f73de841
+  - if: ${{build.arch}} == 'aarch64'
+    uses: fetch
+    with:
+      uri: https://downloads.haskell.org/~ghc/${{package.version}}/ghc-${{package.version}}-aarch64-deb12-linux.tar.xz
+      expected-sha256: 6aa27a377451851c851eefdd869e8f5a9217b02ce66c6ca9b418b72efee28427
+  - name: Install the binary distribution
+    runs: |
+      ./configure --prefix=/usr/lib/ghc-bootstrap
+      make install DESTDIR="${{targets.destdir}}"
+      # the commands, as ghc ... (what build systems call) and ghc-bootstrap ...
+      mkdir -p "${{targets.destdir}}"/usr/bin
+      for t in ghc ghc-pkg ghci runghc runhaskell hsc2hs haddock hp2ps hpc; do
+        [ -e "${{targets.destdir}}"/usr/lib/ghc-bootstrap/bin/$t ] || continue
+        ln -s ../lib/ghc-bootstrap/bin/$t "${{targets.destdir}}"/usr/bin/$t
+        ln -s ../lib/ghc-bootstrap/bin/$t "${{targets.destdir}}"/usr/bin/$t-bootstrap
+      done
+      lic=$(find . "${{targets.destdir}}"/usr/lib/ghc-bootstrap -name LICENSE -path '*ghc*' -print -quit)
+      install -Dm644 "$lic" -t "${{targets.destdir}}"/usr/share/licenses/ghc-bootstrap
+update:
+  enabled: true
+  release-monitor:
+    identifier: 906
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - runs: |
+        ghc-bootstrap --version
+        cat > hello.hs <<'EOF'
+        main :: IO ()
+        main = putStrLn "hello"
+        EOF
+        ghc-bootstrap -o hello hello.hs
+        ./hello | grep -q hello

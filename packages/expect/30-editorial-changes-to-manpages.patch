@@ -1,0 +1,897 @@
+From: Bjarni Ingi Gislason <bjarniig@simnet.is>
+Subject: Patch with editorial changes to the expect manpages
+Last-Modified: Mon, 24 Feb 2025 15:34:41 +0300
+Debian-Bug: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1071422
+Debian-Bug: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1086693
+Debian-Bug: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1090339
+Debian-Bug: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1090341
+Debian-Bug: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1090348
+Debian-Bug: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1090714
+Debian-Bug: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1090720
+
+--- a/example/mkpasswd.man
++++ b/example/mkpasswd.man
+@@ -3,7 +3,6 @@
+ mkpasswd \- generate new password, optionally apply it to a user
+ .SH SYNOPSIS
+ .B mkpasswd
+-.I
+ [
+ .I args
+ ]
+@@ -36,7 +35,7 @@
+ flag defines the length of the password.  The default is 9.  
+ The following example creates a 20 character password.
+ 
+-	mkpasswd -l 20
++	mkpasswd \-l 20
+ 
+ The
+ .B \-d
+@@ -44,7 +43,7 @@
+ The default is 2.  The following example creates a password with at least
+ 3 digits.
+ 
+-	mkpasswd -d 3
++	mkpasswd \-d 3
+ 
+ The
+ .B \-c
+@@ -82,7 +81,7 @@
+ The following example creates a 15-character password
+ that contains at least 3 digits and 5 uppercase characters.
+ 
+-	mkpasswd -l 15 -d 3 -C 5
++	mkpasswd \-l 15 \-d 3 \-C 5
+ 
+ .SH SEE ALSO
+ .I
+--- a/example/multixterm.man
++++ b/example/multixterm.man
+@@ -32,35 +32,35 @@
+ .SH ARGUMENTS
+ .RS
+ .TP 4
+--xa
++\-xa
+ The optional \-xa argument indicates arguments to pass to
+ xterm.
+ 
+ .TP
+--xc
++\-xc
+ The optional \-xc argument indicates a command to be run in
+ each named xterm (see \-xn).  With no \-xc argument, the command
+ is the current shell.
+ 
+ .TP 4
+--xd
++\-xd
+ The optional \-xd argument indicates a directory to search for
+ files that will appear in the Files menu.  By default, the
+ directory is: ~/lib/multixterm
+ 
+ .TP 4
+--xf
++\-xf
+ The optional \-xf argument indicates a file to be read at
+ startup.  See FILES below for more info.
+ 
+ .TP 4
+--xn
++\-xn
+ The optional \-xn argument indicates a name for each xterm.
+ This name will also be substituted for any %n in the command
+ argument (see \-xc).
+ 
+ .TP 4
+--xv
++\-xv
+ The optional \-xv flag puts multixterm into a verbose mode
+ where it will describe some of the things it is doing
+ internally.  The verbose output is not intended to be
+@@ -92,7 +92,7 @@
+ The File menu may be used to invoke other files.  If files
+ exist in the command file directory (see \-xd above), they will
+ appear in the File menu.  Files may also be loaded by using
+-File->Open.  Any filename is acceptable but the File->Open
++File\(->Open.  Any filename is acceptable but the File\(->Open
+ browser defaults to files with a .mxt suffix.
+ 
+ Files are written in Tcl and may change any variables or
+@@ -178,7 +178,7 @@
+ 
+     proc traceArgs {args} {
+         global xPos yPos
+-        set ::xtermArgs "-geometry 80x12+$xPos+$yPos \-font 6x10"
++        set ::xtermArgs "\-geometry 80x12+$xPos+$yPos \-font 6x10"
+         if {$xPos} {
+             set xPos 0
+             incr yPos 145
+@@ -199,7 +199,7 @@
+ 
+     set xPos 0
+     foreach name {bud dexter hotdog} {
+-        set ::xtermArgs "-geometry 80x12+$xPos+0 \-font 6x10"
++        set ::xtermArgs "\-geometry 80x12+$xPos+0 \-font 6x10"
+         set ::xtermNames $name
+         xtermStartAll
+         incr xPos 300
+@@ -251,13 +251,13 @@
+ create or set the xterm to a size, you may have to send an explicit
+ stty command with the correct size to the spawned process(es).
+ Alternatively, you can add the correct size argument when an xterm is
+-created (i.e., "-geometry 80x20").
++created (i.e., "\-geometry 80x20").
+ 
+ Multixterm can only control new xterms that multixterm itself has
+ started.
+ 
+ As a convenience, the File menu shows a limited number of
+-files.  To show all the files, use File->Open.
++files.  To show all the files, use File\(->Open.
+ 
+ .SH FILES
+ $DOTDIR/.multixtermrc   initial command file
+--- a/example/kibitz.man
++++ b/example/kibitz.man
+@@ -42,6 +42,7 @@
+ People can team up on games, document editing, or other cooperative
+ tasks where each person has strengths and weaknesses that complement one
+ another.
++.RE
+ .SH USAGE
+ To start
+ .BR kibitz ,
+@@ -84,7 +85,8 @@
+ .BR kibitz .
+ 
+ Various processes
+-can provide various effects.  For example, you can emulate a two-way write(1)
++can provide various effects.  For example, you can emulate a two-way
++.BR write (1)
+ session with the command:
+ 
+ 	kibitz user2 sleep 1000000
+@@ -129,7 +131,7 @@
+ .I username
+ for the remote login (e.g. if your account on the remote computer has a 
+ different username). If the
+-.B -proxy
++.B \-proxy
+ flag is not given,
+ .B kibitz
+ tries to determine your current username by (in that order) inspecting the
+@@ -139,9 +141,9 @@
+ .BR logname .
+ 
+ The arguments
+-.B -noescape
++.B \-noescape
+ and
+-.B -escape
++.B \-escape
+ can also be given by user2 when prompted to run
+ .BR kibitz .
+ 
+@@ -174,7 +176,7 @@
+ handles character graphics, but cannot handle bitmapped graphics.  Thus,
+ .nf
+ 
+-	% xterm -e kibitz    will work
++	% xterm \-e kibitz    will work
+ 	% kibitz xterm       will not work
+ 
+ .fi
+@@ -199,11 +201,12 @@
+ during login.
+ (Ideally, the end of it is preferred but any part should suffice.)
+ If you have an unusual prompt,
+-set the environment variable EXPECT_PROMPT to an egrep(1)-style
++set the environment variable EXPECT_PROMPT to an
++.BR egrep (1)-style
+ regular expression.
+ Brackets should be preceded with one backslash in ranges,
+ and three backslashes for literal brackets.
+-The default prompt r.e. is "($|%|#)\ ".
++The default prompt r.e.\& is "($|%|#)\ ".
+ 
+ .B kibitz
+ requires the
+@@ -241,7 +244,7 @@
+ determine the current user name for a
+ .B kibitz
+ to a remote computer. See description of the
+-.B -proxy
++.B \-proxy
+ option in ARGUMENTS above.
+ .SH SEE ALSO
+ .BR Tcl (3),
+@@ -256,7 +259,7 @@
+ .I
+ "Kibitz \- Connecting Multiple Interactive Programs Together", \fRby Don Libes,
+ Software \- Practice & Experience, John Wiley & Sons, West Sussex, England,
+-Vol. 23, No. 5, May, 1993.
++Vol.\& 23, No.\& 5, May, 1993.
+ .SH AUTHOR
+ Don Libes, National Institute of Standards and Technology
+ 
+--- a/example/autoexpect.man
++++ b/example/autoexpect.man
+@@ -9,7 +9,6 @@
+ [
+ .I program args...
+ ]
+-.br
+ .SH INTRODUCTION
+ 
+ autoexpect watches you interacting with another program and creates an
+@@ -47,14 +46,14 @@
+ .fi
+ It is important to understand that
+ autoexpect does not guarantee a working script because it necessarily
+-has to guess about certain things \- and occasionally it guesses wrong.
++has to guess about certain things \(en and occasionally it guesses wrong.
+ However, it is usually very easy to identify and fix these problems.
+ The typical problems are:
+ .RS
+ .TP 4
+ \(bu
+ Timing.  A surprisingly large number of programs (rn, ksh, zsh,
+-telnet, etc.) and devices (e.g., modems) ignore keystrokes that arrive
++telnet, etc.\&) and devices (e.g., modems) ignore keystrokes that arrive
+ "too quickly" after prompts.  If you find your new script hanging up
+ at one spot, try adding a short sleep just before the previous send.
+ 
+@@ -86,7 +85,7 @@
+ The \-C flag defines a key to toggle conservative mode.  
+ The following example starts autoexpect (in non-conservative
+ mode) with ^L as the toggle.  (Note that the ^L is
+-entered literally - i.e., enter a real control-L).
++entered literally \(en i.e., enter a real control-L).
+ .nf
+ 
+ 	autoexpect \-C ^L
+@@ -136,7 +135,7 @@
+ produce a script that will require editing in order for it to work.
+ 
+ The \-p flag puts autoexpect into "prompt mode".  In this mode,
+-autoexpect will only look for the the last line of program output \-
++autoexpect will only look for the last line of program output \-
+ which is usually the prompt.  This handles the date problem (see
+ above) and most others.
+ 
+@@ -148,7 +147,7 @@
+ .fi
+ The \-P flag defines a key to toggle prompt mode.  The following
+ example starts autoexpect (in non-prompt mode) with ^P as the toggle.
+-Note that the ^P is entered literally - i.e., enter a real control-P.
++Note that the ^P is entered literally \(en i.e., enter a real control-P.
+ .nf
+ 
+ 	autoexpect \-P ^P
+@@ -160,6 +159,7 @@
+ 	autoexpect \-p \-P ^P
+ 
+ .fi
++.RE
+ .SH OTHER FLAGS
+ The
+ .B \-quiet
+--- a/example/unbuffer.man
++++ b/example/unbuffer.man
+@@ -15,7 +15,7 @@
+ through od and then more.  
+ .nf
+ 
+-	od -c /tmp/fifo | more
++	od \-c /tmp/fifo | more
+ 
+ .fi
+ You will not see anything until a full page
+@@ -25,21 +25,21 @@
+ 
+ .nf
+ 
+-	unbuffer od -c /tmp/fifo | more
++	unbuffer od \-c /tmp/fifo | more
+ 
+ .fi
+-Normally, unbuffer does not read from stdin.  This simplifies use of unbuffer in some situations.  To use unbuffer in a pipeline, use the -p flag.
++Normally, unbuffer does not read from stdin.  This simplifies use of unbuffer in some situations.  To use unbuffer in a pipeline, use the \-p flag.
+ Example:
+ .nf
+ 
+-        process1 | unbuffer -p process2 | process3
++        process1 | unbuffer \-p process2 | process3
+ .fi
+ .SH CAVEATS
+ 
+-unbuffer -p may appear to work incorrectly if a process feeding input
++unbuffer \-p may appear to work incorrectly if a process feeding input
+ to unbuffer exits.  Consider:
+ .nf
+-        process1 | unbuffer -p process2 | process3
++        process1 | unbuffer \-p process2 | process3
+ 
+ .fi
+ If process1 exits, process2 may not yet have finished.  It is
+--- a/example/xkibitz.man
++++ b/example/xkibitz.man
+@@ -8,7 +8,6 @@
+ ] [
+ .I program program-args...
+ ]
+-.br
+ .SH INTRODUCTION
+ .B xkibitz
+ allows users in separate xterms to share one shell (or any program
+@@ -38,6 +37,7 @@
+ walk-through, you can sit two in front of each workstation, and then
+ connect them all together while you everyone looks at code together
+ in the editor.
++.RE
+ .SH USAGE
+ To start
+ .BR xkibitz ,
+@@ -57,7 +57,7 @@
+ 
+ To show the current tags and displays, enter "=".
+ 
+-To drop a display, enter "- tag" where tag is the display's tag
++To drop a display, enter "\- tag" where tag is the display's tag
+ according to the "=" command.
+ 
+ To return to the shared shell, enter "return".  Then the keystrokes of
+@@ -84,11 +84,11 @@
+ .BR xkibitz .
+ 
+ Various processes
+-can produce various effects.  For example, you can emulate a multi-way write(1)
++can produce various effects.  For example, you can emulate a multi-way
++.BR write (1)
+ session with the command:
+ 
+ 	xkibitz sleep 1000000
+-.PP
+ .SH ARGUMENTS
+ .B xkibitz
+ understands a few special arguments
+@@ -107,7 +107,7 @@
+ can be given.  For example, to start up xkibitz with three additional
+ displays:
+ 
+-	xkibitz -display mercury -display fox -display dragon:1.0
++	xkibitz \-display mercury \-display fox \-display dragon:1.0
+ 
+ .SH CAVEATS
+ Due to limitations in both X and UNIX, resize propagation is weak.
+@@ -138,18 +138,18 @@
+ with a scrollbar and a green pointer cursor:
+ .nf
+ 
+-	XKIBITZ_XTERM_ARGS="-sb -ms green"
++	XKIBITZ_XTERM_ARGS="\-sb \-ms green"
+ 	export XKIBITZ_XTERM_ARGS
+ 
+ .fi
+-(this is for the Bourne shell - use whatever syntax is appropriate for your
++(this is for the Bourne shell \(en use whatever syntax is appropriate for your
+ favorite shell). Any option can be given that is valid for the 
+ .B xterm
+ command, with the exception of
+-.BR -display ,
+-.B -geometry
++.BR \-display ,
++.B \-geometry
+ and
+-.BI -S
++.BI \-S
+ as those are set by
+ .BR xkibitz .
+ .SH SEE ALSO
+@@ -165,6 +165,6 @@
+ .I
+ "kibitz \- Connecting Multiple Interactive Programs Together", \fRby Don Libes,
+ Software \- Practice & Experience, John Wiley & Sons, West Sussex, England,
+-Vol. 23, No. 5, May, 1993.
++Vol.\& 23, No.\& 5, May, 1993.
+ .SH AUTHOR
+ Don Libes, National Institute of Standards and Technology
+--- a/expect.man
++++ b/expect.man
+@@ -105,7 +105,7 @@
+ .I cmdfile
+ for a list of commands to execute.
+ .B Expect
+-may also be invoked implicitly on systems which support the #! notation
++may also be invoked implicitly on systems which support the #!\& notation
+ by marking the script executable, and making the first line in your script:
+ 
+     #!/usr/bin/expect \-f
+@@ -161,7 +161,7 @@
+ .B \-f
+ flag prefaces a file from which to read commands from.
+ The flag itself is optional as it is only useful when using
+-the #! notation (see above),
++the #!\& notation (see above),
+ so that other arguments may be supplied on the command line.
+ (When using Expectk, this option is specified as
+ .BR \-file .)
+@@ -204,7 +204,7 @@
+ you want to pass an option-like argument to your script without it being
+ interpreted by
+ .BR Expect .
+-This can usefully be placed in the #! line to prevent any flag-like
++This can usefully be placed in the #!\& line to prevent any flag-like
+ interpretation by Expect.  For example, the following will leave the
+ original arguments (including the script name) in the variable
+ .IR argv .
+@@ -212,7 +212,7 @@
+     #!/usr/bin/expect \-\-
+ 
+ Note that the usual getopt(3) and execve(2) conventions must be observed
+-when adding arguments to the #! line.
++when adding arguments to the #!\& line.
+ .PP
+ The file $exp_library/expect.rc is sourced automatically if present, unless
+ the
+@@ -248,7 +248,7 @@
+ the following prints out the name of the script and the first three arguments:
+ .nf
+ 
+-    send_user "$argv0 [lrange $argv 0 2]\\n"
++    send_user "$argv0 [lrange $argv 0 2]\en"
+ 
+ .fi
+ .SH COMMANDS
+@@ -314,7 +314,7 @@
+ .BR close .
+ 
+ The
+-.BR \-onexec
++.B \-onexec
+ flag determines whether the spawn id will be closed in any new spawned
+ processes or if the process is overlayed.  To leave a spawn id open,
+ use the value 0.  A non-zero integer value will force the spawn closed
+@@ -386,14 +386,14 @@
+ command which demonstrates how to turn off password echoing.)
+ .nf
+ 
+-    send_user "password?\\ "
+-    expect_user \-re "(.*)\\n"
++    send_user "password?\e "
++    expect_user \-re "(.*)\en"
+     for {} 1 {} {
+         if {[fork]!=0} {sleep 3600;continue}
+         disconnect
+         spawn priv_prog
+         expect Password:
+-        send "$expect_out(1,string)\\r"
++        send "$expect_out(1,string)\er"
+         . . .
+         exit
+     }
+@@ -623,7 +623,7 @@
+ command.  (Such patterns are also similar to C-shell regular expressions
+ usually referred to as "glob" patterns).  The
+ .B \-gl
+-flag may may
++flag may
+ be used to protect patterns that might otherwise match
+ .B expect
+ flags from doing so.
+@@ -639,7 +639,7 @@
+ 
+ .ta \w'      expect 'u +\w'invalid password    'u
+     expect {
+-        busy               {puts busy\\n ; exp_continue}
++        busy               {puts busy\en ; exp_continue}
+         failed             abort
+         "invalid password" abort
+         timeout            abort
+@@ -663,7 +663,7 @@
+ 
+ .ta \w'      expect 'u +\w'connected    'u
+     expect {
+-        busy       {puts busy\\n ; exp_continue}
++        busy       {puts busy\en ; exp_continue}
+         \-re "failed|invalid password" abort
+         timeout    abort
+         connected
+@@ -684,7 +684,7 @@
+ lines respectively. However, because expect is not line oriented,
+ these characters match the beginning and end of the data (as opposed
+ to lines) currently in the expect matching buffer.  (Also, see the
+-note below on "system indigestion.")
++note below on "system indigestion".)
+ 
+ The
+ .B \-ex
+@@ -747,7 +747,7 @@
+ where X is a digit, corresponds to the substring position in the buffer.
+ 0 refers to strings which matched the entire pattern
+ and is generated for glob patterns as well as regexp patterns.
+-For example, if a process has produced output of "abcdefgh\\n", the result of:
++For example, if a process has produced output of "abcdefgh\en", the result of:
+ .nf
+ 
+     expect "cd"
+@@ -760,8 +760,8 @@
+     set expect_out(buffer) abcd
+ 
+ .fi
+-and "efgh\\n" is left in the output buffer.
+-If a process produced the output "abbbcabkkkka\\n", the result of:
++and "efgh\en" is left in the output buffer.
++If a process produced the output "abbbcabkkkka\en", the result of:
+ .nf
+ 
+     expect \-indices \-re "b(b*).*(k+)"
+@@ -782,7 +782,7 @@
+     set expect_out(buffer) abbbcabkkkk
+ 
+ .fi
+-and "a\\n" is left in the output buffer.  The pattern "*" (and \-re ".*") will
++and "a\en" is left in the output buffer.  The pattern "*" (and \-re ".*") will
+ flush the output buffer without reading any more output from the
+ process.
+ .IP
+@@ -816,7 +816,7 @@
+ .nf
+ 
+     expect {
+-        \-i $proc2 busy {puts busy\\n ; exp_continue}
++        \-i $proc2 busy {puts busy\en ; exp_continue}
+         \-re "failed|invalid password" abort
+         timeout abort
+         connected
+@@ -824,7 +824,7 @@
+ 
+ .fi
+ The value of the global variable
+-.I any_spawn_id
++.IR any_spawn_id
+ may be used to match patterns to any spawn_ids that are named
+ with all other
+ .B \-i
+@@ -876,19 +876,19 @@
+         Password: {
+             stty \-echo
+             send_user "password (for $user) on $host: "
+-            expect_user \-re "(.*)\\n"
+-            send_user "\\n"
+-            send "$expect_out(1,string)\\r"
++            expect_user \-re "(.*)\en"
++            send_user "\en"
++            send "$expect_out(1,string)\er"
+             stty echo
+             exp_continue
+         } incorrect {
+-            send_user "invalid password or account\\n"
++            send_user "invalid password or account\en"
+             exit
+         } timeout {
+-            send_user "connection to $host timed out\\n"
++            send_user "connection to $host timed out\en"
+             exit
+         } eof {
+-            send_user \\
++            send_user \e
+                 "connection to host failed: $expect_out(buffer)"
+             exit
+         } \-re $prompt
+@@ -912,7 +912,7 @@
+     stty raw \-echo
+     expect_after {
+         \-i $user_spawn_id
+-        "p" {send "\\r\\r\\r"; exp_continue}
++        "p" {send "\er\er\er"; exp_continue}
+         "+" {incr foo; exp_continue}
+         "i" {interact; exp_continue}
+         "quit" exit
+@@ -951,7 +951,7 @@
+ and
+ .B default
+ are meaningless to
+-.BR expect_background
++.B expect_background
+ and are silently discarded.
+ Otherwise, the
+ .B expect_background
+@@ -1121,14 +1121,14 @@
+ .nf
+ 
+ .ta \w'    interact 'u +\w'$CTRLZ  'u +\w'{'u
+-    set CTRLZ \\032
++    set CTRLZ \e032
+     interact {
+         \-reset $CTRLZ {exec kill \-STOP [pid]}
+-        \\001   {send_user "you typed a control\-A\\n";
+-                send "\\001"
++        \e001   {send_user "you typed a control\-A\en";
++                send "\e001"
+                }
+         $      {send_user "The date is [clock format [clock seconds]]."}
+-        \\003   exit
++        \e003   exit
+         foo    {send_user "bar"}
+         ~~
+     }
+@@ -1199,7 +1199,7 @@
+ messages:
+ .nf
+ 
+-    interact \-input $user_spawn_id timeout 3600 return \-output \\
++    interact \-input $user_spawn_id timeout 3600 return \-output \e
+         $spawn_id 
+ 
+ .fi
+@@ -1316,7 +1316,7 @@
+ .nf
+ 
+     proc lognumber {} {
+-        interact \-nobuffer \-re "(.*)\\r" return
++        interact \-nobuffer \-re "(.*)\er" return
+         puts $log "[clock format [clock seconds]]: dialed $interact_out(1,string)"
+     }
+ 
+@@ -1547,7 +1547,7 @@
+ .TP
+ .BI overlay " [\-# spawn_id] [\-# spawn_id] [...] program [args]"
+ executes
+-.IR "program args"
++.I "program args"
+ in place of the current
+ .B Expect
+ program, which terminates.
+@@ -1623,12 +1623,12 @@
+ .TP
+ .BI send " [\-flags] string"
+ Sends
+-.IR string
++.I string
+ to the current process.
+ For example, the command
+ .nf
+ 
+-    send "hello world\\r"
++    send "hello world\er"
+ 
+ .fi
+ sends the characters, h e l l o <blank> w o r l d <return> to the 
+@@ -1639,7 +1639,7 @@
+ .IP
+ Characters are sent immediately although programs with line-buffered input
+ will not read the characters until a return character is sent.  A return
+-character is denoted "\\r".
++character is denoted "\er".
+ 
+ The
+ .B \-\-
+@@ -1662,10 +1662,10 @@
+ flag disables this translation.
+ 
+ The
+-.BR \-null
++.B \-null
+ flag sends null characters (0 bytes).  By default, one null is sent.
+ An integer may follow the
+-.BR \-null
++.B \-null
+ to indicate how many nulls to send.
+ 
+ The
+@@ -1755,7 +1755,7 @@
+     # Wait for 5 seconds for exec to complete
+     spawn telnet very.secure.gov
+     sleep 5
+-    send password\\r
++    send password\er
+ 
+ .fi
+ .B exp_send
+@@ -1907,7 +1907,9 @@
+ 
+ If
+ .I program
+-cannot be spawned successfully because exec(2) fails (e.g. when
++cannot be spawned successfully because
++.BR exec (2)
++fails (e.g. when
+ .I program
+ doesn't exist), an error message will be returned by the next
+ .B interact
+@@ -1986,7 +1988,7 @@
+ changes terminal modes similarly to the external stty command.
+ 
+ By default, the controlling terminal is accessed.  Other terminals can
+-be accessed by appending "< /dev/tty..." to the command.  (Note that
++be accessed by appending "< /dev/tty...\&" to the command.  (Note that
+ the arguments should not be grouped into a single argument.)
+ 
+ Requests for status return it as the result of the command.  If no status
+@@ -2018,7 +2020,7 @@
+ 
+     stty \-echo
+     send_user "Password: "
+-    expect_user \-re "(.*)\\n"
++    expect_user \-re "(.*)\en"
+     set password $expect_out(1,string)
+     stty echo
+ 
+@@ -2063,22 +2065,22 @@
+     %b      abbreviated month name
+     %B      full month name
+     %c      date-time as in: Wed Oct  6 11:45:56 1993
+-    %d      day of the month (01-31)
+-    %H      hour (00-23)
+-    %I      hour (01-12)
+-    %j      day (001-366)
+-    %m      month (01-12)
+-    %M      minute (00-59)
++    %d      day of the month (01\(en31)
++    %H      hour (00\(en23)
++    %I      hour (01\(en12)
++    %j      day (001\(en366)
++    %m      month (01\(en12)
++    %M      minute (00\(en59)
+     %p      am or pm
+-    %S      second (00-61)
+-    %u      day (1-7, Monday is first day of week)
+-    %U      week (00-53, first Sunday is first day of week one)
+-    %V      week (01-53, ISO 8601 style)
+-    %w      day (0-6)
+-    %W      week (00-53, first Monday is first day of week one)
++    %S      second (00\(en61)
++    %u      day (1\(en7, Monday is first day of week)
++    %U      week (00\(en53, first Sunday is first day of week one)
++    %V      week (01\(en53, ISO 8601 style)
++    %w      day (0\(en6)
++    %W      week (00\(en53, first Monday is first day of week one)
+     %x      date-time as in: Wed Oct  6 1993
+     %X      time as in: 23:59:59
+-    %y      year (00-99)
++    %y      year (00\(en99)
+     %Y      year as in: 1993
+     %Z      timezone (or nothing if not determinable)
+     %%      a bare percent sign
+@@ -2113,7 +2115,9 @@
+ is the string SIG_DFL, the signals are result to the system default.
+ .I signals
+ is either a single signal or a list of signals.  Signals may be specified
+-numerically or symbolically as per signal(3).  The "SIG" prefix may be omitted.
++numerically or symbolically as per
++.BR signal (3).
++The "SIG" prefix may be omitted.
+ 
+ With no arguments (or the argument \-number),
+ .B trap
+@@ -2327,12 +2331,12 @@
+ .BR interact )
+ use a heuristic to decide if the list is actually one argument or
+ many.  The heuristic can fail only in the case when the list actually
+-does represent a single argument which has multiple embedded \\n's
++does represent a single argument which has multiple embedded \en's
+ with non-whitespace characters between them.  This seems sufficiently
+ improbable, however the argument "\-nobrace" can be used to force a
+ single argument to be handled as a single argument.  This could
+ conceivably be used with machine-generated Expect code.  Similarly,
+--brace forces a single argument to be handle as multiple patterns/actions.
++\-brace forces a single argument to be handle as multiple patterns/actions.
+ 
+ .SH BUGS
+ It was really tempting to name the program "sex" (for either "Smart EXec"
+@@ -2357,7 +2361,7 @@
+ 
+ Telnet (verified only under SunOS 4.1.2) hangs if TERM is not set.
+ This is a problem under cron, at and in cgi scripts, which do not
+-define TERM.  Thus, you must set it explicitly - to what type is
++define TERM.  Thus, you must set it explicitly \(en to what type is
+ usually irrelevant.  It just has to be set to something!  The
+ following probably suffices for most cases.
+ .nf
+@@ -2369,7 +2373,7 @@
+ Tip (verified only under BSDI BSD/OS 3.1 i386) hangs if SHELL and HOME
+ are not set.  This is a problem under cron, at and in cgi scripts,
+ which do not define these environment variables.  Thus, you must set
+-them explicitly - to what type is usually irrelevant.  It just has to
++them explicitly \(en to what type is usually irrelevant.  It just has to
+ be set to something!  The following probably suffices for most cases.
+ .nf
+ 
+@@ -2412,10 +2416,10 @@
+ both strategies:
+ .nf
+ 
+-    send "speed 9600\\r";
++    send "speed 9600\er";
+     sleep 1
+     expect {
+-        timeout {send "\\r"; exp_continue}
++        timeout {send "\er"; exp_continue}
+         $prompt
+     }
+ 
+@@ -2446,7 +2450,7 @@
+ can be used.  If EXPECT_PROMPT doesn't exist, the code still has a good chance of functioning correctly.
+ .nf
+ 
+-    set prompt "(%|#|\\\\$) $"          ;# default prompt
++    set prompt "(%|#|\e\e$) $"          ;# default prompt
+     catch {set prompt $env(EXPECT_PROMPT)}
+ 
+     expect \-re $prompt
+@@ -2504,8 +2508,8 @@
+ 
+ Newlines are usually converted to carriage return, linefeed sequences
+ when output by the terminal driver.  Thus, if you want a pattern that
+-explicitly matches the two lines, from, say, printf("foo\\nbar"),
+-you should use the pattern "foo\\r\\nbar".
++explicitly matches the two lines, from, say, printf("foo\enbar"),
++you should use the pattern "foo\er\enbar".
+ .PP
+ A similar translation occurs when reading from the user, via
+ .BR expect_user .
+@@ -2558,43 +2562,43 @@
+ .br
+ .I
+ "Exploring Expect: A Tcl-Based Toolkit for Automating Interactive Programs"
+-\fRby Don Libes, pp. 602, ISBN 1-56592-090-2, O'Reilly and Associates, 1995.
++\fRby Don Libes, pp.\& 602, ISBN 1-56592-090-2, O'Reilly and Associates, 1995.
+ .br
+ .I
+ "expect: Curing Those Uncontrollable Fits of Interactivity" \fRby Don Libes,
+ Proceedings of the Summer 1990 USENIX Conference,
+-Anaheim, California, June 11-15, 1990.
++Anaheim, California, June 11\(en15, 1990.
+ .br
+ .I
+ "Using
+ .B expect
+ to Automate System Administration Tasks" \fRby Don Libes,
+ Proceedings of the 1990 USENIX Large Installation Systems Administration
+-Conference, Colorado Springs, Colorado, October 17-19, 1990.
++Conference, Colorado Springs, Colorado, October 17\(en19, 1990.
+ .br
+ .I
+ "Tcl: An Embeddable Command Language" \fRby John Ousterhout,
+ Proceedings of the Winter 1990 USENIX Conference,
+-Washington, D.C., January 22-26, 1990.
++Washington, D.C., January 22\(en26, 1990.
+ .br
+ .I
+ "expect: Scripts for Controlling Interactive Programs" \fRby Don Libes,
+-Computing Systems, Vol. 4, No. 2, University of California Press Journals,
++Computing Systems, Vol. 4, No.\& 2, University of California Press Journals,
+ November 1991.
+ .br
+ .I
+ "Regression Testing and Conformance Testing Interactive Programs", \fRby Don
+-Libes, Proceedings of the Summer 1992 USENIX Conference, pp. 135-144,
+-San Antonio, TX, June 12-15, 1992.
++Libes, Proceedings of the Summer 1992 USENIX Conference, pp. 135\(en144,
++San Antonio, TX, June 12\(en15, 1992.
+ .br
+ .I
+ "Kibitz \- Connecting Multiple Interactive Programs Together", \fRby Don Libes,
+ Software \- Practice & Experience, John Wiley & Sons, West Sussex, England,
+-Vol. 23, No. 5, May, 1993.
++Vol. 23, No.\& 5, May, 1993.
+ .br
+ .I
+ "A Debugger for Tcl Applications", \fRby Don Libes,
+-Proceedings of the 1993 Tcl/Tk Workshop, Berkeley, CA, June 10-11, 1993.
++Proceedings of the 1993 Tcl/Tk Workshop, Berkeley, CA, June 10\(en11, 1993.
+ .SH AUTHOR
+ Don Libes, National Institute of Standards and Technology
+ .SH ACKNOWLEDGMENTS
+@@ -2609,7 +2613,7 @@
+ .PP
+ Design and implementation of
+ .B Expect
+-was paid for in part by the U.S. government and is therefore in the public
++was paid for in part by the U.S.\& government and is therefore in the public
+ domain.
+ However the author and NIST would like credit
+ if this program and documentation or portions of them are used.

@@ -32,6 +32,7 @@ environment:
       - zlib-dev  # Debian: zlib1g-dev
       - openssl-dev  # Debian: libssl-dev
       - py3-sphinx  # Debian: python3-sphinx
+      - python3  # the interpreter of Debian's python3-* build dependencies
       - coreutils
       - findutils
 pipeline:
@@ -156,10 +157,12 @@ test:
         - dpkg  # Essential in Debian, so on every testbed
         - findutils  # Essential in Debian, so on every testbed
         - grep  # Essential in Debian, so on every testbed
+        - gzip  # Essential in Debian, so on every testbed
         - sed  # Essential in Debian, so on every testbed
-        - libfoo-dev
+        - libfoo-dev  # Debian's @: the binary packages of the source
         - build-base  # Debian: build-essential
         - pkgconf-dev  # Debian: pkgconf
+        - patch  # to apply Debian's patches to the tested source
   pipeline:
     - runs: |
         test -f /usr/share/doc/libfoo/copyright
@@ -169,6 +172,16 @@ test:
         repository: https://github.com/example/libfoo
         tag: v${{package.version}}
         expected-commit: '0000000000000000000000000000000000000000'
+    - uses: fetch
+      with:
+        uri: https://deb.debian.org/debian/pool/main/libf/libfoo/libfoo_2.3.4+dfsg-2.debian.tar.xz
+        strip-components: 0
+        expected-sha256: ''  # TODO(debian-to-melange): sha256 of https://deb.debian.org/debian/pool/main/libf/libfoo/libfoo_2.3.4+dfsg-2.debian.tar.xz
+    - name: 'Debian''s patches (autopkgtest tests the patched source)'
+      runs: |
+        sed -e 's/#.*//' -e '/^[[:space:]]*$/d' debian/patches/series | while read -r p opt; do
+          patch ${opt:--p1} -N < "debian/patches/$p"
+        done
     - name: dpkg database (as on a Debian testbed)
       runs: |
         db=/var/lib/dpkg
@@ -178,6 +191,7 @@ test:
           function add(   m, j, f) {
             m = split(pkg alias[pkg], names, " ")
             for (j = 1; j <= m; j++) {
+              if (seen[names[j]]++) continue  # one entry per name: dpkg rejects duplicates
               f = db "/info/" names[j] ".list"
               printf "%s", files > f; close(f)
               gsub(/_/, "~", ver)
@@ -196,13 +210,24 @@ test:
           # po-debconf's translatable fields (_Description, __Choices) in the C locale
           [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/libfoo1.templates" && break
         done
+        # / and /tmp as on a Debian testbed: sandboxes may make / 0700 (apt's _apt reads below it)
+        chmod 755 / 2>/dev/null || true
+        chmod 1777 /tmp 2>/dev/null || true
+        # base-files' vendor (dpkg-vendor, dpkg-buildpackage)
+        mkdir -p /etc/dpkg/origins
+        [ -e /etc/dpkg/origins/debian ] || printf 'Vendor: Debian\nVendor-URL: https://www.debian.org/\nBugs: debbugs://bugs.debian.org\n' > /etc/dpkg/origins/debian
+        [ -e /etc/dpkg/origins/default ] || ln -s debian /etc/dpkg/origins/default
     - name: 'autopkgtest: foo-tool --version'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
+        set +o pipefail 2>/dev/null || true
         foo-tool --version
     - name: 'autopkgtest: link-test'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
+        set +o pipefail 2>/dev/null || true
         set -e
         cat > "$AUTOPKGTEST_TMP/t.c" <<EOC
         #include <foo.h>

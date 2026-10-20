@@ -70,13 +70,31 @@ NAME_MAP = {
     "linux-headers": "linux-headers",
     # Wolfi's rust ships cargo; its clang ships libclang (bindgen)
     "cargo": "rust",
+    "tar": "gnutar",
+    "muon": "meson",
+    # Haskell: the bootstrap compiler and cabal of this repository
+    "ghc": "ghc-bootstrap",
+    "cabal": "cabal-install-bootstrap",
+    "pandoc": "pandoc-cli",
+    "biblatex": "texmf-dist-bibtexextra",
+    "gpm-dev": "libgpm-dev",
+    # Alpine's xmlto pulls in the DocBook XSL stylesheets; Wolfi's are in docbook-xml
+    "xmlto": ["xmlto", "docbook-xml"],
     "clang-dev": "clang",
 }
 
 # abuild default subpackage handlers -> melange pipelines
 SPLIT_DEFAULTS = {
     "dev": [{"uses": "split/dev"}],
-    "doc": [{"uses": "split/alldocs"}],
+    # abuild's default_doc: what it moves, without depending on split/alldocs (file(1), versions)
+    "doc": [{"runs": (
+        'for d in usr/share/doc usr/share/man usr/share/info usr/share/html usr/share/sgml \\\n'
+        '         usr/share/licenses usr/share/gtk-doc usr/share/devhelp usr/share/help; do\n'
+        '  [ "$d" = usr/share/licenses ] && continue  # Wolfi keeps the license in the package\n'
+        '  [ -d "${{targets.destdir}}/$d" ] || continue\n'
+        '  mkdir -p "${{targets.contextdir}}/$(dirname $d)"\n'
+        '  mv "${{targets.destdir}}/$d" "${{targets.contextdir}}/$d"\n'
+        'done\n')}],
     "static": [{"uses": "split/static"}],
     "libs": [{"uses": "split/lib"}],
     "lang": [{"uses": "split/locales"}],
@@ -290,6 +308,45 @@ def glob_regex(pattern):
 # Conversion
 # ==========================================================================
 
+def applied_patches(tarball, patches):
+    """The patches (name -> text) that the source tarball already contains: their reverse
+    applies (patch -R --dry-run) to the files they touch, extracted from the tarball."""
+    import io
+    import subprocess
+    import tarfile
+    import tempfile
+    targets = {}
+    for name, text in patches.items():
+        if isinstance(text, bytes):
+            text = text.decode("utf-8", "replace")
+        targets[name] = re.findall(r"(?m)^\+\+\+ (\S+)", text or "")
+    wanted = {t.split("/", 1)[-1] for ts in targets.values() for t in ts} | {t for ts in targets.values() for t in ts}
+    done = []
+    with tempfile.TemporaryDirectory() as tmp:
+        try:
+            with tarfile.open(fileobj=io.BytesIO(tarball)) as tar:
+                for m in tar:
+                    rel = m.name.split("/", 1)[-1] if "/" in m.name else ""
+                    if m.isfile() and any(rel == w or rel.endswith("/" + w) for w in wanted):
+                        dest = os.path.join(tmp, rel)
+                        os.makedirs(os.path.dirname(dest), exist_ok=True)
+                        with open(dest, "wb") as fh:
+                            fh.write(tar.extractfile(m).read())
+        except (tarfile.TarError, OSError, EOFError):
+            return []
+        for name, text in patches.items():
+            if not text or not targets[name]:
+                continue
+            data = text if isinstance(text, bytes) else text.encode()
+            for level in ("-p1", "-p0", "-p2"):
+                r = subprocess.run(["patch", "-R", "--dry-run", "-s", "-f", level, "-d", tmp],
+                                   input=data, capture_output=True)
+                if r.returncode == 0:
+                    done.append(name)
+                    break
+    return done
+
+
 def parse_sources(apk):
     """[(filename, url_or_None)] from source=, in order."""
     out = []
@@ -390,6 +447,9 @@ ARCHIVE_SUFFIXES = (".tar.gz", ".tar.xz", ".tar.bz2", ".tar.zst", ".tgz", ".zip"
 # abuild's own functions: the steps of the recipe, never helpers to inline.
 STANDARD_FUNCTIONS = {"prepare", "build", "check", "package", "snapshot", "fetch", "unpack"}
 
+# OpenSSL for Rust programs (see map in convert())
+RUST_OPENSSL = "openssl-3.6-dev"
+
 HELPERS = {
     "abuild-meson": (
         "abuild_meson() {\n"
@@ -414,6 +474,19 @@ HELPERS = {
         "\tdone\n"
         "}"),
     "want_check": "want_check() { return 1; }",
+    # abuild's: refresh config.sub/config.guess from automake (new architectures)
+    "update_config_sub": (
+        "update_config_sub() {\n"
+        "\tfind . -name config.sub | while read -r _f; do\n"
+        "\t\tcp \"$(ls /usr/share/automake-*/config.sub | tail -1)\" \"$_f\"\n"
+        "\tdone\n"
+        "}"),
+    "update_config_guess": (
+        "update_config_guess() {\n"
+        "\tfind . -name config.guess | while read -r _f; do\n"
+        "\t\tcp \"$(ls /usr/share/automake-*/config.guess | tail -1)\" \"$_f\"\n"
+        "\tdone\n"
+        "}"),
 }
 
 
@@ -473,6 +546,10 @@ class Converter:
                 out.append(C(cand, "Alpine: {}".format(base)))
             else:
                 out.append(cand)
+            tool = re.match(r"^py3-(.+)$", cand)
+            if kind == "build" and tool and self.wolfi.has("py{}-{}-bin".format(d2m.DEFAULT_PYTHON, tool.group(1))):
+                # Wolfi puts the commands of py3-foo in py3.X-foo-bin (gpep517, sphinx-build ...)
+                out.append(C("py{}-{}-bin".format(d2m.DEFAULT_PYTHON, tool.group(1)), "commands of Alpine's " + cand))
         return out
 
     # -- function bodies -----------------------------------------------------
@@ -484,14 +561,26 @@ class Converter:
         text = "\n".join(lines)
         text = re.sub(r"(?m)^\s*cd\s+\"?\$\{?builddir\}?\"?\s*$\n?", "", text)
         text = textwrap_dedent(text).strip("\n")
+        # musl needs libintl from gettext; glibc has it built in
+        text = re.sub(r"\s-lintl\b", "", text)
+        # muon is a meson implementation in C: Wolfi has meson
+        text = re.sub(r"(^|[\s;(|&])abuild-muon\b", r"\1abuild-meson", text)
+        text = re.sub(r"(^|[\s;(|&])muon\s+-C\s+(\S+)\s+(install|test)\b", r"\1meson \3 -C \2", text)
         return text
 
     def runs(self, text):
         """Prefix a body with the abuild environment it relies on."""
         if not text.strip():
             return None
-        text = re.sub(r"(?m)^(\s*)local\s+", r"\1", text)   # no longer inside a function
-        refs = lambda t: set(re.findall(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)", t))
+        # no longer inside a function: a bare declaration ("local file;") would run "file"
+        text = re.sub(r"(?m)^(\s*)local\s+[A-Za-z_][\w ]*(?:;\s*|$)", r"\1", text)
+        text = re.sub(r"(?m)^(\s*)local\s+", r"\1", text)
+        def refs(t):
+            # $var and ${var}, and the bare names of $(( )) arithmetic ($((JOBS<16 ? JOBS : 16)))
+            names = set(re.findall(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)", t))
+            for expr in re.findall(r"\$\(\((.*?)\)\)", t):
+                names |= set(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", expr))
+            return names
         used = refs(text)
         # helper variables (_foo) and everything they reference, transitively
         helpers = [(n, v) for n, v in self.apk.assignments if n.startswith("_")]
@@ -647,22 +736,54 @@ class Converter:
                 build_names.append(base)
         if a.with_check:
             build_names += apk.words("checkdepends")
-        env_pkgs = ["build-base", "busybox"] + [
+        # Alpine's builders have bash (abuild needs it); upstream scripts assume it
+        env_pkgs = ["build-base", "busybox", "bash"] + [
             d for d in self.map_deps(build_names, "build")
-            if (d.value if isinstance(d, C) else d) not in ("build-base", "busybox")]
+            if (d.value if isinstance(d, C) else d) not in ("build-base", "busybox", "bash")]
         plain = [d.value if isinstance(d, C) else d for d in env_pkgs]
+        if "rust" in plain and "openssl-dev" in plain and self.wolfi.has(RUST_OPENSSL):
+            # the openssl-sys crate supports a new OpenSSL major only in later
+            # releases than the Cargo.lock of most programs pins
+            env_pkgs = [C(RUST_OPENSSL, "Alpine: openssl-dev; openssl-sys predates OpenSSL 4") if
+                        (d.value if isinstance(d, C) else d) == "openssl-dev" else d for d in env_pkgs]
+            plain = [d.value if isinstance(d, C) else d for d in env_pkgs]
+        extra_env = {}
         if "gobject-introspection-dev" in plain and "glib-gir" not in plain:
             # Alpine ships GLib's .gir files in glib-dev; Wolfi splits them out.
             env_pkgs.append(C("glib-gir", "GLib .gir files (part of glib-dev on Alpine)"))
+        if any(s.split(":")[0].endswith("-lang") for s in apk.words("subpackages")) and \
+                not any(p.startswith("gettext") for p in plain):
+            # translations are compiled with msgfmt, which Alpine's builders have
+            env_pkgs.append(C("gettext", "msgfmt for the -lang subpackage"))
         environment = {"contents": {
             "keyring": ["https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"],
             "repositories": ["https://packages.wolfi.dev/os"],
             "packages": env_pkgs,
         }}
+        if "cabal-install-bootstrap" in plain:
+            # Hackage directly: the mirrors cabal picks by default may refuse downloads
+            extra_env["CABAL_CONFIG"] = "/home/build/.cabal-config"
+            if "curl" not in plain:
+                env_pkgs.append(C("curl", "cabal's https transport"))
+        if extra_env:
+            environment["environment"] = extra_env
 
         # ---- pipeline ----------------------------------------------------
         pipeline = []
+        if extra_env.get("CABAL_CONFIG"):
+            pipeline.append({"name": "cabal configuration", "runs": (
+                "cat > /home/build/.cabal-config <<'EOF'\n"
+                "http-transport: curl\n"
+                "repository hackage.haskell.org\n"
+                "  url: https://hackage.haskell.org/\n"
+                "EOF\n")})
         remote = [(f, u) for f, u in sources if u]
+        if getattr(a, "source_url", None) and remote:
+            # --source-url: an upstream release instead of the APKBUILD's main tarball
+            # (texlive: the TeX Live release, where Alpine pins a commit)
+            url = a.source_url.replace("${{package.version}}", version)
+            remote[0] = (url.rsplit("/", 1)[-1], url)
+            self.notes.append("main source: {} (--source-url), not the APKBUILD's".format(a.source_url))
         main_url = None
         builddir = apk.get("builddir") or "{}/{}-{}".format(SRCDIR, name, version)
         self.abuild_builddir = builddir if "$" not in builddir else None
@@ -671,7 +792,8 @@ class Converter:
             if url.startswith(("git+", "git://")) or url.endswith(".git"):
                 pipeline.append(self.todo("git source not converted: " + url))
                 continue
-            gh = re.match(r"^https://github\.com/([^/]+)/([^/]+)/archive/(?:refs/tags/)?(.+?)\.tar\.gz$", url)
+            # archive/refs/tags/<tag>.tar.gz, or .../<tag>/<any name>.tar.gz
+            gh = re.match(r"^https://github\.com/([^/]+)/([^/]+)/archive/(?:refs/tags/)?([^/]+?)(?:/[^/]*)?\.tar\.gz$", url)
             if idx == 0 and gh and gh.group(3).endswith(version):
                 # Wolfi pins GitHub sources with git-checkout + expected-commit.
                 prefix = gh.group(3)[:-len(version)]
@@ -687,7 +809,10 @@ class Converter:
             elif getattr(a, "download", False) and fname.endswith(tuple(ARCHIVE_SUFFIXES)):
                 # --name/--version select another tarball than the APKBUILD's
                 try:
-                    step["with"]["expected-sha512"] = hashlib.sha512(http_get(url)).hexdigest()
+                    data = http_get(url)
+                    step["with"]["expected-sha512"] = hashlib.sha512(data).hexdigest()
+                    if idx == 0:
+                        self.main_source_data = data
                 except Exception as exc:
                     step["with"]["expected-sha256"] = "0" * 64
                     pipeline.append(self.todo("cannot download {}: {}".format(url, exc)))
@@ -722,6 +847,13 @@ class Converter:
                 'mkdir -p "$srcdir"\n' + "\n".join(links) + "\n" + self.body("unpack"))})
 
         patches = [f for f in self.local_files if f.endswith(".patch")]
+        if getattr(a, "source_url", None) and getattr(self, "main_source_data", None):
+            # a newer release than Alpine's source may have its backported fixes already
+            done = applied_patches(self.main_source_data, {p: self.files.get(p) for p in patches})
+            for p in done:
+                self.notes.append("patch {} left out: already applied in the --source-url release".format(p))
+                self.aux.pop(p, None)
+            patches = [p for p in patches if p not in done]
         if patches:
             pipeline.append({"uses": "patch", "with": {"patches": " ".join(
                 "{}/{}".format(name, p) for p in patches)}})
@@ -735,6 +867,10 @@ class Converter:
                 # converted to dependencies.runtime
                 text = re.sub(r'(?m)^\s*depends="[^"]*"\n?', "", text)
             step = self.runs(text)
+            if step and fname == "build" and "icu-dev" in build_names and re.search(r"\bconfigure\b|cmake|meson", text):
+                # ICU 75+ headers need C++17; an autoconf check may settle for -std=gnu++11 (xetex),
+                # and CXXFLAGS come after it on the compiler's command line
+                step = 'export CXXFLAGS="$CXXFLAGS -std=gnu++17"  # the ICU headers need C++17\n' + step
             if step:
                 pipeline.append({"name": label, "runs": step})
         if "check" in apk.functions:
@@ -750,11 +886,31 @@ class Converter:
             if "libtool" not in options:
                 pipeline.append({"name": "Remove libtool archives (abuild does this by default)",
                                  "runs": 'find "${{targets.destdir}}" -name "*.la" -delete\n'})
+            # Alpine still installs into sbin and /lib; Wolfi is usr-merged, sbin in bin
+            pipeline.append({"name": "Usr-merge (sbin into bin)", "runs": (
+                'for s in usr/sbin sbin bin lib; do\n'
+                '  d="${{targets.destdir}}/$s"\n'
+                '  [ -d "$d" ] && [ ! -L "$d" ] || continue\n'
+                '  t=usr/bin; [ "$s" = lib ] && t=usr/lib\n'
+                '  mkdir -p "${{targets.destdir}}/$t" && cp -a "$d"/. "${{targets.destdir}}/$t/" && rm -rf "$d"\n'
+                'done\n')})
             if "!strip" not in options and "noarch" not in apk.words("arch"):
                 pipeline.append({"uses": "strip"})
 
+        if any(re.search(r"(^|[\s;(|&])python3\s", st.get("runs", ""), re.M) for st in pipeline if isinstance(st, dict)) \
+                and not any((d.value if isinstance(d, C) else d) == "python3" for d in environment["contents"]["packages"]):
+            # Alpine's py3-* build dependencies pull python3 in; Wolfi's split ones do not
+            environment["contents"]["packages"].append("python3")
+
         # ---- subpackages -------------------------------------------------
+        self.split_build_deps = []
         subpackages = [s for s in (self.subpackage(entry, name) for entry in apk.words("subpackages")) if s]
+        have = {(d.value if isinstance(d, C) else d) for d in environment["contents"]["packages"]}
+        for d in self.split_build_deps:
+            v = d.value if isinstance(d, C) else d
+            if v not in have:
+                have.add(v)
+                environment["contents"]["packages"].append(C(v, "run while splitting a subpackage"))
 
         # ---- update / test -----------------------------------------------
         if pkg["copyright"][0].get("license", "") in ("Public Domain", "public-domain"):
@@ -886,7 +1042,9 @@ class Converter:
             body_lines = [l for l in body.splitlines() if l.strip()]
             defaults = [l.strip() for l in body_lines if re.match(r"^default_\w+$", l.strip())]
             rest = "\n".join(l for l in body.splitlines() if l.strip() not in defaults)
-            rest = re.sub(r'(?m)^\s*(pkgdesc|depends|replaces|provides|install_if)=.*$', "", rest).strip()
+            # the metadata assignments, also when a quoted value spans lines (depends="\n\t$pkgname ...\n\t")
+            rest = re.sub(r'(?m)^\s*(pkgdesc|depends|replaces|provides|install_if)=(?:"[^"]*"|\'[^\']*\'|.*)[ \t]*$',
+                          "", rest).strip()
             pipeline = []
             for d in defaults:
                 key = d[len("default_"):]
@@ -917,6 +1075,10 @@ class Converter:
         deps = [d for d in fdeps if d in own] + self.map_deps([d for d in fdeps if d not in own], "runtime")
         if deps:
             out["dependencies"] = {"runtime": deps}
+        if func and func in self.apk.functions and re.search(r"(?m)^[\t ]*/usr/(?:share|lib)/\S+", self.body(func)):
+            # the split function runs a file of another package (texlive's context: mtxrun.lua from
+            # texmf-dist-context): what it depends on is needed while building
+            self.split_build_deps += [d for d in deps if (d.value if isinstance(d, C) else d) not in own]
         if suffix == "dev":
             deps = self.map_deps(self.apk.words("depends_dev"), "runtime")
             if deps:
@@ -1031,6 +1193,8 @@ def main(argv=None):
     p.add_argument("--stdout", action="store_true", help="print the recipe instead of writing files")
     p.add_argument("--name", help="override the package name")
     p.add_argument("--version", help="override the package version")
+    p.add_argument("--source-url", help="URL of the main source tarball instead of the APKBUILD's "
+                   "(${{package.version}} is replaced by the version); its checksum needs --download")
     p.add_argument("--with-check", action="store_true", help="run check() as part of the build")
     p.add_argument("--check-wolfi", action="store_true",
                    help="verify dependency names against the Wolfi APKINDEX")

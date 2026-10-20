@@ -55,6 +55,8 @@ DROP = {
     "debhelper", "debhelper-compat", "cdbs", "quilt", "po-debconf", "debconf",
     "debconf-2.0", "lsb-base", "dpkg-dev", "init-system-helpers",
     "sensible-utils", "base-files", "base-passwd", "ucf",
+    # dh addons for Debian's library symbols files
+    "pkg-kde-tools",
     # pybuild plugins: py/pip-build-install builds any PEP 517 project
     "pybuild-plugin-pyproject",
     # Debian-only Java helpers (Maven repository layout, jar symlinks)
@@ -72,14 +74,68 @@ NAME_MAP = {
     "xsltproc": "libxslt",
     "sqv": "sequoia-sqv",
     "sq": "sequoia-sq",
+    # Debian splits the chameleon's commands; this repository's sequoia-chameleon-gnupg has both
+    "gpgv-sq": "sequoia-chameleon-gnupg",
+    "gpg-sq": "sequoia-chameleon-gnupg",
+    # Debian's googletest is the source to build it with; Wolfi has it built
+    "googletest": "gtest-dev",
+    "python3-gi": "py3-gobject3",
+    "gir1.2-glib-2.0": "gobject-introspection",
+    "libgmock-dev": "gtest-dev",  # googletest ships gmock too
+    # Haskell: compiler and tools of this repository (Debian packages each library)
+    "ghc": "ghc-bootstrap",
+    "cabal-install": "cabal-install-bootstrap",
+    "pandoc": "pandoc-cli",
+    # TeX Live: Debian's base and binaries packages have the DVI drivers (dvips),
+    # which Alpine's texlive (and this repository's) splits into texlive-dvi
+    "texlive-base": ["texlive", "texlive-dvi"],
+    "texlive-binaries": ["texlive", "texlive-dvi"],
+    # OCaml: Wolfi's ocaml is the whole compiler and standard library, which
+    # Debian splits; dune and findlib are packaged in Wolfi too
+    # (ocamlopt assembles and links with gcc, and -output-obj with -lzstd: Debian's ocaml
+    # depends on gcc and libzstd-dev, Wolfi's does not)
+    "ocaml": ["ocaml", "ocaml-compiler-libs", "ocaml-findlib-compat", "build-base", "zstd-dev"],
+    "ocaml-nox": ["ocaml", "ocaml-compiler-libs", "ocaml-findlib-compat", "build-base", "zstd-dev"],
+    "ocaml-base": "ocaml",
+    "ocaml-base-nox": "ocaml",
+    "ocaml-interp": "ocaml",
+    "ocaml-man": "ocaml-doc",
+    "ocaml-native-compilers": "ocaml",
+    "ocaml-best-compilers": "ocaml",
+    "libstdlib-ocaml": "ocaml",
+    "libstdlib-ocaml-dev": ["ocaml", "ocaml-findlib-compat"],
+    # findlib packages absorbed by the standard library (a recipe of this repository)
+    "libuchar-ocaml-dev": "ocaml-findlib-compat",
+    "libseq-ocaml-dev": "ocaml-findlib-compat",
+    "libcompiler-libs-ocaml-dev": "ocaml-compiler-libs",
+    "ocaml-findlib": ["ocaml-findlib", "ocamlfind", "ocaml-findlib-compat"],
+    "libfindlib-ocaml": ["ocaml-findlib", "ocamlfind", "ocaml-findlib-compat"],
+    "libfindlib-ocaml-dev": ["ocaml-findlib", "ocamlfind", "ocaml-findlib-compat"],
+    "dune": "ocaml-dune",
+    "libsigc++-2.0-dev": "libsigc++-dev",
+    "libxapian-dev": "xapian-core-dev",
+    # dual-life modules that Wolfi's perl ships in its core
+    "libscalar-list-utils-perl": "perl",
+    "libversion-perl": "perl",
+    "libpod-simple-perl": "perl",
+    "libencode-perl": "perl",
+    "libpod-parser-perl": "perl-pod-parser",  # left perl core in 5.32 (Pod::PlainText)
+    "libtest-simple-perl": "perl",
     "stunnel4": "stunnel",
     "db-util": "db-utils",
     "valgrind-if-available": "valgrind",
     "pkg-config": "pkgconf-dev",
     "mawk": "gawk",
-    # Wolfi ships the DocBook XSL stylesheets, and their catalog, in docbook-xml
-    "docbook-xsl": "docbook-xml",
     "awk": "gawk",
+    # Wolfi's dpkg-dev has the Dpkg perl modules; automake has config.guess and config.sub
+    "libdpkg-perl": "dpkg-dev",
+    "libcompress-zlib-perl": "perl",  # Compress::Zlib is part of perl
+    "libelf-dev": "elfutils-dev",
+    "autotools-dev": "automake",
+    # xml-core's update-xmlcatalog and dh_installxmlcatalogs: the scriptlets use libxml2's xmlcatalog
+    "xml-core": "libxml2-utils",
+    # Wolfi's groff-base has the programs, groff the macros (an.tmac, tty-char.tmac) nroff -man needs
+    "groff-base": ["groff-base", "groff"],
     "pkgconf": "pkgconf-dev",
     "ca-certificates": "ca-certificates-bundle",
     "golang-go": "go",
@@ -243,6 +299,18 @@ def dep_candidates(name):
     if name in NAME_MAP:
         return [NAME_MAP[name]]
     cands = [name]
+    tl = re.match(r"^texlive-(.+)$", name)
+    if tl:
+        # Debian splits TeX Live like its collections: texmf-dist-<collection> here
+        sub = {"base": "texlive", "binaries": "texlive", "full": "texmf-dist-full", "science": "texmf-dist-mathscience",
+               "latex-base": "texmf-dist-latex", "pictures": "texmf-dist-pictures", "music": "texmf-dist-music",
+               "extra-utils": "texmf-dist-binextra", "font-utils": "texmf-dist-fontutils",
+               "formats-extra": "texmf-dist-formatsextra", "plain-generic": "texmf-dist-plaingeneric"}.get(tl.group(1))
+        return [sub or "texmf-dist-" + tl.group(1).replace("-", "")]
+    if name in ("lmodern", "tex-gyre", "fonts-lmodern"):
+        return ["texmf-dist-fontsrecommended"]  # they come with the TeX Live collection
+    if re.match(r"^libboost[\d.]*-[\w-]+-dev$", name):
+        return ["boost-dev"]  # Debian splits Boost per library; Wolfi has one boost-dev
     m = re.match(r"^openjdk-(\d+)-(jdk|jre)(?:-headless)?$", name)
     if m:
         return ["openjdk-{}".format(m.group(1)) if m.group(2) == "jdk" else "openjdk-{}-jre".format(m.group(1))]
@@ -274,6 +342,22 @@ def dep_candidates(name):
 COMMUNITY_INDEX = "https://downloads.sourceforge.net/project/wolfi/{arch}/APKINDEX.tar.gz"
 
 
+NCURSESW_USERS = None
+
+
+def ncursesw_users():
+    """Package names of this repository's recipes built with Debian's include/ncursesw."""
+    global NCURSESW_USERS
+    if NCURSESW_USERS is None:
+        NCURSESW_USERS = set()
+        for f in glob.glob(os.path.join(HERE, "..", "..", "packages", "*.yaml")):
+            with open(f, encoding="utf-8", errors="replace") as fh:
+                text = fh.read()
+            if "include/ncursesw" in text and "ln -sf ../" in text:
+                NCURSESW_USERS |= set(re.findall(r"(?m)^  (?:  - )?name: (\S+)", text))
+    return NCURSESW_USERS
+
+
 def recipe_names(directory):
     """Package and subpackage names defined by the melange recipes in `directory`."""
     names = set()
@@ -287,12 +371,28 @@ def recipe_names(directory):
         m = re.search(r"(?m)^package:\n(?:  .*\n)*?  name: (\S+)", text)
         if m:
             names.add(m.group(1))
+        # data: lists, for range subpackages (binutils-${{range.key}})
+        ranges = {}
+        dblock = re.search(r"(?ms)^data:\n(.*?)(?=^\S|\Z)", text)
+        for dm in re.finditer(r"(?ms)^  - name: (\S+)\n    items:\n((?:      .*\n?)*)", dblock.group(1) if dblock else ""):
+            ranges[dm.group(1)] = re.findall(r"(?m)^      ([\w.+-]+):", dm.group(2))
         sub = re.search(r"(?ms)^subpackages:\n(.*?)(?=^\S|\Z)", text)
-        for n in re.findall(r"(?m)^  - name: (\S+)", sub.group(1) if sub else ""):
-            n = expand(n)
-            if "${{" not in n:  # range subpackages
+        for entry in re.split(r"(?m)^  - ", sub.group(1) if sub else "")[1:]:
+            m2 = re.search(r"(?m)^(?:    )?name: (\S+)", entry)
+            if not m2:
+                continue
+            n = expand(m2.group(1))
+            rng = re.search(r"(?m)^(?:    )?range: (\S+)", entry)
+            if rng and "${{range.key}}" in n:
+                names.update(n.replace("${{range.key}}", k) for k in ranges.get(rng.group(1), []))
+            elif "${{" not in n:
                 names.add(n)
     return names
+
+
+def version_key(version):
+    """Sortable key of an apk version (9.1.0-r2): its numbers."""
+    return [int(n) for n in re.findall(r"\d+", version)]
 
 
 class WolfiIndex:
@@ -306,6 +406,8 @@ class WolfiIndex:
         self.names = None
         self.community = set()
         self.unversioned_so = {}  # package -> sonames without a version (libdb-5.3.so)
+        self.providers = {}  # cmd:foo / so:libfoo.so.1 -> a package that provides it
+        self.current = {}  # the same, for the newest version of each package only (tclsh9.1, not 8.6)
         if not enabled:
             return
         spec = importlib.util.spec_from_file_location("pkg_check", PKG_CHECK)
@@ -325,14 +427,41 @@ class WolfiIndex:
 
     def _load(self, mod, url):
         names = set()
-        for e in mod.parse_apkindex(mod.fetch(url, True)):
+        newest = {}
+        entries = list(mod.parse_apkindex(mod.fetch(url, True)))
+        for e in entries:
+            key = version_key(e.get("V", ""))
+            if e.get("P") not in newest or key > newest[e.get("P")][0]:
+                newest[e.get("P")] = (key, e)
+        for _key, e in newest.values():
+            for prov in e.get("p", "").split():
+                if prov.startswith("cmd:"):
+                    self.current.setdefault(re.split(r"[=<>~]", prov, maxsplit=1)[0], e.get("P"))
+        for e in entries:
             names.add(e.get("P"))
             for prov in e.get("p", "").split():
                 names.add(re.split(r"[=<>~]", prov, maxsplit=1)[0])
+                key = re.split(r"[=<>~]", prov, maxsplit=1)[0]
+                if key.startswith(("cmd:", "so:")):
+                    self.providers.setdefault(key, e.get("P"))
                 so = re.match(r"^so:(lib[^=]*\.so)=", prov)
                 if so and so.group(1) not in self.unversioned_so.get(e.get("P"), []):
                     self.unversioned_so.setdefault(e.get("P"), []).append(so.group(1))
         return names
+
+    def provider_of(self, debian_name):
+        """The Wolfi package that provides cmd:<name>, or so:<lib>.so.<N> for a Debian libfooN."""
+        if not self.names:
+            return None
+        if "cmd:" + debian_name in self.providers:
+            return self.providers["cmd:" + debian_name]
+        m = re.match(r"^(lib[a-z0-9+.-]*?[a-z+])-?(\d[\d.]*)(t64)?$", debian_name)
+        if m:
+            for base in (m.group(1), m.group(1).replace("-", "_")):
+                so = "so:{}.so.{}".format(base, m.group(2))
+                if so in self.providers:
+                    return self.providers[so]
+        return None
 
     def has(self, name):
         if self.names is None:
@@ -369,8 +498,14 @@ def parse_deb822(text):
     return paras
 
 
-def parse_relations(value):
-    """'a (>= 1) | b, c [amd64]' -> [['a', 'b'], ['c']] (names only)."""
+# The build profiles of the builds the recipes do (no build-time test suite);
+# --build-profiles adds others, e.g. nodoc to break a cycle through a doc tool.
+BUILD_PROFILES = frozenset({"nocheck"})
+
+
+def parse_relations(value, profiles=()):
+    """'a (>= 1) | b, c [amd64]' -> [['a', 'b'], ['c']] (names only), for a
+    build with the given build profiles enabled."""
     out = []
     if not value:
         return out
@@ -380,13 +515,16 @@ def parse_relations(value):
             continue
         alts = []
         for alt in group.split("|"):
-            # Build profiles: <a b> <c> means (a and b) or c. With no profile
-            # enabled (a normal build), "!x" holds and "x" does not.
+            # Build profiles: <a b> <c> means (a and b) or c; "!x" holds when x is not enabled
             formulas = re.findall(r"<([^>]*)>", alt)
-            if formulas and not any(all(t.startswith("!") for t in f.split()) for f in formulas):
+            if formulas and not any(all((t[1:] not in profiles) if t.startswith("!") else (t in profiles)
+                                        for t in f.split()) for f in formulas):
                 continue
             alt = re.sub(r"\(.*?\)|\[.*?\]|<.*?>", "", alt).strip()
-            if not alt.startswith("${"):
+            sv = re.match(r"^([a-z0-9][a-z0-9.+]*)-\$\{[^}]*\}$", alt)
+            if sv:
+                alt = sv.group(1)  # ocaml-${F:OCamlABI}: the package of that ABI is ocaml
+            elif not alt.startswith("${"):
                 alt = alt.split(":", 1)[0]      # :any, :native
             if alt:
                 alts.append(alt)
@@ -402,7 +540,8 @@ def parse_changelog(text):
     return m.group(1), m.group(2)
 
 
-def debian_upstream_version(version):
+def debian_upstream_version(version, raw=False):
+    """The apk version of a Debian version; raw: the upstream version as its tags name it."""
     v = version.split(":", 1)[-1]
     if "-" in v:
         v = v.rsplit("-", 1)[0]
@@ -410,6 +549,13 @@ def debian_upstream_version(version):
     # apk versions: 1.2+git20170224 -> 1.2_git20170224, 1.2~rc1 -> 1.2_rc1
     v = re.sub(r"[+~.]?git[.+~]?(\d{8})\b.*$", r"_git\1", v)
     v = re.sub(r"\+nmu(\d+)$", r"_p\1", v)  # non-maintainer uploads of native packages
+    if raw:
+        return v
+    # 2.13b171 (fonts-stix) -> 2.13_beta171: apk takes a letter suffix only without digits after it
+    v = re.sub(r"(\d)(a|b|rc)(\d+)$", lambda m: "{}_{}{}".format(
+        m.group(1), {"a": "alpha", "b": "beta", "rc": "rc"}[m.group(2)], m.group(3)), v)
+    # 0.35.0+20060710.6 (intltool-debian) -> 0.35.0.20060710.6: apk versions have no +
+    v = re.sub(r"\+(\d[\d.]*)$", r".\1", v)
     return re.sub(r"~(alpha|beta|pre|rc)", r"_\1", v)
 
 
@@ -426,7 +572,7 @@ SPDX_MAP = {
     "apache-2.0": "Apache-2.0", "apache-2": "Apache-2.0",
     "mpl-1.1": "MPL-1.1", "mpl-2.0": "MPL-2.0",
     "isc": "ISC", "zlib": "Zlib", "artistic": "Artistic-1.0-Perl",
-    "public-domain": "LicenseRef-public-domain", "cc0-1.0": "CC0-1.0",
+    "public-domain": "LicenseRef-public-domain", "pd": "LicenseRef-public-domain", "cc0-1.0": "CC0-1.0",
     "wtfpl": "WTFPL", "bsl-1.0": "BSL-1.0", "unlicense": "Unlicense",
 }
 
@@ -475,7 +621,9 @@ def guess_license(text):
 
 def parse_copyright(text):
     """Return [(spdx, [paths])] for non-debian/* paragraphs, main first."""
-    if not text or "Format:" not in text.split("\n", 1)[0] + text[:200]:
+    # DEP-5, or its Files/License stanzas without the Format line (expect)
+    if not text or ("Format:" not in text.split("\n", 1)[0] + text[:200]
+                    and not any("files" in p and "license" in p for p in parse_deb822(text))):
         lic = guess_license(text)
         return [(lic, ["*"])] if lic else []
     result = []
@@ -486,6 +634,8 @@ def parse_copyright(text):
         if all(f.startswith("debian/") for f in files):
             continue
         lic = to_spdx(para["license"].split("\n", 1)[0])
+        if lic in ("PD", "LicenseRef-public-domain") and re.search(r"National Institute of Standards|NIST", para.get("copyright", "") + para["license"]):
+            lic = "NIST-PD"  # the public domain notice of U.S. government work at NIST
         result.append((lic, files))
     result.sort(key=lambda r: 0 if r[1] == ["*"] else 1)
     return result
@@ -535,11 +685,20 @@ def make_functions(text):
 MAKE_DEFAULTS = {"RM": "rm -f", "MAKE": "make", "CC": "cc", "CXX": "g++", "INSTALL": "install"}
 
 
+# dh-ocaml's ocamlvars.mk, for Wolfi's OCaml (native code, natdynlink)
+OCAMLVARS = {
+    "OCAML_STDLIB_DIR": "/usr/lib/ocaml", "OCAML_DLL_DIR": "/usr/lib/ocaml/stublibs",
+    "OCAML_HAVE_OCAMLOPT": "yes", "OCAML_NATDYNLINK": "yes", "OCAML_BEST": "opt", "OCAML_OPT_ARCH": "amd64",
+}
+
+
 class Rules:
     """Minimal debian/rules (Makefile) model: variables, dh line, overrides."""
 
     def __init__(self, text):
         self.vars = {}
+        if re.search(r"(?m)^-?include\s+/usr/share/ocaml/ocaml(vars|init)\.mk", text):
+            self.vars.update(OCAMLVARS)  # before the conditionals that test them
         self.exports = []
         self.targets = {}
         self.target_vars = {}
@@ -570,15 +729,26 @@ class Rules:
                 for t in target:
                     self.targets[t].append(line[1:])
                 continue
-            line = line.lstrip("\t")  # indented inside a conditional, outside any rule
+            line = line.lstrip()  # indented inside a conditional, outside any rule
             if not line.strip() or line.lstrip().startswith("#"):
                 continue  # blank lines and comments do not end a recipe
             target = None
+            m = re.match(r"^export((?:\s+[A-Za-z_]\w*)+)\s*$", line)
+            if m:
+                # "export DESTDIR": a variable set elsewhere goes to the environment
+                for name in m.group(1).split():
+                    if name not in self.exports:
+                        self.exports.append(name)
+                continue
             m = re.match(r"^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*([:?+]?=)\s*(.*)$", line)
             if m:
                 name, op, val = m.groups()
                 if line.startswith("export") and name not in self.exports:
                     self.exports.append(name)
+                # $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE): the variable dpkg-architecture prints
+                val = re.sub(r"\$\(shell\s+dpkg-architecture\s+-q\s*(\w+)\s*\)", r"$(\1)", val)
+                if val.strip() == "$({})".format(name):
+                    continue  # DEB_HOST_GNU_TYPE := $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE): the build's
                 if op == "+=":
                     self.vars[name] = (self.vars.get(name, "") + " " + val).strip()
                 elif op != "?=" or name not in self.vars:
@@ -605,7 +775,7 @@ class Rules:
     def _merge_arch_indep(self):
         """One melange build makes the arch and the indep packages: override_dh_x-arch and
         override_dh_x-indep become override_dh_x, with their target-specific variables
-        joined (arch first, so later cmake/configure flags from indep win)."""
+        taken from the -indep target when both set them: a full build runs both, indep last."""
         groups = {}
         for t in self.targets:
             m = re.match(r"^((?:override|execute_before|execute_after)_dh_\w+)-(arch|indep)$", t)
@@ -619,9 +789,11 @@ class Rules:
             if base in self.targets:
                 continue
             tvars, recipe = {}, []
+            if len(ts) == 1 and base.startswith("override_"):
+                # only the -arch (or -indep) packages are overridden: the others still get dh_x
+                recipe.append(base[len("override_"):])
             for t in ts:
-                for k, v in self.target_vars.get(t, {}).items():
-                    tvars[k] = v if tvars.get(k, v) == v else tvars[k] + " " + v
+                tvars.update(self.target_vars.get(t, {}))
                 for line in self.targets[t]:
                     if line not in recipe:
                         recipe.append(line)
@@ -700,7 +872,8 @@ class Rules:
                 continue  # the debian-installer build
             m = re.search(r"dh_auto_configure\b.*?\s--\s+(.*)$", recipe)
             if m:
-                return self.expand(m.group(1)).split()
+                # "$$" is make's escape for a literal "$"
+                return self.expand(m.group(1)).replace("$$", "$").split()
         return []
 
     def template_substitutions(self):
@@ -733,6 +906,13 @@ def install_entries(text, keep_src=False):
         parts = line.split()
         if not parts:
             continue
+        if len(parts) == 1 or (len(parts) == 2 and "=>" not in parts):
+            alts = brace_expand(parts[0])
+            if alts != [parts[0]]:
+                # dh_install globs with bash, which expands {a,b}; busybox sh does not
+                for alt in alts:
+                    yield from install_entries(" ".join([alt] + parts[1:]), keep_src)
+                continue
         if parts[0].startswith("debian/tmp/"):
             parts[0] = parts[0][len("debian/tmp/"):]  # dh_install --sourcedir default
         src = parts[0] if keep_src else norm_path(parts[0])
@@ -745,9 +925,20 @@ def install_entries(text, keep_src=False):
             yield src, usr_merge(norm_path(parts[-1])), None
 
 
+def brace_expand(word):
+    """Brace expansion as debhelper's glob does it (recursively): *.{cma,cmxs}, and {README.adoc}
+    with a single word too (Perl's bsd_glob with GLOB_BRACE; bash would leave that one)."""
+    m = re.search(r"(?<!\$)\{([^{}$]*)\}", word)  # not ${var}
+    if not m:
+        return [word]
+    return [x for alt in m.group(1).split(",") for x in brace_expand(word[:m.start()] + alt + word[m.end():])]
+
+
 def norm_path(path):
     """Debian multiarch paths -> Wolfi paths (usr/lib/<triplet>/ -> usr/lib/)."""
     path = path.strip("/")
+    # Debian's Tcl packages (usr/lib/tcltk/<triplet>/expect5.45.4): Wolfi's tcl looks in usr/lib
+    path = re.sub(r"(^|/)lib/tcltk/(?:\*|\$[({]DEB_HOST_MULTIARCH[)}]|[a-z0-9_]+-linux-gnu[a-z]*)(/|$)", r"\1lib\2", path)
     path = re.sub(r"(^|/)lib/(?:\*(?=/)|\$[({]DEB_HOST_MULTIARCH[)}]|[a-z0-9_]+-linux-gnu[a-z]*)(/|$)",
                   r"\1lib\2", path).rstrip("/")
     # Perl modules: Debian's vendor directories are Wolfi's vendor_perl, and
@@ -1027,11 +1218,12 @@ DH_SEQUENCE = ["dh_auto_install", "dh_install", "dh_installdocs", "dh_installcha
 
 
 # GNU commands of Debian's Essential packages that busybox only partly implements
-ESSENTIAL_SCRIPT_TOOLS = {"getopt": "util-linux-misc"}
+ESSENTIAL_SCRIPT_TOOLS = {"getopt": "util-linux-misc", "setpriv": "setpriv", "prlimit": "util-linux-misc"}
 
 
-def essential_script_tools(data):
-    """Wolfi packages for Essential-package commands the source's shell scripts call."""
+def essential_script_tools(data, tests=False):
+    """Wolfi packages for Essential-package commands the source's shell scripts call
+    (with tests, the test scripts too: mmdebstrap's make_mirror.sh, setpriv --pdeathsig)."""
     if not data:
         return []
     import io
@@ -1040,7 +1232,7 @@ def essential_script_tools(data):
     try:
         with tarfile.open(fileobj=io.BytesIO(data)) as tar:
             for m in tar:
-                if not m.isfile() or m.size > 2000000 or "/test" in m.name:
+                if not m.isfile() or m.size > 2000000 or ("/test" in m.name and not tests):
                     continue
                 text = tar.extractfile(m).read()
                 if not (re.match(rb"#!\s*(/usr)?/bin/(env\s+)?(ba|da)?sh\b|#!\s*@SHELL@", text) or
@@ -1052,6 +1244,66 @@ def essential_script_tools(data):
     except (tarfile.TarError, OSError, EOFError):
         return []
     return found
+
+
+TOP_MAKEFILE = r"^(GNUmakefile|[Mm]akefile|config\.mk|\w+\.mk|Makefile\.(am|in))$"
+
+
+def top_makefiles(data):
+    """{name: content} of the top-level makefiles of a source tarball."""
+    if not data:
+        return {}
+    import io
+    import tarfile
+    found = {}
+    try:
+        with tarfile.open(fileobj=io.BytesIO(data)) as tar:
+            for m in tar:
+                parts = m.name.split("/")
+                if m.isfile() and len(parts) == 2 and re.match(TOP_MAKEFILE, parts[1]):
+                    found[parts[1]] = tar.extractfile(m).read()
+    except (tarfile.TarError, OSError, EOFError):
+        return {}
+    return found
+
+
+def makefiles_with_werror(data):
+    """Top-level makefiles of the source that build with -Werror."""
+    return sorted(n for n, text in top_makefiles(data).items()
+                  if not n.startswith("Makefile.") and re.search(rb"-Werror\b(?!=)", text))
+
+
+def source_uses(data, pattern):
+    """Does a file of the source tarball match the (multiline, bytes) pattern?"""
+    if not data:
+        return False
+    import io
+    import tarfile
+    try:
+        with tarfile.open(fileobj=io.BytesIO(data)) as tar:
+            for m in tar:
+                if m.isfile() and m.size < 2000000 and re.search(pattern, tar.extractfile(m).read(), re.M):
+                    return True
+    except (tarfile.TarError, OSError, EOFError):
+        pass
+    return False
+
+
+def bash_scripts(data):
+    """Does the source have bash scripts? bash is Essential in Debian, so builds may run them."""
+    if not data:
+        return False
+    import io
+    import tarfile
+    try:
+        with tarfile.open(fileobj=io.BytesIO(data)) as tar:
+            for m in tar:
+                if m.isfile() and m.size < 2000000 and re.match(
+                        rb"#!\s*(/usr)?/bin/(env\s+)?bash\b", tar.extractfile(m).read(64)):
+                    return True
+    except (tarfile.TarError, OSError, EOFError):
+        pass
+    return False
 
 
 def drop_foreign_fakechroot(script):
@@ -1095,6 +1347,20 @@ def perl_ph_required(data):
     return False
 
 
+DEBIAN_COMMANDS = {}
+
+
+def debian_commands(pkg):
+    """Commands (/usr/bin, /usr/sbin, /bin, /sbin) a Debian binary package ships, from packages.debian.org."""
+    if pkg not in DEBIAN_COMMANDS:
+        try:
+            page = http_get("https://packages.debian.org/sid/amd64/{}/filelist".format(pkg)).decode("utf-8", "replace")
+        except Exception:
+            page = ""
+        DEBIAN_COMMANDS[pkg] = sorted({m for m in re.findall(r"(?:^|>)/(?:usr/)?s?bin/([\w.+-]+)$", page, re.M)})
+    return DEBIAN_COMMANDS[pkg]
+
+
 def gencontrol_substvars(rules, source):
     """-Vname=value of dh_gencontrol in debian/rules; a value chosen by
     $(shell test -e /usr/bin/X && echo A || echo B) is A when X is a build dependency."""
@@ -1127,7 +1393,7 @@ RECIPE_TOOLS = {
 
 
 # Debian's Essential packages, present on every autopkgtest testbed (GNU tools, dpkg)
-ESSENTIAL = ["bash", "coreutils", "diffutils", "dpkg", "findutils", "grep", "sed"]
+ESSENTIAL = ["bash", "coreutils", "diffutils", "dpkg", "findutils", "grep", "gzip", "sed"]
 
 def alternatives(text):
     """update-alternatives --install calls of a postinst: [(link, path, [(slave link, slave path)])],
@@ -1178,6 +1444,7 @@ def dpkg_database_step(aliases, deb_pkg):
         "  function add(   m, j, f) {{\n"
         "    m = split(pkg alias[pkg], names, \" \")\n"
         "    for (j = 1; j <= m; j++) {{\n"
+        "      if (seen[names[j]]++) continue  # one entry per name: dpkg rejects duplicates\n"
         "      f = db \"/info/\" names[j] \".list\"\n"
         "      printf \"%s\", files > f; close(f)\n"
         "      gsub(/_/, \"~\", ver)\n"
@@ -1195,11 +1462,75 @@ def dpkg_database_step(aliases, deb_pkg):
         "for t in debian/{1}.templates debian/templates; do\n"
         "  # po-debconf's translatable fields (_Description, __Choices) in the C locale\n"
         "  [ -f \"$t\" ] && sed '/^#/d; s/^__*//' \"$t\" > \"$db/info/{1}.templates\" && break\n"
-        "done\n").format(pairs, deb_pkg)}
+        "done\n"
+        "# / and /tmp as on a Debian testbed: sandboxes may make / 0700 (apt's _apt reads below it)\n"
+        "chmod 755 / 2>/dev/null || true\n"
+        "chmod 1777 /tmp 2>/dev/null || true\n"
+        "# base-files' vendor (dpkg-vendor, dpkg-buildpackage)\n"
+        "mkdir -p /etc/dpkg/origins\n"
+        "[ -e /etc/dpkg/origins/debian ] || printf 'Vendor: Debian\\nVendor-URL: https://www.debian.org/\\nBugs: debbugs://bugs.debian.org\\n' > /etc/dpkg/origins/debian\n"
+        "[ -e /etc/dpkg/origins/default ] || ln -s debian /etc/dpkg/origins/default\n").format(pairs, deb_pkg)}
 
 
 SCRIPT_DEPS = {}  # script label -> packages its commands come from
 KEEP_DEBCONF = set()  # packages whose maintainer scripts keep using debconf
+
+
+SYSTEM_USERS = []  # (user, home, group) that the maintainer scripts of the converted package create
+
+
+def system_user(words):
+    """Debian's adduser --system [--group] [--home H] [--ingroup G] NAME: (name, home, group), or None."""
+    if "--system" not in words:
+        return None
+    name, home, group, it = None, "/nonexistent", None, iter(words)
+    for w in it:
+        if w in ("--home", "--ingroup", "--shell", "--gecos", "--uid", "--gid", "--comment"):
+            val = next(it, "")
+            if w == "--home":
+                home = val
+            elif w == "--ingroup":
+                group = val
+        elif w.startswith("--home="):
+            home = w.split("=", 1)[1]
+        elif w.startswith("--ingroup="):
+            group = w.split("=", 1)[1]
+        elif w == "--group":
+            group = True
+        elif not w.startswith("-"):
+            name = w
+    if not name or "$" in name:
+        return None
+    return name, home, (name if group is True else group)
+
+
+def useradd_command(user):
+    """The shadow commands for one system user, as Debian's adduser --system makes it."""
+    name, home, group = user
+    cmds = []
+    if group:
+        cmds.append("{{ getent group {0} >/dev/null || groupadd --system {0}; }}".format(group))
+    cmds.append("{{ getent passwd {0} >/dev/null || useradd --system --home-dir {1} --no-create-home "
+                "--shell /usr/sbin/nologin{2} {0}; }}".format(name, home, " --gid " + group if group else ""))
+    return " && ".join(cmds)
+
+
+def convert_adduser(text):
+    """adduser --system ... (Debian's adduser, options busybox and shadow lack) -> useradd."""
+    def repl(m):
+        logical = m.group(2).replace("\\\n", " ")
+        parts = re.split(r"(\|\||&&|;|\|)", logical, maxsplit=1)
+        cmd, sep, rest = (parts + ["", ""])[:3]
+        try:
+            words = shlex.split(cmd)
+        except ValueError:
+            return m.group(0)
+        user = system_user(words)
+        if not user:
+            return m.group(0)
+        SYSTEM_USERS.append(user)
+        return m.group(1) + "(" + useradd_command(user) + ")" + ((" " + sep + rest) if sep else "")
+    return re.sub(r"(?m)^([ \t]*)adduser\b((?:[^\n\\]|\\\n|\\.)*)", repl, text)
 
 
 def convert_script(text, kind, pkg, templates, conffile, notes):
@@ -1207,6 +1538,9 @@ def convert_script(text, kind, pkg, templates, conffile, notes):
     names = {t["name"]: env_name(pkg, t["name"]) for t in templates}
     body = []
     uses_debconf = False
+    if re.search(r"(?m)^\s*adduser\b(?:.*\\\n)*.*--system", text):
+        text = convert_adduser(text)
+        SCRIPT_DEPS.setdefault(kind, set()).add("shadow")
     for line in text.splitlines():
         s = line.strip()
         if s == "#DEBHELPER#":
@@ -1243,6 +1577,19 @@ def convert_script(text, kind, pkg, templates, conffile, notes):
     if body and body[0].startswith("#!"):
         body = body[1:]
     return "\n".join(body).strip("\n"), uses_debconf
+
+
+def xml_catalogs(text):
+    """debian/<pkg>.xmlcatalogs: {"local": [(source, installed path)],
+    "package": [(uri|system|public, prefix, catalog)]} (dh_installxmlcatalogs)."""
+    out = {"local": [], "package": []}
+    for line in (text or "").splitlines():
+        f = [x.strip() for x in line.split(";")]
+        if f[0] == "local" and len(f) == 3:
+            out["local"].append((f[1], f[2].lstrip("/")))
+        elif f[0] == "package" and len(f) == 4:
+            out["package"].append((f[1], f[2], f[3]))
+    return out
 
 
 def wrap_script(kind, body, args):
@@ -1352,7 +1699,45 @@ def dh_compat(source, read):
     return int(text) if text.isdigit() else 0
 
 
+def dh_ocaml_subst(text):
+    """What dh_ocamlinit makes of debian/*.in: Wolfi's OCaml has native code and natdynlink."""
+    for var, val in (("@OCamlStdlibDir@", "usr/lib/ocaml"), ("@OCamlDllDir@", "usr/lib/ocaml/stublibs")):
+        text = text.replace(var, val)
+    return re.sub(r"(?m)^(?:OPT|DYN):\s*", "", text)
+
+
+# What texmf-dist's and texlive's install triggers do, which do not run in a melange
+# environment: the hyphenation configuration, the ls-R databases, font maps and formats.
+TEX_SETUP_STEP = {"name": "TeX Live set up (the install triggers of texmf-dist and texlive)", "runs": (
+    "d=/usr/share/texmf-dist/tex/generic/config\n"
+    "if [ -d $d/lang.d ]; then\n"
+    "  for ext in def dat dat.lua; do cat $(find $d/lang.d -name \"*.$ext\" | sort) > $d/language.$ext; done\n"
+    "fi\n"
+    "mktexlsr >/dev/null 2>&1 || true\n"
+    "# updmap.cfg lists the maps of every collection: leave out those not installed\n"
+    "yes 2>/dev/null | updmap-sys --syncwithtrees >/dev/null 2>&1 || true\n"
+    "updmap-sys >/dev/null 2>&1 || true\n"
+    "fmtutil-sys --all >/dev/null 2>&1 || true\n")}
+
+
+# Debian has the wide-character curses headers under include/ncursesw as well; Wolfi only in include
+NCURSESW_STEP = {"name": "Debian's include/ncursesw", "runs": (
+    "mkdir -p /usr/include/ncursesw\n"
+    "for h in curses.h ncurses.h ncurses_dll.h term.h term_entry.h termcap.h tic.h unctrl.h \\\n"
+    "         panel.h menu.h form.h eti.h etip.h cursesapp.h cursesf.h cursesm.h cursesp.h cursesw.h cursslk.h; do\n"
+    "  [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h\n"
+    "done\n"
+    "true\n")}
+
+
+def uses_tex(packages):
+    """Does an environment install TeX Live (its formats need the setup step)?"""
+    return any(re.match(r"^(texlive|texmf-dist)(-|$)", d.value if isinstance(d, C) else d)
+               for d in packages if not isinstance(d, Comment))
+
+
 BUILDSYSTEM_FILES = [
+    ("dune-project", "ocaml_dune"),  # dh-ocaml picks it for dune projects
     ("meson.build", "meson"),
     ("CMakeLists.txt", "cmake"),
     ("configure.ac", "autoconf"),
@@ -1362,8 +1747,11 @@ BUILDSYSTEM_FILES = [
     ("setup.py", "pybuild"),
     ("go.mod", "golang"),
     ("Cargo.toml", "cargo"),
+    ("Build.PL", "perl_build"),  # debhelper tries perl_build before perl_makemaker
     ("Makefile.PL", "perl_makemaker"),
     ("Makefile", "makefile"),
+    ("GNUmakefile", "makefile"),  # debhelper looks for GNUmakefile, makefile and Makefile
+    ("makefile", "makefile"),
 ]
 
 BUILD_PIPELINES = {
@@ -1387,7 +1775,9 @@ class Converter:
         self.wolfi = wolfi
         self.notes = []
         self.git_source = None  # (repository URL, tag prefix) from debian/watch
+        SYSTEM_USERS.clear()
         self.aux = {}          # filename -> content (bytes or str) for <out>/<name>/
+        self.aux_exec = set()  # those of them that are executable in debian/
         self.install_excludes = {}  # Debian binary package (or "*") -> dh_install -X patterns
         self.rename = {}       # Debian binary package name -> melange package name
         self.upstream_installs = True  # does the build system install into destdir?
@@ -1415,6 +1805,10 @@ class Converter:
         text = self.read("{}.{}".format(binary, suffix))
         if text is None and main:
             text = self.read(suffix)
+        if text is None:
+            text = self.read("{}.{}.in".format(binary, suffix))
+            if text is not None:
+                text = dh_ocaml_subst(text)
         return text
 
     def patch_imports(self):
@@ -1441,9 +1835,12 @@ class Converter:
         full = os.path.join(self.deb, rel)
         if not os.path.isfile(full):
             return path
+        # nested files keep their directories in the name: docbook-xsl has
+        # examples/docbook-xsl/foo.xml and examples/docbook-xsl-ns/foo.xml
+        flat = rel.replace("/", "_")
         with open(full, "rb") as fh:
-            self.aux[os.path.basename(rel)] = fh.read()
-        return "{}/{}".format(self.recipe_dir, os.path.basename(rel))
+            self.aux[flat] = fh.read()
+        return "{}/{}".format(self.recipe_dir, flat)
 
     def todo(self, msg):
         self.notes.append(msg)
@@ -1451,9 +1848,17 @@ class Converter:
 
     @staticmethod
     def multiarch(line):
-        """usr/lib/$(DEB_HOST_MULTIARCH) is usr/lib on Wolfi; the triplet elsewhere is the host's."""
-        line = re.sub(r"(^|/|\s|=)(usr/lib)/\$[({]DEB_HOST_MULTIARCH[)}]", r"\1\2", line)
-        return re.sub(r"\$[({]DEB_HOST_MULTIARCH[)}]", "${{host.triplet.gnu}}", line)
+        """usr/lib/$(DEB_HOST_MULTIARCH) is usr/lib on Wolfi (and usr/include/<triplet> usr/include);
+        the triplet elsewhere is the host's."""
+        triplet = r"\$[({]DEB_(?:HOST_MULTIARCH|(?:HOST|BUILD)_GNU_TYPE)[)}]"
+        # Debian's Tcl package directory (usr/lib/tcltk/<triplet>): Wolfi's tcl looks in usr/lib;
+        # links from there to the library ("../../../<triplet>/libexpect.so") then point next door
+        if re.search(r"usr/lib/tcltk/" + triplet, line):
+            # two directories less: usr/lib/tcltk/<triplet>/x -> usr/lib/x, usr/lib/<triplet> -> usr/lib
+            line = re.sub(r"((?:\.\./)+)" + triplet + r"/", lambda m: "../" * max(m.group(1).count("../") - 2, 0), line)
+        line = re.sub(r"(^|/|\s|=)usr/lib/tcltk/" + triplet, r"\1usr/lib", line)
+        line = re.sub(r"(^|/|\s|=)(usr/lib|usr/include)/" + triplet, r"\1\2", line)
+        return re.sub(triplet, "${{host.triplet.gnu}}", line)
 
     SED_IN = re.compile(r"^sed\s+(?:-e\s+)?(['\"])((?:s(.).*?\3.*?\3[gi]*;?)+)\1\s+debian/(\S+\.in)\s*>\s*debian/(\S+)\s*$")
 
@@ -1477,6 +1882,29 @@ class Converter:
                     text = text.replace(pat, repl)
                 else:
                     self.generated[m.group(5)] = text
+        # pattern rules: "debian/%.links: debian/%.links.in" + sed -e ... $< > $@ (expect)
+        for target, recipe in rules.targets.items():
+            pm = re.match(r"^debian/(\S*)%(\S*)$", target)
+            body = " ".join(l.strip().lstrip("@-") for l in recipe)
+            sm = re.match(r"^sed\s+((?:-e\s+(['\"]).*?\2\s+)+)\$<\s*>\s*\$@$", body)
+            if not pm or not sm:
+                continue
+            exprs = re.findall(r"-e\s+(['\"])s(.)(.*?)\2(.*?)\2[gi]*\1", sm.group(1))
+            for f in self._listdir(self.deb):
+                out = f[:-3] if f.endswith(".in") else None
+                if not out or not out.startswith(pm.group(1)) or not out.endswith(pm.group(2)):
+                    continue
+                text = self.read(f) or ""
+                for _q, _sep, pat, repl in exprs:
+                    if repl in ("$(DEB_HOST_MULTIARCH)", "${DEB_HOST_MULTIARCH}"):
+                        text = text.replace("/" + pat, "")  # Wolfi's usr/lib has no multiarch directory
+                        continue
+                    repl = rules.expand(repl)
+                    if "$(" in repl or "${" in repl:
+                        break
+                    text = text.replace(pat, repl)
+                else:
+                    self.generated[out] = text
 
     def port_recipe(self, rules, lines, name, deb_pkg):
         """Translate a debian/rules recipe into shell for a melange step.
@@ -1484,10 +1912,29 @@ class Converter:
         Returns None when a line still depends on make or debhelper.
         """
         out = []
+        # "debian/rules <target>" (topkg regenerates a file so): that target's recipe
+        inlined = []
+        for raw in lines:
+            m = re.match(r"^\s*[@-]*(?:\$\(MAKE\)\s+-f\s+)?debian/rules\s+(\S+)\s*$", raw)
+            inlined += rules.targets.get(m.group(1), [raw]) if m else [raw]
+        lines = inlined
+        # debian/ paths built from shell variables (debian/install_$a.sh) cannot be rewritten
+        # one by one: keep debian/ and have Debian's files there
+        keep_debian = any(re.search(r"(?<![\w/$.])debian/[\w.+-]*\$", rules.expand(l)) for l in lines)
+        if keep_debian:
+            for f in self._listdir(self.deb):
+                path = os.path.join(self.deb, f)
+                if os.path.isfile(path) and os.path.getsize(path) < 1 << 20 and f not in ("changelog", "control"):
+                    with open(path, "rb") as fh:
+                        self.aux[f] = fh.read()
+                    if os.access(path, os.X_OK):
+                        self.aux_exec.add(f)
+            self.debian_dir = True
         for raw in lines:
             line = raw.strip()
             if not line or line.startswith("#"):
                 continue
+            ignore_errors = "-" in re.match(r"^[@-]*", line).group(0)
             line = line.lstrip("@-")
             if re.match(r"^dh[_-]", line):
                 auto = self.dh_auto_command(self.multiarch(rules.expand(line)))
@@ -1509,10 +1956,30 @@ class Converter:
                     return None
                 continue  # debhelper bookkeeping (Built-Using, substvars...)
             line = rules.expand(line)
+            line = re.sub(r"(?<![\w/.])\./debian/", "debian/", line)  # ./debian/foo is debian/foo
+            if re.search(r"[;&|]\s*dh_auto_|\bdo\s+dh_auto_", line):
+                # dh_auto_* inside a shell loop (expect: for v in $(TCLVERSIONS); do dh_auto_configure -B...)
+                def auto(m):
+                    text = " ".join(m.group(0).split())
+                    # the build directory, not a package's (debian/$v is not ${{targets.outdir}}/$v)
+                    text = re.sub(r"(\s-B\s*|--builddir(?:ectory)?[= ])(?:\$\(CURDIR\)/)?debian/", r"\1./debian/", text)
+                    cmd = self.dh_auto_command(self.multiarch(text))
+                    return m.group(0) if cmd is None or cmd == self.PIPELINE_MARK else " " + cmd + " "
+                line = re.sub(r"\bdh_auto_(?:configure|build|install|test)\b[^;]*", auto, line)
+            # dh_listpackages in the shell: the binary packages; debian/$pkg: their output directory
+            pkgs_list = "printf '%s\\n' " + " ".join(sorted(self.rename))
+            line = re.sub(r"\bdh_listpackages\b", lambda m: pkgs_list, line)
+            line = re.sub(r"(?<![\w/.$])(?:\$\(CURDIR\)/)?debian/\$", "${{targets.outdir}}/$", line)
+            # pybuild's build directory: py/pip-build-install installs straight into destdir
+            line = re.sub(r"\$\(shell pybuild --print build_dir[^)]*\)",
+                          "${{targets.destdir}}`python3 -c 'import sysconfig; print(sysconfig.get_path(\"platlib\"))'`", line)
             m = self.SED_IN.match(line)
             if m and m.group(5) in getattr(self, "generated", {}):
                 continue  # generated now, see generate_from_in()
             line = re.sub(r"`pwd`/|\$\(pwd\)/|\$\$\(pwd\)/", "", line)  # the source tree, like $(CURDIR)
+            # the upstream version, read from debian/changelog
+            line = re.sub(r"\$\(shell\s+dpkg-parsechangelog\s+(?:-S\s*|--show-field[= ])Version\s*\|\s*"
+                          r"(?:cut\s+-d\s*-\s+-f\s*1|sed\s+-e?\s*'?s/-\[\^-\]\*\$//'?)\s*\)", "${{package.version}}", line)
             line = self.multiarch(line)
             for pkg, target in self.rename.items():
                 if pkg != deb_pkg:
@@ -1526,20 +1993,48 @@ class Converter:
             line = re.sub(r"target/\$\(DEB_HOST_RUST_TYPE\)/", "target/", line)
             line = line.replace("usr/share/doc/{}/".format(deb_pkg), "usr/share/doc/{}/".format(self.rename.get(deb_pkg, deb_pkg)))
             line = line.replace("$(CURDIR)/", "").replace("$(CURDIR)", ".")
+            line = line.replace("$$(", "\x01(")  # the shell's $(cmd), not make's
             line = line.replace("$$", "$")  # make's escape for the shell's $
             line = line.replace("${{targets.destdir}}/usr/sbin/", "${{targets.destdir}}/usr/bin/")  # usr-merged
             def aux(m):
+                if keep_debian:
+                    return m.group(0)  # Debian's files are copied to debian/
                 rel = m.group(1)
                 path = os.path.join(self.deb, rel)
                 if not os.path.isfile(path):
                     return m.group(0)
                 with open(path, "rb") as fh:
-                    self.aux[os.path.basename(rel)] = fh.read()
+                    data = self.aux[os.path.basename(rel)] = fh.read()
+                # executable in Debian's tree, or run as a command by the rules (font-awesome's build-fonts.py)
+                if os.access(path, os.X_OK) or (data.startswith(b"#!") and re.match(
+                        r"^\s*(?:\./)?debian/{}\b".format(re.escape(rel)), line)):
+                    self.aux_exec.add(os.path.basename(rel))
                 return "{}/{}".format(name, os.path.basename(rel))
             line = re.sub(r"(?<![\w/$.])debian/([\w.+-]+)", aux, line)
             line = line.replace("${{targets.destdir}}//", "${{targets.destdir}}/")
+            # make's $(shell cmd) in a recipe: the shell's $(cmd), run when the recipe runs
+            # (marked until the check for make variables left)
+            line = re.sub(r"\$\(shell\s+((?:[^()]|\([^()]*\))*)\)", "\x00SHELL(\\1)\x00", line)
+            # pkg-info.mk's SOURCE_DATE_EPOCH: melange has it in the environment
+            line = re.sub(r"\$\(SOURCE_DATE_EPOCH\)", "${SOURCE_DATE_EPOCH}", line)
+            if "$(" in line and self.known_includes():
+                # a variable set nowhere is empty in make (dose3's $(RELEASE))
+                line = re.sub(r"\$\(([A-Z][A-Z0-9_]*)\)", lambda m: "" if m.group(1) not in rules.vars
+                              and m.group(1) not in BUILD_CONTEXT and m.group(1) not in OCAMLVARS else m.group(0), line)
             if "$(" in line:
                 return None
+            line = re.sub(r"\x00SHELL\((.*?)\)\x00", r"$(\1)", line)
+            line = line.replace("\x01(", "$(")
+            mv = re.match(r"^mv\s+(\S+)\s+(\S+?)/?$", line)
+            if mv and os.path.dirname(mv.group(1).rstrip("/")) == mv.group(2):
+                continue  # a move to where it is already (after the paths were made Wolfi's)
+            if getattr(self, "dropped_versions", ()):
+                # some variants are not built (expect's Tcl 8.6 libexpect): only what is there
+                if mv and not re.search(r"[*?\[$`]", mv.group(1).replace("${{targets.destdir}}", "")):
+                    line = 'if [ -e {0} ]; then {1}; fi'.format(mv.group(1), line)
+                lnk = re.match(r"^ln\s+-s\s+(\S+)\s+(\S+)$", line)
+                if lnk and not lnk.group(1).startswith("/") and not re.search(r"[*?$`]", lnk.group(1)):
+                    line = 'if [ -e "$(dirname {2})/{0}" ]; then {1}; fi'.format(lnk.group(1), line, lnk.group(2))
             words = line.split()
             if words and words[0] in ("install", "cp") and not re.search(r"\s-[a-zA-Z]*[dDt]\b", line) \
                     and words[-1].startswith("${{targets."):
@@ -1549,10 +2044,29 @@ class Converter:
                     out.append("mkdir -p {}".format(d))
             # debhelper has made debian/<pkg>/... and debian/ by now; a redirect here may not have it
             for target in re.findall(r"(?<![<>&\d])>>?\s*\"?([^\s\"'&|;]+)/[^\s/\"']+", line):
-                if target not in ("/dev", ".", "..") and "mkdir -p {}".format(target) not in out:
-                    out.append("mkdir -p {}".format(target))
+                if target in ("/dev", ".", ".."):
+                    continue
+                ts = [target]
+                if target.startswith("${{targets.outdir}}/$"):
+                    # debian/$pkg/usr/share/doc/$pkg: debhelper made it for each package
+                    ts = [re.sub(r"\$\{?[A-Za-z_]\w*\}?", name, target[len("${{targets.outdir}}"):])
+                          for name in sorted(set(self.rename.values()))]
+                    ts = ["${{targets.outdir}}" + t for t in ts]
+                for t in ts:
+                    if "mkdir -p {}".format(t) not in out:
+                        out.append("mkdir -p {}".format(t))
+            if re.match(r"^cd\s", line):
+                # make runs each recipe line in its own shell: a cd does not carry to the next
+                line = "({})".format(line)
+            if ignore_errors:
+                line += " || true"  # make's "-": the line may fail
             out.append(line)
         return out
+
+    def known_includes(self):
+        """Does debian/rules include only makefiles whose variables are known here?"""
+        incs = re.findall(r"(?m)^-?include\s+(\S+)", self.read("rules") or "")
+        return all(i.startswith(("/usr/share/dpkg/", "/usr/share/ocaml/")) for i in incs)
 
     def perl_depends(self, binary, have):
         """${perl:Depends}: dh_perl's perl, for Perl scripts and modules."""
@@ -1561,6 +2075,25 @@ class Converter:
         if any((d.value if isinstance(d, C) else d) == "perl" for d in have if not isinstance(d, Comment)):
             return []
         return [C("perl", "Debian: ${perl:Depends}")]
+
+    def ocaml_depends(self, binary, have):
+        """${ocaml:Depends}: dh_ocaml makes libfoo-ocaml-dev depend on its runtime libfoo-ocaml."""
+        if "${ocaml:Depends}" not in (binary.get("depends") or "") or not binary["package"].endswith("-dev"):
+            return []
+        have = {(d.value if isinstance(d, C) else d) for d in have if not isinstance(d, Comment)}
+        out = []
+        rt = binary["package"][:-len("-dev")]
+        if rt in self.rename and self.rename[rt] not in have:
+            out.append(C(self.rename[rt], "Debian: ${ocaml:Depends}"))
+        # dh_ocaml also adds the libraries the META files require: those the build uses
+        libs = [alts for alts in parse_relations(self.source.get("build-depends"), BUILD_PROFILES)
+                if len(alts) == 1 and re.match(r"^lib[\w.+-]+-ocaml-dev$", alts[0]) and alts[0] not in self.rename]
+        for d in self.map_deps(libs, "runtime"):
+            v = d.value if isinstance(d, C) else d
+            if isinstance(d, Comment) or v in have or any(v == (o.value if isinstance(o, C) else o) for o in out):
+                continue
+            out.append(C(v, "Debian: ${ocaml:Depends}"))
+        return out
 
     def essential_used(self, binary):
         """Debian never declares Depends on its Essential packages; a Breaks or Conflicts on
@@ -1668,7 +2201,7 @@ class Converter:
                     "build": "cmake --build {} -j$(nproc)".format(builddir),
                     "install": "{} cmake --install {}".format(dest, builddir)}[step]
         if bs in ("autoconf", "makefile"):
-            return {"configure": "mkdir -p {0} && (cd {0} && ../configure --prefix=/usr --sysconfdir=/etc "
+            return {"configure": "mkdir -p {0} && (top=$PWD && cd {0} && \"$top\"/configure --prefix=/usr --sysconfdir=/etc "
                                  "--localstatedir=/var {1})".format(builddir, args).strip(),
                     "build": "make -C {} -j$(nproc)".format(builddir),
                     "install": "make -C {} install {}".format(builddir, dest)}[step]
@@ -1700,7 +2233,13 @@ class Converter:
         for var in rules.exports:
             if var.startswith(("DEB_", "DH_", "PYBUILD_")) or var in self.SKIP_EXPORTS or var not in rules.vars:
                 continue
-            value = rules.expand(rules.vars[var]).replace("$(CURDIR)", "/home/build")
+            value = rules.expand(rules.vars[var])
+            # debian/tmp (and debian/<package>) is where melange installs: the package's destdir
+            # (/home/build/melange-out/<name> is what ${{targets.destdir}} expands to)
+            value = re.sub(r"\$\(CURDIR\)/debian/(?:tmp|{})(?=/|\s|$)".format(re.escape(self.recipe_dir or "-")),
+                           "/home/build/melange-out/" + (self.recipe_dir or ""), value)
+            value = re.sub(r"(?<=[^:/\s])//+", "/", value)  # $(DESTDIR)/$(OCAML_STDLIB_DIR), not https://
+            value = value.replace("$(CURDIR)", "/home/build")
             value = value.replace("/usr/lib/jvm/default-java", "/usr/lib/jvm/default-jvm")  # Wolfi's default JDK
             if "$(" in value or "${" in value:
                 continue
@@ -1710,6 +2249,9 @@ class Converter:
     def map_deps(self, relations, kind):
         out, comments = [], []
         for alts in relations:
+            if any(re.search(r"[A-Za-z]{}(?![\d.])".format(re.escape(v)), alts[0])
+                   for v in getattr(self, "dropped_versions", ())):
+                continue  # tcl8.6-dev, for a variant that is not built
             if len(alts) == 1 and isinstance(NAME_MAP.get(alts[0]), list):
                 for m in NAME_MAP[alts[0]]:
                     if not any(o == m or (isinstance(o, C) and o.value == m) for o in out):
@@ -1731,8 +2273,22 @@ class Converter:
                 continue
             chosen = None
             for alt in alts:
-                if kind == "test" and alt in ("debconf", "ucf"):
-                    pass  # an autopkgtest that exercises them gets the real ones
+                tcl = re.match(r"^(?:lib)?(tcl|tk)(\d+\.\d+)(-dev)?$", alt)
+                if tcl and self.wolfi.names is not None:
+                    # Debian's tcl9.1-dev: Wolfi's tcl-dev, when its tcl is that version
+                    base = self.wolfi.current.get("cmd:{}{}".format("tclsh" if tcl.group(1) == "tcl" else "wish",
+                                                                    tcl.group(2)))
+                    chosen = (base + (tcl.group(3) or ""), alt, True) if base else (alt, alt, False)
+                    if base:
+                        break
+                    continue
+                if kind == "test" and alt == "debhelper-compat":
+                    alt = "debhelper"  # @builddeps@: the tests build packages with dh (apt's run-tests)
+                if kind == "test" and alt in ("debconf", "ucf", "dpkg-dev", "init-system-helpers", "sensible-utils",
+                                              "debhelper", "po-debconf", "quilt"):
+                    pass  # an autopkgtest that exercises them gets the real ones (apt's: Dpkg.pm, from dpkg-dev)
+                elif kind == "runtime" and (alt in ("debhelper", "po-debconf") or alt.startswith("dh-")):
+                    pass  # a runtime dependency of Debian's packaging tools themselves (debhelper: dh-autoreconf)
                 elif alt in DROP or alt.startswith(DROP_PREFIXES) or alt.startswith("${"):
                     chosen = ""
                     break
@@ -1763,12 +2319,44 @@ class Converter:
                             break
                     if chosen and chosen[2]:
                         break
+            if chosen is None or (chosen and chosen[2] is False):
+                # Wolfi names it otherwise: the package with the command of that name
+                # (perltidy -> perl-tidy), or with the library of a Debian lib package
+                # (libgdbm-compat4 -> libgdbm_compat.so.4 -> gdbm)
+                for alt in alts:
+                    prov = self.wolfi.provider_of(alt)
+                    if prov:
+                        chosen = (prov, alt, True)
+                        break
+                if (chosen is None or chosen[2] is False) and getattr(self.args, "download", False):
+                    # the commands the Debian package ships (iputils-ping: ping -> iputils)
+                    for alt in alts:
+                        count = {}
+                        for cmd in debian_commands(alt):
+                            prov = self.wolfi.providers.get("cmd:" + cmd)
+                            if prov:
+                                count[prov] = count.get(prov, 0) + 1
+                        # the package with most of the commands; others only for two or more of
+                        # them (util-linux-extra: util-linux-misc, not the util-linux-login whose
+                        # login conflicts with shadow-login for one command)
+                        provs = sorted(count, key=lambda p: -count[p])
+                        provs = provs[:1] + [p for p in provs[1:] if count[p] > 1]
+                        if provs:
+                            chosen = (provs[0], alt, True)
+                            for extra in provs[1:]:
+                                if not any(o == extra or (isinstance(o, C) and o.value == extra) for o in out):
+                                    out.append(C(extra, "commands of Debian's " + alt))
+                            break
             if chosen is None:
                 # Nothing matched in the index: keep the best guess, flagged.
                 chosen = (dep_candidates(alts[0])[0], alts[0], False)
             if not chosen:
                 continue
             cand, alt, found = chosen
+            if cand.startswith("texmf-dist-") and alt.startswith("texlive-") and \
+                    not any(o == "texlive" or (isinstance(o, C) and o.value == "texlive") for o in out):
+                # Debian's TeX Live collections depend on texlive-binaries: the programs (latex for auctex)
+                out.append(C("texlive", "the TeX programs, which Debian's {} brings".format(alt)))
             if any(o == cand or (isinstance(o, C) and o.value == cand) for o in out):
                 continue
             mb = re.match(r"^python3-(.+)$", alt)
@@ -1821,7 +2409,13 @@ class Converter:
         src_name = src_name or source.get("source")
         fmt = (self.read("source/format") or "").strip()
         native = "native" in fmt or (deb_version is not None and "-" not in deb_version)
+        # the profiles of the build, as dpkg-buildpackage passes them to debian/rules
+        # (nocheck and nodoc are build options too)
+        profiles = sorted(p for p in (getattr(a, "build_profiles", None) or "").split(",") if p) or sorted(BUILD_PROFILES)
+        BUILD_CONTEXT["DEB_BUILD_PROFILES"] = " ".join(profiles)
+        BUILD_CONTEXT["DEB_BUILD_OPTIONS"] = " ".join(p for p in profiles if p in ("nocheck", "nodoc"))
         rules = Rules(self.read("rules") or "")
+        self.drop_unavailable_versions(rules, source)
         for k, v in gencontrol_substvars(rules, source).items():
             # dh_gencontrol -Vname=value: substvars set by debian/rules
             for b in binaries:
@@ -1845,6 +2439,11 @@ class Converter:
         self.source_name = src_name
         self.source = source
         main = next((b for b in binaries if b["package"] == src_name), None)
+        base = re.sub(r"^python-", "", src_name or "")
+        py = next((b for b in binaries if b["package"] in ("python3-" + (src_name or ""), "python3-" + base)), None)
+        if py is not None and (main is None or "pybuild" in (self.read("rules") or "")):
+            # pyflakes: the module (python3-pyflakes) is the package, the CLI a subpackage
+            main = py
         if main is None:
             # libfoo built as libfoo1 + libfoo-dev: the shared library is the
             # main package, named after the source as Wolfi does
@@ -1883,7 +2482,8 @@ class Converter:
         self.version_for_url = None
         version_var = a.version_var
         if not version_var and native and not a.version:
-            cands = [v for v in rules.vars if re.match(r"^[A-Z0-9_]*VERSION$", v) and not v.startswith("DEB_")]
+            cands = [v for v in rules.vars if re.match(r"^[A-Z0-9_]*VERSION$", v) and not v.startswith("DEB_")
+                     and "$(shell" not in rules.vars[v]]  # a version computed by a script is not one
             if len(cands) == 1:
                 version_var = cands[0]
                 self.notes.append("native package: using {}={} from debian/rules as the version "
@@ -1896,6 +2496,7 @@ class Converter:
             version = rules.expand(rules.vars[version_var])
         else:
             version = debian_upstream_version(deb_version or "0")
+            self.tag_version = debian_upstream_version(deb_version or "0", raw=True)
 
         self.version_for_url = version
         # ---- rules variables that feed templated files -> melange vars ------
@@ -1919,6 +2520,8 @@ class Converter:
 
         # ---- package ------------------------------------------------------
         desc = main.get("description", "").split("\n", 1)[0].strip()
+        # dpkg's ${source:Synopsis}: the Description of the source stanza
+        desc = desc.replace("${source:Synopsis}", (source.get("description") or "").split("\n", 1)[0].strip())
         desc = desc[:1].upper() + desc[1:]
         pkg = {"name": name, "version": version, "epoch": 0, "description": desc}
         lics = parse_copyright(self.read("copyright"))
@@ -1940,11 +2543,13 @@ class Converter:
             pkg["copyright"].insert(0, self.todo("debian/copyright is not machine-readable (DEP-5); set the SPDX license"))
 
         self.main_depends = main.get("depends") or ""
+        self.binary_recommends = [r for b in binaries for r in [b.get("recommends")] if r]
         self.main_package = main["package"]
         runtime = self.map_deps(parse_relations(main.get("depends")) + parse_relations(main.get("pre-depends")), "runtime")
         runtime += self.unversioned_libs(main, source)
         runtime += self.essential_used(main)
         runtime += self.perl_depends(main, runtime)
+        runtime += self.ocaml_depends(main, runtime)
         if "${python3:Depends}" in (main.get("depends") or ""):
             reqs = python_requirements(self.tree)
             for mod in self.patch_imports():
@@ -2003,9 +2608,13 @@ class Converter:
             self.notes.append("maintainer scripts converted; note that apko does not run install scripts")
 
         # ---- environment ---------------------------------------------------
-        build_deps = self.map_deps(parse_relations(source.get("build-depends")) +
-                                   parse_relations(source.get("build-depends-indep")) +
-                                   parse_relations(source.get("build-depends-arch")), "build")
+        # the recipe does not run the upstream tests at build time: Debian's nocheck profile
+        profiles = frozenset(p for p in (a.build_profiles or "").split(",") if p) or BUILD_PROFILES
+        if profiles != BUILD_PROFILES:
+            self.notes.append("built with the Debian build profiles " + ",".join(sorted(profiles)))
+        build_deps = self.map_deps(parse_relations(source.get("build-depends"), profiles) +
+                                   parse_relations(source.get("build-depends-indep"), profiles) +
+                                   parse_relations(source.get("build-depends-arch"), profiles), "build")
         own = {b["package"] for b in binaries}
         self_deps = sorted(own & {alt for alts in parse_relations(source.get("build-depends")) for alt in alts})
         if self_deps:
@@ -2021,8 +2630,13 @@ class Converter:
         base = ["build-base", "busybox"] if bs else ["busybox"]
         if bs == "pybuild":
             base += ["python3", "py3-pip", "py3-wheel"]
-        if bs == "perl_makemaker":
-            base += ["perl"]
+        if bs in ("perl_makemaker", "perl_build"):
+            # Debian's perl has the headers XS probes look for (List::MoreUtils)
+            base += ["perl", "perl-dev"] + (["perl-module-build"] if bs == "perl_build" else [])
+        if bs == "ocaml_dune":
+            # dune runs (bash ...) actions with bash
+            base += [p for p in ("ocaml", "ocaml-dune", "ocaml-findlib", "ocamlfind", "ocaml-findlib-compat", "bash")
+                     if p not in base]
         if native and bs:
             # a Debian-native build assumes what debhelper brings: perl (pod2man)
             # and dpkg-dev (dpkg-parsechangelog)
@@ -2036,6 +2650,10 @@ class Converter:
             "packages": env_pkgs,
         }}
         exports = self.ported_exports(rules)
+        if any(alt in ("python3-setuptools-scm", "python3-hatch-vcs") for alts in parse_relations(source.get("build-depends"))
+               for alt in alts) and "SETUPTOOLS_SCM_PRETEND_VERSION" not in exports:
+            # the version comes from git metadata, which a release tarball has not
+            exports["SETUPTOOLS_SCM_PRETEND_VERSION"] = "${{package.version}}"
         if exports:
             environment["environment"] = exports
 
@@ -2064,17 +2682,60 @@ class Converter:
             if getattr(self, "source_data", None) is None or not is_archive(self.source_data):
                 # Debian's orig tarball (repacked or not) is good enough to scan
                 self.source_data = None
-                name, upver = source.get("source", ""), (self.deb_version or "").split(":", 1)[-1].rsplit("-", 1)[0]
-                prefix = name[:4] if name.startswith("lib") else name[0]
+                srcname, upver = source.get("source", ""), (self.deb_version or "").split(":", 1)[-1].rsplit("-", 1)[0]
+                prefix = srcname[:4] if srcname.startswith("lib") else srcname[0]
                 for ext in ("xz", "gz", "bz2"):
                     try:
                         data = http_get("https://deb.debian.org/debian/pool/{}/{}/{}/{}_{}.orig.tar.{}".format(
-                            DEBIAN_AREA.get(name, "main"), prefix, name, name, upver, ext))
+                            DEBIAN_AREA.get(srcname, "main"), prefix, srcname, srcname, upver, ext))
                     except Exception:
                         continue
                     if is_archive(data):
                         self.source_data = data
                         break
+        if any(alts[0].startswith(("libncurses-dev", "libncursesw")) or alts[0] in ncursesw_users()
+               for alts in parse_relations(source.get("build-depends"))):
+            # (also for the libraries built that way: their headers include <ncursesw/curses.h>)
+            # Debian has the wide-character headers under include/ncursesw as well; Wolfi only in include
+            pipeline.append(dict(NCURSESW_STEP))
+            self.uses_ncursesw = True
+        if re.search(r"/usr/share/misc/config\.(guess|sub)", self.read("rules") or ""):
+            # Debian's autotools-dev; Wolfi's automake has them
+            if "automake" not in [e.value if isinstance(e, C) else e for e in env_pkgs]:
+                env_pkgs.append(C("automake", "config.guess and config.sub (Debian: autotools-dev)"))
+            pipeline.append({"name": "Debian's /usr/share/misc/config.guess and config.sub (autotools-dev)", "runs": (
+                "mkdir -p /usr/share/misc\n"
+                "for f in config.guess config.sub; do\n"
+                "  ln -sf \"$(ls /usr/share/automake-*/$f | tail -1)\" /usr/share/misc/$f\n"
+                "done\n")})
+        tcls = sorted({m.group(1, 2) for f in ("build-depends", "build-depends-arch", "build-depends-indep")
+                       for alts in parse_relations(source.get(f)) for a in alts[:1]
+                       for m in [re.match(r"^(tcl|tk)(\d+\.\d+)-dev$", a)] if m and self.available(a)})
+        if tcls:
+            # Debian's tcl9.1-dev: tclConfig.sh in usr/lib/tcl9.1, headers in usr/include/tcl9.1; Wolfi's in usr/lib, usr/include
+            pipeline.append({"name": "Debian's Tcl/Tk layout", "runs": "".join(
+                "mkdir -p /usr/lib/{0}{1} && ln -sf ../{0}Config.sh /usr/lib/{0}{1}/{0}Config.sh\n"
+                "[ -e /usr/include/{0}{1} ] || ln -s . /usr/include/{0}{1}\n".format(n, v) for n, v in tcls)})
+        if uses_tex(env_pkgs):
+            pipeline.append(dict(TEX_SETUP_STEP))
+        for alts in parse_relations(source.get("build-depends")):
+            lua = re.match(r"^liblua(5\.\d)-dev$", alts[0])
+            if lua:
+                # Debian's liblua5.X.so: Wolfi ships the library without a development link
+                pipeline.append({"name": "Debian's liblua{}.so".format(lua.group(1)), "runs": (
+                    "ln -sf liblua-{0}.so.0 /usr/lib/liblua{0}.so\n").format(lua.group(1))})
+        if any(re.search(rb"(^|[\s;(`])(pod2man|pod2text|pod2html|pod2usage)\b", t, re.M)
+               for t in self.source_makefiles().values()) \
+                and "perl" not in [e.value if isinstance(e, C) else e for e in env_pkgs]:
+            # Debian's build environment has perl (dpkg-dev needs it): moreutils' pod2man
+            env_pkgs.append(C("perl", "pod2man in the makefiles; Debian's dpkg-dev brings perl"))
+        names = [e.value if isinstance(e, C) else e for e in env_pkgs]
+        if any(str(n).startswith("py3-") for n in names) and "python3" not in names:
+            # py3-supported-* do not provide python3, which Debian's python3-* bring (font-awesome's build script)
+            env_pkgs.append(C("python3", "the interpreter of Debian's python3-* build dependencies"))
+        if bash_scripts(getattr(self, "source_data", None)) and "bash" not in env_pkgs:
+            # (aptitude: doc/html-to-text, run while building the documentation)
+            env_pkgs.append(C("bash", "the source has bash scripts; Essential in Debian"))
         for dep in essential_script_tools(getattr(self, "source_data", None)):
             # Debian's Essential packages back these commands everywhere; Wolfi's busybox lacks them
             pkg.setdefault("dependencies", {}).setdefault("runtime", []).append(
@@ -2094,15 +2755,25 @@ class Converter:
             for p in patches:
                 with open(os.path.join(self.deb, "patches", p), "rb") as fh:
                     self.aux[os.path.basename(p)] = fh.read()
-            pipeline.append({"uses": "patch", "with": {"patches": " ".join(
-                "{}/{}".format(name, os.path.basename(p)) for p in patches)}})
+            git = next((st["with"] for st in pipeline if isinstance(st, dict) and st.get("uses") == "git-checkout"
+                        and st.get("with", {}).get("recurse-submodules")), None)
+            if git:
+                # Debian's orig (GitHub's tag tarball) lacks the submodules when its patches add them (sombok: test-data)
+                created = self.patched_files()
+                subs = submodule_paths(git["repository"], git.get("expected-commit", ""))
+                if any(f == d or f.startswith(d.rstrip("/") + "/") for f in created for d in subs):
+                    del git["recurse-submodules"]
+            if patches:  # a series of comments only applies nothing
+                pipeline.append({"uses": "patch", "with": {"patches": " ".join(
+                    "{}/{}".format(name, os.path.basename(p)) for p in patches)}})
 
         overrides = rules.overrides()
         self.bs = bs
         self.pipeline_used = False
         builddirs = {d for r in overrides.values() for l in r
                      for d in re.findall(r"\s(?:-B\s*|--builddir(?:ectory)?[= ])(\S+)", " " + l) if "udeb" not in d}
-        self.multi_builddir = len(builddirs) > 1
+        # (or one built from a variable: for v in $(TCLVERSIONS) ... -B debian/$$v)
+        self.multi_builddir = len(builddirs) > 1 or any("$" in d for d in builddirs)
         self.python_module = rules.vars.get("PYBUILD_NAME") if bs == "pybuild" else None
         if bs == "pybuild":
             # what can be imported: setuptools' top_level.txt, else the distribution name
@@ -2116,8 +2787,10 @@ class Converter:
             elif not self.python_module or "-" in self.python_module:
                 self.python_module = re.sub(r"^(py3|python3?)-", "", self.python_module or name).replace("-", "_")
         ported = {}
+        # override_dh_auto_configure too when there are several build directories, or no
+        # configure pipeline to stand for it (a plain Makefile: "make config.sh PREFIX=/usr")
         targets = ("override_dh_auto_configure", "override_dh_auto_build", "override_dh_auto_install") \
-            if self.multi_builddir else ("override_dh_auto_build", "override_dh_auto_install")
+            if self.multi_builddir or bs not in BUILD_PIPELINES else ("override_dh_auto_build", "override_dh_auto_install")
         for target in targets:
             if target in overrides:
                 ported[target] = self.port_recipe(rules, overrides[target], name, main["package"])
@@ -2142,7 +2815,11 @@ class Converter:
         self.upstream_installs = bs not in ("cargo", "golang") and (
             "override_dh_auto_install" not in overrides
             or bool(install_override and any("${{targets.destdir}}" in l or l == self.PIPELINE_MARK
-                                             for l in install_override)))
+                                             for l in install_override))
+            # the ocaml_dune steps install into destdir unless an override does it
+            or (bs == "ocaml_dune" and not install_override)
+            # debian/tmp is a link to destdir when Debian's files are kept in debian/
+            or getattr(self, "debian_dir", False))
         if ported.get("override_dh_auto_configure"):
             # several build directories: configure each as debian/rules does
             if bs == "autoconf" and self.needs_autoreconf(source):
@@ -2160,8 +2837,18 @@ class Converter:
             pipeline.append(entry)
             if not build_override:
                 pipeline.append({"uses": BUILD_PIPELINES[bs][1]})
+        if bs == "makefile":
+            werror = makefiles_with_werror(getattr(self, "source_data", None)) or self.tree_makefiles_with_werror()
+            if werror:
+                # Wolfi's compiler and C library are newer than Debian's: new warnings must not fail the build
+                pipeline.append({"name": "Drop -Werror from the upstream makefiles (a newer toolchain than Debian's)",
+                                 "runs": "sed -i 's/ -Werror\\b\\([^=]\\|$\\)/\\1/g' {}\n".format(" ".join(werror))})
         if build_override:
             pipeline += self.override_steps(build_override, "Build (from debian/rules override_dh_auto_build)")
+        if bs == "ocaml_dune":
+            pipeline += self.ocaml_dune_steps(build_override, install_override)
+        elif build_override:
+            pass
         elif bs in BUILD_PIPELINES and not install_override:
             if bs == "autoconf" and self.needs_autoreconf(source):
                 pipeline.append({"runs": "autoreconf -fi\n"})
@@ -2182,6 +2869,13 @@ class Converter:
             if re.search(r"^Package:", config, re.M | re.I):
                 pipeline.append(self.todo("the Package fields of scala-build name Debian packages; "
                                           "use melange package names, or remove them"))
+        elif bs == "perl_build" and not install_override:
+            # dh_auto_configure/build/install with Module::Build, into Wolfi's vendor directories
+            pipeline.append({"name": "Build and install (Build.PL)", "runs": (
+                "perl Build.PL installdirs=vendor create_packlist=0\n"
+                "./Build\n"
+                "./Build install destdir=\"${{targets.destdir}}\"\n")})
+            pipeline.append({"uses": "perl/cleanup"})
         elif bs == "makefile":
             cmds = [] if build_override else ["make -j$(nproc)"]
             if not install_override:
@@ -2213,6 +2907,27 @@ class Converter:
                 continue  # Debian packaging checks and bookkeeping (execute_before/after_*)
             tool = re.sub(r"-(indep|arch)$", "", target[len("override_"):])
             calls = [l.strip().lstrip("@-") for l in recipe if l.strip() and not l.strip().startswith("#")]
+            if not calls and target.startswith("override_"):
+                continue  # an empty override: the step is not run
+            files = [c for c in calls if re.match(r"^dh_install(examples|docs)\s", c)]
+            if files and len(files) == len(calls):
+                # dh_installexamples/dh_installdocs -pPKG FILES: into that package's doc directory
+                cmds = []
+                for c in files:
+                    words = c.split()
+                    pkgs = [w[2:] for w in words[1:] if w.startswith("-p") and len(w) > 2]
+                    args = [w for w in words[1:] if not w.startswith("-")]
+                    if not args:
+                        continue
+                    sub = "/examples" if words[0] == "dh_installexamples" else ""
+                    for deb_pkg in pkgs or [main["package"]]:
+                        name_ = self.rename.get(deb_pkg, deb_pkg)
+                        root = "${{targets.destdir}}" if deb_pkg == main["package"] else "${{{{targets.outdir}}}}/{}".format(name_)
+                        cmds.append('mkdir -p "{0}/usr/share/doc/{1}{2}"\ncp -a {3} "{0}/usr/share/doc/{1}{2}/"'.format(
+                            root, name_, sub, " ".join(args)))
+                if cmds:
+                    post_install.append({"name": "From debian/rules " + target, "runs": "\n".join(cmds) + "\n"})
+                continue
             if calls and all(re.match(r"^({}|dh_missing)\b".format(re.escape(tool)), c) for c in calls):
                 continue  # only adjusts how the same debhelper tool runs
             if target.startswith(("override_dh_auto_test", "override_dh_strip", "override_dh_shlibdeps",
@@ -2236,21 +2951,64 @@ class Converter:
             if re.match(r"^(override|execute_after|execute_before)_dh_", target) and not target.startswith("override_dh_auto_"):
                 # dh_foo plus commands of its own
                 cmds = self.port_recipe(rules, recipe, name, main["package"])
+                if cmds and target.endswith("_dh_ocamllibinstall") and self.dh_ocaml_config().get("dh_ocamllibinstall"):
+                    # dh_ocamllibinstall has moved the files to lib*-ocaml(-dev); here the
+                    # subpackages are split after the main pipeline, so they are still in destdir
+                    cmds = [re.sub(r"\$\{\{targets\.outdir\}\}/lib[\w.+-]+-ocaml(?:-dev)?(?=/)", "${{targets.destdir}}", c)
+                            for c in cmds]
                 if cmds:
                     step = {"name": "From debian/rules " + target, "runs": "\n".join(cmds) + "\n"}
-                    if re.match(r"^execute_(after_dh_auto_(configure|build|test)|before_dh_auto_(build|test|install))$", target) \
-                            or target == "execute_before_dh_install":
+                    if re.match(r"^execute_(after_dh_auto_configure|before_dh_auto_build)(-arch|-indep)?$", target):
+                        step["_stage"] = "build"    # before the build (menhir: make -C doc)
+                        pre_install.append(step)
+                    elif re.match(r"^execute_(after_dh_auto_(build|test)|before_dh_auto_(test|install))(-arch|-indep)?$", target):
+                        step["_stage"] = "install"  # between the build and the install
+                        pre_install.append(step)
+                    elif re.match(r"^execute_(after_dh_auto_install|before_dh_install)(-arch|-indep)?$", target):
                         pre_install.append(step)   # before the files are installed (dh_install)
                     else:
                         post_install.append(step)  # on the installed files
                     continue
+                if cmds is not None:
+                    continue  # only debhelper commands, done elsewhere (dh_installxmlcatalogs)
             pipeline.append(self.todo("port debian/rules {}: {}".format(
                 target, " && ".join(l.strip() for l in recipe if l.strip())[:200])))
 
+        dirs = {rules.expand(m.group(1)) for recipe in rules.targets.values() for l in recipe
+                for m in [re.search(r"dh_auto_\w+\b.*?\s(?:--builddirectory[= ]|-B\s*)(\S+)", l)] if m and "udeb" not in m.group(1)}
+        if len(dirs) == 1 and bs in ("cmake", "meson") and "$(" not in next(iter(dirs)):
+            # debian/rules builds in its own directory; the .install files name it
+            for st in pipeline:
+                if isinstance(st, dict) and str(st.get("uses", "")).startswith(bs + "/"):
+                    st.setdefault("with", {})["output-dir"] = next(iter(dirs))
+        # hooks of the build and install steps go at their place in the dh sequence
+        build_re = r"^(Build\b|autoconf/make$|cmake/build$|meson/compile$|cargo/build$|go/build$|perl/make$)"
+        install_re = r"^(Install\b|autoconf/make-install$|cmake/install$|meson/install$|py/pip-build-install$)"
+        for stage, rx in (("build", build_re), ("install", install_re)):
+            for step in [st for st in pre_install if st.get("_stage") == stage]:
+                at = next((i for i, st in enumerate(pipeline) if isinstance(st, dict)
+                           and re.match(rx, str(st.get("name") or st.get("uses") or ""))), None)
+                pre_install.remove(step)
+                del step["_stage"]
+                if at is None:
+                    pre_install.append(step)
+                else:
+                    pipeline.insert(at, step)
         pipeline += pre_install
         pipeline.append(self.install_step(main, True, native, name))
         post_install.sort(key=lambda st: dh_sequence_index(st.get("name", "")))  # stable: rules order otherwise
         pipeline += post_install
+        if any(isinstance(st, dict) and (re.search(r'(?m)^cp -a \S+ "\$\{\{targets\.destdir\}\}/usr/s?bin/"',
+                                                   st.get("runs", "")) or
+                                         # rules that write commands with a redirect (expect: sed ... > expect_unbuffer)
+                                         re.search(r"usr/s?bin/.*\s>\s*\S", st.get("runs", "")))
+               for st in pipeline):
+            # dh_fixperms: commands copied from the source tree are executable
+            pipeline.append({"name": "Commands are executable (dh_fixperms)", "runs": (
+                'for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do\n'
+                '  [ -d "$d/usr/bin" ] && find "$d/usr/bin" -type f -exec chmod 755 {} +\n'
+                'done\n'
+                'true\n')})
         if bs and self.upstream_installs:
             # upstream may install into sbin or /lib; Wolfi is usr-merged with sbin in bin
             pipeline.append({"name": "Usr-merge (sbin into bin)", "runs": (
@@ -2272,6 +3030,10 @@ class Converter:
             pipeline[-1]["runs"] += 'install -Dm644 {0}/{0}.conf "${{{{targets.destdir}}}}"{1}\n'.format(name, conffile)
         if main_alts:
             pipeline.append(alternatives_step(main_alts, "${{targets.destdir}}"))
+        if bs in ("autoconf", "makefile"):
+            # Debian packages leave libtool archives out; melange's linter rejects them
+            pipeline.append({"name": "Remove libtool archives",
+                             "runs": 'find "${{targets.destdir}}" -name "*.la" -delete\n'})
         if any(b.get("architecture", "any") != "all" for b in binaries) and bs:
             # dh_strip; Wolfi recipes strip with the strip pipeline.
             pipeline.append({"uses": "strip"})
@@ -2356,7 +3118,7 @@ class Converter:
                     and self.wolfi.has("py3-supported-" + v[4:]):
                 d = C("py3-supported-" + v[4:], d.comment if isinstance(d, C) else "Debian: python3-" + v[4:])
             keep.append(d)
-        uses_python = any("python3 " in st.get("runs", "") for st in pipeline if isinstance(st, dict))
+        uses_python = True  # debian/rules may run the source's own Python scripts (doc-debtags)
         env[:] = [keep[0], "py3-supported-build-base"] + (["python3"] if uses_python else []) + keep[1:]
 
         pipeline[:] = [st for st in pipeline if not (isinstance(st, dict) and st.get("uses") == "py/pip-build-install")]
@@ -2376,11 +3138,11 @@ class Converter:
                 st["runs"] = "".join(l + "\n" for l in lines if not any(d in l for d in lic_dirs))
         pipeline[:] = [st for st in pipeline if not (isinstance(st, dict) and "runs" in st and not st["runs"])]
         for st in test["pipeline"]:
-            if "runs" in st:
+            if isinstance(st, dict) and "runs" in st:
                 st["runs"] = "".join(l + "\n" for l in st["runs"].splitlines()
                                      if not l.startswith(("test -f /usr/share/licenses/",
                                                           "test -f /usr/share/doc/{}/".format(name))))
-        test["pipeline"] = [st for st in test["pipeline"] if st.get("runs", True)]
+        test["pipeline"] = [st for st in test["pipeline"] if not isinstance(st, dict) or st.get("runs", True)]
         sub = {
             "range": "py-versions",
             "name": "py${{range.key}}-${{vars.pypi-package}}",
@@ -2403,9 +3165,49 @@ class Converter:
                      "pipeline": [{"uses": "test/metapackage"}]},
         }
         subpackages[:0] = [sub, meta]
+        clis = [sp for sp in subpackages[2:] if isinstance(sp, dict) and
+                not re.match(r"^(py3|python3?)-|.*-doc$", str(sp.get("name", "")))]
+        if clis:
+            # Debian ships the commands in their own package (pycodestyle, pyflakes3):
+            # Wolfi in py3.X-foo-bin, one per Python, the default one for the Debian name
+            sub["pipeline"].append({"runs": "rm -rf \"${{targets.contextdir}}\"/usr/bin\n"})
+            sub["pipeline"].insert(1, {"runs": (
+                'if [ -d "${{targets.contextdir}}"/usr/bin ]; then\n'
+                '  mkdir -p "${{targets.outdir}}/py${{range.key}}-${{vars.pypi-package}}-bin/usr"\n'
+                '  cp -a "${{targets.contextdir}}"/usr/bin "${{targets.outdir}}/py${{range.key}}-${{vars.pypi-package}}-bin/usr/"\n'
+                'fi\n')})
+            bins = {
+                "range": "py-versions",
+                "name": "py${{range.key}}-${{vars.pypi-package}}-bin",
+                "description": "${{vars.pypi-package}} commands for python${{range.key}}",
+                "dependencies": {"runtime": ["py${{range.key}}-${{vars.pypi-package}}"],
+                                 "provider-priority": "${{range.value}}",
+                                 "provides": ["py3-${{vars.pypi-package}}-bin"]},
+                "pipeline": [{"runs": "true\n"}],
+            }
+            subpackages.insert(2, bins)
+            for cli in clis:
+                cli["pipeline"] = [{"runs": "true\n"}]
+                cli["dependencies"] = {"runtime": ["py{}-${{{{vars.pypi-package}}}}-bin".format(DEFAULT_PYTHON)]}
+                cli.pop("test", None)
+            # steps on the commands (moving them to the Debian CLI package, renaming
+            # them) now work on each py3.X-foo-bin
+            cli_dirs = ["${{{{targets.outdir}}}}/{}".format(c["name"]) for c in clis]
+            keep = []
+            for st in pipeline:
+                runs = st.get("runs", "") if isinstance(st, dict) else ""
+                if "usr/bin" in runs and ("${{targets.destdir}}/usr/bin" in runs or any(d in runs for d in cli_dirs)):
+                    for d in ["${{targets.destdir}}"] + cli_dirs:
+                        runs = runs.replace(d + "/", "${{targets.contextdir}}/")
+                    lines = [l for l in runs.splitlines() if not re.match(r"^mkdir -p \$\{\{targets\.contextdir\}\}/usr/bin$", l)]
+                    lines = [re.sub(r"^mv (\S+) (\S+)/?$", lambda m: "" if m.group(1).rstrip("/*") == m.group(2).rstrip("/") else m.group(0), l) for l in lines]
+                    bins["pipeline"].append({"runs": "\n".join(l for l in lines if l) + "\n"})
+                    continue
+                keep.append(st)
+            pipeline[:] = keep
         # py3-foo resolves to the newest py3.X-foo, not necessarily python3's
         test["environment"]["contents"]["packages"].append("py3-supported-" + pypi)
-        test["pipeline"] = [st for st in test["pipeline"] if st.get("uses") != "python/import"]
+        test["pipeline"] = [st for st in test["pipeline"] if not isinstance(st, dict) or st.get("uses") != "python/import"]
         test["pipeline"].append({"uses": "python/import", "with": {"python": "python3", "imports": "import ${{vars.import}}"}})
         self.notes.append("Wolfi Python layout: py3.X-{} for Python {}".format(pypi, ", ".join(versions)))
         return [{"name": "py-versions",
@@ -2447,6 +3249,14 @@ class Converter:
         move = {"name": "Move the recipe files out of the build tree",
                 "runs": "mkdir -p {d}\nfor f in {files}; do mv {n}/$f {d}/; done\nrmdir {n} 2>/dev/null || true\n".format(
                     d=self.RECIPE_FILES, files=files, n=name)}
+        if getattr(self, "debian_dir", False):
+            # debian/rules works on files in debian/ by computed names
+            move["runs"] += ("mkdir -p debian && cp -a {}/. debian/\n"
+                             "# the scripts are executable in Debian's tree\n"
+                             "for f in debian/*; do [ -f \"$f\" ] && head -c2 \"$f\" | grep -q '#!' && chmod +x \"$f\"; done\n"
+                             "# what Debian's scripts install into debian/tmp is the package's\n"
+                             "mkdir -p \"${{{{targets.destdir}}}}\" && ln -sfn \"${{{{targets.destdir}}}}\" debian/tmp\n"
+                             ).format(self.RECIPE_FILES)
         # first: the sources may contain a file named like the directory
         return [move] + steps
 
@@ -2477,6 +3287,25 @@ class Converter:
             uses_debconf |= dc
             for target, argv in targets:
                 scripts[target] = wrap_script(label, body, argv)
+        cats = xml_catalogs(self.pkgfile(binary["package"], "xmlcatalogs", is_main))
+        if cats["package"]:
+            # dh_installxmlcatalogs: Debian's update-xmlcatalog (xml-core) does this; Wolfi's
+            # root catalog (/etc/xml/catalog) is libxml2's, so xmlcatalog delegates to the package's
+            add = ["# debian/{}.xmlcatalogs (dh_installxmlcatalogs)".format(binary["package"]),
+                   "[ -f /etc/xml/catalog ] || xmlcatalog --noout --create /etc/xml/catalog"]
+            rm = ["# debian/{}.xmlcatalogs (dh_installxmlcatalogs)".format(binary["package"])]
+            prefixes = sorted({prefix for _kind, prefix, _catalog in cats["package"]})
+            # (--del removes every entry for the prefix: the old ones first, then the new ones)
+            q = shlex.quote
+            add += ["xmlcatalog --noout --del {} /etc/xml/catalog 2>/dev/null".format(q(p)) for p in prefixes]
+            add += ["xmlcatalog --noout --add delegate{1} {0} {2} /etc/xml/catalog".format(
+                q(prefix), "URI" if kind == "uri" else kind.capitalize(), q("file://" + catalog))
+                for kind, prefix, catalog in cats["package"]]
+            rm += ["xmlcatalog --noout --del {} /etc/xml/catalog 2>/dev/null || true".format(q(p)) for p in prefixes]
+            for target, lines in (("post-install", add), ("post-upgrade", add), ("pre-deinstall", rm)):
+                body = "\n".join(lines) + "\ntrue\n"
+                scripts[target] = scripts[target] + body if target in scripts else "#!/bin/sh\n" + body
+            SCRIPT_DEPS.setdefault("xmlcatalog", []).append("libxml2-utils")
         # packages whose commands the scripts call (update-alternatives -> dpkg ...)
         own = self.rename.get(binary["package"], binary["package"])
         self.script_deps = sorted({d for ds in SCRIPT_DEPS.values() for d in ds} - {own})
@@ -2538,7 +3367,19 @@ class Converter:
                     self.notes += notes or ["upstream git snapshot of {} (debian/watch), pinned to the last commit "
                                             "of that day".format(snap.group(2))]
                     return steps
-                steps, notes = git_url_checkout_step(repo, version, prefix, resolve=self.args.download)
+                tag_version = getattr(self, "tag_version", version) or version
+                steps, notes = git_url_checkout_step(repo, tag_version, prefix, resolve=self.args.download)
+                if tag_version != version:
+                    # the tag names the version with its + (apk's has a dot): the tag as it is
+                    for st in steps:
+                        if isinstance(st, dict):
+                            st["with"]["tag"] = st["with"]["tag"].replace("${{package.version}}", tag_version)
+                if notes and self.args.download:
+                    # no tag of Debian's version (mangled, or a snapshot): Debian's copy of the upstream tarball below
+                    self.notes.append("no tag of {} in {}{}".format(tag_version, repo, " (debian/watch mangles upstream versions)"
+                                                                   if re.search(r"(?i)uversion-?mangle", watch) else ""))
+                    steps = None
+            if repo and steps:
                 tag = next(st["with"]["tag"] for st in steps if isinstance(st, dict))
                 self.git_source = (repo, tag.replace("${{package.version}}", ""))
                 self.notes += notes
@@ -2592,6 +3433,88 @@ class Converter:
             return [self.todo("compute expected-sha256 (re-run with --download)"), step]
         return [step]
 
+    def dh_ocaml_config(self):
+        """debian/dh-ocaml.conf.json (dh-ocaml 3.4+), or {}."""
+        try:
+            return json.loads(self.read("dh-ocaml.conf.json") or "{}")
+        except ValueError:
+            return {}
+
+    def ocamllibinstall(self, deb_pkg):
+        """dh_ocamllibinstall: the files of each findlib package of debian/debian-dune go to
+        lib<X>-ocaml-dev, its META, archives for dynamic loading and stubs to lib<X>-ocaml."""
+        conf = self.dh_ocaml_config()
+        if not conf.get("dh_ocamllibinstall"):
+            return []
+        pkgs = list(self.rename)
+        devs = [p for p in pkgs if re.match(r"^lib.+-ocaml-dev$", p)]
+        if not devs:
+            return []
+        main_lib = devs[0][len("lib"):-len("-ocaml-dev")]
+        findlib = []
+        for line in (self.read("debian-dune") or self.read("debian-findlib") or "").splitlines():
+            words = line.split()
+            if words:
+                findlib.append((words[0], words[1] if len(words) > 1 else main_lib))
+        run_files = r"\( -name META -o -name '*.cma' -o -name '*.cmxs' \)"
+        dest, ctx = '"${{targets.destdir}}"', '"${{targets.contextdir}}"'
+        cmds = []
+        for f, x in findlib:
+            if x.startswith("!"):
+                dev = x[1:]
+                run = dev[:-len("-dev")] if dev.endswith("-dev") else dev
+            else:
+                dev, run = "lib{}-ocaml-dev".format(x), "lib{}-ocaml".format(x)
+            if run not in pkgs:
+                run = dev
+            lib = "{}/usr/lib/ocaml/{}".format(dest, f)
+            if deb_pkg == run and run != dev:
+                cmds.append("[ -d {lib} ] && (cd {lib} && find . -type f {rf}) | while read -r p; do\n"
+                            "  mkdir -p {ctx}/usr/lib/ocaml/{f}/$(dirname \"$p\")\n"
+                            "  mv {lib}/\"$p\" {ctx}/usr/lib/ocaml/{f}/\"$p\"\n"
+                            "done; true".format(lib=lib, rf=run_files, ctx=ctx, f=f))
+                cmds.append("for a in {lib}/lib*.a; do\n"
+                            "  [ -e \"$a\" ] || continue\n"
+                            "  s=$(basename \"$a\" .a); s=${{s#lib}}\n"
+                            "  d={dest}/usr/lib/ocaml/stublibs/dll$s.so\n"
+                            "  [ -e \"$d\" ] && mkdir -p {ctx}/usr/lib/ocaml/stublibs && mv \"$d\" {ctx}/usr/lib/ocaml/stublibs/\n"
+                            "done; true".format(lib=lib, dest=dest, ctx=ctx))
+            if deb_pkg == dev:
+                # file by file: the directory may exist already (debian/*.dirs)
+                cmds.append("[ -d {lib} ] && (cd {lib} && find . -type f{rf}) | while read -r p; do\n"
+                            "  mkdir -p {ctx}/usr/lib/ocaml/{f}/$(dirname \"$p\")\n"
+                            "  mv {lib}/\"$p\" {ctx}/usr/lib/ocaml/{f}/\"$p\"\n"
+                            "done; true".format(lib=lib, rf=" ! " + run_files if run != dev else "", ctx=ctx, f=f))
+                # dune layout 1: usr/share/ocaml-dune/<section>/<package>
+                cmds.append("for d in {dest}/usr/share/ocaml-dune/*/{f}; do\n"
+                            "  [ -d \"$d\" ] || continue\n"
+                            "  r=${{d#{dest}/}}\n"
+                            "  mkdir -p {ctx}/$(dirname \"$r\") && mv \"$d\" {ctx}/\"$r\"\n"
+                            "done".format(dest=dest, ctx=ctx, f=f))
+        return cmds
+
+    def ocaml_dune_steps(self, build_override, install_override):
+        """dh-ocaml's ocaml_dune build system: dune build/install of the opam packages."""
+        # debian/debian-dune names the opam packages dh-ocaml builds; else all of them
+        pkgs = (self.read("debian-dune") or "").split() or \
+            sorted(n[:-len(".opam")] for n in self.top if n.endswith(".opam"))
+        p = " ".join(["-p", ",".join(pkgs)]) if pkgs else "--release"
+        steps = []
+        if not build_override:
+            steps.append({"name": "Build (dh-ocaml's ocaml_dune build system)",
+                          "runs": "dune build {} -j $(nproc) @install\n".format(p)})
+        if not install_override:
+            # the libraries go to the standard library directory, where ocamlfind looks
+            layout = ""
+            if self.dh_ocaml_config().get("dune_layout_version") == 1:
+                # dh-ocaml's layout 1: data, docs and man pages of each package under ocaml-dune
+                layout = (" --etcdir=/etc --datadir=/usr/share/ocaml-dune/data --docdir=/usr/share/ocaml-dune/doc"
+                          " --mandir=/usr/share/ocaml-dune/man")
+            steps.append({"name": "Install", "runs": (
+                'dune install --destdir="${{{{targets.destdir}}}}" --prefix=/usr --libdir="$(ocamlc -where)"{} '
+                '{}\n').format(layout, " ".join(pkgs)).replace(" \n", "\n")})
+        return steps
+
     def debian_native_url(self, source):
         """fetch step for the tarball of a Debian-native source package."""
         ver = (self.deb_version or "").split(":", 1)[-1]
@@ -2635,11 +3558,13 @@ class Converter:
         return step
 
     def debian_orig_url(self, source, version):
-        """Debian's copy of the upstream tarball, when upstream cannot be reached."""
+        """Debian's copy of the upstream tarball, when upstream cannot be reached; or Debian's
+        repack of it, when nothing says where upstream is (docbook-xsl: no debian/watch, and
+        Debian's install files expect the layout of its repack)."""
         upver = (self.deb_version or "").split(":", 1)[-1].rsplit("-", 1)[0]
         name = source.get("source", "")
-        if not upver or not name or re.search(r"[+~](dfsg|ds|repack)", upver):
-            return None  # repacked by Debian: not the upstream tarball
+        if not upver or not name:
+            return None
         prefix = name[:4] if name.startswith("lib") else name[0]
         for ext in ("gz", "xz", "bz2"):
             url = "https://deb.debian.org/debian/pool/{}/{}/{}/{}_{}.orig.tar.{}".format(
@@ -2658,7 +3583,8 @@ class Converter:
         # from the source tree. Otherwise upstream installs straight into
         # destdir, and only subpackages move files out of it.
         from_tree = native or not self.upstream_installs
-        if inst and (from_tree or not main):
+        # (no build system: what the rules install into debian/tmp, or else the source tree)
+        if inst and (from_tree or not main or self.bs is None):
             for src, dst, rename in install_entries(inst, keep_src=native):
                 if not rename and re.search(r"[*?\[]", os.path.dirname(src)) \
                         and dst == usr_merge(os.path.dirname(norm_path(src))):
@@ -2688,6 +3614,23 @@ class Converter:
                     # Wolfi's perl/make, for one, does not install module man pages
                     cmds.append('if [ -e {2} ]; then\n  mkdir -p "{0}/{1}"\n  mv {2} {3}\nfi'.format(
                         destdir, dst, shell_path("${{targets.destdir}}", src), target))
+                elif src.startswith("usr/lib/ocaml/") and re.search(r"[*?\[]", src):
+                    # dune makes no archive for a library without modules (base_internalhash_types)
+                    cmds.append('mkdir -p "{0}/{1}"\nfor f in {2}; do\n  [ -e "$f" ] && mv "$f" {3}\ndone\ntrue'.format(
+                        destdir, dst, shell_path("${{targets.destdir}}", src), target))
+                elif not re.match(r"^(usr|etc|lib|lib64|var|opt|bin|sbin|boot|srv)(/|$)", src):
+                    # a path in the source tree, not one the build installed
+                    cmds.append('mkdir -p "{0}/{1}"\ncp -a {2} {3}'.format(destdir, dst, src, target))
+                elif self.bs is None and main and not rename and \
+                        "{}/{}".format(dst.strip("/"), os.path.basename(src.rstrip("/"))) == norm_path(src).strip("/"):
+                    # already where the rules installed it (mmdebstrap's usr/bin), or else in the source tree
+                    cmds.append('if ! ls -d {0} >/dev/null 2>&1; then\n  mkdir -p "{1}/{2}"\n  cp -a {3} {4}\nfi'.format(
+                        shell_path("${{targets.destdir}}", src), destdir, dst, src, target))
+                elif self.bs is None:
+                    # dh_install looks in debian/tmp, then in the source tree (dh-scala: lib/Debian)
+                    cmds.append('mkdir -p "{0}/{1}"\nif ls -d {2} >/dev/null 2>&1; then\n  mv {2} {3}\n'
+                                'else\n  cp -a {4} {3}\nfi'.format(
+                                    destdir, dst, shell_path("${{targets.destdir}}", src), target, src))
                 else:
                     cmds.append('mkdir -p "{0}/{1}"\nmv {2} {3}'.format(
                         destdir, dst, shell_path("${{targets.destdir}}", src), target))
@@ -2716,8 +3659,18 @@ class Converter:
             parts = line.split("#", 1)[0].split()
             if len(parts) == 2:
                 target, link = usr_merge(norm_path(parts[0])), usr_merge(norm_path(parts[1]))
-                cmds.append('mkdir -p "{0}/{2}"\nln -sf /{1} "{0}/{3}"'.format(
-                    destdir, target, os.path.dirname(link), link))
+                if any(re.search(r"(?<![\d.]){}(?![\d])".format(re.escape(v)), target + " " + link)
+                       for v in getattr(self, "dropped_versions", ())):
+                    continue  # for a version not built (expect8.6.1.gz)
+                if target.startswith("usr/share/man/") and target.endswith(".gz"):
+                    # dh_compress gzips man pages; Wolfi's are not compressed
+                    target, link = target[:-3], link[:-3] if link.endswith(".gz") else link
+                ln = 'mkdir -p "{0}/{2}"\nln -sf /{1} "{0}/{3}"'.format(destdir, target, os.path.dirname(link), link)
+                if getattr(self, "dropped_versions", ()):
+                    # only to what was built: some builds are left out (the Tcl 8.6 libexpect)
+                    ln = 'if [ -n "$(ls -d "${{{{targets.destdir}}}}/{0}" "${{{{targets.outdir}}}}"/*/{0} 2>/dev/null)" ]; then\n  {1}\nfi'.format(
+                        target, ln.replace("\n", "\n  "))
+                cmds.append(ln)
         unit = self.read("{}.service".format(binary["package"])) or (self.read("service") if main else None)
         if unit is not None:
             # dh_installsystemd
@@ -2735,12 +3688,42 @@ class Converter:
                         or ex.rstrip("/*").startswith("{}/examples".format(docdir[len(destdir) + 1:])):
                     continue  # already where dh_installexamples puts it
                 ex = shell_path("${{targets.destdir}}", ex)
+            if ex.startswith("debian/"):
+                local = self.debian_file(ex)
+                if local != ex:
+                    cmds.append('install -Dm644 {1} "{0}/examples/{2}"'.format(docdir, local, os.path.basename(ex)))
+                    continue
             if ex:
                 # dh_installexamples
                 cmds.append('mkdir -p "{0}/examples"\ncp -a {1} "{0}/examples/"'.format(docdir, ex))
-        for line in (self.pkgfile(binary["package"], "docs", main) or "").splitlines():
-            doc = line.split("#", 1)[0].strip()
-            if doc:
+        for src, dst in xml_catalogs(self.pkgfile(binary["package"], "xmlcatalogs", main))["local"]:
+            # dh_installxmlcatalogs installs the package's own catalog
+            cmds.append('install -Dm644 {} "{}/{}"'.format(self.debian_file(src), destdir, dst))
+        docs = [d for line in (self.pkgfile(binary["package"], "docs", main) or "").splitlines()
+                for word in line.split("#", 1)[0].split() for d in brace_expand(word)]
+        for doc in docs:
+            if doc.startswith(("usr/", "debian/tmp/usr/")) and self.upstream_installs:
+                # dh_installdocs finds it in debian/tmp (dune installs usr/doc/<package>)
+                doc = doc[len("debian/tmp/"):] if doc.startswith("debian/tmp/") else doc
+                # usr/doc is not where docs go: move them out of it, one by one as dh_installdocs
+                # copies (lwt's usr/doc/*/* has a README.md in each directory)
+                if doc.startswith("usr/doc/"):
+                    cmds.append('mkdir -p "{0}"\nfor f in {1}; do cp -a "$f" "{0}/"; done\nrm -rf {1}'.format(
+                        docdir, shell_path("${{targets.destdir}}", doc)))
+                else:
+                    cmds.append('mkdir -p "{0}"\ncp -a {1} "{0}/"'.format(docdir, shell_path("${{targets.destdir}}", doc)))
+                if doc.startswith("usr/doc/"):
+                    cmds.append('rmdir {} "${{{{targets.destdir}}}}/usr/doc" 2>/dev/null || true'.format(
+                        shell_path("${{targets.destdir}}", os.path.dirname(doc.rstrip("/")))))
+            elif doc and self.upstream_installs and re.match(r"^doc/[^/]+/", doc):
+                # dh_installdocs looks in the source tree and in debian/tmp (opam-installer
+                # --prefix=debian/tmp leaves doc/<package> there)
+                cmds.append('mkdir -p "{0}"\nif ls -d {1} >/dev/null 2>&1; then\n  mv {1} "{0}/"\n'
+                            '  rmdir "${{{{targets.destdir}}}}/{2}" "${{{{targets.destdir}}}}/{3}" 2>/dev/null || true\n'
+                            'else\n  cp -a {4} "{0}/"\nfi'.format(
+                                docdir, shell_path("${{targets.destdir}}", doc), os.path.dirname(doc.rstrip("/")),
+                                doc.split("/", 1)[0], self.debian_file(doc)))
+            elif doc:
                 # dh_installdocs takes them from the source tree; may be directories
                 cmds.append('mkdir -p "{0}"\ncp -a {1} "{0}/"'.format(docdir, self.debian_file(doc)))
         # Drop repeated "mkdir -p" of the same directory.
@@ -2758,7 +3741,77 @@ class Converter:
         """dh runs dh_autoreconf from compat 10; a git checkout has no configure."""
         if dh_compat(source, self.read) < 10:
             return False
-        return self.git_source is not None or ("configure.ac" in self.top and "configure" not in self.top)
+        # only with an autoconf input: arch-test's configure is written by hand
+        if not ("configure.ac" in self.top or "configure.in" in self.top):
+            return False
+        if self.git_source is not None or "configure" not in self.top:
+            return True
+        # the generated files go stale when Debian's patches change their inputs
+        # (aptitude: buildlib/docbook.mk, included by the doc Makefile.am files)
+        return any(re.search(r"(^|/)(configure\.(ac|in)|[^/]+\.(am|m4|mk))$", f) for f in self.patched_files())
+
+    def patched_files(self):
+        files = set()
+        for l in (self.read("patches/series") or "").splitlines():
+            if l.strip() and not l.startswith("#"):
+                try:
+                    with open(os.path.join(self.deb, "patches", l.split()[0]), errors="replace") as fh:
+                        files |= set(re.findall(r"(?m)^\+\+\+ (?:b/)?(\S+)", fh.read()))
+                except OSError:
+                    pass
+        return files
+
+    def drop_unavailable_versions(self, rules, source):
+        """TCLVERSIONS = 8.6 9.1 (expect builds for each Tcl): only the versions whose build
+        dependencies (tcl8.6-dev, tcl9.1-dev) Wolfi has; a variable naming a dropped version
+        (tclv = 8.6, the default) takes the one left."""
+        if self.wolfi.names is None:
+            return
+        deps = [alts[0] for f in ("build-depends", "build-depends-arch", "build-depends-indep")
+                for alts in parse_relations(source.get(f))]
+        dropped, kept = set(), set()
+        for name, val in list(rules.vars.items()):
+            toks = val.split()
+            if len(toks) < 2 or not all(re.match(r"^\d+\.\d+$", t) for t in toks):
+                continue
+            keep = []
+            for t in toks:
+                with_t = [d for d in deps if re.search(r"(?<![\d.]){}(?![\d.])".format(re.escape(t)), d)]
+                if with_t and not any(self.available(d) for d in with_t):
+                    dropped.add(t)
+                else:
+                    keep.append(t)
+            if keep and len(keep) < len(toks):
+                rules.vars[name] = " ".join(keep)
+                kept |= set(keep)
+                self.notes.append("debian/rules {}: only {} (Wolfi has not the others' dependencies)".format(
+                    name, " ".join(keep)))
+        self.dropped_versions = sorted(dropped)
+        if len(kept) == 1:
+            for name, val in list(rules.vars.items()):
+                if val.strip() in dropped:
+                    rules.vars[name] = next(iter(kept))
+
+    def available(self, dep):
+        tcl = re.match(r"^(?:lib)?(tcl|tk)(\d+\.\d+)(-dev)?$", dep)
+        if tcl:
+            return bool(self.wolfi.current.get("cmd:{}{}".format("tclsh" if tcl.group(1) == "tcl" else "wish", tcl.group(2))))
+        return any(self.wolfi.has(c) for c in dep_candidates(dep)) or bool(self.wolfi.provider_of(dep))
+
+    def source_makefiles(self):
+        found = top_makefiles(getattr(self, "source_data", None))
+        for f in sorted(self.top):
+            if f not in found and re.match(TOP_MAKEFILE, f):
+                try:
+                    with open(os.path.join(self.tree, f), "rb") as fh:
+                        found[f] = fh.read()
+                except OSError:
+                    pass
+        return found
+
+    def tree_makefiles_with_werror(self):
+        return sorted(n for n, text in self.source_makefiles().items()
+                      if not n.startswith("Makefile.") and re.search(rb"-Werror\b(?!=)", text))
 
     def autoreconf_tools(self):
         tools = ["autoconf", "automake"]
@@ -2790,8 +3843,16 @@ class Converter:
 
     def subpackage(self, b, name, main):
         desc = b.get("description", "").split("\n", 1)[0].strip()
+        if "${source:Synopsis}" in desc:
+            # dpkg's substvar: the synopsis of the source (its main package here)
+            desc = desc.replace("${source:Synopsis}", (self.source.get("description") or "").split("\n", 1)[0].strip())
         sub = {"name": self.rename.get(b["package"], b["package"]), "description": desc[:1].upper() + desc[1:]}
         cmds = self.install_lines(b, False, False, "${{targets.contextdir}}")
+        if self.pkgfile(b["package"], "install", False) is None:
+            cmds += self.ocamllibinstall(b["package"])
+        if any(re.search(r'(?m)^cp -a \S+ "\$\{\{targets\.contextdir\}\}/usr/s?bin/"', c) for c in cmds):
+            # dh_fixperms: commands copied from the source tree are executable
+            cmds.append('find "${{targets.contextdir}}/usr/bin" -type f -exec chmod 755 {} +')
         filled = "${{{{targets.outdir}}}}/{}".format(sub["name"])
         if cmds:
             sub["pipeline"] = [{"runs": "\n".join(cmds) + "\n"}]
@@ -2812,6 +3873,7 @@ class Converter:
         deps += self.unversioned_libs(b, self.source)
         deps += self.essential_used(b)
         deps += self.perl_depends(b, deps)
+        deps += self.ocaml_depends(b, deps)
         if deps:
             sub["dependencies"] = {"runtime": deps}
         scripts, _ = self.scriptlets(b, False, name, [], "", {}, {})
@@ -2882,15 +3944,38 @@ class Converter:
         aliases = dict(ESSENTIAL_ALIASES)
         for i, para in enumerate(parse_deb822(control)):
             restrictions = para.get("restrictions", "").replace(",", " ").split()
+            if "hint-testsuite-triggers" in restrictions:
+                continue  # never run: it only lists packages whose uploads trigger the tests
+            dropped = [v for v in getattr(self, "dropped_versions", ())
+                       if re.search(r"[A-Za-z]{}(?![\d.])".format(re.escape(v)), para.get("test-command", "") + " " +
+                                    " ".join(d[0] for d in parse_relations(para.get("depends", ""))))]
+            if dropped:
+                self.notes.append("autopkgtest '{}' left out: it is for {} (not built)".format(
+                    (para.get("test-command") or para.get("tests", "")).strip()[:60], ", ".join(dropped)))
+                continue
             for r in restrictions:
                 if r in ("isolation-machine", "breaks-testbed", "needs-reboot"):
                     self.notes.append("autopkgtest restriction '{}' cannot be honoured by melange test".format(r))
             deps = [d for d in parse_relations(para.get("depends", "@")) if d[0] not in ("@", "@builddeps@")]
-            if "@" in [d[0] for d in parse_relations(para.get("depends", "@"))]:
+            at = "@" in [d[0] for d in parse_relations(para.get("depends", "@"))]
+            if at:
                 # "@" installs the package with its Depends, debconf included
                 deps += [alts for alts in parse_relations(self.main_depends)
                          if any(a in ("debconf", "ucf") for a in alts)]
+                # autopkgtest installs Recommends too (docbook-xsl's tests need docbook-xml's DTDs)
+                deps += [alts for r in getattr(self, "binary_recommends", [])
+                         for alts in parse_relations(r) if not alts[0].startswith("${")]
+            if "@builddeps@" in [d[0] for d in parse_relations(para.get("depends", ""))]:
+                # the build dependencies (no build profile enabled) and build-essential
+                deps += [["build-essential"]] + [alts for f in ("build-depends", "build-depends-indep", "build-depends-arch")
+                                                 for alts in parse_relations(self.source.get(f))]
             mapped = self.map_deps(deps, "test")
+            if at:
+                # ... and every binary package of the source (melange test installs the main one)
+                main_name = self.rename.get(self.main_package, self.main_package)
+                for b in sorted(set(self.rename.values())):
+                    if b != main_name and not re.search(r"-(doc|dbg|udeb)$", b) and b not in packages:
+                        packages.append(C(b, "Debian's @: the binary packages of the source"))
             missing = [d for d in mapped if isinstance(d, Comment)]
             if missing:
                 what = para.get("test-command", "").strip().split("\n")[0][:60] or " ".join(para.get("tests", "").replace(",", " ").split())
@@ -2909,18 +3994,27 @@ class Converter:
                     packages.append(C(e, "Essential in Debian, so on every testbed"))
             if any((d.value if isinstance(d, C) else d).startswith("py3-") for d in mapped) and "python3" not in packages:
                 packages.append("python3")  # py3-supported-* do not provide the python3 command
-            if "@builddeps@" in para.get("depends", ""):
-                self.notes.append("autopkgtest uses @builddeps@; add the build dependencies to the test environment")
-            env = 'export AUTOPKGTEST_TMP="$(mktemp -d)"\n'
+            # autopkgtest runs the scripts as written; melange adds pipefail
+            # Debian's testbeds run in C.UTF-8 (trietool, and any tool that converts text, needs it)
+            env = 'export AUTOPKGTEST_TMP="$(mktemp -d)"\nexport LANG="${LANG:-C.UTF-8}"\nset +o pipefail 2>/dev/null || true\n'
             def guard(cmd):
-                if "flaky" not in restrictions:
-                    return cmd
-                # Restrictions: flaky -- a failure is reported, not fatal
-                return "(\n{}) || echo 'autopkgtest marked flaky failed (ignored)'\n".format(cmd)
+                if "flaky" in restrictions:
+                    # Restrictions: flaky -- a failure is reported, not fatal
+                    return "(\n{}) || echo 'autopkgtest marked flaky failed (ignored)'\n".format(cmd)
+                if "skippable" in restrictions:
+                    # Restrictions: skippable -- exit status 77 means the test was skipped
+                    if re.search(r"(^|[\s;&|(`])sudo\b", cmd, re.M):
+                        # the test regains root with sudo, which the sandbox's no_new_privs forbids (mmdebstrap)
+                        cmd = ("if grep -q '^NoNewPrivs:[[:space:]]*1' /proc/self/status; then\n"
+                               "  echo 'sudo cannot work here: the sandbox sets no_new_privs'; exit 77\n"
+                               "fi\n") + cmd
+                    return ("rc=0\n(\n{}) || rc=$?\n"
+                            "if [ $rc = 77 ]; then echo 'autopkgtest skipped (exit status 77)'; else exit $rc; fi\n").format(cmd)
+                return cmd
             if "test-command" in para:
                 steps.append({"name": "autopkgtest: {}".format(para["test-command"].strip().split("\n")[0][:60]),
                               "runs": env + guard(para["test-command"].strip() + "\n")})
-            for test in para.get("tests", "").split():
+            for test in [t for t in re.split(r"[\s,]+", para.get("tests", "")) if t]:  # "Tests: a, b"
                 script = self.read(os.path.join(para.get("tests-directory", "tests"), test))
                 if script is None:
                     continue
@@ -2932,28 +4026,95 @@ class Converter:
                 if dropped:
                     self.notes.append("autopkgtest '{}': mmdebstrap --mode=fakechroot left out (Wolfi's glibc is newer "
                                       "than the Debian chroot's; host binaries cannot load its libraries)".format(test))
+                shebang = script.split("\n", 1)[0] if script.startswith("#!") else ""
+                tdir = "debian/" + para.get("tests-directory", "tests").strip("/")
+                if shebang and not re.match(r"^#!\s*/bin/sh\s*$", shebang):
+                    # bash, sh -e, python ...: run the script as written, with its interpreter, from
+                    # where Debian has it ($(dirname "$0")/../../examples in sedlex's tests)
+                    body = ('mkdir -p {3}\ncat > "{3}/{0}" <<\'AUTOPKGTEST_SCRIPT\'\n{1}\n{2}AUTOPKGTEST_SCRIPT\n'
+                            'chmod +x "{3}/{0}"\n"$PWD/{3}/{0}"\n').format(test, shebang, body, tdir)
+                else:
+                    body = re.sub(r'\$\(dirname "?\$0"?\)|`dirname "?\$0"?`', '"$PWD/{}"'.format(tdir), body)
                 steps.append({"name": "autopkgtest: " + test, "runs": env + guard(body)})
         real = [st for st in steps if not isinstance(st, Comment)]
         for st in real:
             if "AUTOPKGTEST_NORMAL_USER" in st["runs"]:
                 # autopkgtest's unprivileged user: melange's test environment has "build"
                 # and / as on a Debian testbed (0755): sandboxes may make it 0700
+                # and the source tree readable by that user, as autopkgtest leaves it
                 st["runs"] = st["runs"].replace(env, env + "export AUTOPKGTEST_NORMAL_USER=build\n"
                                                 "chmod 755 / 2>/dev/null || true\n"
-                                                'chmod 1777 "$AUTOPKGTEST_TMP"\n', 1)
+                                                'chmod 1777 "$AUTOPKGTEST_TMP"\n'
+                                                'chmod -R a+rX "$PWD" 2>/dev/null || true\n', 1)
             for tool, pkgs in TEST_TOOLS.items():
                 if re.search(r"(^|[\s;&|(`])" + re.escape(tool) + r"\b", st["runs"], re.M):
                     packages += [p for p in pkgs if p not in [q.value if isinstance(q, C) else q for q in packages]]
         if real:
+            if source_uses(getattr(self, "source_data", None), rb"^\s*use\s+Debconf::") \
+                    and "debconf" not in [q.value if isinstance(q, C) else q for q in packages]:
+                # debconf is Priority: required, on every Debian testbed (po-debconf's tools load Debconf::)
+                packages.append(C("debconf", "Priority: required in Debian, so on every testbed"))
+            for dep in essential_script_tools(getattr(self, "source_data", None), tests=True):
+                if dep not in [q.value if isinstance(q, C) else q for q in packages]:
+                    packages.append(C(dep, "used by the source's shell scripts; Essential in Debian"))
             self.notes.append("autopkgtests converted to the test pipeline ({} steps)".format(len(real)))
             steps.insert(0, dpkg_database_step(aliases, self.main_package))
+            users = list(dict.fromkeys(SYSTEM_USERS))
+            if users:
+                # the users the maintainer scripts create; melange test, like apko, does not run them (apt's _apt)
+                steps.insert(1, {"name": "System users of the maintainer scripts",
+                                 "runs": "\n".join(useradd_command(u) for u in users) + "\n"})
+                if "shadow" not in [q.value if isinstance(q, C) else q for q in packages]:
+                    packages.append(C("shadow", "useradd, for the users of the maintainer scripts"))
+            if getattr(self, "uses_ncursesw", False):
+                # the tests build against the package's headers, which include <ncursesw/curses.h>
+                steps.insert(1, dict(NCURSESW_STEP))
+            if any(re.search(r"apt-cache policy|apt_pkg\.SourceList|/etc/apt/sources\.list|/etc/debian_version",
+                             st.get("runs", "")) for st in real):
+                # the test reads the testbed's apt sources (the distribution it runs on) and
+                # /etc/debian_version: a Debian unstable testbed
+                steps.insert(1, {"name": "apt sources (as on a Debian unstable testbed)", "runs": (
+                    "[ -e /etc/debian_version ] || echo forky/sid > /etc/debian_version\n"
+                    "if [ ! -s /etc/apt/sources.list ] && [ -z \"$(ls /etc/apt/sources.list.d 2>/dev/null)\" ]; then\n"
+                    "  mkdir -p /etc/apt/sources.list.d\n"
+                    "  printf 'Types: deb\\nURIs: http://deb.debian.org/debian\\nSuites: unstable\\nComponents: main\\n"
+                    "Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg\\n' > /etc/apt/sources.list.d/debian.sources\n"
+                    "fi\n"
+                    "apt-get update\n")})
+                for p in ("apt", "debian-archive-keyring"):
+                    if p not in [q.value if isinstance(q, C) else q for q in packages]:
+                        packages.append(C(p, "the Debian testbed's apt sources"))
+            if any("py3versions" in st.get("runs", "") for st in real):
+                # Debian's py3versions (python3 package): the Python 3 versions to test with
+                steps.insert(1, {"name": "py3versions (as on a Debian testbed)", "runs": (
+                    "mkdir -p /usr/local/bin\n"
+                    "cat > /usr/local/bin/py3versions <<'EOF'\n"
+                    "#!/bin/sh\n"
+                    "v=$(python3 -c 'import sys; print(\"%d.%d\" % sys.version_info[:2])')\n"
+                    "case \"$*\" in *v*) echo \"$v\";; *) echo \"python$v\";; esac\n"
+                    "EOF\n"
+                    "chmod +x /usr/local/bin/py3versions\n")})
+                if "python3" not in [p.value if isinstance(p, C) else p for p in packages]:
+                    packages.append("python3")
             if self.source_steps:
                 # autopkgtest runs in the unpacked source tree
                 packaging = []
-                if any(re.search(r"(?<![\w/])debian/|dpkg-parsechangelog", st["runs"]) for st in real) \
-                        and not any("debian.tar" in str(st) or "_{}.tar".format(self.deb_version) in str(st)
-                                    for st in self.source_steps):
+                has_debian = any("debian.tar" in str(st) or "_{}.tar".format(self.deb_version) in str(st)
+                                 for st in self.source_steps)
+                series = [l.split()[0] for l in (self.read("patches/series") or "").splitlines()
+                          if l.strip() and not l.lstrip().startswith("#")]
+                if (series or any(re.search(r"(?<![\w/])debian/|(?:\$\{?PWD\}?|\$\(pwd\)|`pwd`)/debian/|dpkg-parsechangelog",
+                                            st["runs"]) for st in real)) and not has_debian:
                     packaging = [st for st in [self.debian_packaging_step()] if st]
+                if series and (packaging or has_debian):
+                    # the source package autopkgtest unpacks has Debian's patches applied (mmdebstrap's
+                    # testsuite checks hurd-profile.sh, which a patch fixes)
+                    if "patch" not in [q.value if isinstance(q, C) else q for q in packages]:
+                        packages.append(C("patch", "to apply Debian's patches to the tested source"))
+                    packaging.append({"name": "Debian's patches (autopkgtest tests the patched source)", "runs": (
+                        "sed -e 's/#.*//' -e '/^[[:space:]]*$/d' debian/patches/series | while read -r p opt; do\n"
+                        "  patch ${opt:--p1} -N < \"debian/patches/$p\"\n"
+                        "done\n")})
                 steps = [dict(st) for st in self.source_steps] + packaging + steps
         return steps, packages
 
@@ -2994,7 +4155,7 @@ class Converter:
         if binary.get("architecture", "any") != "all":
             test["pipeline"].append({"uses": "test/tw/ldd-check"})
         cpan = re.match(r"https?://metacpan\.org/(?:release|dist)/([\w-]+)", getattr(self, "homepage", ""))
-        if main and cpan and getattr(self, "bs", None) == "perl_makemaker":
+        if main and cpan and getattr(self, "bs", None) in ("perl_makemaker", "perl_build"):
             test["environment"]["contents"]["packages"].append("perl")
             # the Debian Perl team names it for autopkgtest-pkg-perl; else metacpan's main module
             module = (self.read("tests/pkg-perl/use-name") or "").split("\n")[0].strip() \
@@ -3002,7 +4163,7 @@ class Converter:
             test["pipeline"].append({"name": "Load the module", "runs": "perl -M{} -e1\n".format(module)})
         if main and getattr(self, "python_module", None):
             test["environment"]["contents"]["packages"].append("python3")
-            test["pipeline"].append({"uses": "python/import", "with": {"imports": "import " + self.python_module}})
+            test["pipeline"].append({"uses": "python/import", "with": {"python": "python3", "imports": "import " + self.python_module}})
         if main:
             steps, packages = self.autopkgtests(name)
             have = list(test["environment"]["contents"]["packages"])
@@ -3038,6 +4199,29 @@ def watch_tarball_urls(watch, source, version):
     Only plain URLs whose file name holds the version group are handled
     (no page scraping). Several candidates when the extension is a pattern."""
     body = re.sub(r"\\\n", " ", watch)
+    src = re.search(r"(?mi)^Source:\s*(\S+)", watch)
+    pat = re.search(r"(?mi)^Matching-Pattern:\s*(\S+)", watch)
+    if src and pat and not re.search(r"(?mi)^Mode:\s*git", watch):
+        # debian/watch v5: Source (a page) and Matching-Pattern (relative to it)
+        base, rel = src.group(1).split("?", 1)[0], pat.group(1)
+        # (by hand: urljoin takes the regex's [...] for an IPv6 host)
+        if re.match(r"^https?://", rel):
+            url = rel
+        elif rel.startswith("/"):
+            url = re.match(r"^https?://[^/]+", base).group(0) + rel
+        else:
+            url = base.rsplit("/", 1)[0] + "/" + rel
+        url = url.replace("@PACKAGE@", source).replace("@ANY_VERSION@", version)
+        exts = [""]
+        if url.endswith("@ARCHIVE_EXT@"):
+            url, exts = url[:-len("@ARCHIVE_EXT@")], list(ARCHIVE_EXTS)
+        out = []
+        # a version-looking directory (gitlab's -/archive/v?\d[\d.]+/) is the tag: with or without v
+        for tag in ("", "v") if re.search(r"v\?\\d", url) else ("",):
+            u = re.sub(r"v\?\\d\[\\d\.\]\+|\\d\[\\d\.\]\+", tag + version, url)
+            if not re.search(r"[()\[\]*+?|^$\\]", u):
+                out += [u + e for e in exts]
+        return out
     for line in body.splitlines():
         line = line.strip()
         if not line or line.startswith("#") or line.startswith("version="):
@@ -3124,17 +4308,38 @@ def git_snapshot_step(url, date, resolve=False):
     return [Comment("{}: {}".format(TODO, msg)), step], [msg]
 
 
+def submodule_paths(url, commit):
+    """The submodule paths of the repository at that commit (GitHub only)."""
+    m = re.match(r"https://github\.com/([^/]+/[^/]+?)(?:\.git)?/?$", url)
+    if not m:
+        return []
+    try:
+        text = http_get("https://raw.githubusercontent.com/{}/{}/.gitmodules".format(m.group(1), commit))
+    except Exception:
+        return []
+    return re.findall(r"(?m)^\s*path\s*=\s*(\S+)", text.decode("utf-8", "replace") if isinstance(text, bytes) else text)
+
+
+def has_submodules(url, commit):
+    """Does the repository at that commit have a .gitmodules (GitHub only)?"""
+    return bool(submodule_paths(url, commit))
+
+
 def git_url_checkout_step(url, version, tag_prefix=None, resolve=False, todo=None):
     """A git-checkout step pinned to a commit, the Wolfi convention for git sources.
 
     Returns (steps, notes)."""
-    prefixes = (tag_prefix,) if tag_prefix is not None else ("v", "")
+    repo = re.sub(r"\.git$", "", url.rstrip("/").rsplit("/", 1)[-1])
+    # also the project name (sombok-2.4.0) and release- prefixes, when the usual ones are not tags
+    prefixes = (tag_prefix,) if tag_prefix is not None else ("v", "", repo + "-", "release-", "rel-")
     tag, commit = resolve_tag(url, version, prefixes) if resolve else (None, None)
     prefix = tag[:-len(version)] if tag else prefixes[0]
     step = {"uses": "git-checkout", "with": {
         "repository": url,
         "tag": prefix + "${{package.version}}",
         "expected-commit": commit or "0" * 40}}
+    if commit and has_submodules(url, commit):
+        step["with"]["recurse-submodules"] = True  # release tarballs include them (clasp: libpotassco)
     if commit:
         return [step], []
     msg = "set expected-commit for tag {}{} (re-run with --download, or git ls-remote)".format(prefix, version)
@@ -3201,7 +4406,7 @@ def spdx_header(license_id, author):
     return lines + [""]
 
 
-def write_output(name, recipe, header, aux, out, to_stdout):
+def write_output(name, recipe, header, aux, out, to_stdout, aux_exec=()):
     text = "\n".join(["# " + l if l else "#" for l in header]) + "\n"
     text += "\n".join(emit(recipe)) + "\n"
     if to_stdout:
@@ -3218,6 +4423,7 @@ def write_output(name, recipe, header, aux, out, to_stdout):
             mode = "wb" if isinstance(content, bytes) else "w"
             with open(os.path.join(auxdir, fname), mode, **({} if mode == "wb" else {"encoding": "utf-8"})) as fh:
                 fh.write(content)
+            os.chmod(os.path.join(auxdir, fname), 0o755 if fname in aux_exec else 0o644)
     print("wrote {}{}".format(path, " and {}/".format(os.path.join(out, name)) if aux else ""), file=sys.stderr)
     return text
 
@@ -3233,6 +4439,8 @@ def main(argv=None):
     p.add_argument("--out", default="packages", help="output directory (default: packages)")
     p.add_argument("--stdout", action="store_true", help="print the recipe instead of writing files")
     p.add_argument("--name", help="override the package name")
+    p.add_argument("--build-profiles", help="comma-separated Debian build profiles for the build "
+                   "dependencies (default: nocheck)")
     p.add_argument("--version", help="override the package version")
     p.add_argument("--version-var", help="debian/rules variable holding the version (native packages)")
     p.add_argument("--upstream-url", help="upstream tarball URL (the version is templated automatically)")
@@ -3265,7 +4473,7 @@ def main(argv=None):
         conv = Converter(tree, top, args, WolfiIndex(args.check_wolfi))
         name, recipe, header = conv.convert()
         header = spdx_header(args.spdx_license, args.author) + header
-        text = write_output(name, recipe, header, conv.aux, args.out, args.stdout)
+        text = write_output(name, recipe, header, conv.aux, args.out, args.stdout, conv.aux_exec)
         for n in conv.notes:
             print("note: " + n, file=sys.stderr)
         built = report_build(args, name)

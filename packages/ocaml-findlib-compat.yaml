@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# The findlib packages of OCaml libraries that the standard library absorbed:
+# bigarray, bytes, seq, stdlib-shims and uchar. Older code still "requires"
+# them. Debian ships these dummy packages in libstdlib-ocaml-dev; the META
+# files next to this recipe are Debian's (debian/META.* of its ocaml source).
+# Wolfi's ocaml has none, and its ocaml-findlib removes findlib's dummy bytes.
+package:
+  name: ocaml-findlib-compat
+  version: '5.2'
+  epoch: 0
+  description: Dummy findlib packages bigarray, bytes, seq, stdlib-shims and uchar for older OCaml code
+  copyright:
+    - license: LGPL-2.1-only WITH OCaml-LGPL-linking-exception
+  dependencies:
+    provides:
+      - libseq-ocaml-dev=${{package.full-version}}
+      - libuchar-ocaml-dev=${{package.full-version}}
+    runtime:
+      - ocaml
+      - ocaml-findlib
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - busybox
+vars:
+  packages: bigarray bytes seq stdlib-shims uchar
+pipeline:
+  - name: META files
+    runs: |
+      lib="${{targets.destdir}}"/usr/lib/ocaml
+      for p in ${{vars.packages}}; do
+        install -Dm644 ocaml-findlib-compat/META.$p "$lib/$p/META"
+      done
+      mkdir -p "${{targets.destdir}}"/usr/share/licenses/ocaml-findlib-compat
+      echo "Debian's META files, from its ocaml source: LGPL-2.1 with the OCaml linking exception." \
+        > "${{targets.destdir}}"/usr/share/licenses/ocaml-findlib-compat/README
+update:
+  enabled: false
+  manual: true
+  exclude-reason: Debian's META files for the OCaml version they name; nothing upstream to follow
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+        - ocaml
+        - ocaml-findlib
+        - ocamlfind
+  pipeline:
+    - runs: |
+        for p in ${{vars.packages}}; do
+          ocamlfind query "$p"
+        done

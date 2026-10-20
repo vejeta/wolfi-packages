@@ -1,0 +1,18 @@
+Description: test installed script when running under autopkgtest
+Origin: vendor
+Forwarded: not-needed
+Author: Florian Schlichting <fsfs@debian.org>
+
+--- a/t/00-compile.t
++++ b/t/00-compile.t
+@@ -13,8 +13,9 @@
+     'Pod/Wordlist.pm'
+ );
+ 
++my $bindir = $ENV{AUTOPKGTEST_TMP} ? '/usr/bin' : 'bin';
+ my @scripts = (
+-    'bin/podspell'
++    "$bindir/podspell"
+ );
+ 
+ # no fake home requested

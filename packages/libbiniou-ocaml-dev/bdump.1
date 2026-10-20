@@ -1,0 +1,82 @@
+.\" groff -man -Tascii bdump.1
+.\" ==========================================================================
+.\" ============= Synopsis ===================================================
+.\" ==========================================================================
+.TH BDUMP 1 "June 2013" BDUMP "User Manuals"
+.SH NAME
+bdump \- visualization of biniou data
+.SH SYNOPSIS
+.B bdump \fR[\fIOptions...\fR] [\fIfile\fR]
+.\" ==========================================================================
+.\" ============= Description ================================================
+.\" ==========================================================================
+.SH DESCRIPTION
+.B bdump
+prints biniou data files in human readable form. For the
+conversion of hash tags into meaningful names,
+.B bdump
+maintains a dictionary of words, see option
+.I -h\fR.
+New words can be added to this dictionary with
+.I -d
+and
+.I -w\fR. The dictionary is saved between invocation, see option
+.I -x
+and 
+.I -h\fR.
+.P
+If the
+.I file
+argument is omitted, 
+.B bdump
+reads data from standard input.
+.\"
+.\" ==========================================================================
+.\" ================ Options =================================================
+.\" ==========================================================================
+.\"
+.SH OPTIONS
+.\" ===================== -d file ============================================
+.TP
+.B "-d file"
+load
+.I file
+containing words to add to the dictionary, one per line
+.\" ===================== -h file ============================================
+.TP
+.B "-h file"
+set dictionary file for unhashing. Default is
+.I $HOME/.bdump-dict
+on Unix and
+.I $HOMEPATH\_bdump-dict
+on Windows
+.\" ===================== -w word1,word2,... =================================
+.TP
+.B "-w word1,word2,..."
+add words to the dictionary
+.\" ===================== -x  ================================================
+.TP
+.B "-x"
+neither load nor update the dictionary file (see option
+.I -h\fR)
+.\" ===================== -help ==============================================
+.TP
+.B "-help | --help"
+print options and exit
+.\"
+.\" ==========================================================================
+.\" ================ SEE ALSO ================================================
+.\" ==========================================================================
+.\"
+.SH SEE ALSO
+.TP
+the \fBbiniou\fR web site, \fIhttp://mjambon.com/biniou.html\fR
+.\"
+.\" ==========================================================================
+.\" ================ Author ==================================================
+.\" ==========================================================================
+.\"
+.SH AUTHOR
+This manual page was written by Sylvain Le Gall
+<gildor@debian.org> and Hendrik Tews <hendrik@askra.de>,
+specifically for the Debian project (and may be used by others).

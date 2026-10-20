@@ -19,6 +19,7 @@ environment:
     packages:
       - build-base
       - busybox
+      - bash
       - autoconf
       - automake
       - libtool
@@ -103,12 +104,27 @@ pipeline:
   - name: Remove libtool archives (abuild does this by default)
     runs: |
       find "${{targets.destdir}}" -name "*.la" -delete
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for s in usr/sbin sbin bin lib; do
+        d="${{targets.destdir}}/$s"
+        [ -d "$d" ] && [ ! -L "$d" ] || continue
+        t=usr/bin; [ "$s" = lib ] && t=usr/lib
+        mkdir -p "${{targets.destdir}}/$t" && cp -a "$d"/. "${{targets.destdir}}/$t/" && rm -rf "$d"
+      done
   - uses: strip
 subpackages:
   - name: zimg-doc
     description: Scaling, colorspace conversion and dithering library (doc)
     pipeline:
-      - uses: split/alldocs
+      - runs: |
+          for d in usr/share/doc usr/share/man usr/share/info usr/share/html usr/share/sgml \
+                   usr/share/licenses usr/share/gtk-doc usr/share/devhelp usr/share/help; do
+            [ "$d" = usr/share/licenses ] && continue  # Wolfi keeps the license in the package
+            [ -d "${{targets.destdir}}/$d" ] || continue
+            mkdir -p "${{targets.contextdir}}/$(dirname $d)"
+            mv "${{targets.destdir}}/$d" "${{targets.contextdir}}/$d"
+          done
   - name: zimg-dev
     description: Scaling, colorspace conversion and dithering library (dev)
     pipeline:

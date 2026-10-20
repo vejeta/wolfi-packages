@@ -1,0 +1,26 @@
+Description: Fix typos in manpages
+Author: Emmanuel Bouthenot <kolter@debian.org>
+Forwarded: no
+Last-Update: 2018-03-29
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/lib/Unicode/LineBreak.pod
++++ b/lib/Unicode/LineBreak.pod
+@@ -781,7 +781,7 @@
+ 
+ =item C<AMBIGUOUS_LATIN() =E<gt> EA_N>
+ 
+-Treate letters having ambiguous (A) width of Cyrillic, Greek and Latin scripts
++Treat letters having ambiguous (A) width of Cyrillic, Greek and Latin scripts
+ as neutral (N).
+ 
+ =back
+@@ -886,7 +886,7 @@
+ =item *
+ 
+ Code points of following UCS ranges are given fixed property values even
+-if they have not been assigned any characers.
++if they have not been assigned any characters.
+ 
+     Ranges             | UAX #14    | UAX #11    | Description
+     -------------------------------------------------------------

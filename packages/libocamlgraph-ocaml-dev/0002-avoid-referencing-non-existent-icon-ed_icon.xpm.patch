@@ -1,0 +1,35 @@
+From: Mehdi Dogguy <mehdi@debian.org>
+Date: Sun, 25 Apr 2010 14:51:39 +0200
+Subject: avoid referencing non existent icon ed_icon.xpm
+
+---
+ editor/ed_main.ml | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/editor/ed_main.ml b/editor/ed_main.ml
+index b7309cd..b48ef1a 100644
+--- a/editor/ed_main.ml
++++ b/editor/ed_main.ml
+@@ -895,7 +895,7 @@ described in file LICENSE.
+ This software is distributed in the hope that it will be useful, 
+ but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+-      ~logo:(GdkPixbuf.from_file"ed_icon.xpm" )
++(*      ~logo:(GdkPixbuf.from_file"ed_icon.xpm" )*)
+       ~name:ed_name
+       ~version:"0.99"
+       ~website:"http://ocamlgraph.lri.fr/"
+@@ -925,11 +925,13 @@ let handbook_text (view:GText.view) =
+   (* title *)
+   buffer#insert ~iter ~tag_names:["title"] (ed_name^" Handbook\n");
+   (* editor's icon *)
++(*
+   let image_anchor = buffer#create_child_anchor iter in
+   let image = GMisc.image 
+       ~pixbuf:(GdkPixbuf.from_file_at_size "ed_icon.xpm" ~width:70 ~height:70) 
+       () in
+   view#add_child_at_anchor image#coerce image_anchor;
++*)
+   buffer#insert ~iter "\n\n\n";
+   let start,stop = buffer#bounds in
+   buffer#apply_tag_by_name "center" ~start ~stop ; 

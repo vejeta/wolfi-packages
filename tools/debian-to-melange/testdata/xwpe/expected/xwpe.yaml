@@ -62,6 +62,14 @@ pipeline:
       repository: https://codeberg.org/mendezr/xwpe.git
       tag: v${{package.version}}
       expected-commit: '0000000000000000000000000000000000000000'
+  - name: 'Debian''s include/ncursesw'
+    runs: |
+      mkdir -p /usr/include/ncursesw
+      for h in curses.h ncurses.h ncurses_dll.h term.h term_entry.h termcap.h tic.h unctrl.h \
+               panel.h menu.h form.h eti.h etip.h cursesapp.h cursesf.h cursesm.h cursesp.h cursesw.h cursslk.h; do
+        [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h
+      done
+      true
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/xwpe"
@@ -90,6 +98,7 @@ test:
         - dpkg  # Essential in Debian, so on every testbed
         - findutils  # Essential in Debian, so on every testbed
         - grep  # Essential in Debian, so on every testbed
+        - gzip  # Essential in Debian, so on every testbed
         - sed  # Essential in Debian, so on every testbed
         - python3
         - py3-pillow  # Debian: python3-pil
@@ -121,6 +130,7 @@ test:
           function add(   m, j, f) {
             m = split(pkg alias[pkg], names, " ")
             for (j = 1; j <= m; j++) {
+              if (seen[names[j]]++) continue  # one entry per name: dpkg rejects duplicates
               f = db "/info/" names[j] ".list"
               printf "%s", files > f; close(f)
               gsub(/_/, "~", ver)
@@ -139,15 +149,34 @@ test:
           # po-debconf's translatable fields (_Description, __Choices) in the C locale
           [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/xwpe.templates" && break
         done
+        # / and /tmp as on a Debian testbed: sandboxes may make / 0700 (apt's _apt reads below it)
+        chmod 755 / 2>/dev/null || true
+        chmod 1777 /tmp 2>/dev/null || true
+        # base-files' vendor (dpkg-vendor, dpkg-buildpackage)
+        mkdir -p /etc/dpkg/origins
+        [ -e /etc/dpkg/origins/debian ] || printf 'Vendor: Debian\nVendor-URL: https://www.debian.org/\nBugs: debbugs://bugs.debian.org\n' > /etc/dpkg/origins/debian
+        [ -e /etc/dpkg/origins/default ] || ln -s debian /etc/dpkg/origins/default
+    - name: 'Debian''s include/ncursesw'
+      runs: |
+        mkdir -p /usr/include/ncursesw
+        for h in curses.h ncurses.h ncurses_dll.h term.h term_entry.h termcap.h tic.h unctrl.h \
+                 panel.h menu.h form.h eti.h etip.h cursesapp.h cursesf.h cursesm.h cursesp.h cursesw.h cursslk.h; do
+          [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h
+        done
+        true
     - name: 'autopkgtest: XWPE_TEST_WAIT_SCALE=3 WPE_BIN=/usr/bin/wpe python3 -m pytes'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
+        set +o pipefail 2>/dev/null || true
         (
         XWPE_TEST_WAIT_SCALE=3 WPE_BIN=/usr/bin/wpe python3 -m pytest -q tests --ignore=tests/x11
         ) || echo 'autopkgtest marked flaky failed (ignored)'
     - name: 'autopkgtest: XWPE_TEST_WAIT_SCALE=3 XWPE_BIN=/usr/bin/xwpe python3 -m pyt'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
+        set +o pipefail 2>/dev/null || true
         (
         XWPE_TEST_WAIT_SCALE=3 XWPE_BIN=/usr/bin/xwpe python3 -m pytest -q tests/x11
         ) || echo 'autopkgtest marked flaky failed (ignored)'

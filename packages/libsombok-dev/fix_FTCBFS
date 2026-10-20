@@ -1,0 +1,23 @@
+Description: Fix FTCBFS
+sombok fails to cross build from source, because configure.ac abuses
+AC_CHECK_FILE for discovering files in the source tree. AC_CHECK_FILE should
+only be used for checking files on the host machine. The attached patch fixes
+that and makes sombok cross buildable. Please consider applying it.
+Author: Helmut Grohne <helmut@subdivi.de>
+Origin: vendor, https://bugs.debian.org/901819
+Bug-Debian: https://bugs.debian.org/901819
+Forwarded: no
+Last-Update: 2018-07-05
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/configure.ac
++++ b/configure.ac
+@@ -120,7 +120,7 @@
+   AC_HELP_STRING(--with-unicode-version=VERSION,
+   [version of Unicode Standard @<:@default=current version@:>@]),
+   UNICODE_VERSION=$withval,UNICODE_VERSION=$DEFAULT_UNICODE_VERSION)
+-AC_CHECK_FILE([lib/$UNICODE_VERSION.c],
++AS_IF([test -f "lib/$UNICODE_VERSION.c"],
+   AC_MSG_RESULT($UNICODE_VERSION),
+   AC_MSG_ERROR(Unknown Unicode version $UNICODE_VERSION.))
+ AC_SUBST(UNICODE_VERSION)

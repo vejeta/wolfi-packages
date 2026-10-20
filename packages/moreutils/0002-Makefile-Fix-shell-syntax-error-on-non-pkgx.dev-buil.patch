@@ -1,0 +1,32 @@
+From b76308ce00440dfd88b82cc01b80814ffc12950b Mon Sep 17 00:00:00 2001
+From: Nicolas Schier <nicolas@fjasle.eu>
+Date: Sat, 7 Jun 2025 18:33:11 +0200
+Subject: [PATCH] Makefile: Fix shell syntax error on non-pkgx.dev builds
+
+Add quotes to fix shell syntax for non-pkgx.dev builds, to prevent this
+error message during 'make install':
+
+    /bin/sh: 1: [: sponge.1: unexpected operator
+
+Fixes: 0675c6ea5368 ("Makefile: Warn users of pkgx.dev about their poor life choices")
+Signed-off-by: Nicolas Schier <nicolas@fjasle.eu>
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 35c33b9..cab5cf9 100644
+--- a/Makefile
++++ b/Makefile
+@@ -24,7 +24,7 @@ isutf8: is_utf8/*.c is_utf8/*.h
+ 	cp is_utf8/isutf8 .
+ 
+ install:
+-	@if [ $(MANS) = .noop ]; then \
++	@if [ "$(MANS)" = .noop ]; then \
+ 		echo "pkgx.dev uses 'AI' to describe software, generate images, and respond to bug reports. That is gross. Please consider not using it. I will give you some time to think."; \
+ 		sleep 3600; \
+ 	fi
+-- 
+2.53.0
+

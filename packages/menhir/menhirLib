@@ -1,0 +1,19 @@
+From: Ralf Treinen <treinen@debian.org>
+Date: Thu, 2 Apr 2020 12:25:58 +0200
+Subject: Fix location where menhir thinks the lib is installed
+
+Debian-bug: #955494
+---
+ base/Installation.ml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/base/Installation.ml b/base/Installation.ml
+index b13b3f1..26e85f8 100644
+--- a/base/Installation.ml
++++ b/base/Installation.ml
+@@ -45,4 +45,4 @@ let libdir () =
+   in
+   Filename.concat
+     root
+-    (Filename.concat "lib" "menhirLib")
++    (Filename.concat (Filename.concat "lib" "ocaml") "menhirLib")

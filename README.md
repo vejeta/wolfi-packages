@@ -1,6 +1,6 @@
 # Wolfi Community Packages
 
-[![Packages](https://img.shields.io/badge/packages-46-brightgreen)](#available-packages)
+[![Packages](https://img.shields.io/badge/packages-306-brightgreen)](PACKAGES.md)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
@@ -18,54 +18,28 @@ packages and `APKINDEX` are published on SourceForge.
 
 ## Available packages
 
-| Package | Version | Description | License |
-|---------|---------|-------------|---------|
-| appstream | 1.2.1 | AppStream metadata library (library only; needed by libadwaita) | LGPL-2.1-or-later |
-| coursier | 2.1.26 | Scala artifact fetcher and application installer (`cs`), JVM launcher | Apache-2.0 |
-| gatling | 3.16.0 | Load testing tool for web applications and APIs (`gatling`, `gatling-recorder`) | Apache-2.0 |
-| glib-networking | 2.90.0 | Network extensions for GLib: TLS support (GnuTLS) | LGPL-2.0-or-later |
-| jbang | 0.142.0 | Run Java source files as scripts, with their dependencies | MIT |
-| joern | 4.0.656 | Code property graph platform for vulnerability analysis of source code and binaries | Apache-2.0 |
-| libadwaita | 1.10.0 | Building blocks for modern GNOME applications (GTK4) | LGPL-2.1-or-later |
-| libass9 | 0.17.5 | Portable library for rendering ASS/SSA subtitles (shared; official Wolfi's libass is static-only) | ISC |
-| libbluray | 1.4.0 | Library to access Blu-Ray disks for video playback | LGPL-2.1-or-later |
-| libcdio | 2.2.0 | GNU Compact Disc Input and Control Library | GPL-3.0-or-later |
-| libcdio-paranoia | 10.2.2.0.2 | CD paranoia library from libcdio | GPL-3.0-or-later AND LGPL-2.1-or-later |
-| libdvdnav | 6.1.1 | Library for DVD navigation | GPL-2.0-or-later |
-| libdvdread | 6.1.3 | Library for reading DVD video disks | GPL-2.0-or-later |
-| libebml | 1.4.7 | Extensible Binary Meta Language library (used by libmatroska) | LGPL-2.1-or-later |
-| libfyaml | 0.9.6 | Fully featured YAML 1.2 parser and emitter (needed by appstream) | MIT |
-| libmatroska | 1.7.2 | Matroska (MKV) container library | LGPL-2.1-or-later |
-| libplacebo | 7.351.0 | Reusable library for GPU-accelerated video/image rendering | LGPL-2.1-or-later |
-| libsoup3 | 3.6.6 | GNOME HTTP client/server library, version 3 | LGPL-2.0-or-later |
-| libxmlb | 0.3.29 | Library to create and query binary XML blobs (needed by appstream) | LGPL-2.1-or-later |
-| libxpresent | 1.0.2 | X11 Present extension library | MIT |
-| metals | 1.6.9 | Scala language server (LSP) | Apache-2.0 |
-| mill | 1.3.0 | Build tool for Java, Scala and Kotlin | MIT |
-| mpv | 0.40.0 | Free, open source, and cross-platform media player | GPL-2.0-or-later AND LGPL-2.1-or-later |
-| mujs | 1.3.7 | Lightweight JavaScript interpreter | ISC |
-| qt5-qtdeclarative | 5.15.17 | Qt5 - QtDeclarative (QML/QtQuick) components | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
-| qt5-qtquickcontrols | 5.15.17 | Qt5 - QtQuick Controls 1 components | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
-| qt5-qtquickcontrols2 | 5.15.17 | Qt5 - QtQuick Controls 2 components | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
-| qt5-qtsvg | 5.15.17 | Qt5 - QtSvg (SVG rendering) | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
-| qt5-qtwebchannel | 5.15.17 | Qt5 - QtWebChannel (bidirectional client-server communication) | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
-| qt5-qtwebengine | 5.15.17 | Qt5 - QtWebEngine (Chromium-based web rendering) | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
-| qt5-qtx11extras | 5.15.17 | Qt5 - QtX11Extras (X11 platform extras) | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 |
-| rubberband | 4.0.0 | Audio time-stretching and pitch-shifting library | GPL-2.0-or-later |
-| scala-2.12 | 2.12.21 | Scala 2.12 compiler and tools (`scalac-2.12`, `scala-2.12`, `scaladoc-2.12`), built from source without sbt | Apache-2.0 |
-| scala-2.13 | 2.13.18 | Scala 2.13 compiler and tools (`scalac-2.13`, `scala-2.13`, `scaladoc-2.13`), built from source without sbt | Apache-2.0 |
-| scala-xml | 2.5.0 | Scala XML library for Scala 3; `scala-xml-2.13` and `scala-xml-2.12` for Scala 2. Built with the `scala/build` pipeline | Apache-2.0 |
-| shaderc | 2025.4 | Tools and libraries for Vulkan shader compilation | Apache-2.0 |
-| stremio | 1.2.0 | Modern media center (Stremio desktop 1.x: GTK4, libadwaita, WebKitGTK); converted from the [Debian package](https://tracker.debian.org/pkg/stremio) with `debian-to-melange` | GPL-3.0-only |
-| stremio-qt5 | 4.4.169 | Modern media center for online video content (Stremio shell 4.x, Qt5) | GPL-3.0-or-later |
-| stremio-server-installer | 4.21.1 | Downloader for Stremio's streaming server (server.js is fetched at install time, never redistributed) | GPL-3.0-only |
-| taglib | 2.3.2 | Library for reading and editing the metadata of audio files | LGPL-2.1-only OR MPL-1.1 |
-| uchardet | 0.0.8 | Universal charset detection library | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later |
-| vlc | 3.0.24 | VLC media player with the Qt5 interface (MKV, DVD, Blu-ray, VA-API, libass subtitles) | GPL-2.0-or-later |
-| webkitgtk-6.0 | 2.54.1 | WebKitGTK web engine, GTK4 API (webkitgtk-6.0) | LGPL-2.0-or-later AND BSD-2-Clause |
-| xdg-dbus-proxy | 0.1.9 | Filtering D-Bus proxy (used by the WebKitGTK sandbox) | LGPL-2.1-or-later |
-| xwpe | 1.6.6 | Borland-style programming environment and editor for the console and X11; converted from the [Debian package](https://tracker.debian.org/pkg/xwpe) with `debian-to-melange` | GPL-2.0-only |
-| zimg | 3.0.6 | Scaling, colorspace conversion, and dithering library | WTFPL |
+306 recipes, listed with versions and licenses in [PACKAGES.md](PACKAGES.md)
+(generated from the recipes by `scripts/package-list.py`). By area:
+
+| Area | Packages |
+|------|----------|
+| Media | mpv, vlc, stremio (GTK4) and stremio-qt5, libplacebo, libass9, libbluray, libdvdnav, libdvdread, libcdio, libmatroska, taglib, rubberband, shaderc, zimg, mujs |
+| GNOME and Qt5 | webkitgtk-6.0, libadwaita, libsoup3, glib-networking, appstream, xdg-dbus-proxy, qt5-qtwebengine and other Qt5 modules |
+| Debian tooling on Wolfi | apt, aptitude, mmdebstrap, debhelper (with dh-autoreconf, strip-nondeterminism, po-debconf), dwz, debootstrap, debconf, ucf, fakeroot, fakechroot, dctrl-tools, debian-archive-keyring, debian-keyring, distro-info-data, arch-test, sequoia-sq, sequoia-sqv, sequoia-chameleon-gnupg |
+| TeX | texlive 2026 (programs) and texmf-dist (the TeX Live 2026 tree, split by collection: 38 collections with their documentation), hevea, auctex, tex-common |
+| OCaml | 80 libraries and tools on Wolfi's ocaml, dune and findlib: menhir, js_of_ocaml, odoc, lwt, ppxlib and the Jane Street ppx set, dose3 (`apt-cudf`), cudf, the dune libraries |
+| Haskell | ghc-bootstrap and cabal-install-bootstrap (upstream binaries), pandoc-cli, shellcheck |
+| Cross toolchains | binutils-cross (as, ld and binutils for 16 architectures), mingw-w64 (Windows headers and import libraries) |
+| Solvers | gringo, clasp, aspcud, xapian-core |
+| JVM and Scala | scala-2.12, scala-2.13, scala-xml, coursier, mill, metals, jbang, gatling, joern |
+| Perl and Python | 55 Perl modules (the Perl::Critic chain, ikiwiki's dependencies), black, pycodestyle, pyflakes, python-apt, python-debian |
+| Fonts | 47 font packages (Debian's fonts-*, needed by TeX Live and the test suites) |
+| Documentation | docbook-xsl and docbook-xsl-ns (Debian's DocBook XSL stylesheets, with their images), docbook5-xml |
+| Others | ikiwiki, elinks, expect (Tcl 9, from Debian), moreutils, genext2fs, squashfs-tools-ng, capnproto, xwpe, algol68g |
+
+Many of them are converted from their Debian or Alpine packaging with the
+[tools](#tools) of this repository, autopkgtests included, and built and
+tested with melange.
 
 The recipes in [`packages/`](packages/) are the reference for versions.
 Packages are built for x86_64 and aarch64, except qt5-qtwebengine and
@@ -231,6 +205,7 @@ unit tests, run in CI by [`tools.yml`](.github/workflows/tools.yml).
 | [`debian-to-melange`](tools/debian-to-melange/) | Convert Debian packaging (`control`, `rules`, `copyright`, patches, maintainer scripts, debconf, autopkgtests) to a melange recipe |
 | [`alpine-to-melange`](tools/alpine-to-melange/) | Convert an Alpine `APKBUILD` to a melange recipe (replaces the removed `melange convert apkbuild`) |
 | [`melange-to-debian`](tools/melange-to-debian/) | Generate a `debian/` directory from a melange recipe, as a starting point for an ITP |
+| [`texlive-to-melange`](tools/texlive-to-melange/) | Generate the texmf-dist recipe from a TeX Live release's package database (`texlive.tlpdb`), one subpackage per collection |
 
 Typical uses:
 
@@ -244,6 +219,10 @@ tools/debian-to-melange/debian-to-melange.py --from-debian foo --check-wolfi --b
 # Alpine package -> Wolfi recipe
 tools/alpine-to-melange/alpine-to-melange.py --from-alpine foo --check-wolfi
 
+# An upstream release instead of the APKBUILD's source (texlive)
+tools/alpine-to-melange/alpine-to-melange.py --from-alpine texlive --check-wolfi --download \
+  --source-url https://ftp.tu-chemnitz.de/pub/tug/historic/systems/texlive/2026/texlive-20260301-source.tar.xz
+
 # Wolfi recipe -> debian/ for a new Debian package
 tools/melange-to-debian/melange-to-debian.py packages/foo.yaml --out ~/src/foo --check-debian
 ```
@@ -255,6 +234,18 @@ planned.
 See also [docs/research-tools.md](docs/research-tools.md) (existing
 conversion tools), [docs/design-notes.md](docs/design-notes.md) (recipe and
 CI decisions) and [TODO.md](TODO.md).
+
+## Contributions to Wolfi
+
+Fixes found while building these packages go to
+[wolfi-dev/os](https://github.com/wolfi-dev/os) too:
+
+- intltool: escape `{` in regexes, which Perl 5.26+ warns about at every run
+  ([wolfi-dev/os#78761](https://github.com/wolfi-dev/os/pull/78761))
+- ocaml: depend on gcc and zstd-dev, which `ocamlopt` and programs linked
+  with the OCaml runtime need
+- ocaml-findlib: keep findlib's `bytes` package, which code written for older
+  OCaml still requires
 
 ## Scope
 

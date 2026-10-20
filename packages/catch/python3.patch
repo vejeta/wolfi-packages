@@ -1,0 +1,55 @@
+Subject: python3 port
+Last-Update: 2020-09-15
+Author: Jérémy Lal <kapouer@melix.org>
+Forwwarded: not-needed, superseded by catch2
+--- a/scripts/releaseNotes.py
++++ b/scripts/releaseNotes.py
+@@ -2,7 +2,7 @@
+ 
+ import os
+ import re
+-import urllib2
++import urllib3
+ import json
+ 
+ from scriptCommon import catchPath
+@@ -24,7 +24,7 @@
+ 
+ def getIssueTitle( issueNumber ):
+     try:
+-        s = urllib2.urlopen("https://api.github.com/repos/philsquared/catch/issues/" + issueNumber ).read()        
++        s = urllib3.urlopen("https://api.github.com/repos/philsquared/catch/issues/" + issueNumber ).read()        
+     except:
+         return "#HTTP Error#"
+ 
+--- a/scripts/updateWandbox.py
++++ b/scripts/updateWandbox.py
+@@ -2,14 +2,14 @@
+ 
+ import json
+ import os
+-import urllib2
++import urllib3
+ 
+ from scriptCommon import catchPath
+ 
+ def upload(options):
+-    request = urllib2.Request('http://melpon.org/wandbox/api/compile.json')
++    request = urllib3.Request('http://melpon.org/wandbox/api/compile.json')
+     request.add_header('Content-Type', 'application/json')
+-    response = urllib2.urlopen(request, json.dumps(options))
++    response = urllib3.urlopen(request, json.dumps(options))
+     return json.loads(response.read())
+ 
+ main_file = '''
+--- a/scripts/generateSingleHeader.py
++++ b/scripts/generateSingleHeader.py
+@@ -33,7 +33,7 @@
+     }
+ 
+     for arg in sys.argv[1:]:
+-        arg = string.lower(arg)
++        arg = arg.lower()
+         if arg == "noimpl":
+             globals['includeImpl'] = False
+             print( "Not including impl code" )

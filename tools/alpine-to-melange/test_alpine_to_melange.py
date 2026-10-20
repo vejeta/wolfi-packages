@@ -211,5 +211,23 @@ class ExpansionTest(unittest.TestCase):
         self.assertEqual(len(apk.skipped), 1)
 
 
+
+@unittest.skipUnless(shutil.which("patch"), "needs patch")
+class AppliedPatchesTest(unittest.TestCase):
+
+    def test_patches_already_in_the_release_are_found(self):
+        import tarfile
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+            data = b"one\ntwo fixed\nthree\n"
+            info = tarfile.TarInfo("foo-1.0/src/a.c")
+            info.size = len(data)
+            tar.addfile(info, io.BytesIO(data))
+        applied = ("--- a/src/a.c\n+++ b/src/a.c\n@@ -1,3 +1,3 @@\n one\n-two\n+two fixed\n three\n")
+        pending = ("--- a/src/a.c\n+++ b/src/a.c\n@@ -1,3 +1,3 @@\n one\n two fixed\n-three\n+three fixed\n")
+        self.assertEqual(a2m.applied_patches(buf.getvalue(), {"done.patch": applied, "new.patch": pending}),
+                         ["done.patch"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,30 @@
+From a87889a3bf06fb6be6022b14c152f2f7de608910 Mon Sep 17 00:00:00 2001
+From: Mohammed Sadiq <sadiq@sadiqpk.org>
+Date: Mon, 6 Jan 2025 14:32:54 +0530
+Subject: [PATCH] ts: Use the last provided switch if both -i and -s are
+ provided
+
+Since the usage specifies [-i | -s], use only one of both are
+provided, and use the one that's provided the last.
+---
+ ts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/ts b/ts
+index 287ff59..1c516b3 100755
+--- a/ts
++++ b/ts
+@@ -63,8 +63,8 @@ my $mono=0;
+ use Getopt::Long;
+ GetOptions(
+ 	"r" => \$rel,
+-	"i" => \$inc,
+-	"s" => \$sincestart,
++	"i" => sub { $inc=1; $sincestart=0 },
++	"s" => sub { $inc=0; $sincestart=1 },
+ 	"m" => \$mono
+ ) && @ARGV <= 1 or die "usage: ts [-r] [-i | -s] [-m] [format]\n";
+ 
+-- 
+2.53.0
+
