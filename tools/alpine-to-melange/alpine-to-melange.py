@@ -308,6 +308,45 @@ def glob_regex(pattern):
 # Conversion
 # ==========================================================================
 
+def applied_patches(tarball, patches):
+    """The patches (name -> text) that the source tarball already contains: their reverse
+    applies (patch -R --dry-run) to the files they touch, extracted from the tarball."""
+    import io
+    import subprocess
+    import tarfile
+    import tempfile
+    targets = {}
+    for name, text in patches.items():
+        if isinstance(text, bytes):
+            text = text.decode("utf-8", "replace")
+        targets[name] = re.findall(r"(?m)^\+\+\+ (\S+)", text or "")
+    wanted = {t.split("/", 1)[-1] for ts in targets.values() for t in ts} | {t for ts in targets.values() for t in ts}
+    done = []
+    with tempfile.TemporaryDirectory() as tmp:
+        try:
+            with tarfile.open(fileobj=io.BytesIO(tarball)) as tar:
+                for m in tar:
+                    rel = m.name.split("/", 1)[-1] if "/" in m.name else ""
+                    if m.isfile() and any(rel == w or rel.endswith("/" + w) for w in wanted):
+                        dest = os.path.join(tmp, rel)
+                        os.makedirs(os.path.dirname(dest), exist_ok=True)
+                        with open(dest, "wb") as fh:
+                            fh.write(tar.extractfile(m).read())
+        except (tarfile.TarError, OSError, EOFError):
+            return []
+        for name, text in patches.items():
+            if not text or not targets[name]:
+                continue
+            data = text if isinstance(text, bytes) else text.encode()
+            for level in ("-p1", "-p0", "-p2"):
+                r = subprocess.run(["patch", "-R", "--dry-run", "-s", "-f", level, "-d", tmp],
+                                   input=data, capture_output=True)
+                if r.returncode == 0:
+                    done.append(name)
+                    break
+    return done
+
+
 def parse_sources(apk):
     """[(filename, url_or_None)] from source=, in order."""
     out = []
@@ -770,7 +809,10 @@ class Converter:
             elif getattr(a, "download", False) and fname.endswith(tuple(ARCHIVE_SUFFIXES)):
                 # --name/--version select another tarball than the APKBUILD's
                 try:
-                    step["with"]["expected-sha512"] = hashlib.sha512(http_get(url)).hexdigest()
+                    data = http_get(url)
+                    step["with"]["expected-sha512"] = hashlib.sha512(data).hexdigest()
+                    if idx == 0:
+                        self.main_source_data = data
                 except Exception as exc:
                     step["with"]["expected-sha256"] = "0" * 64
                     pipeline.append(self.todo("cannot download {}: {}".format(url, exc)))
@@ -805,6 +847,13 @@ class Converter:
                 'mkdir -p "$srcdir"\n' + "\n".join(links) + "\n" + self.body("unpack"))})
 
         patches = [f for f in self.local_files if f.endswith(".patch")]
+        if getattr(a, "source_url", None) and getattr(self, "main_source_data", None):
+            # a newer release than Alpine's source may have its backported fixes already
+            done = applied_patches(self.main_source_data, {p: self.files.get(p) for p in patches})
+            for p in done:
+                self.notes.append("patch {} left out: already applied in the --source-url release".format(p))
+                self.aux.pop(p, None)
+            patches = [p for p in patches if p not in done]
         if patches:
             pipeline.append({"uses": "patch", "with": {"patches": " ".join(
                 "{}/{}".format(name, p) for p in patches)}})

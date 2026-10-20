@@ -9,6 +9,7 @@
 # - triggers= not converted: texlive.trigger=/usr/share/texmf-dist texlive-context.trigger=/usr/share/texmf-dist
 # - main source: https://ftp.tu-chemnitz.de/pub/tug/historic/systems/texlive/2026/texlive-20260301-source.tar.xz (--source-url), not the APKBUILD's
 # - builddir=/home/build/_srcdir"/texlive-source-$_commi is not the top directory of the main tarball; review
+# - patch kpathsea-getopt-fix.patch left out: already applied in the --source-url release
 # - check() not run (pass --with-check to add it to the build)
 # - subpackage texlive-dbg skipped: debug symbols: use melange's split/debug if needed
 package:
@@ -82,7 +83,7 @@ pipeline:
       expected-sha512: c2ea189fee82475e3013e5e6d7bdbbeef80fe33d3636b99b35bf7c8d0ff06b48dcc54d12f4c3959a0fc9e24b80f9c4878a417d4b55ef4880ff238aefbcf189a3
   - uses: patch
     with:
-      patches: .recipe-files/texmfmp-fix-format-specifier.patch .recipe-files/fix-fortify-string.patch .recipe-files/kpathsea-getopt-fix.patch
+      patches: .recipe-files/texmfmp-fix-format-specifier.patch .recipe-files/fix-fortify-string.patch
   - name: Prepare
     runs: |
       # bibtex-x needs kpathsea flags
