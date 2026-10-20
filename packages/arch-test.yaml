@@ -7,8 +7,6 @@
 # Debian packaging: https://github.com/kilobyte/arch-test/tree/debian
 #
 # Conversion notes:
-# - build dependency 'mingw-w64-i686-dev' (Debian 'mingw-w64-i686-dev') not found in Wolfi; left out
-# - build dependency 'mingw-w64-x86-64-dev' (Debian 'mingw-w64-x86-64-dev') not found in Wolfi; left out
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
 # - autopkgtests converted to the test pipeline (2 steps)
 package:
@@ -42,9 +40,9 @@ environment:
       - binutils-loongarch64-linux-gnu  # Wolfi Community Packages
       - binutils-arc-linux-gnu  # Wolfi Community Packages
       - binutils-mingw-w64-i686  # Wolfi Community Packages
-      # TODO(debian-to-melange): mingw-w64-i686-dev is not in Wolfi (Debian: mingw-w64-i686-dev); left out
+      - mingw-w64-i686-dev  # Wolfi Community Packages
       - binutils-mingw-w64-x86-64  # Wolfi Community Packages
-      # TODO(debian-to-melange): mingw-w64-x86-64-dev is not in Wolfi (Debian: mingw-w64-x86-64-dev); left out
+      - mingw-w64-x86-64-dev  # Wolfi Community Packages
       - coreutils
       - findutils
 pipeline:
