@@ -812,6 +812,10 @@ class Converter:
                 # converted to dependencies.runtime
                 text = re.sub(r'(?m)^\s*depends="[^"]*"\n?', "", text)
             step = self.runs(text)
+            if step and fname == "build" and "icu-dev" in build_names and re.search(r"\bconfigure\b|cmake|meson", text):
+                # ICU 75+ headers need C++17; an autoconf check may settle for -std=gnu++11 (xetex),
+                # and CXXFLAGS come after it on the compiler's command line
+                step = 'export CXXFLAGS="$CXXFLAGS -std=gnu++17"  # the ICU headers need C++17\n' + step
             if step:
                 pipeline.append({"name": label, "runs": step})
         if "check" in apk.functions:

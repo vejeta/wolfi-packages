@@ -92,6 +92,7 @@ pipeline:
       sed -i s/SELFAUTOPARENT/TEXMFROOT/ texk/tex4htk/t4ht.c
   - name: Build
     runs: |
+      export CXXFLAGS="$CXXFLAGS -std=gnu++17"  # the ICU headers need C++17
       CARCH="${{build.arch}}"
       CBUILD="${{host.triplet.gnu}}"
       CHOST="${{host.triplet.gnu}}"
