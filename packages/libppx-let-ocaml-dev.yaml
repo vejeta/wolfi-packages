@@ -41,6 +41,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libbase-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
       - libppx-here-ocaml-dev  # Wolfi Community Packages
@@ -78,8 +79,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_let"
           mv "${{targets.destdir}}/usr/lib/ocaml/ppx_let/META" "${{targets.contextdir}}/usr/lib/ocaml/ppx_let/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_let/*.cma "${{targets.contextdir}}/usr/lib/ocaml/ppx_let/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_let/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/ppx_let/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_let/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_let/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_let/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_let/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_let/*/*.cma; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"

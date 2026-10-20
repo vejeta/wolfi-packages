@@ -37,6 +37,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libbigarray-compat-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - uses: git-checkout
@@ -72,8 +73,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/mmap"
           mv "${{targets.destdir}}/usr/lib/ocaml/mmap/META" "${{targets.contextdir}}/usr/lib/ocaml/mmap/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/mmap/*.cma "${{targets.contextdir}}/usr/lib/ocaml/mmap/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/mmap/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/mmap/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/mmap/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/mmap/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/mmap/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/mmap/"
+          done
+          true
 update:
   enabled: true
   github:

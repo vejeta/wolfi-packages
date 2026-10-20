@@ -36,6 +36,7 @@ environment:
       - bash
       - menhir  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 pipeline:
   - uses: git-checkout
     with:

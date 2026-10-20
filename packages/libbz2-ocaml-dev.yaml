@@ -42,6 +42,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - bzip2-dev  # Debian: libbz2-dev
       - coreutils
       - findutils
@@ -80,7 +81,10 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/stublibs"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/stublibs/*.so "${{targets.contextdir}}/usr/lib/ocaml/stublibs/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/stublibs/*.so; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/stublibs/"
+          done
+          true
 update:
   enabled: true
   release-monitor:
@@ -94,6 +98,7 @@ test:
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
         - build-base  # Debian: ocaml
+        - zstd-dev  # Debian: ocaml
         - ocaml-findlib  # Debian: ocaml-findlib
         - ocamlfind  # Debian: ocaml-findlib
         - libbz2-ocaml-dev

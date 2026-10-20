@@ -41,6 +41,7 @@ environment:
       - imagemagick-7  # Debian: imagemagick
       - netpbm  # Debian: imagemagick
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - texmf-dist-fontsrecommended  # Wolfi Community Packages (Debian: texlive-fonts-recommended)
       - texmf-dist-mathscience  # Wolfi Community Packages (Debian: texlive-science)
       - texmf-dist-latexextra  # Wolfi Community Packages (Debian: texlive-latex-extra)
@@ -116,6 +117,7 @@ test:
         - ocaml  # Debian: ocaml
         - ocaml-compiler-libs  # Debian: ocaml
         - build-base  # Debian: ocaml
+        - zstd-dev  # Debian: ocaml
         - ocamlbuild
         - bash  # Essential in Debian, so on every testbed
         - coreutils  # Essential in Debian, so on every testbed

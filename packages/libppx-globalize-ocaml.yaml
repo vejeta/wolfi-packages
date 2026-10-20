@@ -38,6 +38,7 @@ environment:
       - libppxlib-jane-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 pipeline:
   - uses: git-checkout
     with:
@@ -68,15 +69,42 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*opam* "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*dune* "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.mli "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*opam*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*dune*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.cmt*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.mli; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_globalize/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_globalize/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libppx-globalize-ocaml-dev"
           mv "${{targets.destdir}}"/usr/doc/ppx_globalize/* "${{targets.contextdir}}/usr/share/doc/libppx-globalize-ocaml-dev/"
           rmdir "${{targets.destdir}}/usr/doc/ppx_globalize" "${{targets.destdir}}/usr/doc" 2>/dev/null || true

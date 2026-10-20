@@ -37,6 +37,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 pipeline:
   - uses: fetch
     with:
@@ -77,6 +78,7 @@ test:
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
         - build-base  # Debian: ocaml
+        - zstd-dev  # Debian: ocaml
         - ocaml-dune
         - libounit-ocaml-dev  # Wolfi Community Packages
         - libppx-inline-test-ocaml-dev  # Wolfi Community Packages

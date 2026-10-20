@@ -80,14 +80,32 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash"
           mv "${{targets.destdir}}/usr/lib/ocaml/ppx_hash/META" "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_hash/*.cma "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_hash/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/expander"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_hash/expander/*.cma "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/expander/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_hash/expander/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/expander/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/runtime-lib"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_hash/runtime-lib/*.cma "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/runtime-lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_hash/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_hash/expander/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/expander/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_hash/runtime-lib/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/runtime-lib/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_hash/runtime-lib/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/runtime-lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_hash/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_hash/expander/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/expander/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_hash/runtime-lib/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_hash/runtime-lib/"
+          done
+          true
 update:
   enabled: true
   github:

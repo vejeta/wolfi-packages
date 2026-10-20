@@ -32,6 +32,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libxml2-utils
       - coreutils
       - findutils

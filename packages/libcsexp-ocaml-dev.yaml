@@ -35,6 +35,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 pipeline:
   - uses: git-checkout
     with:
@@ -69,8 +70,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/csexp"
           mv "${{targets.destdir}}/usr/lib/ocaml/csexp/META" "${{targets.contextdir}}/usr/lib/ocaml/csexp/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/csexp/*.cma "${{targets.contextdir}}/usr/lib/ocaml/csexp/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/csexp/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/csexp/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/csexp/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/csexp/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/csexp/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/csexp/"
+          done
+          true
 update:
   enabled: true
   github:

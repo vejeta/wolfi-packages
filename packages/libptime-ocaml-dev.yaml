@@ -33,6 +33,7 @@ environment:
       - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib-compat  # Debian: ocaml
       - build-base  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - ocaml-findlib  # Debian: ocaml-findlib
       - ocamlfind  # Debian: ocaml-findlib
       - ocamlbuild
@@ -64,7 +65,10 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/stublibs"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll*.so "${{targets.contextdir}}/usr/lib/ocaml/stublibs/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll*.so; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/stublibs/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/*/META; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"

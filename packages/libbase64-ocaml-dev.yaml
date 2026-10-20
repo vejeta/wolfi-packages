@@ -37,6 +37,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libdune-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - uses: git-checkout
@@ -72,8 +73,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/base64"
           mv "${{targets.destdir}}/usr/lib/ocaml/base64/META" "${{targets.contextdir}}/usr/lib/ocaml/base64/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/base64/*.cma "${{targets.contextdir}}/usr/lib/ocaml/base64/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/base64/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/base64/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/base64/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/base64/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/base64/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/base64/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/base64/*/*.cma; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"

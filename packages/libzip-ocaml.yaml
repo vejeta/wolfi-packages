@@ -30,6 +30,7 @@ environment:
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib-compat  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - ocaml-findlib  # Debian: ocaml-findlib
       - ocamlfind  # Debian: ocaml-findlib
       - coreutils
@@ -80,12 +81,30 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/zip"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/zip/lib*.a "${{targets.contextdir}}/usr/lib/ocaml/zip/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/zip/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/zip/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/zip/*.ml* "${{targets.contextdir}}/usr/lib/ocaml/zip/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/zip/*.cmt "${{targets.contextdir}}/usr/lib/ocaml/zip/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/zip/*.cmti "${{targets.contextdir}}/usr/lib/ocaml/zip/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/zip/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/zip/lib*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/zip/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/zip/*.ml*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/zip/*.cmt; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/zip/*.cmti; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/zip/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/zip/"
+          done
+          true
           mv "${{targets.destdir}}/usr/lib/ocaml/zip/zip.cmxa" "${{targets.contextdir}}/usr/lib/ocaml/zip/"
           mv "${{targets.destdir}}/usr/lib/ocaml/zip/zip.a" "${{targets.contextdir}}/usr/lib/ocaml/zip/"
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libzip-ocaml-dev/examples"
@@ -111,6 +130,7 @@ test:
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
         - build-base  # Debian: ocaml
+        - zstd-dev  # Debian: ocaml
         - libzip-ocaml-dev
         - bash  # Essential in Debian, so on every testbed
         - coreutils  # Essential in Debian, so on every testbed

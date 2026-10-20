@@ -57,6 +57,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libgraphics-ocaml-dev  # Wolfi Community Packages
       - libx11-dev
       - docbook-xml

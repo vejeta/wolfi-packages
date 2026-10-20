@@ -39,6 +39,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libbase-ocaml-dev  # Wolfi Community Packages
       - libppxlib-jane-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
@@ -76,11 +77,23 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_compare"
           mv "${{targets.destdir}}/usr/lib/ocaml/ppx_compare/META" "${{targets.contextdir}}/usr/lib/ocaml/ppx_compare/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_compare/*.cma "${{targets.contextdir}}/usr/lib/ocaml/ppx_compare/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_compare/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/ppx_compare/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_compare/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_compare/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_compare/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_compare/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_compare/runtime-lib"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_compare/runtime-lib/*.cma "${{targets.contextdir}}/usr/lib/ocaml/ppx_compare/runtime-lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_compare/runtime-lib/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/ppx_compare/runtime-lib/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_compare/runtime-lib/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_compare/runtime-lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_compare/runtime-lib/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_compare/runtime-lib/"
+          done
+          true
 update:
   enabled: true
   github:

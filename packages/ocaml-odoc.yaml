@@ -28,6 +28,7 @@ package:
       - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib-compat  # Debian: ocaml
       - build-base  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 environment:
   contents:
     keyring:
@@ -44,6 +45,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - cppo  # Wolfi Community Packages
       - ocaml-crunch  # Wolfi Community Packages
       - libcamlp-streams-ocaml-dev  # Wolfi Community Packages

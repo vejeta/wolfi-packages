@@ -36,6 +36,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 pipeline:
   - uses: git-checkout
     with:
@@ -70,8 +71,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/sexplib0"
           mv "${{targets.destdir}}/usr/lib/ocaml/sexplib0/META" "${{targets.contextdir}}/usr/lib/ocaml/sexplib0/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/sexplib0/*.cma "${{targets.contextdir}}/usr/lib/ocaml/sexplib0/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/sexplib0/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/sexplib0/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/sexplib0/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/sexplib0/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/sexplib0/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/sexplib0/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libsexplib0-ocaml"
           mv "${{targets.destdir}}"/usr/doc/sexplib0/* "${{targets.contextdir}}/usr/share/doc/libsexplib0-ocaml/"
           rmdir "${{targets.destdir}}/usr/doc/sexplib0" "${{targets.destdir}}/usr/doc" 2>/dev/null || true

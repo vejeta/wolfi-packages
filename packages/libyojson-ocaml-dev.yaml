@@ -38,6 +38,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libeasy-format-ocaml-dev  # Wolfi Community Packages
       - libbiniou-ocaml-dev  # Wolfi Community Packages
 pipeline:
@@ -79,8 +80,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/yojson"
           mv "${{targets.destdir}}/usr/lib/ocaml/yojson/META" "${{targets.contextdir}}/usr/lib/ocaml/yojson/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/yojson/*.cma "${{targets.contextdir}}/usr/lib/ocaml/yojson/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/yojson/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/yojson/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/yojson/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/yojson/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/yojson/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/yojson/"
+          done
+          true
   - name: yojson-tools
     description: JSON library for OCaml - tools
     pipeline:

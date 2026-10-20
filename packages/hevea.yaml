@@ -36,6 +36,7 @@ environment:
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib-compat  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - ocamlbuild
       - coreutils
       - findutils

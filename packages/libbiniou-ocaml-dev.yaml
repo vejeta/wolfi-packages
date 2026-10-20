@@ -38,6 +38,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libcamlp-streams-ocaml-dev  # Wolfi Community Packages
       - libeasy-format-ocaml-dev  # Wolfi Community Packages
 pipeline:
@@ -80,8 +81,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/biniou"
           mv "${{targets.destdir}}/usr/lib/ocaml/biniou/META" "${{targets.contextdir}}/usr/lib/ocaml/biniou/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/biniou/*.cma "${{targets.contextdir}}/usr/lib/ocaml/biniou/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/biniou/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/biniou/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/biniou/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/biniou/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/biniou/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/biniou/"
+          done
+          true
 update:
   enabled: true
   github:

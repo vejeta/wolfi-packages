@@ -39,6 +39,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libdune-ocaml-dev  # Wolfi Community Packages
       - libx11-dev
       - libxft-dev
@@ -75,11 +76,20 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/stublibs"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll*.so "${{targets.contextdir}}/usr/lib/ocaml/stublibs/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll*.so; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/stublibs/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/graphics"
           mv "${{targets.destdir}}/usr/lib/ocaml/graphics/META" "${{targets.contextdir}}/usr/lib/ocaml/graphics/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/graphics/*.cma "${{targets.contextdir}}/usr/lib/ocaml/graphics/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/graphics/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/graphics/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/graphics/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/graphics/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/graphics/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/graphics/"
+          done
+          true
 update:
   enabled: true
   github:

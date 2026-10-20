@@ -37,6 +37,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libbase-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - uses: git-checkout
@@ -72,8 +73,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/stdio"
           mv "${{targets.destdir}}/usr/lib/ocaml/stdio/META" "${{targets.contextdir}}/usr/lib/ocaml/stdio/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/stdio/*.cma "${{targets.contextdir}}/usr/lib/ocaml/stdio/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/stdio/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/stdio/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/stdio/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/stdio/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/stdio/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/stdio/"
+          done
+          true
 update:
   enabled: true
   github:

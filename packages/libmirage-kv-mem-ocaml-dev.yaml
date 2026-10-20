@@ -41,6 +41,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libfmt-ocaml-dev  # Wolfi Community Packages
       - liboptint-ocaml-dev  # Wolfi Community Packages
       - libptime-ocaml-dev  # Wolfi Community Packages

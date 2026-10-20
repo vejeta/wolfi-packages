@@ -38,6 +38,7 @@ environment:
       - libppxlib-jane-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 pipeline:
   - uses: git-checkout
     with:
@@ -68,22 +69,67 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*opam* "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*dune* "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.mli "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*opam*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*dune*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.cmt*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.mli; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/runtime-lib"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/runtime-lib/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/runtime-lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/runtime-lib/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/runtime-lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/runtime-lib/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/runtime-lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/runtime-lib/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/runtime-lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/runtime-lib/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/runtime-lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/runtime-lib/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/runtime-lib/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/runtime-lib/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/runtime-lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/runtime-lib/*.cmt*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/runtime-lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/runtime-lib/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/runtime-lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/runtime-lib/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/runtime-lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/runtime-lib/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/runtime-lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_enumerate/runtime-lib/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_enumerate/runtime-lib/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libppx-enumerate-ocaml-dev"
           mv "${{targets.destdir}}"/usr/doc/ppx_enumerate/* "${{targets.contextdir}}/usr/share/doc/libppx-enumerate-ocaml-dev/"
           rmdir "${{targets.destdir}}/usr/doc/ppx_enumerate" "${{targets.destdir}}/usr/doc" 2>/dev/null || true

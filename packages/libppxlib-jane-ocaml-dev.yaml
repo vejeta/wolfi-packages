@@ -37,6 +37,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libppxlib-ocaml-dev  # Wolfi Community Packages
 pipeline:
   - uses: git-checkout
@@ -72,8 +73,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppxlib_jane"
           mv "${{targets.destdir}}/usr/lib/ocaml/ppxlib_jane/META" "${{targets.contextdir}}/usr/lib/ocaml/ppxlib_jane/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppxlib_jane/*.cma "${{targets.contextdir}}/usr/lib/ocaml/ppxlib_jane/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppxlib_jane/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/ppxlib_jane/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppxlib_jane/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppxlib_jane/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppxlib_jane/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppxlib_jane/"
+          done
+          true
 update:
   enabled: true
   github:

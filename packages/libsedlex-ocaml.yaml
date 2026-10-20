@@ -36,6 +36,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libgen-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
       - libmenhir-ocaml-dev  # Wolfi Community Packages
@@ -100,6 +101,7 @@ test:
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
         - build-base  # Debian: ocaml
+        - zstd-dev  # Debian: ocaml
         - ocaml-findlib  # Debian: ocaml-findlib
         - ocamlfind  # Debian: ocaml-findlib
         - ocaml-dune

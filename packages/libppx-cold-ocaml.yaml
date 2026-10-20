@@ -37,6 +37,7 @@ environment:
       - libbase-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 pipeline:
   - uses: git-checkout
     with:
@@ -67,16 +68,43 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*opam* "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*dune* "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*opam*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*dune*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
+          done
+          true
           mv "${{targets.destdir}}/usr/lib/ocaml/ppx_cold/ppx.exe" "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.mli "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.cmt*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.mli; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_cold/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_cold/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libppx-cold-ocaml-dev"
           mv "${{targets.destdir}}"/usr/doc/ppx_cold/* "${{targets.contextdir}}/usr/share/doc/libppx-cold-ocaml-dev/"
           rmdir "${{targets.destdir}}/usr/doc/ppx_cold" "${{targets.destdir}}/usr/doc" 2>/dev/null || true

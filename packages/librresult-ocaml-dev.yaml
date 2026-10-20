@@ -33,6 +33,7 @@ environment:
       - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib-compat  # Debian: ocaml
       - build-base  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - ocaml-findlib  # Debian: ocaml-findlib
       - ocamlfind  # Debian: ocaml-findlib
       - ocamlbuild
@@ -65,8 +66,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/rresult"
           mv "${{targets.destdir}}/usr/lib/ocaml/rresult/META" "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/rresult/*.cma "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/rresult/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/rresult/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/rresult/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/rresult/"
+          done
+          true
 update:
   enabled: true
   release-monitor:

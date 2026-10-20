@@ -34,6 +34,7 @@ environment:
       - ocaml-compiler-libs  # Debian: ocaml
       - ocaml-findlib-compat  # Debian: ocaml
       - build-base  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - ocaml-findlib  # Debian: ocaml-findlib
       - ocamlfind  # Debian: ocaml-findlib
       - ocamlbuild

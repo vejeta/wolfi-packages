@@ -46,6 +46,7 @@ environment:
       - libsexplib0-ocaml-dev  # Wolfi Community Packages
       - libstdio-ocaml-dev  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 pipeline:
   - uses: git-checkout
     with:
@@ -76,13 +77,34 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*opam* "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*dune* "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.mli "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*opam*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*dune*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.cmt*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.mli; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*/*.a; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"
@@ -108,8 +130,14 @@ subpackages:
             r="${f#${{targets.destdir}}/}"
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_expect/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_expect/*/*.cmx; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"

@@ -37,6 +37,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libalcotest-ocaml-dev  # Wolfi Community Packages
       - libounit-ocaml-dev  # Wolfi Community Packages
       - ocaml-odoc  # Wolfi Community Packages
@@ -78,20 +79,56 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/qcheck"
           mv "${{targets.destdir}}/usr/lib/ocaml/qcheck/dune-package" "${{targets.contextdir}}/usr/lib/ocaml/qcheck/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/qcheck/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck/*.cmt "${{targets.contextdir}}/usr/lib/ocaml/qcheck/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck/*.ml "${{targets.contextdir}}/usr/lib/ocaml/qcheck/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck/*.a "${{targets.contextdir}}/usr/lib/ocaml/qcheck/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/qcheck/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/qcheck/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck/*.cmt; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest"
           mv "${{targets.destdir}}/usr/lib/ocaml/qcheck-alcotest/dune-package" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-alcotest/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-alcotest/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-alcotest/*.ml* "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-alcotest/*.a "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-alcotest/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-alcotest/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-alcotest/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-alcotest/*.cmt*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-alcotest/*.ml*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-alcotest/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-alcotest/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-alcotest/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-alcotest/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libqcheck-ocaml-dev"
           mv "${{targets.destdir}}"/usr/doc/qcheck/* "${{targets.contextdir}}/usr/share/doc/libqcheck-ocaml-dev/"
           rmdir "${{targets.destdir}}/usr/doc/qcheck" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
@@ -117,13 +154,19 @@ subpackages:
             r="${f#${{targets.destdir}}/}"
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cma "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/**/*.cma; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/**/*.cmxs; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"
@@ -142,49 +185,73 @@ subpackages:
             r="${f#${{targets.destdir}}/}"
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/**/*.cmi; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cmt "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cmt; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/**/*.cmt; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cmti "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cmti; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/**/*.cmti; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.ml "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/**/*.ml; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.mli "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.mli; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/**/*.mli; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.a "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/**/*.a; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/**/*.cmxa; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-core/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-core/**/*.cmx; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"
@@ -205,8 +272,14 @@ subpackages:
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit"
           mv "${{targets.destdir}}/usr/lib/ocaml/qcheck-ounit/META" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
           mv "${{targets.destdir}}/usr/lib/ocaml/qcheck-ounit/opam" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cma "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/qcheck-ounit"
           mv "${{targets.destdir}}/usr/doc/qcheck-ounit/{README.adoc}" "${{targets.contextdir}}/usr/share/doc/qcheck-ounit/"
   - name: libqcheck-ounit-ocaml-dev
@@ -215,14 +288,38 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit"
           mv "${{targets.destdir}}/usr/lib/ocaml/qcheck-ounit/dune-package" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cmt "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cmti "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.ml "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.mli "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.a "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cmt; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cmti; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.mli; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qcheck-ounit/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qcheck-ounit/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libqcheck-ounit-ocaml-dev/examples"
           cp -a example/ounit "${{targets.contextdir}}/usr/share/doc/libqcheck-ounit-ocaml-dev/examples/"
     dependencies:
@@ -251,6 +348,7 @@ test:
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
         - build-base  # Debian: ocaml
+        - zstd-dev  # Debian: ocaml
         - ocaml-findlib  # Debian: ocaml-findlib
         - ocamlfind  # Debian: ocaml-findlib
         - ocaml-dune

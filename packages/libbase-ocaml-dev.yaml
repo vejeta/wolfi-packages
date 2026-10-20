@@ -44,6 +44,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libdune-configurator-ocaml-dev  # Wolfi Community Packages
       - libsexplib0-ocaml-dev  # Wolfi Community Packages
       - libocaml-intrinsics-kernel-ocaml-dev  # Wolfi Community Packages
@@ -83,8 +84,14 @@ subpackages:
           mv "${{targets.destdir}}/usr/lib/ocaml/stublibs" "${{targets.contextdir}}/usr/lib/ocaml/"
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/base"
           mv "${{targets.destdir}}/usr/lib/ocaml/base/META" "${{targets.contextdir}}/usr/lib/ocaml/base/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/base/*.cma "${{targets.contextdir}}/usr/lib/ocaml/base/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/base/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/base/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/base/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/base/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/base/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/base/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/base/*/*.cma; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"
@@ -96,8 +103,14 @@ subpackages:
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/base/base_internalhash_types"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/base/base_internalhash_types/*.cma "${{targets.contextdir}}/usr/lib/ocaml/base/base_internalhash_types/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/base/base_internalhash_types/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/base/base_internalhash_types/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/base/base_internalhash_types/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/base/base_internalhash_types/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/base/base_internalhash_types/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/base/base_internalhash_types/"
+          done
+          true
 update:
   enabled: true
   github:

@@ -37,6 +37,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - cppo  # Wolfi Community Packages
 pipeline:
   - uses: git-checkout
@@ -72,8 +73,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/extlib"
           mv "${{targets.destdir}}/usr/lib/ocaml/extlib/META" "${{targets.contextdir}}/usr/lib/ocaml/extlib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/extlib/*.cma "${{targets.contextdir}}/usr/lib/ocaml/extlib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/extlib/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/extlib/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/extlib/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/extlib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/extlib/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/extlib/"
+          done
+          true
 update:
   enabled: true
   github:
@@ -88,6 +95,7 @@ test:
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
         - build-base  # Debian: ocaml
+        - zstd-dev  # Debian: ocaml
         - ocaml-findlib  # Debian: ocaml-findlib
         - ocamlfind  # Debian: ocaml-findlib
         - bash  # Essential in Debian, so on every testbed

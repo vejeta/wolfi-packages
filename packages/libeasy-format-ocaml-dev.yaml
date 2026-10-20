@@ -36,6 +36,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -80,8 +81,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/easy-format"
           mv "${{targets.destdir}}/usr/lib/ocaml/easy-format/META" "${{targets.contextdir}}/usr/lib/ocaml/easy-format/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/easy-format/*.cma "${{targets.contextdir}}/usr/lib/ocaml/easy-format/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/easy-format/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/easy-format/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/easy-format/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/easy-format/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/easy-format/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/easy-format/"
+          done
+          true
 update:
   enabled: true
   github:

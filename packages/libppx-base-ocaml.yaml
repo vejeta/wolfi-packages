@@ -43,6 +43,7 @@ environment:
       - libppx-sexp-conv-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - coreutils
       - findutils
 pipeline:
@@ -82,15 +83,39 @@ subpackages:
           mkdir -p "${{targets.contextdir}}/usr/bin"
           mv "${{targets.destdir}}/usr/bin/ppx-base" "${{targets.contextdir}}/usr/bin/"
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_base"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*opam* "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*dune* "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*opam*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*dune*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
+          done
+          true
           mv "${{targets.destdir}}/usr/lib/ocaml/ppx_base/ppx.exe" "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*.cmt*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_base/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_base/"
+          done
+          true
           install -Dm644 debian/ppx-base.1 -t "${{targets.contextdir}}/usr/share/man/man1"
     dependencies:
       runtime:

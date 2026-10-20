@@ -41,6 +41,7 @@ environment:
       - libuutf-ocaml-dev  # Wolfi Community Packages
       - libre-ocaml-dev  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 pipeline:
   - uses: git-checkout
     with:
@@ -75,8 +76,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/tyxml"
           mv "${{targets.destdir}}/usr/lib/ocaml/tyxml/META" "${{targets.contextdir}}/usr/lib/ocaml/tyxml/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/tyxml/*.cma "${{targets.contextdir}}/usr/lib/ocaml/tyxml/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/tyxml/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/tyxml/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/tyxml/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/tyxml/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/tyxml/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/tyxml/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/tyxml/*/*.cma; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"

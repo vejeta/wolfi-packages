@@ -35,6 +35,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 pipeline:
   - uses: git-checkout
     with:
@@ -69,8 +70,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/optint"
           mv "${{targets.destdir}}/usr/lib/ocaml/optint/META" "${{targets.contextdir}}/usr/lib/ocaml/optint/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/optint/*.cma "${{targets.contextdir}}/usr/lib/ocaml/optint/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/optint/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/optint/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/optint/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/optint/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/optint/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/optint/"
+          done
+          true
 update:
   enabled: true
   github:

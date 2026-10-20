@@ -33,6 +33,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - libounit-ocaml-dev  # Wolfi Community Packages
       - libqcheck-ocaml-dev  # Wolfi Community Packages
 pipeline:
@@ -74,8 +75,14 @@ subpackages:
           mv "${{targets.destdir}}/usr/lib/ocaml/qtest/META" "${{targets.contextdir}}/usr/lib/ocaml/qtest/"
           mv "${{targets.destdir}}/usr/lib/ocaml/qtest/opam" "${{targets.contextdir}}/usr/lib/ocaml/qtest/"
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cma "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/qtest"
           mv "${{targets.destdir}}/usr/doc/qtest/README.adoc" "${{targets.contextdir}}/usr/share/doc/qtest/"
   - name: libqtest-ocaml-dev
@@ -85,12 +92,30 @@ subpackages:
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/qtest"
           mv "${{targets.destdir}}/usr/lib/ocaml/qtest/dune-package" "${{targets.contextdir}}/usr/lib/ocaml/qtest/"
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cmt "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.ml "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.a "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cmt; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/qtest/lib/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/qtest/lib/"
+          done
+          true
     dependencies:
       runtime:
         - libqtest-ocaml  # Debian: ${ocaml:Depends}
@@ -115,6 +140,7 @@ test:
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
         - build-base  # Debian: ocaml
+        - zstd-dev  # Debian: ocaml
         - ocamlbuild
         - ocaml-findlib  # Debian: ocaml-findlib
         - ocamlfind  # Debian: ocaml-findlib

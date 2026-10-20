@@ -41,6 +41,7 @@ environment:
       - libppx-sexp-conv-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 pipeline:
   - uses: git-checkout
     with:
@@ -71,24 +72,72 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*opam* "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*dune* "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*opam*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*dune*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
+          done
+          true
           mv "${{targets.destdir}}/usr/lib/ocaml/ppx_assert/ppx.exe" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.mli "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.cmt*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.mli; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.ml "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.mli "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.a "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.cmt*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.mli; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ppx_assert/runtime-lib/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ppx_assert/runtime-lib/"
+          done
+          true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libppx-assert-ocaml-dev"
           mv "${{targets.destdir}}"/usr/doc/ppx_assert/* "${{targets.contextdir}}/usr/share/doc/libppx-assert-ocaml-dev/"
           rmdir "${{targets.destdir}}/usr/doc/ppx_assert" "${{targets.destdir}}/usr/doc" 2>/dev/null || true

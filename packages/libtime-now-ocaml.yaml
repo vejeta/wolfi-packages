@@ -46,6 +46,7 @@ environment:
       - libppx-sexp-conv-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - coreutils
       - findutils
 pipeline:
@@ -84,15 +85,42 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/time_now"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*opam* "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*dune* "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.ml "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.mli "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.a "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/time_now/*opam*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/time_now/*dune*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.cmt*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.mli; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/time_now/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/time_now/"
+          done
+          true
     dependencies:
       runtime:
         - libppx-hash-ocaml-dev  # Wolfi Community Packages

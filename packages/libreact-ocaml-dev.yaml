@@ -38,6 +38,7 @@ environment:
       - ocaml  # Debian: ocaml
       - ocaml-compiler-libs  # Debian: ocaml
       - build-base  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - coreutils
       - findutils
 pipeline:

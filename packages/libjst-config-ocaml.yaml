@@ -38,6 +38,7 @@ environment:
       - libdune-configurator-ocaml-dev  # Wolfi Community Packages
       - libppx-assert-ocaml-dev  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - coreutils
       - findutils
 pipeline:
@@ -73,15 +74,42 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/jst-config"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*opam* "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*dune* "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmt* "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.ml "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.h "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.a "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*opam*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*dune*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmt*; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.h; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/jst-config/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/jst-config/"
+          done
+          true
     dependencies:
       runtime:
         - libjst-config-ocaml  # Debian: ${ocaml:Depends}

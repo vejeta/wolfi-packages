@@ -36,6 +36,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
 pipeline:
   - uses: fetch
     with:
@@ -66,14 +67,38 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/gen"
           mv "${{targets.destdir}}/usr/lib/ocaml/gen/dune-package" "${{targets.contextdir}}/usr/lib/ocaml/gen/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/gen/*.ml "${{targets.contextdir}}/usr/lib/ocaml/gen/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/gen/*.mli "${{targets.contextdir}}/usr/lib/ocaml/gen/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/gen/*.cmi "${{targets.contextdir}}/usr/lib/ocaml/gen/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/gen/*.cmt "${{targets.contextdir}}/usr/lib/ocaml/gen/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/gen/*.cmti "${{targets.contextdir}}/usr/lib/ocaml/gen/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/gen/*.a "${{targets.contextdir}}/usr/lib/ocaml/gen/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/gen/*.cmxa "${{targets.contextdir}}/usr/lib/ocaml/gen/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/gen/*.cmx "${{targets.contextdir}}/usr/lib/ocaml/gen/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/gen/*.ml; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/gen/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/gen/*.mli; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/gen/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/gen/*.cmi; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/gen/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/gen/*.cmt; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/gen/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/gen/*.cmti; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/gen/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/gen/*.a; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/gen/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/gen/*.cmxa; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/gen/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/gen/*.cmx; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/gen/"
+          done
+          true
     dependencies:
       runtime:
         - libgen-ocaml  # Debian: ${ocaml:Depends}
@@ -92,6 +117,7 @@ test:
         - ocaml-compiler-libs  # Debian: ocaml
         - ocaml-findlib-compat  # Debian: ocaml
         - build-base  # Debian: ocaml
+        - zstd-dev  # Debian: ocaml
         - ocaml-findlib  # Debian: ocaml-findlib
         - ocamlfind  # Debian: ocaml-findlib
         - bash  # Essential in Debian, so on every testbed

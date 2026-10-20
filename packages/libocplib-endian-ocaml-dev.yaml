@@ -36,6 +36,7 @@ environment:
       - ocaml-findlib-compat
       - bash
       - ocaml-compiler-libs  # Debian: ocaml
+      - zstd-dev  # Debian: ocaml
       - cppo  # Wolfi Community Packages
 pipeline:
   - name: Move the recipe files out of the build tree
@@ -76,8 +77,14 @@ subpackages:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/lib/ocaml/ocplib-endian"
           mv "${{targets.destdir}}/usr/lib/ocaml/ocplib-endian/META" "${{targets.contextdir}}/usr/lib/ocaml/ocplib-endian/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ocplib-endian/*.cma "${{targets.contextdir}}/usr/lib/ocaml/ocplib-endian/"
-          mv "${{targets.destdir}}"/usr/lib/ocaml/ocplib-endian/*.cmxs "${{targets.contextdir}}/usr/lib/ocaml/ocplib-endian/"
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ocplib-endian/*.cma; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ocplib-endian/"
+          done
+          true
+          for f in "${{targets.destdir}}"/usr/lib/ocaml/ocplib-endian/*.cmxs; do
+            [ -e "$f" ] && mv "$f" "${{targets.contextdir}}/usr/lib/ocaml/ocplib-endian/"
+          done
+          true
           for f in "${{targets.destdir}}"/usr/lib/ocaml/ocplib-endian/*/*.cma; do
             [ -e "$f" ] || continue
             r="${f#${{targets.destdir}}/}"
