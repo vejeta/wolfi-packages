@@ -355,10 +355,21 @@ def recipe_names(directory):
         m = re.search(r"(?m)^package:\n(?:  .*\n)*?  name: (\S+)", text)
         if m:
             names.add(m.group(1))
+        # data: lists, for range subpackages (binutils-${{range.key}})
+        ranges = {}
+        dblock = re.search(r"(?ms)^data:\n(.*?)(?=^\S|\Z)", text)
+        for dm in re.finditer(r"(?ms)^  - name: (\S+)\n    items:\n((?:      .*\n?)*)", dblock.group(1) if dblock else ""):
+            ranges[dm.group(1)] = re.findall(r"(?m)^      ([\w.+-]+):", dm.group(2))
         sub = re.search(r"(?ms)^subpackages:\n(.*?)(?=^\S|\Z)", text)
-        for n in re.findall(r"(?m)^  - name: (\S+)", sub.group(1) if sub else ""):
-            n = expand(n)
-            if "${{" not in n:  # range subpackages
+        for entry in re.split(r"(?m)^  - ", sub.group(1) if sub else "")[1:]:
+            m2 = re.search(r"(?m)^(?:    )?name: (\S+)", entry)
+            if not m2:
+                continue
+            n = expand(m2.group(1))
+            rng = re.search(r"(?m)^(?:    )?range: (\S+)", entry)
+            if rng and "${{range.key}}" in n:
+                names.update(n.replace("${{range.key}}", k) for k in ranges.get(rng.group(1), []))
+            elif "${{" not in n:
                 names.add(n)
     return names
 
@@ -678,6 +689,13 @@ class Rules:
             if not line.strip() or line.lstrip().startswith("#"):
                 continue  # blank lines and comments do not end a recipe
             target = None
+            m = re.match(r"^export((?:\s+[A-Za-z_]\w*)+)\s*$", line)
+            if m:
+                # "export DESTDIR": a variable set elsewhere goes to the environment
+                for name in m.group(1).split():
+                    if name not in self.exports:
+                        self.exports.append(name)
+                continue
             m = re.match(r"^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*([:?+]?=)\s*(.*)$", line)
             if m:
                 name, op, val = m.groups()
@@ -1599,9 +1617,11 @@ class Converter:
 
     @staticmethod
     def multiarch(line):
-        """usr/lib/$(DEB_HOST_MULTIARCH) is usr/lib on Wolfi; the triplet elsewhere is the host's."""
-        line = re.sub(r"(^|/|\s|=)(usr/lib)/\$[({]DEB_HOST_MULTIARCH[)}]", r"\1\2", line)
-        return re.sub(r"\$[({]DEB_HOST_MULTIARCH[)}]", "${{host.triplet.gnu}}", line)
+        """usr/lib/$(DEB_HOST_MULTIARCH) is usr/lib on Wolfi (and usr/include/<triplet> usr/include);
+        the triplet elsewhere is the host's."""
+        triplet = r"\$[({]DEB_(?:HOST_MULTIARCH|(?:HOST|BUILD)_GNU_TYPE)[)}]"
+        line = re.sub(r"(^|/|\s|=)(usr/lib|usr/include)/" + triplet, r"\1\2", line)
+        return re.sub(triplet, "${{host.triplet.gnu}}", line)
 
     SED_IN = re.compile(r"^sed\s+(?:-e\s+)?(['\"])((?:s(.).*?\3.*?\3[gi]*;?)+)\1\s+debian/(\S+\.in)\s*>\s*debian/(\S+)\s*$")
 
@@ -1884,7 +1904,12 @@ class Converter:
         for var in rules.exports:
             if var.startswith(("DEB_", "DH_", "PYBUILD_")) or var in self.SKIP_EXPORTS or var not in rules.vars:
                 continue
-            value = rules.expand(rules.vars[var]).replace("$(CURDIR)", "/home/build")
+            value = rules.expand(rules.vars[var])
+            # debian/tmp (and debian/<package>) is where melange installs: the package's destdir
+            # (/home/build/melange-out/<name> is what ${{targets.destdir}} expands to)
+            value = re.sub(r"\$\(CURDIR\)/debian/(?:tmp|{})/?$".format(re.escape(self.recipe_dir or "-")),
+                           "/home/build/melange-out/" + (self.recipe_dir or ""), value)
+            value = value.replace("$(CURDIR)", "/home/build")
             value = value.replace("/usr/lib/jvm/default-java", "/usr/lib/jvm/default-jvm")  # Wolfi's default JDK
             if "$(" in value or "${" in value:
                 continue
@@ -2523,7 +2548,7 @@ class Converter:
                 cmds = self.port_recipe(rules, recipe, name, main["package"])
                 if cmds:
                     step = {"name": "From debian/rules " + target, "runs": "\n".join(cmds) + "\n"}
-                    if re.match(r"^execute_(after_dh_auto_(configure|build|test)|before_dh_auto_(build|test|install))$", target) \
+                    if re.match(r"^execute_(after_dh_auto_(configure|build|test|install)|before_dh_auto_(build|test|install))$", target) \
                             or target == "execute_before_dh_install":
                         pre_install.append(step)   # before the files are installed (dh_install)
                     else:
@@ -2883,6 +2908,11 @@ class Converter:
                                             "of that day".format(snap.group(2))]
                     return steps
                 steps, notes = git_url_checkout_step(repo, version, prefix, resolve=self.args.download)
+                if notes and self.args.download and re.search(r"(?i)uversion-?mangle", watch):
+                    # no tag of Debian's (mangled) version: Debian's copy of the upstream tarball below
+                    self.notes.append("no tag of {} in {} (debian/watch mangles upstream versions)".format(version, repo))
+                    steps = None
+            if repo and steps:
                 tag = next(st["with"]["tag"] for st in steps if isinstance(st, dict))
                 self.git_source = (repo, tag.replace("${{package.version}}", ""))
                 self.notes += notes

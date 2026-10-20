@@ -7,7 +7,9 @@
 # Debian packaging: https://salsa.debian.org/kolter/libunicode-linebreak-perl
 #
 # Conversion notes:
-# - set expected-commit for tag v0.0.20190101 (re-run with --download, or git ls-remote)
+# - no tag of 0.0.20190101 in https://github.com/hatukanezumi/Unicode-LineBreak (debian/watch mangles upstream versions)
+# - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/libu/libunicode-linebreak-perl/libunicode-linebreak-perl_0.0.20190101.orig.tar.gz), which disappears from the pool when Debian updates
+# - update: check the tag format of https://github.com/hatukanezumi/Unicode-LineBreak (assumed v0.0.20190101)
 package:
   name: perl-unicode-linebreak
   version: '0.0.20190101'
@@ -40,12 +42,10 @@ pipeline:
       mkdir -p .recipe-files
       for f in add_testsuite_data copyright fix_CVE-2016-1238 fix_CVE-2026-8594 fix_typo_manpages fix_typos_in_manpages; do mv perl-unicode-linebreak/$f .recipe-files/; done
       rmdir perl-unicode-linebreak 2>/dev/null || true
-  # TODO(debian-to-melange): set expected-commit for tag v0.0.20190101 (re-run with --download, or git ls-remote)
-  - uses: git-checkout
+  - uses: fetch
     with:
-      repository: https://github.com/hatukanezumi/Unicode-LineBreak
-      tag: v${{package.version}}
-      expected-commit: '0000000000000000000000000000000000000000'
+      uri: https://deb.debian.org/debian/pool/main/libu/libunicode-linebreak-perl/libunicode-linebreak-perl_${{package.version}}.orig.tar.gz
+      expected-sha256: bc9f96cf8bea60665e8ad67e90b0db3cc0bcdb97101e15c8c44ea671ba256577
   - uses: patch
     with:
       patches: .recipe-files/fix_typos_in_manpages .recipe-files/fix_typo_manpages .recipe-files/add_testsuite_data .recipe-files/fix_CVE-2016-1238 .recipe-files/fix_CVE-2026-8594

@@ -971,7 +971,9 @@ class Converter:
             body_lines = [l for l in body.splitlines() if l.strip()]
             defaults = [l.strip() for l in body_lines if re.match(r"^default_\w+$", l.strip())]
             rest = "\n".join(l for l in body.splitlines() if l.strip() not in defaults)
-            rest = re.sub(r'(?m)^\s*(pkgdesc|depends|replaces|provides|install_if)=.*$', "", rest).strip()
+            # the metadata assignments, also when a quoted value spans lines (depends="\n\t$pkgname ...\n\t")
+            rest = re.sub(r'(?m)^\s*(pkgdesc|depends|replaces|provides|install_if)=(?:"[^"]*"|\'[^\']*\'|.*)[ \t]*$',
+                          "", rest).strip()
             pipeline = []
             for d in defaults:
                 key = d[len("default_"):]

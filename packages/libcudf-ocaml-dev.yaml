@@ -9,7 +9,6 @@
 # Conversion notes:
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/c/cudf/cudf_0.10.orig.tar.gz), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
-# - port debian/rules execute_after_dh_auto_install: make -C c-lib/ -e install LIBDIR=/usr/lib/$(DEB_BUILD_GNU_TYPE) INCDIR=/usr/include/$(DEB_BUILD_GNU_TYPE)
 # - autopkgtests converted to the test pipeline (2 steps)
 package:
   name: libcudf-ocaml-dev
@@ -49,6 +48,8 @@ environment:
       - perl
       - coreutils
       - findutils
+  environment:
+    DESTDIR: /home/build/melange-out/libcudf-ocaml-dev
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -68,11 +69,13 @@ pipeline:
   - name: Install
     runs: |
       dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" cudf
-  # TODO(debian-to-melange): port debian/rules execute_after_dh_auto_install: make -C c-lib/ -e install LIBDIR=/usr/lib/$(DEB_BUILD_GNU_TYPE) INCDIR=/usr/include/$(DEB_BUILD_GNU_TYPE)
   - name: From debian/rules execute_after_dh_auto_build
     runs: |
       make doc/cudf-check.1 c-lib
       make c-lib-opt
+  - name: From debian/rules execute_after_dh_auto_install
+    runs: |
+      make -C c-lib/ -e install LIBDIR=/usr/lib INCDIR=/usr/include
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libcudf-ocaml-dev/examples"

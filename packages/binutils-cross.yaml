@@ -102,6 +102,10 @@ subpackages:
           mv "${{targets.destdir}}"/usr/bin/${{range.value}}-* "${{targets.contextdir}}"/usr/bin/
           mv "${{targets.destdir}}"/usr/${{range.value}} "${{targets.contextdir}}"/usr/
     test:
+      environment:
+        contents:
+          packages:
+            - busybox
       pipeline:
         - runs: |
             ${{range.value}}-as --version | grep -q "GNU assembler"

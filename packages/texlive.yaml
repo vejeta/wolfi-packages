@@ -583,29 +583,7 @@ subpackages:
     description: A complete TeX distribution
     pipeline:
       - runs: |
-          pkgname="${{package.name}}"
           subpkgdir="${{targets.contextdir}}"
-
-          $pkgname
-          	$pkgname-bibtexextra
-          	$pkgname-binextra
-          	$pkgname-context
-          	$pkgname-dvi
-          	$pkgname-fontutils
-          	$pkgname-games
-          	$pkgname-humanities
-          	$pkgname-latexextra
-          	$pkgname-latexrecommended
-          	$pkgname-luatex
-          	$pkgname-mathscience
-          	$pkgname-music
-          	$pkgname-pictures
-          	$pkgname-plaingeneric
-          	$pkgname-pstricks
-          	$pkgname-xetex
-          	xdvik
-          	texmf-dist-full
-          	"
 
           mkdir -p "$subpkgdir"
     dependencies:
@@ -633,16 +611,7 @@ subpackages:
     description: A mostly complete TeX distribution
     pipeline:
       - runs: |
-          pkgname="${{package.name}}"
           subpkgdir="${{targets.contextdir}}"
-
-          $pkgname
-          	$pkgname-context
-          	$pkgname-luatex
-          	$pkgname-xetex
-          	texmf-dist-most
-          	cmd:biber
-          	"
 
           mkdir -p "$subpkgdir"
     dependencies:
@@ -656,7 +625,6 @@ subpackages:
     description: LuaTeX is an extended version of pdfTeX, scriptable in Lua
     pipeline:
       - runs: |
-          pkgname="${{package.name}}"
           pkgdir="${{targets.destdir}}"
           subpkgdir="${{targets.contextdir}}"
           amove() {
@@ -676,13 +644,6 @@ subpackages:
           # luafindfont: texmf-dist-fontutils
           # luaotfload-tool: texmf-dist-luatex
 
-          	bash
-          	biblatex
-          	texmf-dist-fontsrecommended
-          	texmf-dist-fontutils
-          	texmf-dist-luatex
-          	$pkgname
-          	"
 
           amove usr/bin/optex
           amove usr/bin/*lua*
