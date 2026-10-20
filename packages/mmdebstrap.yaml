@@ -175,6 +175,7 @@ test:
           function add(   m, j, f) {
             m = split(pkg alias[pkg], names, " ")
             for (j = 1; j <= m; j++) {
+              if (seen[names[j]]++) continue  # one entry per name: dpkg rejects duplicates
               f = db "/info/" names[j] ".list"
               printf "%s", files > f; close(f)
               gsub(/_/, "~", ver)
@@ -193,6 +194,10 @@ test:
           # po-debconf's translatable fields (_Description, __Choices) in the C locale
           [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/mmdebstrap.templates" && break
         done
+        # base-files' vendor (dpkg-vendor, dpkg-buildpackage)
+        mkdir -p /etc/dpkg/origins
+        [ -e /etc/dpkg/origins/debian ] || printf 'Vendor: Debian\nVendor-URL: https://www.debian.org/\nBugs: debbugs://bugs.debian.org\n' > /etc/dpkg/origins/debian
+        [ -e /etc/dpkg/origins/default ] || ln -s debian /etc/dpkg/origins/default
     - name: apt sources (as on a Debian unstable testbed)
       runs: |
         [ -e /etc/debian_version ] || echo forky/sid > /etc/debian_version

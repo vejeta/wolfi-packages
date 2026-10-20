@@ -1415,6 +1415,7 @@ def dpkg_database_step(aliases, deb_pkg):
         "  function add(   m, j, f) {{\n"
         "    m = split(pkg alias[pkg], names, \" \")\n"
         "    for (j = 1; j <= m; j++) {{\n"
+        "      if (seen[names[j]]++) continue  # one entry per name: dpkg rejects duplicates\n"
         "      f = db \"/info/\" names[j] \".list\"\n"
         "      printf \"%s\", files > f; close(f)\n"
         "      gsub(/_/, \"~\", ver)\n"
@@ -1432,7 +1433,11 @@ def dpkg_database_step(aliases, deb_pkg):
         "for t in debian/{1}.templates debian/templates; do\n"
         "  # po-debconf's translatable fields (_Description, __Choices) in the C locale\n"
         "  [ -f \"$t\" ] && sed '/^#/d; s/^__*//' \"$t\" > \"$db/info/{1}.templates\" && break\n"
-        "done\n").format(pairs, deb_pkg)}
+        "done\n"
+        "# base-files' vendor (dpkg-vendor, dpkg-buildpackage)\n"
+        "mkdir -p /etc/dpkg/origins\n"
+        "[ -e /etc/dpkg/origins/debian ] || printf 'Vendor: Debian\\nVendor-URL: https://www.debian.org/\\nBugs: debbugs://bugs.debian.org\\n' > /etc/dpkg/origins/debian\n"
+        "[ -e /etc/dpkg/origins/default ] || ln -s debian /etc/dpkg/origins/default\n").format(pairs, deb_pkg)}
 
 
 SCRIPT_DEPS = {}  # script label -> packages its commands come from
