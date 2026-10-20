@@ -16,6 +16,7 @@ package:
         - .perltidyrc
   dependencies:
     runtime:
+      - debhelper
       - openjdk-25-default-jdk  # Debian: default-jdk-headless
       - perl-archive-zip  # Debian: libarchive-zip-perl
       - dpkg-dev  # Debian: libdpkg-perl
@@ -97,6 +98,7 @@ subpackages:
     dependencies:
       runtime:
         - ca-certificates-bundle  # Debian: ca-certificates
+        - dh-scala
         - git
         - perl-archive-zip  # Debian: libarchive-zip-perl
         - perl-io-socket-ssl  # Debian: libio-socket-ssl-perl

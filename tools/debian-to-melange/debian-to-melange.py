@@ -129,6 +129,7 @@ NAME_MAP = {
     "awk": "gawk",
     # Wolfi's dpkg-dev has the Dpkg perl modules; automake has config.guess and config.sub
     "libdpkg-perl": "dpkg-dev",
+    "libcompress-zlib-perl": "perl",  # Compress::Zlib is part of perl
     "libelf-dev": "elfutils-dev",
     "autotools-dev": "automake",
     # xml-core's update-xmlcatalog and dh_installxmlcatalogs: the scriptlets use libxml2's xmlcatalog
@@ -547,6 +548,7 @@ def debian_upstream_version(version):
     # apk versions: 1.2+git20170224 -> 1.2_git20170224, 1.2~rc1 -> 1.2_rc1
     v = re.sub(r"[+~.]?git[.+~]?(\d{8})\b.*$", r"_git\1", v)
     v = re.sub(r"\+nmu(\d+)$", r"_p\1", v)  # non-maintainer uploads of native packages
+    v = re.sub(r"\+(\d[\d.]*)$", r".\1", v)  # 0.35.0+20060710.6 (intltool-debian) -> 0.35.0.20060710.6
     return re.sub(r"~(alpha|beta|pre|rc)", r"_\1", v)
 
 
@@ -1262,6 +1264,22 @@ def makefiles_with_werror(data):
     """Top-level makefiles of the source that build with -Werror."""
     return sorted(n for n, text in top_makefiles(data).items()
                   if not n.startswith("Makefile.") and re.search(rb"-Werror\b(?!=)", text))
+
+
+def source_uses(data, pattern):
+    """Does a file of the source tarball match the (multiline, bytes) pattern?"""
+    if not data:
+        return False
+    import io
+    import tarfile
+    try:
+        with tarfile.open(fileobj=io.BytesIO(data)) as tar:
+            for m in tar:
+                if m.isfile() and m.size < 2000000 and re.search(pattern, tar.extractfile(m).read(), re.M):
+                    return True
+    except (tarfile.TarError, OSError, EOFError):
+        pass
+    return False
 
 
 def bash_scripts(data):
@@ -2257,6 +2275,8 @@ class Converter:
                 if kind == "test" and alt in ("debconf", "ucf", "dpkg-dev", "init-system-helpers", "sensible-utils",
                                               "debhelper", "po-debconf", "quilt"):
                     pass  # an autopkgtest that exercises them gets the real ones (apt's: Dpkg.pm, from dpkg-dev)
+                elif kind == "runtime" and (alt in ("debhelper", "po-debconf") or alt.startswith("dh-")):
+                    pass  # a runtime dependency of Debian's packaging tools themselves (debhelper: dh-autoreconf)
                 elif alt in DROP or alt.startswith(DROP_PREFIXES) or alt.startswith("${"):
                     chosen = ""
                     break
@@ -4001,6 +4021,10 @@ class Converter:
                 if re.search(r"(^|[\s;&|(`])" + re.escape(tool) + r"\b", st["runs"], re.M):
                     packages += [p for p in pkgs if p not in [q.value if isinstance(q, C) else q for q in packages]]
         if real:
+            if source_uses(getattr(self, "source_data", None), rb"^\s*use\s+Debconf::") \
+                    and "debconf" not in [q.value if isinstance(q, C) else q for q in packages]:
+                # debconf is Priority: required, on every Debian testbed (po-debconf's tools load Debconf::)
+                packages.append(C("debconf", "Priority: required in Debian, so on every testbed"))
             for dep in essential_script_tools(getattr(self, "source_data", None), tests=True):
                 if dep not in [q.value if isinstance(q, C) else q for q in packages]:
                     packages.append(C(dep, "used by the source's shell scripts; Essential in Debian"))

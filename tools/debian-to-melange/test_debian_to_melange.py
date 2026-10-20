@@ -375,6 +375,10 @@ class HelperTest(unittest.TestCase):
         self.assertEqual(rules.configure_opts(), ["-Dfoo=true", "-Dbar=1.2"])
         self.assertEqual(rules.template_substitutions(), {"postinst": ("postinst.in", {"@V@": "V"})})
 
+    def test_upstream_version_plus_digits(self):
+        self.assertEqual(d2m.debian_upstream_version("0.35.0+20060710.6"), "0.35.0.20060710.6")
+        self.assertEqual(d2m.debian_upstream_version("1.2+git20170224-1"), "1.2_git20170224")
+
     def test_xml_catalogs(self):
         cats = d2m.xml_catalogs(
             "local;docbook-xsl/catalog.xml;/usr/share/xml/docbook/stylesheet/docbook-xsl/catalog.xml\n\n"

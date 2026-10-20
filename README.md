@@ -1,6 +1,6 @@
 # Wolfi Community Packages
 
-[![Packages](https://img.shields.io/badge/packages-301-brightgreen)](PACKAGES.md)
+[![Packages](https://img.shields.io/badge/packages-307-brightgreen)](PACKAGES.md)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
@@ -18,14 +18,14 @@ packages and `APKINDEX` are published on SourceForge.
 
 ## Available packages
 
-301 recipes, listed with versions and licenses in [PACKAGES.md](PACKAGES.md)
+307 recipes, listed with versions and licenses in [PACKAGES.md](PACKAGES.md)
 (generated from the recipes by `scripts/package-list.py`). By area:
 
 | Area | Packages |
 |------|----------|
 | Media | mpv, vlc, stremio (GTK4) and stremio-qt5, libplacebo, libass9, libbluray, libdvdnav, libdvdread, libcdio, libmatroska, taglib, rubberband, shaderc, zimg, mujs |
 | GNOME and Qt5 | webkitgtk-6.0, libadwaita, libsoup3, glib-networking, appstream, xdg-dbus-proxy, qt5-qtwebengine and other Qt5 modules |
-| Debian tooling on Wolfi | apt, aptitude, mmdebstrap, debhelper, dwz, debootstrap, debconf, ucf, fakeroot, fakechroot, dctrl-tools, debian-archive-keyring, debian-keyring, distro-info-data, arch-test, sequoia-sq, sequoia-sqv, sequoia-chameleon-gnupg |
+| Debian tooling on Wolfi | apt, aptitude, mmdebstrap, debhelper (with dh-autoreconf, strip-nondeterminism, po-debconf), dwz, debootstrap, debconf, ucf, fakeroot, fakechroot, dctrl-tools, debian-archive-keyring, debian-keyring, distro-info-data, arch-test, sequoia-sq, sequoia-sqv, sequoia-chameleon-gnupg |
 | TeX | texlive 2026 (programs) and texmf-dist (the TeX Live 2026 tree, split by collection: 38 collections with their documentation), hevea, auctex, tex-common |
 | OCaml | 80 libraries and tools on Wolfi's ocaml, dune and findlib: menhir, js_of_ocaml, odoc, lwt, ppxlib and the Jane Street ppx set, dose3 (`apt-cudf`), cudf, the dune libraries |
 | Haskell | ghc-bootstrap and cabal-install-bootstrap (upstream binaries), pandoc-cli, shellcheck |

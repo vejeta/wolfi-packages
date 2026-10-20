@@ -29,6 +29,8 @@ package:
         - dh_systemd_start
   dependencies:
     runtime:
+      - dh-autoreconf  # Wolfi Community Packages
+      - dh-strip-nondeterminism  # Wolfi Community Packages
       - automake  # Debian: autotools-dev
       - dpkg
       - dwz  # Wolfi Community Packages
@@ -36,6 +38,7 @@ package:
       - perl-debhelper
       - dpkg-dev  # Debian: libdpkg-perl
       - man-db
+      - po-debconf  # Wolfi Community Packages
 environment:
   contents:
     keyring:
