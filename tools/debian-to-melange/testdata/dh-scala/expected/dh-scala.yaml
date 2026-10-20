@@ -3,7 +3,6 @@
 # Debian packaging: https://salsa.debian.org/mendezr/dh-scala
 #
 # Conversion notes:
-# - port debian/rules override_dh_auto_build: mkdir -p man && $(POD2MAN) --section=1 --name=dh_scala dh_scala man/dh_scala.1 && $(POD2MAN) --section=1 --name=dh-make-scala dh-make-scala man/dh-make-scala.1 && $(POD2MAN) --section=5 --name=scala-b
 # - autopkgtests converted to the test pipeline (5 steps)
 package:
   name: dh-scala
@@ -41,7 +40,14 @@ pipeline:
       mkdir -p .recipe-files
       for f in copyright; do mv dh-scala/$f .recipe-files/; done
       rmdir dh-scala 2>/dev/null || true
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_build: mkdir -p man && $(POD2MAN) --section=1 --name=dh_scala dh_scala man/dh_scala.1 && $(POD2MAN) --section=1 --name=dh-make-scala dh-make-scala man/dh-make-scala.1 && $(POD2MAN) --section=5 --name=scala-b
+  - name: Build (from debian/rules override_dh_auto_build)
+    runs: |
+      mkdir -p man
+      pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=1 --name=dh_scala dh_scala man/dh_scala.1
+      pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=1 --name=dh-make-scala dh-make-scala man/dh-make-scala.1
+      pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=5 --name=scala-build scala-build.pod man/scala-build.5
+      pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=7 --name=dh-scala dh-scala.pod man/dh-scala.7
+      pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=3pm --name=Debian::Debhelper::Buildsystem::scala  	  lib/Debian/Debhelper/Buildsystem/scala.pm man/Debian::Debhelper::Buildsystem::scala.3pm
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/bin"
@@ -79,6 +85,7 @@ subpackages:
           mv "${{targets.destdir}}/lib/Debian/DhScala/Make.pm" "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
           mv "${{targets.destdir}}/lib/Debian/DhScala/Make" "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
           install -Dm644 man/dh-make-scala.1 -t "${{targets.contextdir}}/usr/share/man/man1"
+          find "${{targets.contextdir}}/usr/bin" -type f -exec chmod 755 {} +
     dependencies:
       runtime:
         - ca-certificates-bundle  # Debian: ca-certificates

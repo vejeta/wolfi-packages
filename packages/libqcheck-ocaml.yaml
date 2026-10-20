@@ -9,7 +9,6 @@
 # Conversion notes:
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
 # - dh --with ocaml has no direct melange equivalent; review
-# - port debian/rules execute_after_dh_auto_build: dune build -p "$(shell xargs echo < debian/debian-dune | tr ' ' ',')" @doc
 # - autopkgtests converted to the test pipeline (1 steps)
 package:
   name: libqcheck-ocaml
@@ -56,10 +55,12 @@ pipeline:
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
       dune build -p qcheck,qcheck-core,qcheck-ounit,qcheck-alcotest -j $(nproc) @install
+  - name: From debian/rules execute_after_dh_auto_build
+    runs: |
+      dune build -p "$(xargs echo < .recipe-files/debian-dune | tr ' ' ',')" @doc
   - name: Install
     runs: |
       dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" qcheck qcheck-core qcheck-ounit qcheck-alcotest
-  # TODO(debian-to-melange): port debian/rules execute_after_dh_auto_build: dune build -p "$(shell xargs echo < debian/debian-dune | tr ' ' ',')" @doc
   - name: Install files
     runs: |
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/libqcheck-ocaml

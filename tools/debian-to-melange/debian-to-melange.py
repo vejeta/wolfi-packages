@@ -1766,12 +1766,18 @@ class Converter:
                 return "{}/{}".format(name, os.path.basename(rel))
             line = re.sub(r"(?<![\w/$.])debian/([\w.+-]+)", aux, line)
             line = line.replace("${{targets.destdir}}//", "${{targets.destdir}}/")
+            # make's $(shell cmd) in a recipe: the shell's $(cmd), run when the recipe runs
+            # (marked until the check for make variables left)
+            line = re.sub(r"\$\(shell\s+((?:[^()]|\([^()]*\))*)\)", "\x00SHELL(\\1)\x00", line)
+            # pkg-info.mk's SOURCE_DATE_EPOCH: melange has it in the environment
+            line = re.sub(r"\$\(SOURCE_DATE_EPOCH\)", "${SOURCE_DATE_EPOCH}", line)
             if "$(" in line and self.known_includes():
                 # a variable set nowhere is empty in make (dose3's $(RELEASE))
                 line = re.sub(r"\$\(([A-Z][A-Z0-9_]*)\)", lambda m: "" if m.group(1) not in rules.vars
                               and m.group(1) not in BUILD_CONTEXT and m.group(1) not in OCAMLVARS else m.group(0), line)
             if "$(" in line:
                 return None
+            line = re.sub(r"\x00SHELL\((.*?)\)\x00", r"$(\1)", line)
             words = line.split()
             if words and words[0] in ("install", "cp") and not re.search(r"\s-[a-zA-Z]*[dDt]\b", line) \
                     and words[-1].startswith("${{targets."):
@@ -2620,13 +2626,13 @@ class Converter:
                             for c in cmds]
                 if cmds:
                     step = {"name": "From debian/rules " + target, "runs": "\n".join(cmds) + "\n"}
-                    if re.match(r"^execute_(after_dh_auto_configure|before_dh_auto_build)$", target):
+                    if re.match(r"^execute_(after_dh_auto_configure|before_dh_auto_build)(-arch|-indep)?$", target):
                         step["_stage"] = "build"    # before the build (menhir: make -C doc)
                         pre_install.append(step)
-                    elif re.match(r"^execute_(after_dh_auto_(build|test)|before_dh_auto_(test|install))$", target):
+                    elif re.match(r"^execute_(after_dh_auto_(build|test)|before_dh_auto_(test|install))(-arch|-indep)?$", target):
                         step["_stage"] = "install"  # between the build and the install
                         pre_install.append(step)
-                    elif re.match(r"^execute_after_dh_auto_install$", target) or target == "execute_before_dh_install":
+                    elif re.match(r"^execute_(after_dh_auto_install|before_dh_install)(-arch|-indep)?$", target):
                         pre_install.append(step)   # before the files are installed (dh_install)
                     else:
                         post_install.append(step)  # on the installed files
@@ -3383,6 +3389,9 @@ class Converter:
         cmds = self.install_lines(b, False, False, "${{targets.contextdir}}")
         if self.pkgfile(b["package"], "install", False) is None:
             cmds += self.ocamllibinstall(b["package"])
+        if any(re.search(r'(?m)^cp -a \S+ "\$\{\{targets\.contextdir\}\}/usr/s?bin/"', c) for c in cmds):
+            # dh_fixperms: commands copied from the source tree are executable
+            cmds.append('find "${{targets.contextdir}}/usr/bin" -type f -exec chmod 755 {} +')
         filled = "${{{{targets.outdir}}}}/{}".format(sub["name"])
         if cmds:
             sub["pipeline"] = [{"runs": "\n".join(cmds) + "\n"}]

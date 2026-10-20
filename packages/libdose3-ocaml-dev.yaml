@@ -203,6 +203,7 @@ subpackages:
           install -Dm644 doc/manpages/apt-cudf.1 -t "${{targets.contextdir}}/usr/share/man/man1"
           install -Dm644 doc/manpages/apt-cudf.conf.5 -t "${{targets.contextdir}}/usr/share/man/man5"
           mkdir -p "${{targets.contextdir}}/usr/lib/apt/solvers"
+          find "${{targets.contextdir}}/usr/bin" -type f -exec chmod 755 {} +
     dependencies:
       runtime:
         - aspcud  # Wolfi Community Packages
