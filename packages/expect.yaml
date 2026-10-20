@@ -210,6 +210,12 @@ pipeline:
       cp -a NEWS "${{targets.destdir}}/usr/share/doc/expect/"
       cp -a README "${{targets.destdir}}/usr/share/doc/expect/"
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/expect/copyright
+  - name: Commands are executable (dh_fixperms)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        [ -d "$d/usr/bin" ] && find "$d/usr/bin" -type f -exec chmod 755 {} +
+      done
+      true
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
@@ -289,7 +295,9 @@ test:
         - dpkg  # Essential in Debian, so on every testbed
         - findutils  # Essential in Debian, so on every testbed
         - grep  # Essential in Debian, so on every testbed
+        - gzip  # Essential in Debian, so on every testbed
         - sed  # Essential in Debian, so on every testbed
+        - patch  # to apply Debian's patches to the tested source
   pipeline:
     - runs: |
         ls /usr/bin/expect[89].* >/dev/null
@@ -300,6 +308,16 @@ test:
       with:
         uri: https://deb.debian.org/debian/pool/main/e/expect/expect_${{package.version}}.orig.tar.gz
         expected-sha256: d082bf340fdb7a85b1e4e5df4d967d0140835db34a8a035c3102abb5eb62d450
+    - uses: fetch
+      with:
+        uri: https://deb.debian.org/debian/pool/main/e/expect/expect_5.45.4-10.debian.tar.xz
+        strip-components: 0
+        expected-sha256: 7da83862904e9317d038c94aaa732d3e3054fcafe9db7851c322d51e07646c4f
+    - name: 'Debian''s patches (autopkgtest tests the patched source)'
+      runs: |
+        sed -e 's/#.*//' -e '/^[[:space:]]*$/d' debian/patches/series | while read -r p opt; do
+          patch ${opt:--p1} -N < "debian/patches/$p"
+        done
     - name: dpkg database (as on a Debian testbed)
       runs: |
         db=/var/lib/dpkg
@@ -309,6 +327,7 @@ test:
           function add(   m, j, f) {
             m = split(pkg alias[pkg], names, " ")
             for (j = 1; j <= m; j++) {
+              if (seen[names[j]]++) continue  # one entry per name: dpkg rejects duplicates
               f = db "/info/" names[j] ".list"
               printf "%s", files > f; close(f)
               gsub(/_/, "~", ver)
@@ -327,6 +346,13 @@ test:
           # po-debconf's translatable fields (_Description, __Choices) in the C locale
           [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/expect.templates" && break
         done
+        # / and /tmp as on a Debian testbed: sandboxes may make / 0700 (apt's _apt reads below it)
+        chmod 755 / 2>/dev/null || true
+        chmod 1777 /tmp 2>/dev/null || true
+        # base-files' vendor (dpkg-vendor, dpkg-buildpackage)
+        mkdir -p /etc/dpkg/origins
+        [ -e /etc/dpkg/origins/debian ] || printf 'Vendor: Debian\nVendor-URL: https://www.debian.org/\nBugs: debbugs://bugs.debian.org\n' > /etc/dpkg/origins/debian
+        [ -e /etc/dpkg/origins/default ] || ln -s debian /etc/dpkg/origins/default
     - name: 'autopkgtest: expect -v'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"

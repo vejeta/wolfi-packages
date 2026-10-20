@@ -1211,7 +1211,7 @@ DH_SEQUENCE = ["dh_auto_install", "dh_install", "dh_installdocs", "dh_installcha
 
 
 # GNU commands of Debian's Essential packages that busybox only partly implements
-ESSENTIAL_SCRIPT_TOOLS = {"getopt": "util-linux-misc", "setpriv": "setpriv"}
+ESSENTIAL_SCRIPT_TOOLS = {"getopt": "util-linux-misc", "setpriv": "setpriv", "prlimit": "util-linux-misc"}
 
 
 def essential_script_tools(data, tests=False):
@@ -1386,7 +1386,7 @@ RECIPE_TOOLS = {
 
 
 # Debian's Essential packages, present on every autopkgtest testbed (GNU tools, dpkg)
-ESSENTIAL = ["bash", "coreutils", "diffutils", "dpkg", "findutils", "grep", "sed"]
+ESSENTIAL = ["bash", "coreutils", "diffutils", "dpkg", "findutils", "grep", "gzip", "sed"]
 
 def alternatives(text):
     """update-alternatives --install calls of a postinst: [(link, path, [(slave link, slave path)])],
@@ -2980,8 +2980,11 @@ class Converter:
         pipeline.append(self.install_step(main, True, native, name))
         post_install.sort(key=lambda st: dh_sequence_index(st.get("name", "")))  # stable: rules order otherwise
         pipeline += post_install
-        if any(isinstance(st, dict) and re.search(r'(?m)^cp -a \S+ "\$\{\{targets\.destdir\}\}/usr/s?bin/"',
-                                                  st.get("runs", "")) for st in pipeline):
+        if any(isinstance(st, dict) and (re.search(r'(?m)^cp -a \S+ "\$\{\{targets\.destdir\}\}/usr/s?bin/"',
+                                                   st.get("runs", "")) or
+                                         # rules that write commands with a redirect (expect: sed ... > expect_unbuffer)
+                                         re.search(r"usr/s?bin/.*\s>\s*\S", st.get("runs", "")))
+               for st in pipeline):
             # dh_fixperms: commands copied from the source tree are executable
             pipeline.append({"name": "Commands are executable (dh_fixperms)", "runs": (
                 'for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do\n'

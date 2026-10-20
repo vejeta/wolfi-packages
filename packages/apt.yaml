@@ -248,6 +248,12 @@ pipeline:
     runs: |
       mkdir -p ${{targets.destdir}}/etc/apt/apt.conf.d
       install -m 644 .recipe-files/apt.conf.autoremove ${{targets.destdir}}/etc/apt/apt.conf.d/01autoremove
+  - name: Commands are executable (dh_fixperms)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        [ -d "$d/usr/bin" ] && find "$d/usr/bin" -type f -exec chmod 755 {} +
+      done
+      true
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
@@ -367,6 +373,7 @@ test:
         - dpkg  # Essential in Debian, so on every testbed
         - findutils  # Essential in Debian, so on every testbed
         - grep  # Essential in Debian, so on every testbed
+        - gzip  # Essential in Debian, so on every testbed
         - sed  # Essential in Debian, so on every testbed
         - apt-transport-https  # Debian's @: the binary packages of the source
         - apt-utils  # Debian's @: the binary packages of the source
@@ -416,6 +423,7 @@ test:
         - w3m
         - python3
         - make
+        - util-linux-misc  # used by the source's shell scripts; Essential in Debian
         - shadow  # useradd, for the users of the maintainer scripts
   pipeline:
     - runs: |
