@@ -2182,8 +2182,8 @@ class Converter:
                     if base:
                         break
                     continue
-                if kind == "test" and alt in ("debconf", "ucf"):
-                    pass  # an autopkgtest that exercises them gets the real ones
+                if kind == "test" and alt in ("debconf", "ucf", "dpkg-dev", "init-system-helpers", "sensible-utils"):
+                    pass  # an autopkgtest that exercises them gets the real ones (apt's: Dpkg.pm, from dpkg-dev)
                 elif alt in DROP or alt.startswith(DROP_PREFIXES) or alt.startswith("${"):
                     chosen = ""
                     break
@@ -3971,6 +3971,8 @@ class Converter:
                 if series and (packaging or has_debian):
                     # the source package autopkgtest unpacks has Debian's patches applied (mmdebstrap's
                     # testsuite checks hurd-profile.sh, which a patch fixes)
+                    if "patch" not in [q.value if isinstance(q, C) else q for q in packages]:
+                        packages.append(C("patch", "to apply Debian's patches to the tested source"))
                     packaging.append({"name": "Debian's patches (autopkgtest tests the patched source)", "runs": (
                         "sed -e 's/#.*//' -e '/^[[:space:]]*$/d' debian/patches/series | while read -r p opt; do\n"
                         "  patch ${opt:--p1} -N < \"debian/patches/$p\"\n"

@@ -391,6 +391,7 @@ test:
         - gdb
         - ca-certificates-bundle  # Debian: ca-certificates
         - apt
+        - dpkg-dev
         - cmake
         - docbook-xml
         - docbook-xsl  # Wolfi Community Packages

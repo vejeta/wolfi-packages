@@ -103,6 +103,7 @@ test:
     contents:
       packages:
         - busybox
+        - dpkg-dev
         - shadow  # Debian: adduser
         - apt-cudf  # Wolfi Community Packages
         - arch-test  # Wolfi Community Packages
@@ -147,6 +148,7 @@ test:
         - script
         - setpriv  # used by the source's shell scripts; Essential in Debian
         - apt  # the Debian testbed's apt sources
+        - patch  # to apply Debian's patches to the tested source
   pipeline:
     - runs: |
         test -f /usr/share/doc/mmdebstrap/copyright
