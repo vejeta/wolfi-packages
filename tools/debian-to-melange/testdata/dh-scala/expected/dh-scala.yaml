@@ -18,7 +18,7 @@ package:
     runtime:
       - openjdk-25-default-jdk  # Debian: default-jdk-headless
       - perl-archive-zip  # Debian: libarchive-zip-perl
-      - perl-dpkg  # Debian: libdpkg-perl
+      - dpkg-dev  # Debian: libdpkg-perl
       - perl  # Debian: ${perl:Depends}
 environment:
   contents:
@@ -29,7 +29,7 @@ environment:
     packages:
       - busybox
       - perl-archive-zip  # Debian: libarchive-zip-perl
-      - perl-dpkg  # Debian: libdpkg-perl
+      - dpkg-dev  # Debian: libdpkg-perl
       - perl-xml-libxml  # Debian: libxml-libxml-perl
       - perl
       - coreutils

@@ -392,6 +392,7 @@ test:
         - apt
         - dpkg-dev
         - cmake
+        - debhelper  # Wolfi Community Packages
         - docbook-xml
         - docbook-xsl  # Wolfi Community Packages
         - gettext
@@ -434,7 +435,7 @@ test:
       runs: |
         db=/var/lib/dpkg
         mkdir -p "$db/info" && touch "$db/status"
-        awk -v db="$db" -v aliases='build-essential=build-base ca-certificates=ca-certificates-bundle db-util=db-utils g++=build-base googletest=gtest-dev gpgv-sq=sequoia-chameleon-gnupg libbz2-dev=bzip2-dev libc-bin=glibc libc6=glibc libdb-dev=db-dev libfile-fcntllock-perl=perl-file-fcntllock liblz4-dev=lz4-dev liblzma-dev=xz-dev libssl-dev=openssl-dev libsystemd-dev=systemd-dev libudev-dev=systemd-dev libxxhash-dev=xxhash-dev libzstd-dev=zstd-dev ninja-build=ninja perl-base=perl pkg-config=pkgconf-dev python3-apt=py3-apt sq=sequoia-sq sqv=sequoia-sqv stunnel4=stunnel valgrind-if-available=valgrind xsltproc=libxslt zlib1g-dev=zlib-dev' '
+        awk -v db="$db" -v aliases='build-essential=build-base ca-certificates=ca-certificates-bundle db-util=db-utils debhelper-compat=debhelper g++=build-base googletest=gtest-dev gpgv-sq=sequoia-chameleon-gnupg libbz2-dev=bzip2-dev libc-bin=glibc libc6=glibc libdb-dev=db-dev libfile-fcntllock-perl=perl-file-fcntllock liblz4-dev=lz4-dev liblzma-dev=xz-dev libssl-dev=openssl-dev libsystemd-dev=systemd-dev libudev-dev=systemd-dev libxxhash-dev=xxhash-dev libzstd-dev=zstd-dev ninja-build=ninja perl-base=perl pkg-config=pkgconf-dev python3-apt=py3-apt sq=sequoia-sq sqv=sequoia-sqv stunnel4=stunnel valgrind-if-available=valgrind xsltproc=libxslt zlib1g-dev=zlib-dev' '
           BEGIN { n = split(aliases, a, " "); for (i = 1; i <= n; i++) { split(a[i], kv, "="); alias[kv[2]] = alias[kv[2]] " " kv[1] } }
           function add(   m, j, f) {
             m = split(pkg alias[pkg], names, " ")

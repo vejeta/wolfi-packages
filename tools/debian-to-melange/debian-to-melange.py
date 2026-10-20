@@ -127,6 +127,10 @@ NAME_MAP = {
     "pkg-config": "pkgconf-dev",
     "mawk": "gawk",
     "awk": "gawk",
+    # Wolfi's dpkg-dev has the Dpkg perl modules; automake has config.guess and config.sub
+    "libdpkg-perl": "dpkg-dev",
+    "libelf-dev": "elfutils-dev",
+    "autotools-dev": "automake",
     # xml-core's update-xmlcatalog and dh_installxmlcatalogs: the scriptlets use libxml2's xmlcatalog
     "xml-core": "libxml2-utils",
     # Wolfi's groff-base has the programs, groff the macros (an.tmac, tty-char.tmac) nroff -man needs
@@ -2248,7 +2252,10 @@ class Converter:
                     if base:
                         break
                     continue
-                if kind == "test" and alt in ("debconf", "ucf", "dpkg-dev", "init-system-helpers", "sensible-utils"):
+                if kind == "test" and alt == "debhelper-compat":
+                    alt = "debhelper"  # @builddeps@: the tests build packages with dh (apt's run-tests)
+                if kind == "test" and alt in ("debconf", "ucf", "dpkg-dev", "init-system-helpers", "sensible-utils",
+                                              "debhelper", "po-debconf", "quilt"):
                     pass  # an autopkgtest that exercises them gets the real ones (apt's: Dpkg.pm, from dpkg-dev)
                 elif alt in DROP or alt.startswith(DROP_PREFIXES) or alt.startswith("${"):
                     chosen = ""
