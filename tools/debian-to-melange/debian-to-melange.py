@@ -2053,11 +2053,16 @@ class Converter:
                 if (chosen is None or chosen[2] is False) and getattr(self.args, "download", False):
                     # the commands the Debian package ships (iputils-ping: ping -> iputils)
                     for alt in alts:
-                        provs = []
+                        count = {}
                         for cmd in debian_commands(alt):
                             prov = self.wolfi.providers.get("cmd:" + cmd)
-                            if prov and prov not in provs:
-                                provs.append(prov)
+                            if prov:
+                                count[prov] = count.get(prov, 0) + 1
+                        # the package with most of the commands; others only for two or more of
+                        # them (util-linux-extra: util-linux-misc, not the util-linux-login whose
+                        # login conflicts with shadow-login for one command)
+                        provs = sorted(count, key=lambda p: -count[p])
+                        provs = provs[:1] + [p for p in provs[1:] if count[p] > 1]
                         if provs:
                             chosen = (provs[0], alt, True)
                             for extra in provs[1:]:

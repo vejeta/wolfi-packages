@@ -117,12 +117,8 @@ test:
         - squashfs-tools-ng  # Wolfi Community Packages
         - sudo
         - tzdata
-        - just-newuidmap-newgidmap  # commands of Debian's uidmap
-        - shadow-subids  # Debian: uidmap
-        - util-linux-login  # commands of Debian's util-linux-extra
-        - shadow-login  # commands of Debian's util-linux-extra
+        - just-newuidmap-newgidmap  # Debian: uidmap
         - util-linux-misc  # Debian: util-linux-extra
-        - uuidgen  # commands of Debian's uuid-runtime
         - bash  # Essential in Debian, so on every testbed
         - coreutils  # Essential in Debian, so on every testbed
         - diffutils  # Essential in Debian, so on every testbed
@@ -144,7 +140,7 @@ test:
       runs: |
         db=/var/lib/dpkg
         mkdir -p "$db/info" && touch "$db/status"
-        awk -v db="$db" -v aliases='adduser=shadow codespell=py3.13-codespell-bin grep-dctrl=dctrl-tools iputils-ping=iputils libc-bin=glibc libc6=glibc libcap2-bin=libcap-utils libperl-critic-perl=perl-perl-critic perl-base=perl perltidy=perl-tidy python3-apt=py3-apt python3-debian=py3-supported-debian uidmap=just-newuidmap-newgidmap util-linux-extra=util-linux-login uuid-runtime=uuidgen' '
+        awk -v db="$db" -v aliases='adduser=shadow codespell=py3.13-codespell-bin grep-dctrl=dctrl-tools iputils-ping=iputils libc-bin=glibc libc6=glibc libcap2-bin=libcap-utils libperl-critic-perl=perl-perl-critic perl-base=perl perltidy=perl-tidy python3-apt=py3-apt python3-debian=py3-supported-debian uidmap=just-newuidmap-newgidmap util-linux-extra=util-linux-misc uuid-runtime=util-linux-misc' '
           BEGIN { n = split(aliases, a, " "); for (i = 1; i <= n; i++) { split(a[i], kv, "="); alias[kv[2]] = alias[kv[2]] " " kv[1] } }
           function add(   m, j, f) {
             m = split(pkg alias[pkg], names, " ")
