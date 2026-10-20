@@ -459,6 +459,9 @@ test:
           # po-debconf's translatable fields (_Description, __Choices) in the C locale
           [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/apt.templates" && break
         done
+        # / and /tmp as on a Debian testbed: sandboxes may make / 0700 (apt's _apt reads below it)
+        chmod 755 / 2>/dev/null || true
+        chmod 1777 /tmp 2>/dev/null || true
         # base-files' vendor (dpkg-vendor, dpkg-buildpackage)
         mkdir -p /etc/dpkg/origins
         [ -e /etc/dpkg/origins/debian ] || printf 'Vendor: Debian\nVendor-URL: https://www.debian.org/\nBugs: debbugs://bugs.debian.org\n' > /etc/dpkg/origins/debian
