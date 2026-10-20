@@ -126,9 +126,11 @@ NAME_MAP = {
     "valgrind-if-available": "valgrind",
     "pkg-config": "pkgconf-dev",
     "mawk": "gawk",
-    # Wolfi ships the DocBook XSL stylesheets, and their catalog, in docbook-xml
-    "docbook-xsl": "docbook-xml",
     "awk": "gawk",
+    # xml-core's update-xmlcatalog and dh_installxmlcatalogs: the scriptlets use libxml2's xmlcatalog
+    "xml-core": "libxml2-utils",
+    # Wolfi's groff-base has the programs, groff the macros (an.tmac, tty-char.tmac) nroff -man needs
+    "groff-base": ["groff-base", "groff"],
     "pkgconf": "pkgconf-dev",
     "ca-certificates": "ca-certificates-bundle",
     "golang-go": "go",
@@ -694,7 +696,7 @@ class Rules:
                 for t in target:
                     self.targets[t].append(line[1:])
                 continue
-            line = line.lstrip("\t")  # indented inside a conditional, outside any rule
+            line = line.lstrip()  # indented inside a conditional, outside any rule
             if not line.strip() or line.lstrip().startswith("#"):
                 continue  # blank lines and comments do not end a recipe
             target = None
@@ -736,7 +738,7 @@ class Rules:
     def _merge_arch_indep(self):
         """One melange build makes the arch and the indep packages: override_dh_x-arch and
         override_dh_x-indep become override_dh_x, with their target-specific variables
-        joined (arch first, so later cmake/configure flags from indep win)."""
+        taken from the -indep target when both set them: a full build runs both, indep last."""
         groups = {}
         for t in self.targets:
             m = re.match(r"^((?:override|execute_before|execute_after)_dh_\w+)-(arch|indep)$", t)
@@ -754,8 +756,7 @@ class Rules:
                 # only the -arch (or -indep) packages are overridden: the others still get dh_x
                 recipe.append(base[len("override_"):])
             for t in ts:
-                for k, v in self.target_vars.get(t, {}).items():
-                    tvars[k] = v if tvars.get(k, v) == v else tvars[k] + " " + v
+                tvars.update(self.target_vars.get(t, {}))
                 for line in self.targets[t]:
                     if line not in recipe:
                         recipe.append(line)
@@ -834,7 +835,8 @@ class Rules:
                 continue  # the debian-installer build
             m = re.search(r"dh_auto_configure\b.*?\s--\s+(.*)$", recipe)
             if m:
-                return self.expand(m.group(1)).split()
+                # "$$" is make's escape for a literal "$"
+                return self.expand(m.group(1)).replace("$$", "$").split()
         return []
 
     def template_substitutions(self):
@@ -1204,6 +1206,23 @@ def essential_script_tools(data):
     return found
 
 
+def bash_scripts(data):
+    """Does the source have bash scripts? bash is Essential in Debian, so builds may run them."""
+    if not data:
+        return False
+    import io
+    import tarfile
+    try:
+        with tarfile.open(fileobj=io.BytesIO(data)) as tar:
+            for m in tar:
+                if m.isfile() and m.size < 2000000 and re.match(
+                        rb"#!\s*(/usr)?/bin/(env\s+)?bash\b", tar.extractfile(m).read(64)):
+                    return True
+    except (tarfile.TarError, OSError, EOFError):
+        pass
+    return False
+
+
 def drop_foreign_fakechroot(script):
     """mmdebstrap --mode=fakechroot runs the host's programs against the chroot's libraries;
     a Debian chroot's glibc is older than Wolfi's, so that half of a test cannot work here.
@@ -1407,6 +1426,19 @@ def convert_script(text, kind, pkg, templates, conffile, notes):
     if body and body[0].startswith("#!"):
         body = body[1:]
     return "\n".join(body).strip("\n"), uses_debconf
+
+
+def xml_catalogs(text):
+    """debian/<pkg>.xmlcatalogs: {"local": [(source, installed path)],
+    "package": [(uri|system|public, prefix, catalog)]} (dh_installxmlcatalogs)."""
+    out = {"local": [], "package": []}
+    for line in (text or "").splitlines():
+        f = [x.strip() for x in line.split(";")]
+        if f[0] == "local" and len(f) == 3:
+            out["local"].append((f[1], f[2].lstrip("/")))
+        elif f[0] == "package" and len(f) == 4:
+            out["package"].append((f[1], f[2], f[3]))
+    return out
 
 
 def wrap_script(kind, body, args):
@@ -1648,9 +1680,12 @@ class Converter:
         full = os.path.join(self.deb, rel)
         if not os.path.isfile(full):
             return path
+        # nested files keep their directories in the name: docbook-xsl has
+        # examples/docbook-xsl/foo.xml and examples/docbook-xsl-ns/foo.xml
+        flat = rel.replace("/", "_")
         with open(full, "rb") as fh:
-            self.aux[os.path.basename(rel)] = fh.read()
-        return "{}/{}".format(self.recipe_dir, os.path.basename(rel))
+            self.aux[flat] = fh.read()
+        return "{}/{}".format(self.recipe_dir, flat)
 
     def todo(self, msg):
         self.notes.append(msg)
@@ -1741,7 +1776,7 @@ class Converter:
             # dh_listpackages in the shell: the binary packages; debian/$pkg: their output directory
             pkgs_list = "printf '%s\\n' " + " ".join(sorted(self.rename))
             line = re.sub(r"\bdh_listpackages\b", lambda m: pkgs_list, line)
-            line = re.sub(r"(?<![\w/.$])debian/\$", "${{targets.outdir}}/$", line)
+            line = re.sub(r"(?<![\w/.$])(?:\$\(CURDIR\)/)?debian/\$", "${{targets.outdir}}/$", line)
             # pybuild's build directory: py/pip-build-install installs straight into destdir
             line = re.sub(r"\$\(shell pybuild --print build_dir[^)]*\)",
                           "${{targets.destdir}}`python3 -c 'import sysconfig; print(sysconfig.get_path(\"platlib\"))'`", line)
@@ -1802,8 +1837,17 @@ class Converter:
                     out.append("mkdir -p {}".format(d))
             # debhelper has made debian/<pkg>/... and debian/ by now; a redirect here may not have it
             for target in re.findall(r"(?<![<>&\d])>>?\s*\"?([^\s\"'&|;]+)/[^\s/\"']+", line):
-                if target not in ("/dev", ".", "..") and "mkdir -p {}".format(target) not in out:
-                    out.append("mkdir -p {}".format(target))
+                if target in ("/dev", ".", ".."):
+                    continue
+                ts = [target]
+                if target.startswith("${{targets.outdir}}/$"):
+                    # debian/$pkg/usr/share/doc/$pkg: debhelper made it for each package
+                    ts = [re.sub(r"\$\{?[A-Za-z_]\w*\}?", name, target[len("${{targets.outdir}}"):])
+                          for name in sorted(set(self.rename.values()))]
+                    ts = ["${{targets.outdir}}" + t for t in ts]
+                for t in ts:
+                    if "mkdir -p {}".format(t) not in out:
+                        out.append("mkdir -p {}".format(t))
             if re.match(r"^cd\s", line):
                 # make runs each recipe line in its own shell: a cd does not carry to the next
                 line = "({})".format(line)
@@ -2269,6 +2313,7 @@ class Converter:
             pkg["copyright"].insert(0, self.todo("debian/copyright is not machine-readable (DEP-5); set the SPDX license"))
 
         self.main_depends = main.get("depends") or ""
+        self.binary_recommends = [r for b in binaries for r in [b.get("recommends")] if r]
         self.main_package = main["package"]
         runtime = self.map_deps(parse_relations(main.get("depends")) + parse_relations(main.get("pre-depends")), "runtime")
         runtime += self.unversioned_libs(main, source)
@@ -2432,6 +2477,9 @@ class Converter:
                 # Debian's liblua5.X.so: Wolfi ships the library without a development link
                 pipeline.append({"name": "Debian's liblua{}.so".format(lua.group(1)), "runs": (
                     "ln -sf liblua-{0}.so.0 /usr/lib/liblua{0}.so\n").format(lua.group(1))})
+        if bash_scripts(getattr(self, "source_data", None)) and "bash" not in env_pkgs:
+            # (aptitude: doc/html-to-text, run while building the documentation)
+            env_pkgs.append(C("bash", "the source has bash scripts; Essential in Debian"))
         for dep in essential_script_tools(getattr(self, "source_data", None)):
             # Debian's Essential packages back these commands everywhere; Wolfi's busybox lacks them
             pkg.setdefault("dependencies", {}).setdefault("runtime", []).append(
@@ -2455,10 +2503,7 @@ class Converter:
                         and st.get("with", {}).get("recurse-submodules")), None)
             if git:
                 # Debian's orig (GitHub's tag tarball) lacks the submodules when its patches add them (sombok: test-data)
-                created = set()
-                for p in patches:
-                    with open(os.path.join(self.deb, "patches", p), errors="replace") as fh:
-                        created |= set(re.findall(r"(?m)^\+\+\+ (?:b/)?(\S+)", fh.read()))
+                created = self.patched_files()
                 subs = submodule_paths(git["repository"], git.get("expected-commit", ""))
                 if any(f == d or f.startswith(d.rstrip("/") + "/") for f in created for d in subs):
                     del git["recurse-submodules"]
@@ -2510,7 +2555,8 @@ class Converter:
         # cargo and go builds install nothing into debian/tmp; an
         # override_dh_auto_install replaces upstream's install step, and when
         # it installs into destdir the *.install files are already satisfied.
-        self.upstream_installs = bs not in ("cargo", "golang") and (
+        # (no build system: dh_auto_install does nothing, dh_install takes the files from the tree)
+        self.upstream_installs = bs not in (None, "cargo", "golang") and (
             "override_dh_auto_install" not in overrides
             or bool(install_override and any("${{targets.destdir}}" in l or l == self.PIPELINE_MARK
                                              for l in install_override))
@@ -2592,6 +2638,8 @@ class Converter:
                 continue  # Debian packaging checks and bookkeeping (execute_before/after_*)
             tool = re.sub(r"-(indep|arch)$", "", target[len("override_"):])
             calls = [l.strip().lstrip("@-") for l in recipe if l.strip() and not l.strip().startswith("#")]
+            if not calls and target.startswith("override_"):
+                continue  # an empty override: the step is not run
             files = [c for c in calls if re.match(r"^dh_install(examples|docs)\s", c)]
             if files and len(files) == len(calls):
                 # dh_installexamples/dh_installdocs -pPKG FILES: into that package's doc directory
@@ -2652,6 +2700,8 @@ class Converter:
                     else:
                         post_install.append(step)  # on the installed files
                     continue
+                if cmds is not None:
+                    continue  # only debhelper commands, done elsewhere (dh_installxmlcatalogs)
             pipeline.append(self.todo("port debian/rules {}: {}".format(
                 target, " && ".join(l.strip() for l in recipe if l.strip())[:200])))
 
@@ -2965,6 +3015,25 @@ class Converter:
             uses_debconf |= dc
             for target, argv in targets:
                 scripts[target] = wrap_script(label, body, argv)
+        cats = xml_catalogs(self.pkgfile(binary["package"], "xmlcatalogs", is_main))
+        if cats["package"]:
+            # dh_installxmlcatalogs: Debian's update-xmlcatalog (xml-core) does this; Wolfi's
+            # root catalog (/etc/xml/catalog) is libxml2's, so xmlcatalog delegates to the package's
+            add = ["# debian/{}.xmlcatalogs (dh_installxmlcatalogs)".format(binary["package"]),
+                   "[ -f /etc/xml/catalog ] || xmlcatalog --noout --create /etc/xml/catalog"]
+            rm = ["# debian/{}.xmlcatalogs (dh_installxmlcatalogs)".format(binary["package"])]
+            prefixes = sorted({prefix for _kind, prefix, _catalog in cats["package"]})
+            # (--del removes every entry for the prefix: the old ones first, then the new ones)
+            q = shlex.quote
+            add += ["xmlcatalog --noout --del {} /etc/xml/catalog 2>/dev/null".format(q(p)) for p in prefixes]
+            add += ["xmlcatalog --noout --add delegate{1} {0} {2} /etc/xml/catalog".format(
+                q(prefix), "URI" if kind == "uri" else kind.capitalize(), q("file://" + catalog))
+                for kind, prefix, catalog in cats["package"]]
+            rm += ["xmlcatalog --noout --del {} /etc/xml/catalog 2>/dev/null || true".format(q(p)) for p in prefixes]
+            for target, lines in (("post-install", add), ("post-upgrade", add), ("pre-deinstall", rm)):
+                body = "\n".join(lines) + "\ntrue\n"
+                scripts[target] = scripts[target] + body if target in scripts else "#!/bin/sh\n" + body
+            SCRIPT_DEPS.setdefault("xmlcatalog", []).append("libxml2-utils")
         # packages whose commands the scripts call (update-alternatives -> dpkg ...)
         own = self.rename.get(binary["package"], binary["package"])
         self.script_deps = sorted({d for ds in SCRIPT_DEPS.values() for d in ds} - {own})
@@ -3210,11 +3279,15 @@ class Converter:
         return step
 
     def debian_orig_url(self, source, version):
-        """Debian's copy of the upstream tarball, when upstream cannot be reached."""
+        """Debian's copy of the upstream tarball, when upstream cannot be reached; or Debian's
+        repack of it, when nothing says where upstream is (docbook-xsl: no debian/watch, and
+        Debian's install files expect the layout of its repack)."""
         upver = (self.deb_version or "").split(":", 1)[-1].rsplit("-", 1)[0]
         name = source.get("source", "")
-        if not upver or not name or re.search(r"[+~](dfsg|ds|repack)", upver):
-            return None  # repacked by Debian: not the upstream tarball
+        if not upver or not name:
+            return None
+        if re.search(r"[+~](dfsg|ds|repack)", upver) and self.read("watch"):
+            return None  # repacked by Debian: debian/watch finds the upstream tarball
         prefix = name[:4] if name.startswith("lib") else name[0]
         for ext in ("gz", "xz", "bz2"):
             url = "https://deb.debian.org/debian/pool/{}/{}/{}/{}_{}.orig.tar.{}".format(
@@ -3317,9 +3390,17 @@ class Converter:
                         or ex.rstrip("/*").startswith("{}/examples".format(docdir[len(destdir) + 1:])):
                     continue  # already where dh_installexamples puts it
                 ex = shell_path("${{targets.destdir}}", ex)
+            if ex.startswith("debian/"):
+                local = self.debian_file(ex)
+                if local != ex:
+                    cmds.append('install -Dm644 {1} "{0}/examples/{2}"'.format(docdir, local, os.path.basename(ex)))
+                    continue
             if ex:
                 # dh_installexamples
                 cmds.append('mkdir -p "{0}/examples"\ncp -a {1} "{0}/examples/"'.format(docdir, ex))
+        for src, dst in xml_catalogs(self.pkgfile(binary["package"], "xmlcatalogs", main))["local"]:
+            # dh_installxmlcatalogs installs the package's own catalog
+            cmds.append('install -Dm644 {} "{}/{}"'.format(self.debian_file(src), destdir, dst))
         docs = [d for line in (self.pkgfile(binary["package"], "docs", main) or "").splitlines()
                 for word in line.split("#", 1)[0].split() for d in brace_expand(word)]
         for doc in docs:
@@ -3365,7 +3446,22 @@ class Converter:
         # only with an autoconf input: arch-test's configure is written by hand
         if not ("configure.ac" in self.top or "configure.in" in self.top):
             return False
-        return self.git_source is not None or "configure" not in self.top
+        if self.git_source is not None or "configure" not in self.top:
+            return True
+        # the generated files go stale when Debian's patches change their inputs
+        # (aptitude: buildlib/docbook.mk, included by the doc Makefile.am files)
+        return any(re.search(r"(^|/)(configure\.(ac|in)|[^/]+\.(am|m4|mk))$", f) for f in self.patched_files())
+
+    def patched_files(self):
+        files = set()
+        for l in (self.read("patches/series") or "").splitlines():
+            if l.strip() and not l.startswith("#"):
+                try:
+                    with open(os.path.join(self.deb, "patches", l.split()[0]), errors="replace") as fh:
+                        files |= set(re.findall(r"(?m)^\+\+\+ (?:b/)?(\S+)", fh.read()))
+                except OSError:
+                    pass
+        return files
 
     def autoreconf_tools(self):
         tools = ["autoconf", "automake"]
@@ -3509,6 +3605,9 @@ class Converter:
                 # "@" installs the package with its Depends, debconf included
                 deps += [alts for alts in parse_relations(self.main_depends)
                          if any(a in ("debconf", "ucf") for a in alts)]
+                # autopkgtest installs Recommends too (docbook-xsl's tests need docbook-xml's DTDs)
+                deps += [alts for r in getattr(self, "binary_recommends", [])
+                         for alts in parse_relations(r) if not alts[0].startswith("${")]
             if "@builddeps@" in [d[0] for d in parse_relations(para.get("depends", ""))]:
                 # the build dependencies (no build profile enabled) and build-essential
                 deps += [["build-essential"]] + [alts for f in ("build-depends", "build-depends-indep", "build-depends-arch")

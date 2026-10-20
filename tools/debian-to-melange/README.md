@@ -62,11 +62,11 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | `debian/rules` `*VERSION` variable (native packages) | `package.version` |
 | `debian/copyright` (DEP-5) | `package.copyright` with SPDX ids (`GPL-2+` → `GPL-2.0-or-later`, `Expat` → `MIT`, …) and per-path entries; for free-form files, the license is read from the GPL/LGPL/MIT/BSD/Apache notice |
 | `Depends` / `Pre-Depends` | `dependencies.runtime`, names mapped to Wolfi |
-| `Recommends` | Comment (apk has no recommends) |
+| `Recommends` | Comment (apk has no recommends); installed for autopkgtests that depend on `@`, as autopkgtest does |
 | `Build-Depends{,-Indep,-Arch}` | `environment.contents.packages`, names mapped to Wolfi (`librust-*-dev` dropped: cargo fetches crates). Virtual packages are resolved through packages.debian.org; bundles (`x11-apps`, `x11-utils`, `x11-xserver-utils`) become the programs Wolfi has. Names not in Wolfi are left out as a TODO comment, so the environment still resolves |
 | Build profiles (`<!nocheck>`, `<pkg.foo.stage0>`) | Evaluated for a normal build: dependencies only needed under a profile are left out |
 | `libfoo-perl`, `openjdk-N-jdk`, `default-jdk` | `perl-foo`, `openjdk-N`, `openjdk-25-default-jdk`; `lib*-java` flagged (Wolfi fetches jars from Maven Central); `libjs-*` and Debian Java helpers dropped |
-| autoconf with debhelper ≥ 10 and no generated `configure` (git checkouts) | `autoreconf -fi` step, with `autoconf`, `automake` (and `libtool`, `gettext-dev` when `configure.ac` uses them) |
+| autoconf with debhelper ≥ 10 and no generated `configure` (git checkouts), or Debian patches changing `configure.ac`, `*.am`, `*.m4` or `*.mk` | `autoreconf -fi` step, with `autoconf`, `automake` (and `libtool`, `gettext-dev` when `configure.ac` uses them) |
 | Upstream `COPYING`, `LICENSE`, … | Installed in `/usr/share/licenses/<name>`, and checked by the test |
 | Architecture-dependent binaries | `strip` step and a `test/tw/ldd-check` test |
 | `dh $@ --buildsystem=…` or detected build files | `cmake/*`, `meson/*`, `autoconf/*`, `py/pip-build-install`, `go/build`, `cargo/build`, `scala/build` (dh-scala, with `debian/scala-build` copied next to the recipe), plain `make` |
@@ -85,11 +85,15 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | Extra binary packages + `*.install` | `subpackages` that move their files from `destdir` |
 | Main package `*.install` when nothing is installed by the build system (cargo, go, overridden `dh_auto_install`) | Copied from the source tree |
 | dh-exec `src => dest` in `*.install` | Copied under the new name |
-| `*.dirs`, `*.links`, `*.docs`, `*.manpages`, `*.service` | `mkdir`, `ln -s`, `cp`, `install`; units in `/usr/lib/systemd/system` |
+| `*.dirs`, `*.links`, `*.docs`, `*.examples`, `*.manpages`, `*.service` | `mkdir`, `ln -s`, `cp`, `install`; units in `/usr/lib/systemd/system` |
+| `*.xmlcatalogs` (`dh_installxmlcatalogs`) | The package's catalog installed, and scriptlets that add (and remove) its delegate entries in `/etc/xml/catalog` with libxml2's `xmlcatalog` (Wolfi has no xml-core) |
+| Build-depends on `libncurses-dev` | Debian's `include/ncursesw/` header directory (symlinks), in the build and the tests |
+| Shell scripts with `#!/bin/bash` in the source | `bash` in the build environment (Essential in Debian) |
 | Build-depends on fontconfig or Xft | Runtime dependency on `ttf-dejavu` (Debian's fontconfig always brings a font; Wolfi's does not) |
 | `usr/sbin`, `sbin`, `bin`, `lib` destinations | `usr/bin`, `usr/lib` (Wolfi is usr-merged, with sbin merged into bin) |
 | Multiarch paths (`usr/lib/*/`, `$(DEB_HOST_MULTIARCH)`) | `usr/lib/` |
 | `preinst` / `postinst` / `prerm` / `postrm` | `scriptlets` (see below); commands they call (`update-alternatives`, `ucf`, `invoke-rc.d`, …) become runtime dependencies on the package that has them; the links `update-alternatives --install` would make (highest priority, slaves included) are shipped in the package, since apko does not run the scripts |
+| Target-specific variables of `-arch`/`-indep` overrides | The `-indep` value (a full build runs both, `-indep` last) |
 | Other `override_dh_*` / `execute_*_dh_*` targets | Their own commands, after the build or on the installed files (`$(DEB_VERSION)`, `$$`, `$(RM)` expanded) |
 | `debian/foo.in` + `sed s/#X#/$(VAR)/` in `rules` | Script with `${{package.version}}` / `${{vars.x}}`; `VAR` becomes a melange `vars` entry |
 | debconf `templates` + `db_get` | `/etc/<name>.conf` with documented defaults; `db_get` reads from it |
@@ -152,7 +156,8 @@ before installing to change the behaviour non-interactively.
   the converter falls back to Debian's copy of the upstream tarball, or CPAN for Perl modules.
 - `dh --with` add-ons are reported, not converted.
 - Debian-repacked tarballs (`+dfsg`/`+ds`) without a `Files-Excluded` field
-  are reported for review.
+  are reported for review; without a `debian/watch`, Debian's repack is the
+  source (docbook-xsl).
 - Debian-specific patches (e.g. relaxing crate versions to match Debian's
   `librust-*` packages) are copied as is; drop the ones that only make sense
   inside Debian.

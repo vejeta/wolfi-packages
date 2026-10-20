@@ -375,6 +375,26 @@ class HelperTest(unittest.TestCase):
         self.assertEqual(rules.configure_opts(), ["-Dfoo=true", "-Dbar=1.2"])
         self.assertEqual(rules.template_substitutions(), {"postinst": ("postinst.in", {"@V@": "V"})})
 
+    def test_xml_catalogs(self):
+        cats = d2m.xml_catalogs(
+            "local;docbook-xsl/catalog.xml;/usr/share/xml/docbook/stylesheet/docbook-xsl/catalog.xml\n\n"
+            "root;uri;http://docbook.sourceforge.net/release/xsl/\n"
+            "package;uri;http://docbook.sourceforge.net/release/xsl/;/usr/share/xml/x/catalog.xml\n")
+        self.assertEqual(cats["local"], [("docbook-xsl/catalog.xml",
+                                          "usr/share/xml/docbook/stylesheet/docbook-xsl/catalog.xml")])
+        self.assertEqual(cats["package"], [("uri", "http://docbook.sourceforge.net/release/xsl/",
+                                            "/usr/share/xml/x/catalog.xml")])
+
+    def test_rules_arch_indep_configure(self):
+        # aptitude: a full build configures twice, -indep last, so the docs are built
+        rules = d2m.Rules(
+            "ifneq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))\n  OPTS_TESTS = --disable-tests\nendif\n"
+            "override_dh_auto_configure-arch:  OPTS_DOCS = --disable-docs\n"
+            "override_dh_auto_configure-indep: OPTS_DOCS =\n"
+            "override_dh_auto_configure-arch override_dh_auto_configure-indep:\n"
+            "\tdh_auto_configure -- --htmldir='$${docdir}/html' $(OPTS_DOCS) $(OPTS_TESTS)\n")
+        self.assertEqual(rules.configure_opts(), ["--htmldir='${docdir}/html'", "--disable-tests"])
+
     def test_convert_script_flags_debian_only_tools(self):
         notes = []
         body, _ = d2m.convert_script("#!/bin/sh\npy3compile -p foo\n", "postinst",

@@ -1,0 +1,19 @@
+Description: Drop execute bit on data files who should not have them.
+ Reported by lintian.
+Author: Petter Reinholdtsen <pere@debian.org>
+Forwarded: no
+Reviewed-By: Petter Reinholdtsen <pere@debian.org>
+Last-Update: 2023-10-23
+---
+diff --git a/docbook-xsl-ns/assembly/schema/assembly51b7.rnc b/docbook-xsl-ns/assembly/schema/assembly51b7.rnc
+old mode 100755
+new mode 100644
+diff --git a/docbook-xsl-ns/assembly/schema/docbook51b7.rnc b/docbook-xsl-ns/assembly/schema/docbook51b7.rnc
+old mode 100755
+new mode 100644
+diff --git a/docbook-xsl-ns/manpages/tbl.xsl b/docbook-xsl-ns/manpages/tbl.xsl
+old mode 100755
+new mode 100644
+diff --git a/docbook-xsl-ns/xhtml/titlepage.templates.xml b/docbook-xsl-ns/xhtml/titlepage.templates.xml
+old mode 100755
+new mode 100644

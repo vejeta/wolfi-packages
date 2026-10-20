@@ -1,6 +1,6 @@
 # Wolfi Community Packages
 
-[![Packages](https://img.shields.io/badge/packages-297-brightgreen)](PACKAGES.md)
+[![Packages](https://img.shields.io/badge/packages-299-brightgreen)](PACKAGES.md)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
@@ -18,7 +18,7 @@ packages and `APKINDEX` are published on SourceForge.
 
 ## Available packages
 
-297 recipes, listed with versions and licenses in [PACKAGES.md](PACKAGES.md)
+299 recipes, listed with versions and licenses in [PACKAGES.md](PACKAGES.md)
 (generated from the recipes by `scripts/package-list.py`). By area:
 
 | Area | Packages |
@@ -34,6 +34,7 @@ packages and `APKINDEX` are published on SourceForge.
 | JVM and Scala | scala-2.12, scala-2.13, scala-xml, coursier, mill, metals, jbang, gatling, joern |
 | Perl and Python | 55 Perl modules (the Perl::Critic chain, ikiwiki's dependencies), black, pycodestyle, pyflakes, python-apt, python-debian |
 | Fonts | 47 font packages (Debian's fonts-*, needed by TeX Live and the test suites) |
+| Documentation | docbook-xsl and docbook-xsl-ns (Debian's DocBook XSL stylesheets, with their images), docbook5-xml |
 | Others | ikiwiki, elinks, expect, moreutils, genext2fs, squashfs-tools-ng, capnproto, xwpe, algol68g |
 
 Many of them are converted from their Debian or Alpine packaging with the

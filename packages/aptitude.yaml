@@ -145,6 +145,9 @@ environment:
     packages:
       - build-base
       - busybox
+      - autoconf
+      - automake
+      - gettext-dev
       - autoconf-archive
       - gettext
       - libapt-pkg-dev  # Wolfi Community Packages
@@ -158,18 +161,25 @@ environment:
       - xapian-core-dev  # Wolfi Community Packages (Debian: libxapian-dev)
       - pkgconf-dev  # Debian: pkgconf
       - docbook-xml
+      - docbook-xsl  # Wolfi Community Packages
       - elinks  # Wolfi Community Packages
       - rsvg-convert  # Debian: librsvg2-bin
       - po4a  # Wolfi Community Packages
       - libxslt  # Debian: xsltproc
+      - bash  # the source has bash scripts; Essential in Debian
       - coreutils
       - findutils
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
-      for f in 0008-Add-missing-include-to-build-with-gcc-14.patch 0010-cmdline-terminal-Include-cstdint-for-UINT16_MAX.patch adjust-libapt-pkg7.0.patch apt_2.1.19_compatibility.patch fix-FTBFS-1011681.patch fix-aptitude-changelog-parser.patch fix-bashism-related-issue-with-fixman-scripts.patch fix-ftbfs-with-gcc-10.patch fix-ftbfs-with-gcc-12.patch fix-ftbfs-with-t64.patch; do mv aptitude/$f .recipe-files/; done
+      for f in 0008-Add-missing-include-to-build-with-gcc-14.patch 0010-cmdline-terminal-Include-cstdint-for-UINT16_MAX.patch NEWS README.source adjust-libapt-pkg7.0.patch apt_2.1.19_compatibility.patch aptitude-common.dirs aptitude-common.install aptitude-common.links aptitude-common.lintian-overrides aptitude-doc-cs.doc-base aptitude-doc-en.doc-base aptitude-doc-es.doc-base aptitude-doc-fi.doc-base aptitude-doc-fr.doc-base aptitude-doc-it.doc-base aptitude-doc-ja.doc-base aptitude-doc-nl.doc-base aptitude-doc-ru.doc-base aptitude.bug-script aptitude.cron.daily aptitude.dirs aptitude.install aptitude.logrotate aptitude.menu aptitude.postinst aptitude.postrm aptitude.prerm clean copyright fix-FTBFS-1011681.patch fix-aptitude-changelog-parser.patch fix-bashism-related-issue-with-fixman-scripts.patch fix-ftbfs-with-gcc-10.patch fix-ftbfs-with-gcc-12.patch fix-ftbfs-with-t64.patch gbp.conf gitlab-ci.yml rules watch; do mv aptitude/$f .recipe-files/; done
       rmdir aptitude 2>/dev/null || true
+      mkdir -p debian && cp -a .recipe-files/. debian/
+      # the scripts are executable in Debian's tree
+      for f in debian/*; do [ -f "$f" ] && head -c2 "$f" | grep -q '#!' && chmod +x "$f"; done
+      # what Debian's scripts install into debian/tmp is the package's
+      mkdir -p "${{targets.destdir}}" && ln -sfn "${{targets.destdir}}" debian/tmp
   - uses: fetch
     with:
       uri: https://deb.debian.org/debian/pool/main/a/aptitude/aptitude_${{package.version}}.orig.tar.xz
@@ -185,9 +195,11 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/fix-ftbfs-with-gcc-10.patch .recipe-files/apt_2.1.19_compatibility.patch .recipe-files/fix-FTBFS-1011681.patch .recipe-files/fix-bashism-related-issue-with-fixman-scripts.patch .recipe-files/fix-ftbfs-with-gcc-12.patch .recipe-files/fix-aptitude-changelog-parser.patch .recipe-files/fix-ftbfs-with-t64.patch .recipe-files/0008-Add-missing-include-to-build-with-gcc-14.patch .recipe-files/adjust-libapt-pkg7.0.patch .recipe-files/0010-cmdline-terminal-Include-cstdint-for-UINT16_MAX.patch
+  - runs: |
+      autoreconf -fi
   - uses: autoconf/configure
     with:
-      opts: '--htmldir=''$${docdir}/html'' --program-transform=''s&aptitude$$&aptitude-curses&'' --disable-boost-lib-checks --disable-docs $(CONFIGURE_OPTS_TESTS)'
+      opts: '--htmldir=''${docdir}/html'' --program-transform=''s&aptitude$&aptitude-curses&'' --disable-boost-lib-checks --disable-tests'
   - uses: autoconf/make
   - name: Install (from debian/rules override_dh_auto_install)
     runs: |

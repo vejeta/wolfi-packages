@@ -1,0 +1,69 @@
+From: Daniel Leidert <dleidert@debian.org>
+Date: Tue, 2 Jun 2020 08:56:16 -0400
+Subject: Omit any date to the output file to handle
+
+Bug-Debian: http://bugs.debian.org/681116
+Forwarded: no
+
+source files not setting a date/pubdate as quick solution
+to #681116 to get a consistent manpage output in multiarch
+enabled packages independent from the build-time.
+
+Ideally we should be using SOURCE_DATE_EPOCH instead of
+dropping date/pubdate at all and this should be fixed in
+future releases.
+---
+ docbook-xsl-ns/manpages/docbook-multiarch.xsl | 18 ++++++++++++++++++
+ docbook-xsl/manpages/docbook-multiarch.xsl    | 18 ++++++++++++++++++
+ 2 files changed, 36 insertions(+)
+ create mode 100644 docbook-xsl-ns/manpages/docbook-multiarch.xsl
+ create mode 100644 docbook-xsl/manpages/docbook-multiarch.xsl
+
+diff --git a/docbook-xsl-ns/manpages/docbook-multiarch.xsl b/docbook-xsl-ns/manpages/docbook-multiarch.xsl
+new file mode 100644
+index 0000000..5be5c3e
+--- /dev/null
++++ b/docbook-xsl-ns/manpages/docbook-multiarch.xsl
+@@ -0,0 +1,18 @@
++<?xml version='1.0'?>
++<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
++                version='1.0'>
++
++<!-- ********************************************************************
++     Customization layer for building Debian Multi-Arch packages omitting
++     the build-tile date!
++     ******************************************************************** -->
++
++<!-- ==================================================================== -->
++
++<xsl:import href="docbook.xsl"/>
++
++<xsl:template name="get.refentry.date">
++  <xsl:value-of select="''"/>
++</xsl:template>
++
++</xsl:stylesheet>
+diff --git a/docbook-xsl/manpages/docbook-multiarch.xsl b/docbook-xsl/manpages/docbook-multiarch.xsl
+new file mode 100644
+index 0000000..5be5c3e
+--- /dev/null
++++ b/docbook-xsl/manpages/docbook-multiarch.xsl
+@@ -0,0 +1,18 @@
++<?xml version='1.0'?>
++<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
++                version='1.0'>
++
++<!-- ********************************************************************
++     Customization layer for building Debian Multi-Arch packages omitting
++     the build-tile date!
++     ******************************************************************** -->
++
++<!-- ==================================================================== -->
++
++<xsl:import href="docbook.xsl"/>
++
++<xsl:template name="get.refentry.date">
++  <xsl:value-of select="''"/>
++</xsl:template>
++
++</xsl:stylesheet>
