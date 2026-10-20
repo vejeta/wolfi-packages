@@ -1513,6 +1513,26 @@ def dh_ocaml_subst(text):
     return re.sub(r"(?m)^(?:OPT|DYN):\s*", "", text)
 
 
+# What texmf-dist's and texlive's install triggers do, which do not run in a melange
+# environment: the hyphenation configuration, the ls-R databases, font maps and formats.
+TEX_SETUP_STEP = {"name": "TeX Live set up (the install triggers of texmf-dist and texlive)", "runs": (
+    "d=/usr/share/texmf-dist/tex/generic/config\n"
+    "if [ -d $d/lang.d ]; then\n"
+    "  for ext in def dat dat.lua; do cat $(find $d/lang.d -name \"*.$ext\" | sort) > $d/language.$ext; done\n"
+    "fi\n"
+    "mktexlsr >/dev/null 2>&1 || true\n"
+    "# updmap.cfg lists the maps of every collection: leave out those not installed\n"
+    "yes 2>/dev/null | updmap-sys --syncwithtrees >/dev/null 2>&1 || true\n"
+    "updmap-sys >/dev/null 2>&1 || true\n"
+    "fmtutil-sys --all >/dev/null 2>&1 || true\n")}
+
+
+def uses_tex(packages):
+    """Does an environment install TeX Live (its formats need the setup step)?"""
+    return any(re.match(r"^(texlive|texmf-dist)(-|$)", d.value if isinstance(d, C) else d)
+               for d in packages if not isinstance(d, Comment))
+
+
 BUILDSYSTEM_FILES = [
     ("dune-project", "ocaml_dune"),  # dh-ocaml picks it for dune projects
     ("meson.build", "meson"),
@@ -2341,6 +2361,8 @@ class Converter:
                 "  [ -e /usr/include/$h ] && ln -sf ../$h /usr/include/ncursesw/$h\n"
                 "done\n"
                 "true\n")})
+        if uses_tex(env_pkgs):
+            pipeline.append(dict(TEX_SETUP_STEP))
         for alts in parse_relations(source.get("build-depends")):
             lua = re.match(r"^liblua(5\.\d)-dev$", alts[0])
             if lua:
