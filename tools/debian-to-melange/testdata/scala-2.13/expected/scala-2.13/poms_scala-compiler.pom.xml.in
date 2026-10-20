@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.scala-lang</groupId>
+  <artifactId>scala-compiler</artifactId>
+  <packaging>jar</packaging>
+  <version>@VERSION@</version>
+  <name>Scala Compiler</name>
+  <description>Compiler for the Scala Programming Language</description>
+  <url>https://www.scala-lang.org/</url>
+  <licenses>
+    <license>
+      <name>Apache-2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+    </license>
+  </licenses>
+  <!-- Upstream shades ASM into the compiler jar; the Debian build links
+       against the scala-asm package instead, so it is a real dependency
+       here. java-diff-utils is patched out (debian/patches/0002). -->
+  <dependencies>
+    <dependency>
+      <groupId>org.scala-lang</groupId>
+      <artifactId>scala-library</artifactId>
+      <version>@VERSION@</version>
+    </dependency>
+    <dependency>
+      <groupId>org.scala-lang</groupId>
+      <artifactId>scala-reflect</artifactId>
+      <version>@VERSION@</version>
+    </dependency>
+    <dependency>
+      <groupId>org.scala-lang.modules</groupId>
+      <artifactId>scala-asm</artifactId>
+      <version>9.9.0-scala-1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jline</groupId>
+      <artifactId>jline</artifactId>
+      <version>3.29.0</version>
+      <optional>true</optional>
+    </dependency>
+  </dependencies>
+</project>

@@ -61,6 +61,8 @@ DROP = {
     "pybuild-plugin-pyproject",
     # Debian-only Java helpers (Maven repository layout, jar symlinks)
     "maven-repo-helper", "maven-debian-helper", "javahelper",
+    # Debian's architecture-is-*: limits which architectures build (libskia)
+    "architecture-is-little-endian", "architecture-is-64-bit",
 }
 DROP_PREFIXES = ("dh-", "dh_", "librust-")
 
@@ -130,6 +132,8 @@ NAME_MAP = {
     # Wolfi's dpkg-dev has the Dpkg perl modules; automake has config.guess and config.sub
     "libdpkg-perl": "dpkg-dev",
     "libcompress-zlib-perl": "perl",  # Compress::Zlib is part of perl
+    # Wolfi's python-3.x has /usr/bin/python, which python-as-3.x conflicts with (fonts-roboto)
+    "python-is-python3": "python3",
     "libelf-dev": "elfutils-dev",
     "autotools-dev": "automake",
     # xml-core's update-xmlcatalog and dh_installxmlcatalogs: the scriptlets use libxml2's xmlcatalog
@@ -146,6 +150,14 @@ NAME_MAP = {
     "x11proto-dev": "xorgproto",
     "librsvg2-bin": "rsvg-convert",
     "python3-pil": "py3-pillow",
+    "python3-nototools": "py3-supported-notofonttools",  # nototools is notofonttools on PyPI
+    "python3-attr": "py3-supported-attrs",  # the attrs distribution (attr and attrs modules)
+    "python3-skbuild": "py3-supported-scikit-build",
+    # Wolfi's gftools is an application with its own Python environment; Debian's brings
+    # its modules to python3, vttLib among them (fonts-open-sans: python -m vttLib)
+    "gftools": ["gftools", "py3-supported-vttlib"],
+    "python3-setputools": "py3-supported-setuptools",  # misspelt in mutatormath's debian/control
+    "generate-ninja": "gn",
     "libc6-dev": "glibc-dev",
     "locales-all": "glibc-locales",
     # Scala compilers (dh-scala's table): scala is Debian's 2.12 series
@@ -395,6 +407,54 @@ def version_key(version):
     return [int(n) for n in re.findall(r"\d+", version)]
 
 
+def _make_pattern(pattern, word):
+    """The stem of word for make's % pattern, or None."""
+    if "%" not in pattern:
+        return "" if word == pattern else None
+    pre, post = pattern.split("%", 1)
+    if word.startswith(pre) and word.endswith(post) and len(word) >= len(pre) + len(post):
+        return word[len(pre):len(word) - len(post)]
+    return None
+
+
+MAKE_FUNCTIONS = {
+    "subst": lambda a: a[2].replace(a[0], a[1]) if len(a) == 3 else None,
+    "patsubst": lambda a: " ".join(
+        (a[1].replace("%", stem, 1) if stem is not None else w)
+        for w in a[2].split() for stem in [_make_pattern(a[0], w)]) if len(a) == 3 else None,
+    "filter": lambda a: " ".join(w for w in a[1].split() if any(
+        _make_pattern(p, w) is not None for p in a[0].split())) if len(a) == 2 else None,
+    "filter-out": lambda a: " ".join(w for w in a[1].split() if not any(
+        _make_pattern(p, w) is not None for p in a[0].split())) if len(a) == 2 else None,
+    "addprefix": lambda a: " ".join(a[0] + w for w in a[1].split()) if len(a) == 2 else None,
+    "addsuffix": lambda a: " ".join(w + a[0] for w in a[1].split()) if len(a) == 2 else None,
+    "strip": lambda a: " ".join(",".join(a).split()),
+    "firstword": lambda a: (",".join(a).split() or [""])[0],
+    "lastword": lambda a: (",".join(a).split() or [""])[-1],
+    "sort": lambda a: " ".join(sorted(set(",".join(a).split()))),
+    "findstring": lambda a: a[0] if len(a) == 2 and a[0] in a[1] else ("" if len(a) == 2 else None),
+    "or": lambda a: next((x.strip() for x in a if x.strip()), ""),
+    "and": lambda a: (a[-1].strip() if all(x.strip() for x in a) else ""),
+    "if": lambda a: (a[1] if a[0].strip() else (a[2] if len(a) > 2 else "")).strip() if len(a) >= 2 else None,
+}
+
+
+def make_functions(value):
+    """Evaluate make's text functions whose arguments hold no references left
+    (libskia: -j $(or $(patsubst parallel=%,%,$(filter parallel=%,)),"1")); $(shell ...)
+    and functions over unknown values stay for the shell or a TODO."""
+    rx = re.compile(r"\$\((" + "|".join(re.escape(f) for f in MAKE_FUNCTIONS) + r")\s([^()$]*)\)")
+    for _ in range(20):
+        def ev(m):
+            out = MAKE_FUNCTIONS[m.group(1)]([x if i else x.lstrip() for i, x in enumerate(m.group(2).split(","))])
+            return m.group(0) if out is None else out
+        new = rx.sub(ev, value)
+        if new == value:
+            return value
+        value = new
+    return value
+
+
 class WolfiIndex:
     """Optional lookup of package names in the Wolfi APKINDEX (via pkg-check).
 
@@ -408,6 +468,7 @@ class WolfiIndex:
         self.unversioned_so = {}  # package -> sonames without a version (libdb-5.3.so)
         self.providers = {}  # cmd:foo / so:libfoo.so.1 -> a package that provides it
         self.current = {}  # the same, for the newest version of each package only (tclsh9.1, not 8.6)
+        self.supported = {}  # py3-supported-foo -> the Python versions it depends on
         if not enabled:
             return
         spec = importlib.util.spec_from_file_location("pkg_check", PKG_CHECK)
@@ -437,13 +498,21 @@ class WolfiIndex:
             for prov in e.get("p", "").split():
                 if prov.startswith("cmd:"):
                     self.current.setdefault(re.split(r"[=<>~]", prov, maxsplit=1)[0], e.get("P"))
+        for _key, e in newest.values():
+            if e.get("P", "").startswith("py3-supported-"):
+                # the Pythons a py3-supported-foo covers (fonttools: 3.11-3.13)
+                self.supported[e["P"]] = set(re.findall(r"\bpy(3\.\d+)-", e.get("D", "")))
         for e in entries:
             names.add(e.get("P"))
             for prov in e.get("p", "").split():
                 names.add(re.split(r"[=<>~]", prov, maxsplit=1)[0])
                 key = re.split(r"[=<>~]", prov, maxsplit=1)[0]
                 if key.startswith(("cmd:", "so:")):
-                    self.providers.setdefault(key, e.get("P"))
+                    old = self.providers.setdefault(key, e.get("P"))
+                    if re.match(r"^py3\.\d+-", old or "") and e.get("P", "").startswith("py{}-".format(DEFAULT_PYTHON)):
+                        # the commands of every py3.X-foo-bin: the default Python's, which
+                        # python3 imports from (fonts-open-sans: fonttools' ttx and fontTools)
+                        self.providers[key] = e.get("P")
                 so = re.match(r"^so:(lib[^=]*\.so)=", prov)
                 if so and so.group(1) not in self.unversioned_so.get(e.get("P"), []):
                     self.unversioned_so.setdefault(e.get("P"), []).append(so.group(1))
@@ -551,6 +620,12 @@ def debian_upstream_version(version, raw=False):
     v = re.sub(r"\+nmu(\d+)$", r"_p\1", v)  # non-maintainer uploads of native packages
     if raw:
         return v
+    # 20211204+svn4273 (fonts-freefont) -> 20211204_svn4273; 0~20170330 (fonts-go),
+    # a snapshot before any release -> 0_git20170330
+    v = re.sub(r"[+~.](svn|cvs|hg)(\d+)$", r"_\1\2", v)
+    # 146.20260602~git.3476902 (libskia): a dated snapshot; the commit hash is no apk version
+    v = re.sub(r"(\.\d{8})[+~.]git\.?[0-9a-f]{7,40}$", r"\1", v)
+    v = re.sub(r"~(\d{8})$", r"_git\1", v)
     # 2.13b171 (fonts-stix) -> 2.13_beta171: apk takes a letter suffix only without digits after it
     v = re.sub(r"(\d)(a|b|rc)(\d+)$", lambda m: "{}_{}{}".format(
         m.group(1), {"a": "alpha", "b": "beta", "rc": "rc"}[m.group(2)], m.group(3)), v)
@@ -658,27 +733,6 @@ BUILD_CONTEXT = {
     "DEB_HOST_ARCH": "amd64", "DEB_BUILD_ARCH": "amd64", "DEB_HOST_MULTIARCH": "x86_64-linux-gnu",
     "DEB_BUILD_OPTIONS": "", "DEB_BUILD_PROFILES": "",
 }
-
-
-def make_functions(text):
-    """$(findstring), $(filter), $(filter-out), $(strip) on already expanded text."""
-    for _ in range(5):
-        m = re.search(r"\$\((findstring|filter|filter-out|strip)\s+([^()$]*)\)", text)
-        if not m:
-            break
-        fn, args = m.group(1), m.group(2)
-        if fn == "strip":
-            out = " ".join(args.split())
-        else:
-            pat, _, words = args.partition(",")
-            if fn == "findstring":
-                out = pat if pat in words else ""
-            else:
-                pats = [re.escape(p).replace("%", ".*") for p in pat.split()]
-                keep = [w for w in words.split() if any(re.fullmatch(p, w) for p in pats)]
-                out = " ".join(keep if fn == "filter" else [w for w in words.split() if w not in keep])
-        text = text[:m.start()] + out + text[m.end():]
-    return text
 
 
 # Variables GNU make defines by itself.
@@ -853,7 +907,7 @@ class Rules:
             name = m.group(1) or m.group(2)
             default = BUILD_CONTEXT.get(name, m.group(0)) if context else m.group(0)
             return self.expand(self.vars.get(name, MAKE_DEFAULTS.get(name, default)), depth + 1, context)
-        return re.sub(r"\$\((\w+)\)|\$\{(\w+)\}", repl, value)
+        return make_functions(re.sub(r"\$\((\w+)\)|\$\{(\w+)\}", repl, value))
 
     def buildsystem(self):
         m = re.search(r"--buildsystem[= ](\S+)", self.dh_args)
@@ -998,6 +1052,19 @@ def is_archive(data):
         or data[:4] in (b"\x28\xb5\x2f\xfd", b"PK\x03\x04") or data[257:262] == b"ustar"
 
 
+def single_top_directory(data):
+    """Whether a tarball holds a single top-level directory (True when it cannot be read)."""
+    import io
+    import tarfile
+    try:
+        with tarfile.open(fileobj=io.BytesIO(data), mode="r:*") as tar:
+            names = [re.sub(r"^(\./)+", "", m.name) for m in tar.getmembers()]
+    except (tarfile.TarError, EOFError, OSError):
+        return True
+    tops = {n.split("/")[0] for n in names if n}
+    return len(tops) == 1 and any("/" in n for n in names)
+
+
 def url_exists(url, tries=2):
     for _ in range(tries):
         try:
@@ -1084,6 +1151,7 @@ def fetch_from_debian(spec, dest):
         raise SystemExit("error: version {} of {} not found".format(version, name))
     version, area = entry["version"], entry.get("area", "main")
     DEBIAN_AREA[name] = area
+    FETCHED_SOURCE.update(name=name, version=version)
     prefix = name[:4] if name.startswith("lib") else name[0]
     tree = os.path.join(dest, "{}-{}".format(name, version))
 
@@ -1119,6 +1187,29 @@ def fetch_from_debian(spec, dest):
                 fh.write(data)
         except Exception:
             pass
+    # Python package directories (with __init__.py), for the module's spelling (vttLib)
+    dirs = [c["name"] for c in top.get("content", []) if c.get("type") == "directory" and c["name"] != "debian"]
+    bases = [""] + [d for d in ("src", "Lib", "lib") if d in dirs]
+    if "src" in dirs:
+        bases.append("src/python")  # ttfautohint-py: src/python/ttfautohint
+    for base in bases:
+        if base:
+            try:
+                listing = json.loads(http_get(SOURCES_API.format(name=name, version=version, path=base)))
+            except Exception:
+                continue
+            cands = [c["name"] for c in listing.get("content", []) if c.get("type") == "directory"]
+        else:
+            cands = [d for d in dirs if d not in ("src", "Lib", "lib", "doc", "docs", "tests", "test")]
+        for cand in cands:
+            path = (base + "/" if base else "") + cand
+            try:
+                inner = json.loads(http_get(SOURCES_API.format(name=name, version=version, path=path)))
+            except Exception:
+                continue
+            if any(c["name"] == "__init__.py" for c in inner.get("content", [])):
+                os.makedirs(os.path.join(tree, path), exist_ok=True)
+                open(os.path.join(tree, path, "__init__.py"), "a").close()
     for f in UPSTREAM_FILES:
         if f in top_names:
             with open(os.path.join(tree, f), "wb") as fh:
@@ -1778,6 +1869,8 @@ class Converter:
         SYSTEM_USERS.clear()
         self.aux = {}          # filename -> content (bytes or str) for <out>/<name>/
         self.aux_exec = set()  # those of them that are executable in debian/
+        self.debian_nested = {}  # flat aux name -> its path in debian/ (debian/scripts/foo)
+        self.pipeline_env = {}   # variables debian/rules sets for dh_auto_* run as a pipeline
         self.install_excludes = {}  # Debian binary package (or "*") -> dh_install -X patterns
         self.rename = {}       # Debian binary package name -> melange package name
         self.upstream_installs = True  # does the build system install into destdir?
@@ -1921,14 +2014,36 @@ class Converter:
         # debian/ paths built from shell variables (debian/install_$a.sh) cannot be rewritten
         # one by one: keep debian/ and have Debian's files there
         keep_debian = any(re.search(r"(?<![\w/$.])debian/[\w.+-]*\$", rules.expand(l)) for l in lines)
-        if keep_debian:
-            for f in self._listdir(self.deb):
-                path = os.path.join(self.deb, f)
-                if os.path.isfile(path) and os.path.getsize(path) < 1 << 20 and f not in ("changelog", "control"):
+        # so are Debian's scripts that use other files of debian/ (fonts-freefont's
+        # debian/scripts/stripfonts.sh runs debian/scripts/ConvertFont.ff)
+        for l in lines:
+            for m in re.finditer(r"(?<![\w/$.])debian/([\w.+-]+(?:/[\w.+-]+)*)", rules.expand(l)):
+                path = os.path.join(self.deb, m.group(1))
+                if os.path.isdir(path) and m.group(1) not in ("tmp", "patches", "tests") and \
+                        m.group(1) not in self.rename:
+                    keep_debian = True  # a directory of Debian's (antlr4: debian/generated-sources/)
+                if os.path.isfile(path) and os.path.getsize(path) < 1 << 20:
                     with open(path, "rb") as fh:
-                        self.aux[f] = fh.read()
+                        code = [c for c in fh.read().decode("utf-8", "replace").splitlines()
+                                if not c.lstrip().startswith("#")]
+                    keep_debian |= any(
+                        u != m.group(1) and os.path.isfile(os.path.join(self.deb, u))
+                        for c in code for u in re.findall(r"debian/([\w.+-]+(?:/[\w.+-]+)*)", c))
+        if keep_debian:
+            for root, _dirs, files in os.walk(self.deb):
+                for f in files:
+                    path = os.path.join(root, f)
+                    rel = os.path.relpath(path, self.deb)
+                    if os.path.getsize(path) >= 1 << 20 or rel in ("changelog", "control") or \
+                            rel.startswith(("patches/", "source/", "upstream/")):
+                        continue
+                    flat = rel.replace("/", "_")
+                    with open(path, "rb") as fh:
+                        self.aux[flat] = fh.read()
+                    if "/" in rel:
+                        self.debian_nested[flat] = rel
                     if os.access(path, os.X_OK):
-                        self.aux_exec.add(f)
+                        self.aux_exec.add(flat)
             self.debian_dir = True
         for raw in lines:
             line = raw.strip()
@@ -1936,6 +2051,14 @@ class Converter:
                 continue
             ignore_errors = "-" in re.match(r"^[@-]*", line).group(0)
             line = line.lstrip("@-")
+            envm = re.match(r"^(?:env\s+)?((?:[A-Za-z_]\w*=\S*\s+)+)(dh_auto_\w+\b.*)$", line)
+            if envm and self.dh_auto_command(self.multiarch(rules.expand(envm.group(2)))) == self.PIPELINE_MARK:
+                # env VAR=value dh_auto_build (afdko: FORCE_SYSTEM_LIBXML2=1): the build
+                # pipeline's environment
+                for assign in envm.group(1).split():
+                    var, _eq, value = assign.partition("=")
+                    self.pipeline_env[var] = rules.expand(value)
+                line = envm.group(2)
             if re.match(r"^dh[_-]", line):
                 auto = self.dh_auto_command(self.multiarch(rules.expand(line)))
                 if auto == "":
@@ -1951,6 +2074,22 @@ class Converter:
                         sec = re.search(r"\.(\d)\w*$", page)
                         if sec:
                             out.append('install -Dm644 {} -t "${{{{targets.destdir}}}}/usr/share/man/man{}"'.format(page, sec.group(1)))
+                    continue
+                inst = re.match(r"^dh_install\s+(.*)$", line)
+                words = shlex.split(rules.expand(inst.group(1))) if inst else []
+                files = [w for w in words if not w.startswith("-")]
+                if inst and len(files) >= 2 and all(w in ("-p", "--package") or w.startswith(("-p", "--package="))
+                                                    or not w.startswith("-") for w in words):
+                    # dh_install FILE... DIR (fonts-noto-color-emoji: NotoColorEmoji.ttf /usr/share/fonts/...)
+                    pkgs = [w[2:] for w in words if w.startswith("-p") and len(w) > 2] + \
+                           [w.split("=", 1)[1] for w in words if w.startswith("--package=")] + \
+                           [words[i + 1] for i, w in enumerate(words[:-1]) if w in ("-p", "--package")]
+                    files = [w for w in files if w not in pkgs]
+                    pkg = pkgs[0] if pkgs else deb_pkg
+                    root = "${{targets.destdir}}" if pkg == deb_pkg else \
+                        "${{{{targets.outdir}}}}/{}".format(self.rename.get(pkg, pkg))
+                    dest = usr_merge(norm_path(files[-1]))
+                    out.append('mkdir -p "{0}/{1}"\ncp -a {2} "{0}/{1}/"'.format(root, dest, " ".join(files[:-1])))
                     continue
                 if re.match(r"^dh_auto_|^dh_(install|link)\b", line):
                     return None
@@ -2003,14 +2142,17 @@ class Converter:
                 path = os.path.join(self.deb, rel)
                 if not os.path.isfile(path):
                     return m.group(0)
+                # nested files keep their directories in the name (fonts-freefont's
+                # debian/scripts/stripfonts.sh is scripts_stripfonts.sh), as debian_file() does
+                flat = rel.replace("/", "_")
                 with open(path, "rb") as fh:
-                    data = self.aux[os.path.basename(rel)] = fh.read()
+                    data = self.aux[flat] = fh.read()
                 # executable in Debian's tree, or run as a command by the rules (font-awesome's build-fonts.py)
                 if os.access(path, os.X_OK) or (data.startswith(b"#!") and re.match(
                         r"^\s*(?:\./)?debian/{}\b".format(re.escape(rel)), line)):
-                    self.aux_exec.add(os.path.basename(rel))
-                return "{}/{}".format(name, os.path.basename(rel))
-            line = re.sub(r"(?<![\w/$.])debian/([\w.+-]+)", aux, line)
+                    self.aux_exec.add(flat)
+                return "{}/{}".format(name, flat)
+            line = re.sub(r"(?<![\w/$.])debian/([\w.+-]+(?:/[\w.+-]+)*)", aux, line)
             line = line.replace("${{targets.destdir}}//", "${{targets.destdir}}/")
             # make's $(shell cmd) in a recipe: the shell's $(cmd), run when the recipe runs
             # (marked until the check for make variables left)
@@ -2021,6 +2163,15 @@ class Converter:
                 # a variable set nowhere is empty in make (dose3's $(RELEASE))
                 line = re.sub(r"\$\(([A-Z][A-Z0-9_]*)\)", lambda m: "" if m.group(1) not in rules.vars
                               and m.group(1) not in BUILD_CONTEXT and m.group(1) not in OCAMLVARS else m.group(0), line)
+            if "$(" in line:
+                # the build options, then make's functions over them (libskia's
+                # -j $(or $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS))),"1"))
+                # (Debian's builders set parallel=N; the job count is the shell's, at build time)
+                line = make_functions(re.sub(
+                    r"\$\((DEB_BUILD_OPTIONS|DEB_BUILD_PROFILES)\)",
+                    lambda m: (rules.vars.get(m.group(1), BUILD_CONTEXT[m.group(1)]) +
+                               (" parallel=\x02" if m.group(1) == "DEB_BUILD_OPTIONS" else "")).strip(),
+                    line)).replace("\x02", "\x00SHELL(nproc)\x00")
             if "$(" in line:
                 return None
             line = re.sub(r"\x00SHELL\((.*?)\)\x00", r"$(\1)", line)
@@ -2360,9 +2511,11 @@ class Converter:
             if any(o == cand or (isinstance(o, C) and o.value == cand) for o in out):
                 continue
             mb = re.match(r"^python3-(.+)$", alt)
-            if mb and self.wolfi.has("py{}-{}-bin".format(DEFAULT_PYTHON, mb.group(1))):
+            # (by Wolfi's name when it differs: python3-nototools is py3-supported-notofonttools)
+            base = re.sub(r"^py3-(supported-)?", "", cand) if mb and cand.startswith("py3-") else (mb.group(1) if mb else None)
+            if mb and self.wolfi.has("py{}-{}-bin".format(DEFAULT_PYTHON, base)):
                 # Debian's python3-foo ships the commands Wolfi splits into py3.X-foo-bin
-                out.append(C("py{}-{}-bin".format(DEFAULT_PYTHON, mb.group(1)), "commands of Debian's " + alt))
+                out.append(C("py{}-{}-bin".format(DEFAULT_PYTHON, base), "commands of Debian's " + alt))
             if found is not True and re.match(r"^libjs-", alt):
                 self.notes.append("{} dependency '{}': Debian ships JavaScript libraries separately; "
                                   "Wolfi does not, keep the copy bundled upstream".format(kind, alt))
@@ -2626,7 +2779,11 @@ class Converter:
         if bs == "cmake+ninja":
             bs = "cmake"  # Wolfi's cmake pipelines generate Ninja files
         if not bs:
-            bs = next((b for f, b in BUILDSYSTEM_FILES if f in self.top), None)
+            # debhelper picks golang only through dh-golang (dh-sequence-golang); a go.mod
+            # alone is upstream's tooling (libskia's infra/)
+            golang = any(alt in ("dh-golang", "dh-sequence-golang") or alt.startswith("golang-")
+                         for alts in parse_relations(source.get("build-depends")) for alt in alts)
+            bs = next((b for f, b in BUILDSYSTEM_FILES if f in self.top and (b != "golang" or golang)), None)
         base = ["build-base", "busybox"] if bs else ["busybox"]
         if bs == "pybuild":
             base += ["python3", "py3-pip", "py3-wheel"]
@@ -2749,6 +2906,14 @@ class Converter:
             if excluded:
                 pipeline.append({"name": "Remove files excluded by Debian (debian/copyright Files-Excluded)",
                                  "runs": "rm -rf " + " ".join(excluded) + "\n"})
+        git = next((st["with"] for st in pipeline if isinstance(st, dict) and st.get("uses") == "git-checkout"
+                    and st.get("with", {}).get("recurse-submodules")), None)
+        if git and not native:
+            # Debian's orig is built without them (python-ttfautohint-py: src/c/freetype2 ...,
+            # the bundled libraries it uses Wolfi's instead of)
+            subs = submodule_paths(git["repository"], git.get("expected-commit", ""))
+            if subs and all(debian_source_has(d) is False for d in subs):
+                del git["recurse-submodules"]
         series = self.read("patches/series")
         if series:
             patches = [l.split()[0] for l in series.splitlines() if l.strip() and not l.startswith("#")]
@@ -2786,6 +2951,16 @@ class Converter:
                 self.python_module = top_level
             elif not self.python_module or "-" in self.python_module:
                 self.python_module = re.sub(r"^(py3|python3?)-", "", self.python_module or name).replace("-", "_")
+            if not top_level:
+                # the package directory as the source spells it (python-vttlib: Lib/vttLib)
+                wants = {self.python_module.lower(), re.sub(r"(^py_|_py$)", "", self.python_module.lower())}
+                for base in (".", "src", "Lib", "lib", "src/python"):
+                    found = next((d for d in self._listdir(os.path.join(self.tree, base))
+                                  if d.lower() in wants and os.path.isfile(os.path.join(self.tree, base, d, "__init__.py"))),
+                                 None)
+                    if found:
+                        self.python_module = found
+                        break
         ported = {}
         # override_dh_auto_configure too when there are several build directories, or no
         # configure pipeline to stand for it (a plain Makefile: "make config.sh PREFIX=/usr")
@@ -2915,8 +3090,17 @@ class Converter:
                 cmds = []
                 for c in files:
                     words = c.split()
-                    pkgs = [w[2:] for w in words[1:] if w.startswith("-p") and len(w) > 2]
-                    args = [w for w in words[1:] if not w.startswith("-")]
+                    pkgs, args, rest = [], [], words[1:]
+                    while rest:
+                        w = rest.pop(0)
+                        if w in ("-p", "--package") and rest:
+                            pkgs.append(rest.pop(0))   # dh_installdocs -p python3-apt (python-apt)
+                        elif w.startswith("--package="):
+                            pkgs.append(w.split("=", 1)[1])
+                        elif w.startswith("-p") and len(w) > 2:
+                            pkgs.append(w[2:])
+                        elif not w.startswith("-"):
+                            args.append(w)
                     if not args:
                         continue
                     sub = "/examples" if words[0] == "dh_installexamples" else ""
@@ -2966,6 +3150,10 @@ class Converter:
                         pre_install.append(step)
                     elif re.match(r"^execute_(after_dh_auto_install|before_dh_install)(-arch|-indep)?$", target):
                         pre_install.append(step)   # before the files are installed (dh_install)
+                    elif re.match(r"^execute_before_dh_install\w+$", target) and "{{targets." not in step["runs"]:
+                        # makes what dh_installman/dh_installdocs... then install, as the
+                        # install step does (perl-latex-tounicode: make ltx2unitxt.1)
+                        pre_install.append(step)
                     else:
                         post_install.append(step)  # on the installed files
                     continue
@@ -2997,6 +3185,12 @@ class Converter:
         pipeline += pre_install
         pipeline.append(self.install_step(main, True, native, name))
         post_install.sort(key=lambda st: dh_sequence_index(st.get("name", "")))  # stable: rules order otherwise
+        # hooks after dh_install that work on the binary packages' trees (fonts-dejavu's
+        # generate-web.sh: debian/fonts-dejavu-core/usr/share/fonts/... -> debian/fonts-dejavu-web):
+        # melange fills the subpackages after the main pipeline, so they run at the end of the last
+        self.after_subpackages = [st for st in post_install if self.uses_package_trees(st)] \
+            if getattr(self, "debian_dir", False) and len(binaries) > 1 else []
+        post_install = [st for st in post_install if st not in self.after_subpackages]
         pipeline += post_install
         if any(isinstance(st, dict) and (re.search(r'(?m)^cp -a \S+ "\$\{\{targets\.destdir\}\}/usr/s?bin/"',
                                                    st.get("runs", "")) or
@@ -3021,6 +3215,11 @@ class Converter:
         if post_install or pre_install or ported:
             # commands from debian/rules expect GNU tools (rm --verbose, find -print0 ...)
             env_pkgs += [p for p in ("coreutils", "findutils") if p not in env_pkgs]
+            if "bash" not in env_pkgs and any(
+                    re.match(rb"#!\s*(/usr)?/bin/(env\s+)?bash\b", d if isinstance(d, bytes) else d.encode())
+                    for d in self.aux.values()):
+                # Debian's own scripts the rules run (fonts-freefont's debian/scripts/FreeSans-strip)
+                env_pkgs.append(C("bash", "debian/ scripts are bash scripts; Essential in Debian"))
             # tools debhelper brings along (perl, dpkg-dev) or the recipe names
             text = "\n".join(l for st in pipeline if isinstance(st, dict) for l in st.get("runs", "").splitlines())
             for tool, pkgs in RECIPE_TOOLS.items():
@@ -3044,6 +3243,12 @@ class Converter:
             if b is main:
                 continue
             subpackages.append(self.subpackage(b, name, main))
+        if subpackages and getattr(self, "after_subpackages", None):
+            links = "".join('mkdir -p "${{{{targets.outdir}}}}/{1}" && rm -rf debian/{0} && ln -s "${{{{targets.outdir}}}}/{1}" debian/{0}\n'.format(
+                b["package"], self.rename.get(b["package"], b["package"])) for b in binaries if b is not main)
+            subpackages[-1].setdefault("pipeline", []).append(
+                {"name": "debian/<package> are the packages' trees, as after dh_install", "runs": links})
+            subpackages[-1]["pipeline"] += self.after_subpackages
 
         # ---- copy debian/copyright for /usr/share/doc --------------------
         if self.read("copyright") is not None and not self.license_files():
@@ -3070,6 +3275,8 @@ class Converter:
             recipe["vars"] = melange_vars
         if data:
             recipe["data"] = data
+        if self.pipeline_env:
+            environment.setdefault("environment", {}).update(self.pipeline_env)
         recipe["environment"] = environment
         recipe["pipeline"] = [p for p in pipeline if p]
         if subpackages:
@@ -3095,9 +3302,15 @@ class Converter:
             versions = list(self.PYTHON_VERSIONS)
         else:
             # every supported Python that has all the dependencies
+            # and that the build's py3-supported-* packages install (hatchling: not 3.14)
+            build_supported = [self.wolfi.supported[sup] for d in environment["contents"]["packages"]
+                               if not isinstance(d, Comment) and val(d).startswith("py3-")
+                               for sup in ["py3-supported-" + re.sub(r"^py3-(supported-)?", "", val(d))]
+                               if sup in self.wolfi.supported]
             versions = ["3.{}".format(n) for n in range(8, 30)
                         if self.wolfi.has("py3.{}-build-base".format(n))
-                        and all(self.wolfi.has("py3.{}-{}".format(n, d)) for d in py_deps)]
+                        and all(self.wolfi.has("py3.{}-{}".format(n, d)) for d in py_deps)
+                        and all("3.{}".format(n) in vs for vs in build_supported)]
             if not versions:
                 versions = list(self.PYTHON_VERSIONS)
                 self.notes.append("no Python version in Wolfi has all of: " + ", ".join(py_deps))
@@ -3235,11 +3448,35 @@ class Converter:
             return v
         out = []
         for st in steps:
+            if isinstance(st, dict) and isinstance(st.get("runs"), str) and getattr(self, "debian_dir", False):
+                # Debian's files are in debian/ too: commands run them there, next to the
+                # files they use (fonts-dejavu's debian/scripts/generate-web.sh)
+                runs = st["runs"]
+                for fname in self.aux:
+                    runs = re.sub(r"(?<![\w/.-]){}/{}\b".format(re.escape(name), re.escape(fname)),
+                                  "debian/" + self.debian_nested.get(fname, fname), runs)
+                st = dict(st, runs=runs)
             st = fix(st)
             if isinstance(st, dict) and st.get("uses") == "scala/build":
                 st = dict(st, **{"with": dict(st.get("with") or {}, config=self.RECIPE_FILES + "/scala-build")})
             out.append(st)
         return out
+
+    def uses_package_trees(self, step):
+        """Does a ported debian/rules step, or a Debian script it runs, work on
+        debian/<binary package>/ or debian/*/?"""
+        texts = [step.get("runs", "")]
+        for m in re.finditer(r"(?<![\w/$.])debian/([\w.+-]+(?:/[\w.+-]+)*)", texts[0]):
+            path = os.path.join(self.deb, m.group(1))
+            if os.path.isfile(path) and os.path.getsize(path) < 1 << 20:
+                with open(path, "rb") as fh:
+                    texts.append(fh.read().decode("utf-8", "replace"))
+        for fname, data in self.aux.items():
+            # the Debian files the step runs, by their names next to the recipe
+            if re.search(r"/{}\b".format(re.escape(fname)), texts[0]):
+                texts.append(data.decode("utf-8", "replace") if isinstance(data, bytes) else data)
+        pkgs = "|".join(re.escape(p) for p in self.rename)
+        return any(re.search(r"(?<![\w/$.])debian/(\*|{})/".format(pkgs), t) for t in texts)
 
     def move_recipe_files(self, name, steps):
         if not self.aux:
@@ -3251,9 +3488,14 @@ class Converter:
                     d=self.RECIPE_FILES, files=files, n=name)}
         if getattr(self, "debian_dir", False):
             # debian/rules works on files in debian/ by computed names
-            move["runs"] += ("mkdir -p debian && cp -a {}/. debian/\n"
+            nested = "".join("mkdir -p {}\n".format(" ".join(sorted(
+                {"debian/" + os.path.dirname(rel) for rel in self.debian_nested.values()})))
+                if self.debian_nested else "")
+            nested += "".join("mv debian/{} debian/{}\n".format(flat, rel)
+                              for flat, rel in sorted(self.debian_nested.items()))
+            move["runs"] += ("mkdir -p debian && cp -a {}/. debian/\n" + nested.replace("{", "{{").replace("}", "}}") +
                              "# the scripts are executable in Debian's tree\n"
-                             "for f in debian/*; do [ -f \"$f\" ] && head -c2 \"$f\" | grep -q '#!' && chmod +x \"$f\"; done\n"
+                             "find debian -type f | while read -r f; do if head -c2 \"$f\" | grep -q '#!'; then chmod +x \"$f\"; fi; done\n"
                              "# what Debian's scripts install into debian/tmp is the package's\n"
                              "mkdir -p \"${{{{targets.destdir}}}}\" && ln -sfn \"${{{{targets.destdir}}}}\" debian/tmp\n"
                              ).format(self.RECIPE_FILES)
@@ -3431,6 +3673,11 @@ class Converter:
         step = {"uses": "fetch", "with": {"uri": url, "expected-sha256": sha or "0" * 64}}
         if not sha:
             return [self.todo("compute expected-sha256 (re-run with --download)"), step]
+        if not single_top_directory(self.source_data):
+            # dpkg-source strips the top directory only when it is the
+            # tarball's one entry (fonts-go has none; fonts-lobstertwo has
+            # "lobstertwo v2.0" and __MACOSX, and its rules use the former)
+            step["with"]["strip-components"] = 0
         return [step]
 
     def dh_ocaml_config(self):
@@ -4306,6 +4553,20 @@ def git_snapshot_step(url, date, resolve=False):
         return [step], []
     msg = "set expected-commit to the {} commit of {} {} (re-run with --download)".format(date, url, branch)
     return [Comment("{}: {}".format(TODO, msg)), step], [msg]
+
+
+FETCHED_SOURCE = {}  # the Debian source package fetched from sources.debian.org: name, version
+
+
+def debian_source_has(path):
+    """Does the fetched Debian source have files under path (None: unknown)?"""
+    if not FETCHED_SOURCE:
+        return None
+    try:
+        listing = json.loads(http_get(SOURCES_API.format(path=path.strip("/"), **FETCHED_SOURCE)))
+    except Exception:
+        return False  # not found
+    return bool(listing.get("content"))
 
 
 def submodule_paths(url, commit):

@@ -1,0 +1,2 @@
+debian/poms/scala-library.pom.xml --has-package-version --java-lib --no-usj-versionless --artifact=debian/buildout2/jars/scala-library.jar
+debian/poms/scala-reflect.pom.xml --has-package-version --java-lib --no-usj-versionless --artifact=debian/buildout2/jars/scala-reflect.jar

@@ -1,0 +1,12 @@
+build/DejaVuSans-Bold.ttf usr/share/fonts/truetype/dejavu
+build/DejaVuSans.ttf usr/share/fonts/truetype/dejavu
+build/DejaVuSerif-Bold.ttf usr/share/fonts/truetype/dejavu
+build/DejaVuSerif.ttf usr/share/fonts/truetype/dejavu
+fontconfig/20-unhint-small-dejavu-lgc-sans.conf etc/fonts/conf.avail
+fontconfig/20-unhint-small-dejavu-lgc-serif.conf etc/fonts/conf.avail
+fontconfig/20-unhint-small-dejavu-sans.conf etc/fonts/conf.avail
+fontconfig/20-unhint-small-dejavu-serif.conf etc/fonts/conf.avail
+fontconfig/57-dejavu-sans.conf etc/fonts/conf.avail
+fontconfig/57-dejavu-serif.conf etc/fonts/conf.avail
+fontconfig/58-dejavu-lgc-sans.conf etc/fonts/conf.avail
+fontconfig/58-dejavu-lgc-serif.conf etc/fonts/conf.avail

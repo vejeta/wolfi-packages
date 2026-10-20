@@ -1,0 +1,41 @@
+Description: Remove unsupported annotations.
+Forwarded: not-needed
+Author: Filip Strömbäck <filip@fprg.se>
+--- a/include/private/base/SkTemplates.h
++++ b/include/private/base/SkTemplates.h
+@@ -122,7 +122,7 @@
+     }
+ 
+     // Reallocates given a new count. Reallocation occurs even if new count equals old count.
+-    [[clang::reinitializes]]
++    // [[clang::reinitializes]]
+     void reset(size_t count = 0) {
+         *this = AutoTArray(count);
+     }
+@@ -210,7 +210,7 @@
+     }
+ 
+     /** Destroys previous objects in the array and default constructs count number of objects */
+-    [[clang::reinitializes]]
++    // [[clang::reinitializes]]
+     void reset(int count) {
+         T* start = begin();
+         T* iter = end();
+@@ -331,7 +331,7 @@
+     }
+ 
+     /** Resize the memory area pointed to by the current ptr without preserving contents. */
+-    [[clang::reinitializes]]
++    // [[clang::reinitializes]]
+     T* reset(size_t count = 0) {
+         fPtr.reset(count ? (T*)sk_malloc_throw(count, sizeof(T)) : nullptr);
+         return this->get();
+@@ -402,7 +402,7 @@
+     }
+ 
+     // doesn't preserve contents
+-    [[clang::reinitializes]]
++    // [[clang::reinitializes]]
+     T* reset(size_t count) {
+         if (fPtr != fTStorage) {
+             sk_free(fPtr);

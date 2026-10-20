@@ -33,6 +33,7 @@ environment:
       # TODO(debian-to-melange): psautohint is not in Wolfi (Debian: psautohint); left out
       # TODO(debian-to-melange): py3-skia-pathops is not in Wolfi (Debian: python3-skia-pathops); left out
       # TODO(debian-to-melange): py3-ttfautohint-py is not in Wolfi (Debian: python3-ttfautohint-py); left out
+      - bash  # the source has bash scripts; Essential in Debian
       - coreutils
       - findutils
 pipeline:
@@ -71,6 +72,9 @@ pipeline:
       mkdir -p "${{targets.destdir}}/usr/share/doc/fonts-inter"
       cp -a README.md "${{targets.destdir}}/usr/share/doc/fonts-inter/"
       install -Dm644 LICENSE.txt -t "${{targets.destdir}}"/usr/share/licenses/fonts-inter
+  - name: Remove libtool archives
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
 subpackages:
   - name: fonts-inter-variable
     description: Inter font family (VF)

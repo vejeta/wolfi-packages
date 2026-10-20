@@ -231,6 +231,8 @@ jobs:
           done
 
           # Copy new APK packages (will overwrite older versions of same package)
+          # A push that builds nothing (docs only) has no artifacts.
+          mkdir -p build-artifacts
           for arch in x86_64 aarch64; do
             echo "Processing new $arch artifacts..."
 

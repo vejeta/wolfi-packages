@@ -1,0 +1,87 @@
+scala-2.13 for Debian
+=====================
+
+This is the Scala 2.13 series, packaged next to the scala package (2.12).
+Both can be installed together: the jars carry versioned names
+(scala-library-2.13.18.jar, scala-library-2.13.jar), the commands are
+also available as scalac-2.13, scala-2.13, scaladoc-2.13, fsc-2.13 and
+scalap-2.13, and /usr/bin/scala and friends are update-alternatives,
+pointing at the newest series installed.
+
+Two-pass self-host build (no sbt)
+---------------------------------
+
+debian/build-driver.sh compiles the Scala 2.13 module layers (library,
+reflect, compiler, interactive, repl, repl-frontend, scaladoc, scalap)
+straight with a STARR scalac, then assembles the jars. debian/rules runs it
+twice:
+
+  pass 1: STARR = scala-2.13 from the archive -> jars in debian/buildout1
+  pass 2: STARR = the pass-1 jars             -> jars in debian/buildout2
+
+Only the pass-2 jars are installed. The source package contains no
+prebuilt jar or class file.
+
+Stage-0 bootstrap seed (provenance and reproducibility)
+-------------------------------------------------------
+
+Scala 2.13 can only be compiled by a Scala 2.13 compiler, so the very first
+build needs a seed, as for every self-hosting compiler in Debian. It is the
+only non-source input, it is used once, and it is never part of the source
+package or of any binary package.
+
+The seed is exactly the STARR that upstream itself pins for this release,
+in versions.properties at the packaged tag:
+
+  starr.version=2.13.17
+
+i.e. upstream's own published 2.13.17 jars:
+
+  https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.17/scala-library-2.13.17.jar
+    sha1   766aafc5e3c310bde92e405988bc7f6eb31d7cf9
+    sha256 b7822c4225243215f185925724a6edff92cf18777a136cc738276c4446fac76c
+  https://repo1.maven.org/maven2/org/scala-lang/scala-reflect/2.13.17/scala-reflect-2.13.17.jar
+    sha1   d7ea6ad0d92e3bbe0afef1bdffbbe172704c8c47
+    sha256 734533897bcfabe7a6e7fa09dbee165b257b0396e14e8a57c75111db8e04bb98
+  https://repo1.maven.org/maven2/org/scala-lang/scala-compiler/2.13.17/scala-compiler-2.13.17.jar
+    sha1   70f6ece2d45d2f89fb9a4d5e41181ade1bd9d416
+    sha256 073ab364dc902519719bd6b9463562128abc5881d2a2e4b7a5e2d04cdd7bc025
+
+The sha1 values are the ones Maven Central publishes next to each jar.
+
+With sbuild, debian/make-stage0-deb downloads the jars, checks the
+checksums and builds a local-only scala-2.13-stage0 .deb that installs them
+to /usr/share/scala-2.13-stage0. That .deb is never uploaded:
+
+  debian/make-stage0-deb /tmp/stage0
+  sbuild --profiles=pkg.scala.stage0 \
+    --extra-package=/tmp/stage0/scala-2.13-stage0_2.13.17_all.deb scala-2.13_*.dsc
+
+Without a chroot, put the three jars in a directory and point SCALA_STAGE0
+at it:
+
+  dpkg-buildpackage -Ppkg.scala.stage0 -d SCALA_STAGE0=$HOME/scala-2.13-stage0
+
+The stage0 build uses JDK 25 (openjdk-25-jdk-headless): the 2.13.17 STARR
+cannot compile the 2.13.18 library on JDK 26 and later, where
+java.util.Comparator gained default max/min methods. 2.13.18 itself handles
+them (https://github.com/scala/bug/issues/13127), so normal builds use
+default-jdk.
+
+This is a NEW package, and NEW throws away the binaries of an accepted
+upload (https://wiki.debian.org/ThrowAwayNewBinaries), so the bootstrap
+takes three uploads: -1 stage0 source+binary to experimental, -2
+source+binary to unstable, -3 source-only. From then on the archive
+self-hosts and the seed is no longer used; the stage0 profile stays only to
+bootstrap new architectures. A normal-profile build against the stage0
+output produces byte-identical .debs.
+
+Debian changes
+--------------
+
+ * scaladoc takes jQuery from libjs-jquery instead of a webjar
+   (debian/patches/0001).
+ * java-diff-utils is not packaged; -Yprint-trees:diff prints whole trees
+   (debian/patches/0002).
+
+ -- Juan Manuel Méndez Rey <juan.mendezr@proton.me>

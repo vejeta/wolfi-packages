@@ -1,0 +1,5 @@
+build/DejaVuSansMono*.ttf usr/share/fonts/truetype/dejavu
+fontconfig/20-unhint-small-dejavu-lgc-sans-mono.conf etc/fonts/conf.avail
+fontconfig/20-unhint-small-dejavu-sans-mono.conf etc/fonts/conf.avail
+fontconfig/57-dejavu-sans-mono.conf etc/fonts/conf.avail
+fontconfig/58-dejavu-lgc-sans-mono.conf etc/fonts/conf.avail

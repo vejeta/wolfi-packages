@@ -1,0 +1,20 @@
+Description: Disable FULL_PATH_NAME for doxygen build
+ This patch disables the FULL_PATH_NAME setting so the build path does
+ not end up in the documentation files.
+Author: Matthias Geiger <werdahias@riseup.net>
+Forwarded: not-needed 
+Last-Update: 2023-10-24 
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+
+--- a/Doxyfile
++++ b/Doxyfile
+@@ -172,7 +172,7 @@ INLINE_INHERITED_MEMB  = NO
+ # shortest path that makes the file name unique will be used
+ # The default value is: YES.
+ 
+-FULL_PATH_NAMES        = YES
++FULL_PATH_NAMES        = NO 
+ 
+ # The STRIP_FROM_PATH tag can be used to strip a user-defined part of the path.
+ # Stripping is only done if one of the specified strings matches the left-hand

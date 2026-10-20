@@ -1,0 +1,22 @@
+From: Boyuan Yang <byang@debian.org>
+Date: Sun, 29 Mar 2026 14:30:04 -0400
+Subject: Allow cython 3.1.0
+
+Forwarded: not-needed
+---
+ pyproject.toml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/pyproject.toml b/pyproject.toml
+index f802945..b03a1ca 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -4,7 +4,7 @@ requires = [
+     "wheel",
+     "setuptools_scm",
+     "packaging",
+-    "cython >= 3.2.0",
++    "cython >= 3.1.0",
+ ]
+ 
+ [tool.cibuildwheel]

@@ -1,0 +1,23 @@
+Description: Forbid the build system from downloading googletest.
+Author: Andrius Merkys <merkys@debian.org>
+Forwarded: not-needed
+--- a/runtime/CMakeLists.txt
++++ b/runtime/CMakeLists.txt
+@@ -38,17 +38,6 @@
+ add_dependencies(antlr4_static make_lib_output_dir)
+ 
+ if (ANTLR_BUILD_CPP_TESTS)
+-  include(FetchContent)
+-
+-  FetchContent_Declare(
+-    googletest
+-    URL https://github.com/google/googletest/archive/e2239ee6043f73722e7aa812a459f54a28552929.zip
+-  )
+-
+-  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+-
+-  FetchContent_MakeAvailable(googletest)
+-
+   file(GLOB libantlrcpp_TESTS
+     "${PROJECT_SOURCE_DIR}/runtime/tests/*.cpp"
+   )

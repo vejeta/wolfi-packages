@@ -166,8 +166,19 @@ pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
-      for f in 0001-scaladoc-jquery-from-libjs-jquery.patch 0002-print-trees-diff-without-java-diff-utils.patch copyright; do mv scala-2.13/$f .recipe-files/; done
+      for f in 0001-scaladoc-jquery-from-libjs-jquery.patch 0002-print-trees-diff-without-java-diff-utils.patch README.source build-driver.sh copyright fsc gbp.conf lrc.config make-stage0-deb maven.rules poms_scala-compiler.pom.xml.in poms_scala-library.pom.xml.in poms_scala-reflect.pom.xml.in rules scala-2.13.docs scala-2.13.poms scala-2.13.postinst scala-2.13.prerm scala-library-2.13.docs scala-library-2.13.poms scala-runner scalac scaladoc scalap-wrapper tests_control tests_smoke watch; do mv scala-2.13/$f .recipe-files/; done
       rmdir scala-2.13 2>/dev/null || true
+      mkdir -p debian && cp -a .recipe-files/. debian/
+      mkdir -p debian/poms debian/tests
+      mv debian/poms_scala-compiler.pom.xml.in debian/poms/scala-compiler.pom.xml.in
+      mv debian/poms_scala-library.pom.xml.in debian/poms/scala-library.pom.xml.in
+      mv debian/poms_scala-reflect.pom.xml.in debian/poms/scala-reflect.pom.xml.in
+      mv debian/tests_control debian/tests/control
+      mv debian/tests_smoke debian/tests/smoke
+      # the scripts are executable in Debian's tree
+      find debian -type f | while read -r f; do if head -c2 "$f" | grep -q '#!'; then chmod +x "$f"; fi; done
+      # what Debian's scripts install into debian/tmp is the package's
+      mkdir -p "${{targets.destdir}}" && ln -sfn "${{targets.destdir}}" debian/tmp
   # TODO(debian-to-melange): set expected-commit for tag v2.13.18 (re-run with --download, or git ls-remote)
   - uses: git-checkout
     with:
@@ -187,7 +198,7 @@ pipeline:
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/scala-2.13"
       cp -a NOTICE "${{targets.destdir}}/usr/share/doc/scala-2.13/"
-      install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/scala-2.13/copyright
+      install -Dm644 debian/copyright "${{targets.destdir}}"/usr/share/doc/scala-2.13/copyright
 subpackages:
   - name: scala-library-2.13
     description: Scala 2.13 standard library

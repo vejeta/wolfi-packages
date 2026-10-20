@@ -1,0 +1,174 @@
+Description: Debian-specific makefile.
+Forwarded: not-needed
+Author: Filip Strömbäck <filip@fprg.se>
+--- /dev/null
++++ b/bin/install-headers.py
+@@ -0,0 +1,47 @@
++#!/usr/bin/env python3
++
++import argparse
++import os, os.path
++import re
++
++parser = argparse.ArgumentParser()
++parser.add_argument("--src", help="Source directory for includes", required=True)
++parser.add_argument("--dest", help="Destination path for includes", required=True)
++parser.add_argument("--ignore", help="Ignore files matching regex", action="append")
++args = parser.parse_args()
++
++filemode = 0o644
++
++def update_file(filename):
++    global args, filemode
++
++    if not filename.endswith(".h"):
++        return
++
++    if args.ignore:
++        for i in args.ignore:
++            if re.fullmatch(i, filename):
++                return
++
++    skia_include = re.compile(r'^([ \t]*)# *include *"include/([^"]*)"[ \t]*(//.*)?\n?$')
++    skcms_include = re.compile('^([ \t]*)# *include *"modules/skcms/skcms.h"[ \t]*(//.*)?\n?$')
++
++    dstfile = os.path.join(args.dest, filename[len(args.src):])
++    os.makedirs(os.path.dirname(dstfile), exist_ok=True)
++
++    with open(filename, "r") as src:
++        with open(dstfile, "w") as dst:
++            for line in src:
++                if match := skia_include.fullmatch(line):
++                    dst.write("{}#include <skia/{}>\n".format(match[1], match[2]))
++                elif match := skcms_include.fullmatch(line):
++                    dst.write("{}#include <skia/skcms.h>\n".format(match[1]))
++                else:
++                    dst.write(line)
++
++
++    os.chmod(dstfile, filemode)
++
++for dirname, dirs, files in os.walk(args.src):
++    for f in files:
++        update_file(os.path.join(dirname, f))
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -2,13 +2,12 @@
+ #
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+-
+ import("gn/codec.gni")
+ import("gn/pathops.gni")
+ import("gn/rust.gni")
+ import("gn/shared_sources.gni")
+ import("gn/skia.gni")
+-import("gn/toolchain/wasm.gni")
++#import("gn/toolchain/wasm.gni")
+ 
+ if (defined(skia_settings)) {
+   import(skia_settings)
+@@ -1333,7 +1332,11 @@
+   enabled = skia_use_freetype
+ 
+   public_defines = [ "SK_TYPEFACE_FACTORY_FREETYPE" ]
+-  deps = [ "//third_party/freetype2" ]
++  # Use system freetype instead:
++  #deps = [ "//third_party/freetype2" ]
++  libs = [ "freetype" ]
++  cflags = [ "-isystem/usr/include/freetype2" ]
++
+   sources = skia_ports_freetype_sources
+   sources_for_tests = [ "tests/FontScanner_FreeTypeTest.cpp" ]
+ }
+--- a/gn/toolchain/BUILD.gn
++++ b/gn/toolchain/BUILD.gn
+@@ -7,6 +7,8 @@
+   host_cc = cc
+   host_cxx = cxx
+ 
++  skia_so_version = -1
++
+   if (is_android) {
+     _prefix = "$ndk/toolchains/llvm/prebuilt/$ndk_host/bin"
+     if (host_os == "win") {
+@@ -322,6 +324,10 @@
+       soname = "{{target_output_name}}{{output_extension}}"
+ 
+       rpath = "-Wl,-soname,$soname"
++      if (skia_so_version >= 0) {
++        rpath = "$rpath.$skia_so_version"
++      }
++
+       if (is_mac || is_ios) {
+         rpath = "-Wl,-install_name,@rpath/$soname"
+       }
+--- a/gn/BUILDCONFIG.gn
++++ b/gn/BUILDCONFIG.gn
+@@ -182,7 +182,8 @@
+ default_configs = [
+   "//gn/skia:default",
+   "//gn/skia:no_exceptions",
+-  "//gn/skia:no_rtti",
++  # We want RTTI, otherwise builds *with* RTTI don't work.
++  # "//gn/skia:no_rtti",
+   "//gn/skia:strict_aliasing",
+ ]
+ if (!is_debug) {
+--- /dev/null
++++ b/bin/install-pc.py
+@@ -0,0 +1,29 @@
++#!/usr/bin/env python3
++import os
++import os.path
++import sys
++
++template = '''
++prefix=/usr
++exec_prefix=${prefix}
++libdir=${prefix}/lib/%(DEB_HOST_MULTIARCH)s
++includedir=${prefix}/include
++
++Name: skia
++Description: 2D graphics library
++Version: %(FULL_VERSION)s
++Libs: -L${libdir} -lskia
++Cflags: -I${includedir}/skia
++'''
++
++if len(sys.argv) < 2:
++    print("Expected output path.")
++    exit(1)
++
++output = sys.argv[1]
++
++os.makedirs(os.path.dirname(output), exist_ok=True)
++
++with open(output, 'w') as f:
++    f.write((template.strip() % os.environ) + "\n")
++
+--- a/gn/skia.gni
++++ b/gn/skia.gni
+@@ -105,6 +105,8 @@
+   }
+ 
+   skia_build_rust_targets = false
++
++  skia_no_pic = false
+ }
+ 
+ declare_args() {
+--- a/gn/skia/BUILD.gn
++++ b/gn/skia/BUILD.gn
+@@ -120,8 +120,10 @@
+       "$win_vc/Tools/MSVC/$win_toolchain_version/lib/$current_cpu",
+     ]
+   } else {
++    if (!skia_no_pic) {
++      cflags += [ "-fPIC" ]
++    }
+     cflags += [
+-      "-fPIC",
+       "-fvisibility=hidden",
+     ]
+     cflags_cc += [ "-fvisibility-inlines-hidden" ]

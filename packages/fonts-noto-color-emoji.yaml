@@ -7,7 +7,6 @@
 # Debian packaging: https://salsa.debian.org/fonts-team/fonts-noto-color-emoji
 #
 # Conversion notes:
-# - build dependency 'py3-nototools' (Debian 'python3-nototools') not found in Wolfi; left out
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
 package:
   name: fonts-noto-color-emoji
@@ -28,15 +27,18 @@ environment:
     packages:
       - build-base
       - busybox
-      - py3.12-fonttools-bin  # Debian: fonttools
+      - py3.13-fonttools-bin  # Debian: fonttools
       - imagemagick-7  # Debian: imagemagick
       - netpbm  # Debian: imagemagick
       - cairo-dev  # Debian: libcairo2-dev
       - libpng-dev
       - pkgconf-dev  # Debian: pkg-config
       - pngquant
-      # TODO(debian-to-melange): py3-nototools is not in Wolfi (Debian: python3-nototools); left out
+      - py3.13-notofonttools-bin  # commands of Debian's python3-nototools
+      - py3-supported-notofonttools  # Debian: python3-nototools
       - zopfli
+      - python3  # the interpreter of Debian's python3-* build dependencies
+      - bash  # the source has bash scripts; Essential in Debian
       - coreutils
       - findutils
 pipeline:
@@ -70,6 +72,9 @@ pipeline:
           mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
         done
       done
+  - name: Remove libtool archives
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
 update:
   enabled: true
   github:

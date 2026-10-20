@@ -84,6 +84,28 @@ installed together. Systems that have `stremio` 4.x from this repository
 need `apk del stremio && apk add stremio stremio-qt5`, because apk does not
 replace a package with a lower version.
 
+### As a container image
+
+[stremio-distroless](https://github.com/vejeta/stremio-distroless) builds
+distroless images from these packages with apko: no shell, no package
+manager, nonroot, amd64 and arm64, signed with cosign. Stremio's streaming
+server, headless, for a home server or a NAS:
+
+```bash
+docker run -d --name stremio-server --restart unless-stopped \
+  --read-only --cap-drop=ALL --security-opt=no-new-privileges:true \
+  --tmpfs /tmp:rw,noexec,nosuid,size=512m \
+  -v stremio-server:/home/nonroot/.stremio-server \
+  -p 11470:11470 -p 12470:12470 \
+  ghcr.io/vejeta/stremio-server:latest
+```
+
+Then, in Stremio ([web.stremio.com](https://web.stremio.com) or an app),
+Settings → Streaming server URL: `http://<host>:11470`. On the first start
+`stremio-server-launcher` downloads Stremio's `server.js` (not free
+software, so not in the image), checks its sha256 and keeps it in the
+volume.
+
 ### As build dependencies in a melange recipe
 
 ```yaml
@@ -249,10 +271,15 @@ Fixes found while building these packages go to
 
 - intltool: escape `{` in regexes, which Perl 5.26+ warns about at every run
   ([wolfi-dev/os#78761](https://github.com/wolfi-dev/os/pull/78761))
-- ocaml: depend on gcc and zstd-dev, which `ocamlopt` and programs linked
-  with the OCaml runtime need
+- tcl: install the script library in `usr/lib/tcl9.1`, where programs that
+  embed Tcl (`Tcl_Init`) look for `init.tcl`
+  ([wolfi-dev/os#78762](https://github.com/wolfi-dev/os/pull/78762))
 - ocaml-findlib: keep findlib's `bytes` package, which code written for older
   OCaml still requires
+  ([wolfi-dev/os#78763](https://github.com/wolfi-dev/os/pull/78763))
+- ocaml: depend on gcc and zstd-dev, which `ocamlopt` and programs linked
+  with the OCaml runtime need
+  ([wolfi-dev/os#78764](https://github.com/wolfi-dev/os/pull/78764))
 
 ## Scope
 

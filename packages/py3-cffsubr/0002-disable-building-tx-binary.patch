@@ -1,0 +1,19 @@
+From: =?utf-8?b?IllhbyBXZWkgKOmtj+mKmOW7tyki?= <mwei@debian.org>
+Date: Wed, 23 Sep 2020 22:53:39 +0800
+Subject: disable building tx binary
+
+---
+ setup.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/setup.py
++++ b/setup.py
+@@ -136,7 +136,7 @@
+     package_dir={"": "src"},
+     packages=find_packages("src"),
+     entry_points={"console_scripts": ["cffsubr = cffsubr.__main__:main"]},
+-    ext_modules=[tx],
++    ext_modules=[],
+     zip_safe=False,
+     cmdclass=cmdclass,
+     install_requires=[

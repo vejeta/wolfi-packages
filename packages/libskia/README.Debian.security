@@ -1,0 +1,33 @@
+Important note
+==============
+
+Skia packaged in Debian (libskia) does not receive security support
+during the life time of the stable release. It should therefore not be
+used by security-sensitive applications that process potentially
+untrusted data (e.g. web browsers).
+
+There are two main reasons it is not feasible to provide security
+support for libskia:
+
+1. Major versions (which correspond to chrome milestones) are released
+   frequently, every two weeks at the time of writing. LTS branches
+   exist, but are only maintained for a few of months. While the API
+   is mostly stable across releases, API changes do happen, which
+   makes it necessary to backport changes to stable rather than
+   upgrading to a new major version.
+   
+2. Since Skia is used in Chromium, there is a steady stream of CVEs.
+   While fixes are often small, internal changes in Skia between major
+   versions (e.g. transitioning to a new renderer) makes the changes
+   increasingly difficult to backport patches as the difference
+   between the version in stable and upstream's version increase.
+
+The two points above also mean that security-sensitive applications
+(e.g. web browsers) should probably embed a copy of libskia anyway.
+The most up-to-date of the application will probably target the latest
+version of Skia, which may have small API incompatibilities compared
+to the version in Debian.
+
+Skia (and particularly pathops) is still useful in Debian. For
+example, various fonts in Debian rely on pathops from Skia as a part
+of their build process.

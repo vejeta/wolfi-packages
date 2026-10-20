@@ -1,0 +1,29 @@
+From: =?utf-8?b?IllhbyBXZWkgKOmtj+mKmOW7tyki?= <mwei@debian.org>
+Date: Sun, 27 Jun 2021 22:40:48 +0800
+Subject: Skip antlr version check
+
+---
+ c/makeotf/lib/hotconv/BuildGrammar.py | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/c/makeotf/lib/hotconv/BuildGrammar.py b/c/makeotf/lib/hotconv/BuildGrammar.py
+index b3b46ef..203c602 100644
+--- a/c/makeotf/lib/hotconv/BuildGrammar.py
++++ b/c/makeotf/lib/hotconv/BuildGrammar.py
+@@ -7,7 +7,6 @@ import sys
+ import os
+ 
+ antlr_program = "antlr4"
+-antlr_version = "4.9.3"
+ 
+ antlr_args = ['-no-listener', '-Dlanguage=Cpp']
+ 
+@@ -49,8 +48,6 @@ def check_version():
+     except (subprocess.CalledProcessError, OSError):
+         q(1, "ERROR: Did not find '" + antlr_program + "' program in path")
+     v = re.search(b'([0-9.]+)\n', command.stdout).group(1).decode('ascii')
+-    if v != antlr_version:
+-        q(1, "ERROR: Program version is " + v + " should be " + antlr_version)
+ 
+ 
+ def run_program(prog):

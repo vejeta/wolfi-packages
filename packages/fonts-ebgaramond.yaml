@@ -30,6 +30,7 @@ environment:
       - fontforge
       - py3-supported-fontforge  # Debian: python3-fontforge
       - ttfautohint
+      - python3  # the interpreter of Debian's python3-* build dependencies
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -62,17 +63,20 @@ pipeline:
           mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
         done
       done
+  - name: Remove libtool archives
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
 subpackages:
   - name: fonts-ebgaramond-extra
     description: EB Garamond SmallCaps and TrueType fonts
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/truetype/ebgaramond"
-          mv "${{targets.destdir}}"/build/*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/ebgaramond/"
+          cp -a build/*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/ebgaramond/"
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/opentype/ebgaramond"
-          mv "${{targets.destdir}}"/build/*SC*.otf "${{targets.contextdir}}/usr/share/fonts/opentype/ebgaramond/"
+          cp -a build/*SC*.otf "${{targets.contextdir}}/usr/share/fonts/opentype/ebgaramond/"
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/woff/ebgaramond"
-          mv "${{targets.destdir}}"/web/*.woff "${{targets.contextdir}}/usr/share/fonts/woff/ebgaramond/"
+          cp -a web/*.woff "${{targets.contextdir}}/usr/share/fonts/woff/ebgaramond/"
 update:
   enabled: true
   release-monitor:

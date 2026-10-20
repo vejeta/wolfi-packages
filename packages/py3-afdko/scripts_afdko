@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -e
+
+BINDIR=/usr/libexec/afdko
+UTILITIES=$(ls $BINDIR)
+
+USAGE="Usage: afdko [utility] [params]
+
+Run afdko utility with supplied parameters.  where utilities can be:
+$UTILITIES
+"
+
+if [ -f "$BINDIR/$1" ] && [ -x "$BINDIR/$1" ]; then
+	export PATH=$BINDIR:$PATH
+	exec "$@"
+else
+	echo "$USAGE" >&2
+fi
