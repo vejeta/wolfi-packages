@@ -112,6 +112,10 @@ update:
   release-monitor:
     identifier: 7981
 test:
+  environment:
+    contents:
+      packages:
+        - busybox
   pipeline:
     - runs: |
         x86_64-linux-gnu-as --version | grep -q "GNU assembler"

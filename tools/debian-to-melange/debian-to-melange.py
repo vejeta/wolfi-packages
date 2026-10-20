@@ -83,9 +83,10 @@ NAME_MAP = {
     "pandoc": "pandoc-cli",
     # OCaml: Wolfi's ocaml is the whole compiler and standard library, which
     # Debian splits; dune and findlib are packaged in Wolfi too
-    # (ocamlopt assembles and links with gcc: Debian's ocaml depends on it, Wolfi's does not)
-    "ocaml": ["ocaml", "ocaml-compiler-libs", "ocaml-findlib-compat", "build-base"],
-    "ocaml-nox": ["ocaml", "ocaml-compiler-libs", "ocaml-findlib-compat", "build-base"],
+    # (ocamlopt assembles and links with gcc, and -output-obj with -lzstd: Debian's ocaml
+    # depends on gcc and libzstd-dev, Wolfi's does not)
+    "ocaml": ["ocaml", "ocaml-compiler-libs", "ocaml-findlib-compat", "build-base", "zstd-dev"],
+    "ocaml-nox": ["ocaml", "ocaml-compiler-libs", "ocaml-findlib-compat", "build-base", "zstd-dev"],
     "ocaml-base": "ocaml",
     "ocaml-base-nox": "ocaml",
     "ocaml-interp": "ocaml",
@@ -1669,6 +1670,9 @@ class Converter:
             if m and m.group(5) in getattr(self, "generated", {}):
                 continue  # generated now, see generate_from_in()
             line = re.sub(r"`pwd`/|\$\(pwd\)/|\$\$\(pwd\)/", "", line)  # the source tree, like $(CURDIR)
+            # the upstream version, read from debian/changelog
+            line = re.sub(r"\$\(shell\s+dpkg-parsechangelog\s+(?:-S\s*|--show-field[= ])Version\s*\|\s*"
+                          r"(?:cut\s+-d\s*-\s+-f\s*1|sed\s+-e?\s*'?s/-\[\^-\]\*\$//'?)\s*\)", "${{package.version}}", line)
             line = self.multiarch(line)
             for pkg, target in self.rename.items():
                 if pkg != deb_pkg:
@@ -2336,6 +2340,17 @@ class Converter:
             for p in patches:
                 with open(os.path.join(self.deb, "patches", p), "rb") as fh:
                     self.aux[os.path.basename(p)] = fh.read()
+            git = next((st["with"] for st in pipeline if isinstance(st, dict) and st.get("uses") == "git-checkout"
+                        and st.get("with", {}).get("recurse-submodules")), None)
+            if git:
+                # Debian's orig (GitHub's tag tarball) lacks the submodules when its patches add them (sombok: test-data)
+                created = set()
+                for p in patches:
+                    with open(os.path.join(self.deb, "patches", p), errors="replace") as fh:
+                        created |= set(re.findall(r"(?m)^\+\+\+ (?:b/)?(\S+)", fh.read()))
+                subs = submodule_paths(git["repository"], git.get("expected-commit", ""))
+                if any(f == d or f.startswith(d.rstrip("/") + "/") for f in created for d in subs):
+                    del git["recurse-submodules"]
             if patches:  # a series of comments only applies nothing
                 pipeline.append({"uses": "patch", "with": {"patches": " ".join(
                     "{}/{}".format(name, os.path.basename(p)) for p in patches)}})
@@ -3034,6 +3049,10 @@ class Converter:
                     # Wolfi's perl/make, for one, does not install module man pages
                     cmds.append('if [ -e {2} ]; then\n  mkdir -p "{0}/{1}"\n  mv {2} {3}\nfi'.format(
                         destdir, dst, shell_path("${{targets.destdir}}", src), target))
+                elif src.startswith("usr/lib/ocaml/") and re.search(r"[*?\[]", src):
+                    # dune makes no archive for a library without modules (base_internalhash_types)
+                    cmds.append('mkdir -p "{0}/{1}"\nfor f in {2}; do\n  [ -e "$f" ] && mv "$f" {3}\ndone\ntrue'.format(
+                        destdir, dst, shell_path("${{targets.destdir}}", src), target))
                 elif not re.match(r"^(usr|etc|lib|lib64|var|opt|bin|sbin|boot|srv)(/|$)", src):
                     # a path in the source tree, not one the build installed
                     cmds.append('mkdir -p "{0}/{1}"\ncp -a {2} {3}'.format(destdir, dst, src, target))
@@ -3116,7 +3135,10 @@ class Converter:
         """dh runs dh_autoreconf from compat 10; a git checkout has no configure."""
         if dh_compat(source, self.read) < 10:
             return False
-        return self.git_source is not None or ("configure.ac" in self.top and "configure" not in self.top)
+        # only with an autoconf input: arch-test's configure is written by hand
+        if not ("configure.ac" in self.top or "configure.in" in self.top):
+            return False
+        return self.git_source is not None or "configure" not in self.top
 
     def autoreconf_tools(self):
         tools = ["autoconf", "automake"]
@@ -3507,15 +3529,21 @@ def git_snapshot_step(url, date, resolve=False):
     return [Comment("{}: {}".format(TODO, msg)), step], [msg]
 
 
-def has_submodules(url, commit):
-    """Does the repository at that commit have a .gitmodules (GitHub only)?"""
+def submodule_paths(url, commit):
+    """The submodule paths of the repository at that commit (GitHub only)."""
     m = re.match(r"https://github\.com/([^/]+/[^/]+?)(?:\.git)?/?$", url)
     if not m:
-        return False
+        return []
     try:
-        return bool(http_get("https://raw.githubusercontent.com/{}/{}/.gitmodules".format(m.group(1), commit)).strip())
+        text = http_get("https://raw.githubusercontent.com/{}/{}/.gitmodules".format(m.group(1), commit))
     except Exception:
-        return False
+        return []
+    return re.findall(r"(?m)^\s*path\s*=\s*(\S+)", text.decode("utf-8", "replace") if isinstance(text, bytes) else text)
+
+
+def has_submodules(url, commit):
+    """Does the repository at that commit have a .gitmodules (GitHub only)?"""
+    return bool(submodule_paths(url, commit))
 
 
 def git_url_checkout_step(url, version, tag_prefix=None, resolve=False, todo=None):

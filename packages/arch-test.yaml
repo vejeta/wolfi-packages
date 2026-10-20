@@ -26,7 +26,6 @@
 # - build dependency 'binutils-mingw-w64-x86-64' (Debian 'binutils-mingw-w64-x86-64') not found in Wolfi; left out
 # - build dependency 'mingw-w64-x86-64-dev' (Debian 'mingw-w64-x86-64-dev') not found in Wolfi; left out
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
-# - port debian/rules override_dh_auto_install: $(MAKE) install DESTDIR=$(CURDIR)/debian/arch-test/ PREFIX=/usr  	    VERSION=v$(shell dpkg-parsechangelog -S Version|cut -d- -f1)
 # - autopkgtests converted to the test pipeline (2 steps)
 package:
   name: arch-test
@@ -78,17 +77,27 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/debian-changes
-  - runs: |
-      autoreconf -fi
   - uses: autoconf/configure
   - uses: autoconf/make
-  - uses: autoconf/make-install
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_install: $(MAKE) install DESTDIR=$(CURDIR)/debian/arch-test/ PREFIX=/usr  	    VERSION=v$(shell dpkg-parsechangelog -S Version|cut -d- -f1)
+  - name: Install (from debian/rules override_dh_auto_install)
+    runs: |
+      make install DESTDIR=${{targets.destdir}}/ PREFIX=/usr  	    VERSION=v${{package.version}}
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/bin"
       mkdir -p "${{targets.destdir}}/usr/share/man/man1"
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/arch-test
+  - name: Usr-merge (sbin into bin)
+    runs: |
+      for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
+        for s in usr/sbin sbin bin; do
+          [ -d "$d/$s" ] && [ ! -L "$d/$s" ] || continue
+          mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
+        done
+      done
+  - name: Remove libtool archives
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
 update:
   enabled: true
   github:
@@ -145,12 +154,16 @@ test:
     - name: 'autopkgtest: dpkg-arch-works'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
+        set +o pipefail 2>/dev/null || true
         # If we're capable of executing dpkg, we can run its arch (qemu or not).
 
         arch-test `dpkg --print-architecture`
     - name: 'autopkgtest: no-stderr'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
+        set +o pipefail 2>/dev/null || true
         # All detection errors should be hidden (they mean a negative).
 
         arch-test

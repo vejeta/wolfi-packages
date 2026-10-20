@@ -50,7 +50,6 @@ pipeline:
       repository: https://github.com/hatukanezumi/sombok
       tag: sombok-${{package.version}}
       expected-commit: 0098d85a037ef5c99a648a3669a077781a45e8cc
-      recurse-submodules: true
   - uses: patch
     with:
       patches: .recipe-files/fix_ftbfs_kfreebsd_strepipe .recipe-files/disable_doxygen_search_engine .recipe-files/fix_tests_suite .recipe-files/add_tests_suite_data .recipe-files/fix_FTCBFS
