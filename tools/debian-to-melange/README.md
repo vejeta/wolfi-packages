@@ -89,6 +89,7 @@ melange build packages/foo.yaml --arch x86_64 ...            # 4. build and test
 | `*.xmlcatalogs` (`dh_installxmlcatalogs`) | The package's catalog installed, and scriptlets that add (and remove) its delegate entries in `/etc/xml/catalog` with libxml2's `xmlcatalog` (Wolfi has no xml-core) |
 | Build-depends on `libncurses-dev` | Debian's `include/ncursesw/` header directory (symlinks), in the build and the tests |
 | Shell scripts with `#!/bin/bash` in the source | `bash` in the build environment (Essential in Debian) |
+| `getopt`, `setpriv` in the source's shell scripts | `util-linux-misc`, `setpriv` (busybox's lack options of Debian's Essential util-linux): runtime dependencies, and in the tests |
 | Build-depends on fontconfig or Xft | Runtime dependency on `ttf-dejavu` (Debian's fontconfig always brings a font; Wolfi's does not) |
 | `usr/sbin`, `sbin`, `bin`, `lib` destinations | `usr/bin`, `usr/lib` (Wolfi is usr-merged, with sbin merged into bin) |
 | Multiarch paths (`usr/lib/*/`, `$(DEB_HOST_MULTIARCH)`) | `usr/lib/` |

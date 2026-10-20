@@ -111,6 +111,7 @@ environment:
       - dpkg-dev
       - cmake
       - docbook-xml
+      - docbook-xsl  # Wolfi Community Packages
       - gettext
       - bzip2-dev  # Debian: libbz2-dev
       - db-dev  # Debian: libdb-dev
@@ -132,6 +133,7 @@ environment:
       - doxygen
       - graphviz
       - w3m
+      - bash  # the source has bash scripts; Essential in Debian
       - coreutils
       - findutils
   environment:
@@ -149,7 +151,7 @@ pipeline:
       expected-sha256: ce30b74ba6f633b23fb8162c37ae43c68baa5fa00e2367f6de675142df74b96b
   - uses: cmake/configure
     with:
-      opts: -DCMAKE_BUILD_RPATH_USE_ORIGIN=ON -DWITH_DOC=OFF -DWITH_DOC_MANPAGES=ON -DWITH_DOC_EXAMPLES=ON -DWITH_DOC=ON -DWITH_TESTS=OFF -DCMAKE_INSTALL_LIBEXECDIR=lib
+      opts: -DCMAKE_BUILD_RPATH_USE_ORIGIN=ON -DWITH_DOC=ON -DWITH_TESTS=OFF -DCMAKE_INSTALL_LIBEXECDIR=lib
   - uses: cmake/build
   - uses: cmake/install
   - name: Install files
@@ -387,8 +389,11 @@ test:
         - aptitude  # Wolfi Community Packages
         - valgrind  # Debian: valgrind-if-available
         - gdb
+        - ca-certificates-bundle  # Debian: ca-certificates
+        - apt
         - cmake
         - docbook-xml
+        - docbook-xsl  # Wolfi Community Packages
         - gettext
         - gtest-dev  # Debian: googletest
         - bzip2-dev  # Debian: libbz2-dev
@@ -428,7 +433,7 @@ test:
       runs: |
         db=/var/lib/dpkg
         mkdir -p "$db/info" && touch "$db/status"
-        awk -v db="$db" -v aliases='build-essential=build-base db-util=db-utils docbook-xsl=docbook-xml g++=build-base googletest=gtest-dev gpgv-sq=sequoia-chameleon-gnupg libbz2-dev=bzip2-dev libc-bin=glibc libc6=glibc libdb-dev=db-dev libfile-fcntllock-perl=perl-file-fcntllock liblz4-dev=lz4-dev liblzma-dev=xz-dev libssl-dev=openssl-dev libsystemd-dev=systemd-dev libudev-dev=systemd-dev libxxhash-dev=xxhash-dev libzstd-dev=zstd-dev ninja-build=ninja perl-base=perl pkg-config=pkgconf-dev python3-apt=py3-apt sq=sequoia-sq sqv=sequoia-sqv stunnel4=stunnel valgrind-if-available=valgrind xsltproc=libxslt zlib1g-dev=zlib-dev' '
+        awk -v db="$db" -v aliases='build-essential=build-base ca-certificates=ca-certificates-bundle db-util=db-utils g++=build-base googletest=gtest-dev gpgv-sq=sequoia-chameleon-gnupg libbz2-dev=bzip2-dev libc-bin=glibc libc6=glibc libdb-dev=db-dev libfile-fcntllock-perl=perl-file-fcntllock liblz4-dev=lz4-dev liblzma-dev=xz-dev libssl-dev=openssl-dev libsystemd-dev=systemd-dev libudev-dev=systemd-dev libxxhash-dev=xxhash-dev libzstd-dev=zstd-dev ninja-build=ninja perl-base=perl pkg-config=pkgconf-dev python3-apt=py3-apt sq=sequoia-sq sqv=sequoia-sqv stunnel4=stunnel valgrind-if-available=valgrind xsltproc=libxslt zlib1g-dev=zlib-dev' '
           BEGIN { n = split(aliases, a, " "); for (i = 1; i <= n; i++) { split(a[i], kv, "="); alias[kv[2]] = alias[kv[2]] " " kv[1] } }
           function add(   m, j, f) {
             m = split(pkg alias[pkg], names, " ")

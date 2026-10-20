@@ -82,8 +82,16 @@ subpackages:
           mkdir -p "${{targets.contextdir}}/usr/bin"
           cp -a dh-make-scala "${{targets.contextdir}}/usr/bin/"
           mkdir -p "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala"
-          cp -a lib/Debian/DhScala/Make.pm "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
-          cp -a lib/Debian/DhScala/Make "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
+          if ls -d "${{targets.destdir}}/lib/Debian/DhScala/Make.pm" >/dev/null 2>&1; then
+            mv "${{targets.destdir}}/lib/Debian/DhScala/Make.pm" "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
+          else
+            cp -a lib/Debian/DhScala/Make.pm "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
+          fi
+          if ls -d "${{targets.destdir}}/lib/Debian/DhScala/Make" >/dev/null 2>&1; then
+            mv "${{targets.destdir}}/lib/Debian/DhScala/Make" "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
+          else
+            cp -a lib/Debian/DhScala/Make "${{targets.contextdir}}/usr/share/perl5/vendor_perl/Debian/DhScala/"
+          fi
           install -Dm644 man/dh-make-scala.1 -t "${{targets.contextdir}}/usr/share/man/man1"
           find "${{targets.contextdir}}/usr/bin" -type f -exec chmod 755 {} +
     dependencies:

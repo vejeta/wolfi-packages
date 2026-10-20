@@ -1179,11 +1179,12 @@ DH_SEQUENCE = ["dh_auto_install", "dh_install", "dh_installdocs", "dh_installcha
 
 
 # GNU commands of Debian's Essential packages that busybox only partly implements
-ESSENTIAL_SCRIPT_TOOLS = {"getopt": "util-linux-misc"}
+ESSENTIAL_SCRIPT_TOOLS = {"getopt": "util-linux-misc", "setpriv": "setpriv"}
 
 
-def essential_script_tools(data):
-    """Wolfi packages for Essential-package commands the source's shell scripts call."""
+def essential_script_tools(data, tests=False):
+    """Wolfi packages for Essential-package commands the source's shell scripts call
+    (with tests, the test scripts too: mmdebstrap's make_mirror.sh, setpriv --pdeathsig)."""
     if not data:
         return []
     import io
@@ -1192,7 +1193,7 @@ def essential_script_tools(data):
     try:
         with tarfile.open(fileobj=io.BytesIO(data)) as tar:
             for m in tar:
-                if not m.isfile() or m.size > 2000000 or "/test" in m.name:
+                if not m.isfile() or m.size > 2000000 or ("/test" in m.name and not tests):
                     continue
                 text = tar.extractfile(m).read()
                 if not (re.match(rb"#!\s*(/usr)?/bin/(env\s+)?(ba|da)?sh\b|#!\s*@SHELL@", text) or
@@ -2555,8 +2556,7 @@ class Converter:
         # cargo and go builds install nothing into debian/tmp; an
         # override_dh_auto_install replaces upstream's install step, and when
         # it installs into destdir the *.install files are already satisfied.
-        # (no build system: dh_auto_install does nothing, dh_install takes the files from the tree)
-        self.upstream_installs = bs not in (None, "cargo", "golang") and (
+        self.upstream_installs = bs not in ("cargo", "golang") and (
             "override_dh_auto_install" not in overrides
             or bool(install_override and any("${{targets.destdir}}" in l or l == self.PIPELINE_MARK
                                              for l in install_override))
@@ -3306,7 +3306,8 @@ class Converter:
         # from the source tree. Otherwise upstream installs straight into
         # destdir, and only subpackages move files out of it.
         from_tree = native or not self.upstream_installs
-        if inst and (from_tree or not main):
+        # (no build system: what the rules install into debian/tmp, or else the source tree)
+        if inst and (from_tree or not main or self.bs is None):
             for src, dst, rename in install_entries(inst, keep_src=native):
                 if not rename and re.search(r"[*?\[]", os.path.dirname(src)) \
                         and dst == usr_merge(os.path.dirname(norm_path(src))):
@@ -3343,6 +3344,16 @@ class Converter:
                 elif not re.match(r"^(usr|etc|lib|lib64|var|opt|bin|sbin|boot|srv)(/|$)", src):
                     # a path in the source tree, not one the build installed
                     cmds.append('mkdir -p "{0}/{1}"\ncp -a {2} {3}'.format(destdir, dst, src, target))
+                elif self.bs is None and main and not rename and \
+                        "{}/{}".format(dst.strip("/"), os.path.basename(src.rstrip("/"))) == norm_path(src).strip("/"):
+                    # already where the rules installed it (mmdebstrap's usr/bin), or else in the source tree
+                    cmds.append('if ! ls -d {0} >/dev/null 2>&1; then\n  mkdir -p "{1}/{2}"\n  cp -a {3} {4}\nfi'.format(
+                        shell_path("${{targets.destdir}}", src), destdir, dst, src, target))
+                elif self.bs is None:
+                    # dh_install looks in debian/tmp, then in the source tree (dh-scala: lib/Debian)
+                    cmds.append('mkdir -p "{0}/{1}"\nif ls -d {2} >/dev/null 2>&1; then\n  mv {2} {3}\n'
+                                'else\n  cp -a {4} {3}\nfi'.format(
+                                    destdir, dst, shell_path("${{targets.destdir}}", src), target, src))
                 else:
                     cmds.append('mkdir -p "{0}/{1}"\nmv {2} {3}'.format(
                         destdir, dst, shell_path("${{targets.destdir}}", src), target))
@@ -3688,6 +3699,9 @@ class Converter:
                 if re.search(r"(^|[\s;&|(`])" + re.escape(tool) + r"\b", st["runs"], re.M):
                     packages += [p for p in pkgs if p not in [q.value if isinstance(q, C) else q for q in packages]]
         if real:
+            for dep in essential_script_tools(getattr(self, "source_data", None), tests=True):
+                if dep not in [q.value if isinstance(q, C) else q for q in packages]:
+                    packages.append(C(dep, "used by the source's shell scripts; Essential in Debian"))
             self.notes.append("autopkgtests converted to the test pipeline ({} steps)".format(len(real)))
             steps.insert(0, dpkg_database_step(aliases, self.main_package))
             if getattr(self, "uses_ncursesw", False):
