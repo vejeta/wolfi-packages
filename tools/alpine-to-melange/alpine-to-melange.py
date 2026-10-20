@@ -536,7 +536,12 @@ class Converter:
         # no longer inside a function: a bare declaration ("local file;") would run "file"
         text = re.sub(r"(?m)^(\s*)local\s+[A-Za-z_][\w ]*(?:;\s*|$)", r"\1", text)
         text = re.sub(r"(?m)^(\s*)local\s+", r"\1", text)
-        refs = lambda t: set(re.findall(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)", t))
+        def refs(t):
+            # $var and ${var}, and the bare names of $(( )) arithmetic ($((JOBS<16 ? JOBS : 16)))
+            names = set(re.findall(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)", t))
+            for expr in re.findall(r"\$\(\((.*?)\)\)", t):
+                names |= set(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", expr))
+            return names
         used = refs(text)
         # helper variables (_foo) and everything they reference, transitively
         helpers = [(n, v) for n, v in self.apk.assignments if n.startswith("_")]

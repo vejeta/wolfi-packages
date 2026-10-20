@@ -156,6 +156,11 @@ test:
       with:
         uri: https://deb.debian.org/debian/pool/main/c/cudf/cudf_${{package.version}}.orig.tar.gz
         expected-sha256: 7b9d7390fca822afd8b35197814616088edfb3fa3cb44903dfa49399e9fefb50
+    - uses: fetch
+      with:
+        uri: https://deb.debian.org/debian/pool/main/c/cudf/cudf_0.10-6.debian.tar.xz
+        strip-components: 0
+        expected-sha256: 12a86357138f7b54ca9b210a6a5cda152c7a4869aa709f8dab6d26e2447649ed
     - name: dpkg database (as on a Debian testbed)
       runs: |
         db=/var/lib/dpkg

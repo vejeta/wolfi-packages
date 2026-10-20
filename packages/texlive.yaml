@@ -95,6 +95,7 @@ pipeline:
       CARCH="${{build.arch}}"
       CBUILD="${{host.triplet.gnu}}"
       CHOST="${{host.triplet.gnu}}"
+      JOBS="$(nproc)"
 
       # builders keep failing when -jN == nproc
       export MAKEFLAGS="$MAKEFLAGS -j$((JOBS<16 ? JOBS : 16))"

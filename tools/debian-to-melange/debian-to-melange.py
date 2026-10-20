@@ -1907,8 +1907,9 @@ class Converter:
             value = rules.expand(rules.vars[var])
             # debian/tmp (and debian/<package>) is where melange installs: the package's destdir
             # (/home/build/melange-out/<name> is what ${{targets.destdir}} expands to)
-            value = re.sub(r"\$\(CURDIR\)/debian/(?:tmp|{})/?$".format(re.escape(self.recipe_dir or "-")),
+            value = re.sub(r"\$\(CURDIR\)/debian/(?:tmp|{})(?=/|\s|$)".format(re.escape(self.recipe_dir or "-")),
                            "/home/build/melange-out/" + (self.recipe_dir or ""), value)
+            value = re.sub(r"(?<=[^:/\s])//+", "/", value)  # $(DESTDIR)/$(OCAML_STDLIB_DIR), not https://
             value = value.replace("$(CURDIR)", "/home/build")
             value = value.replace("/usr/lib/jvm/default-java", "/usr/lib/jvm/default-jvm")  # Wolfi's default JDK
             if "$(" in value or "${" in value:
@@ -3385,7 +3386,8 @@ class Converter:
             if self.source_steps:
                 # autopkgtest runs in the unpacked source tree
                 packaging = []
-                if any(re.search(r"(?<![\w/])debian/|dpkg-parsechangelog", st["runs"]) for st in real) \
+                if any(re.search(r"(?<![\w/])debian/|(?:\$\{?PWD\}?|\$\(pwd\)|`pwd`)/debian/|dpkg-parsechangelog",
+                                 st["runs"]) for st in real) \
                         and not any("debian.tar" in str(st) or "_{}.tar".format(self.deb_version) in str(st)
                                     for st in self.source_steps):
                     packaging = [st for st in [self.debian_packaging_step()] if st]

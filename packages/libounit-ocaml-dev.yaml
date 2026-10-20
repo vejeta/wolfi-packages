@@ -37,7 +37,7 @@ environment:
       - coreutils
       - findutils
   environment:
-    OCAMLFIND_DESTDIR: /home/build/debian/tmp//usr/lib/ocaml
+    OCAMLFIND_DESTDIR: /home/build/melange-out/libounit-ocaml-dev/usr/lib/ocaml
     OCAMLFIND_LDCONF: ignore
 pipeline:
   - uses: git-checkout
