@@ -864,7 +864,7 @@ def install_entries(text, keep_src=False):
             continue
         if len(parts) == 1 or (len(parts) == 2 and "=>" not in parts):
             alts = brace_expand(parts[0])
-            if len(alts) > 1:
+            if alts != [parts[0]]:
                 # dh_install globs with bash, which expands {a,b}; busybox sh does not
                 for alt in alts:
                     yield from install_entries(" ".join([alt] + parts[1:]), keep_src)
@@ -882,8 +882,9 @@ def install_entries(text, keep_src=False):
 
 
 def brace_expand(word):
-    """Bash brace expansion of one {a,b,...} group (recursively): *.{cma,cmxs}."""
-    m = re.search(r"\{([^{}]*,[^{}]*)\}", word)
+    """Brace expansion as debhelper's glob does it (recursively): *.{cma,cmxs}, and {README.adoc}
+    with a single word too (Perl's bsd_glob with GLOB_BRACE; bash would leave that one)."""
+    m = re.search(r"(?<!\$)\{([^{}$]*)\}", word)  # not ${var}
     if not m:
         return [word]
     return [x for alt in m.group(1).split(",") for x in brace_expand(word[:m.start()] + alt + word[m.end():])]
@@ -1765,6 +1766,10 @@ class Converter:
                 return "{}/{}".format(name, os.path.basename(rel))
             line = re.sub(r"(?<![\w/$.])debian/([\w.+-]+)", aux, line)
             line = line.replace("${{targets.destdir}}//", "${{targets.destdir}}/")
+            if "$(" in line and self.known_includes():
+                # a variable set nowhere is empty in make (dose3's $(RELEASE))
+                line = re.sub(r"\$\(([A-Z][A-Z0-9_]*)\)", lambda m: "" if m.group(1) not in rules.vars
+                              and m.group(1) not in BUILD_CONTEXT and m.group(1) not in OCAMLVARS else m.group(0), line)
             if "$(" in line:
                 return None
             words = line.split()
@@ -1785,6 +1790,11 @@ class Converter:
                 line += " || true"  # make's "-": the line may fail
             out.append(line)
         return out
+
+    def known_includes(self):
+        """Does debian/rules include only makefiles whose variables are known here?"""
+        incs = re.findall(r"(?m)^-?include\s+(\S+)", self.read("rules") or "")
+        return all(i.startswith(("/usr/share/dpkg/", "/usr/share/ocaml/")) for i in incs)
 
     def perl_depends(self, binary, have):
         """${perl:Depends}: dh_perl's perl, for Perl scripts and modules."""
@@ -3289,8 +3299,9 @@ class Converter:
             if ex:
                 # dh_installexamples
                 cmds.append('mkdir -p "{0}/examples"\ncp -a {1} "{0}/examples/"'.format(docdir, ex))
-        for line in (self.pkgfile(binary["package"], "docs", main) or "").splitlines():
-            doc = line.split("#", 1)[0].strip()
+        docs = [d for line in (self.pkgfile(binary["package"], "docs", main) or "").splitlines()
+                for word in line.split("#", 1)[0].split() for d in brace_expand(word)]
+        for doc in docs:
             if doc.startswith(("usr/", "debian/tmp/usr/")) and self.upstream_installs:
                 # dh_installdocs finds it in debian/tmp (dune installs usr/doc/<package>)
                 doc = doc[len("debian/tmp/"):] if doc.startswith("debian/tmp/") else doc
@@ -3474,6 +3485,10 @@ class Converter:
                 # "@" installs the package with its Depends, debconf included
                 deps += [alts for alts in parse_relations(self.main_depends)
                          if any(a in ("debconf", "ucf") for a in alts)]
+            if "@builddeps@" in [d[0] for d in parse_relations(para.get("depends", ""))]:
+                # the build dependencies (no build profile enabled) and build-essential
+                deps += [["build-essential"]] + [alts for f in ("build-depends", "build-depends-indep", "build-depends-arch")
+                                                 for alts in parse_relations(self.source.get(f))]
             mapped = self.map_deps(deps, "test")
             if at:
                 # ... and every binary package of the source (melange test installs the main one)
@@ -3499,8 +3514,6 @@ class Converter:
                     packages.append(C(e, "Essential in Debian, so on every testbed"))
             if any((d.value if isinstance(d, C) else d).startswith("py3-") for d in mapped) and "python3" not in packages:
                 packages.append("python3")  # py3-supported-* do not provide the python3 command
-            if "@builddeps@" in para.get("depends", ""):
-                self.notes.append("autopkgtest uses @builddeps@; add the build dependencies to the test environment")
             # autopkgtest runs the scripts as written; melange adds pipefail
             # Debian's testbeds run in C.UTF-8 (trietool, and any tool that converts text, needs it)
             env = 'export AUTOPKGTEST_TMP="$(mktemp -d)"\nexport LANG="${LANG:-C.UTF-8}"\nset +o pipefail 2>/dev/null || true\n'

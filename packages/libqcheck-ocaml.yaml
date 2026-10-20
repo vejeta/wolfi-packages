@@ -174,7 +174,7 @@ subpackages:
             mkdir -p "${{targets.contextdir}}/$(dirname "$r")" && mv "$f" "${{targets.contextdir}}/$r"
           done
           mkdir -p "${{targets.contextdir}}/usr/share/doc/qcheck-core"
-          mv "${{targets.destdir}}/usr/doc/qcheck-core/{README.adoc}" "${{targets.contextdir}}/usr/share/doc/qcheck-core/"
+          mv "${{targets.destdir}}/usr/doc/qcheck-core/README.adoc" "${{targets.contextdir}}/usr/share/doc/qcheck-core/"
   - name: libqcheck-core-ocaml-dev
     description: QuickCheck inspired property-based testing for OCaml (Development package)
     pipeline:
@@ -282,7 +282,7 @@ subpackages:
           done
           true
           mkdir -p "${{targets.contextdir}}/usr/share/doc/qcheck-ounit"
-          mv "${{targets.destdir}}/usr/doc/qcheck-ounit/{README.adoc}" "${{targets.contextdir}}/usr/share/doc/qcheck-ounit/"
+          mv "${{targets.destdir}}/usr/doc/qcheck-ounit/README.adoc" "${{targets.contextdir}}/usr/share/doc/qcheck-ounit/"
   - name: libqcheck-ounit-ocaml-dev
     description: QCheck integration with OUnit (Development package)
     pipeline:

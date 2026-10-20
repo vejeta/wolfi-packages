@@ -11,7 +11,8 @@
 # - build dependency 'libjs-highlight.js': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
 # - dh --with ocaml has no direct melange equivalent; review
-# - autopkgtest uses @builddeps@; add the build dependencies to the test environment
+# - test dependency 'libjs-highlight.js': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
+# - test dependency 'libjs-highlight.js': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
 # - autopkgtests converted to the test pipeline (1 steps)
 package:
   name: ocaml-odoc
@@ -186,6 +187,22 @@ test:
         - libodoc-ocaml-dev  # Debian's @: the binary packages of the source
         - libodoc-parser-ocaml  # Debian's @: the binary packages of the source
         - libodoc-parser-ocaml-dev  # Debian's @: the binary packages of the source
+        - build-base  # Debian: build-essential
+        - ocaml  # Debian: ocaml
+        - ocaml-compiler-libs  # Debian: ocaml
+        - ocaml-findlib-compat  # Debian: ocaml
+        - zstd-dev  # Debian: ocaml
+        - cppo  # Wolfi Community Packages
+        - ocaml-dune
+        - ocaml-crunch  # Wolfi Community Packages
+        - libcamlp-streams-ocaml-dev  # Wolfi Community Packages
+        - libastring-ocaml-dev  # Wolfi Community Packages
+        - libfpath-ocaml-dev  # Wolfi Community Packages
+        - libcmdliner-ocaml-dev  # Wolfi Community Packages
+        - libresult-ocaml-dev  # Wolfi Community Packages
+        - libtyxml-ocaml-dev  # Wolfi Community Packages
+        - libfmt-ocaml-dev  # Wolfi Community Packages
+        - libre-ocaml-dev  # Wolfi Community Packages
         - bash  # Essential in Debian, so on every testbed
         - coreutils  # Essential in Debian, so on every testbed
         - diffutils  # Essential in Debian, so on every testbed
@@ -207,7 +224,7 @@ test:
       runs: |
         db=/var/lib/dpkg
         mkdir -p "$db/info" && touch "$db/status"
-        awk -v db="$db" -v aliases='libc-bin=glibc libc6=glibc perl-base=perl' '
+        awk -v db="$db" -v aliases='build-essential=build-base libc-bin=glibc libc6=glibc perl-base=perl' '
           BEGIN { n = split(aliases, a, " "); for (i = 1; i <= n; i++) { split(a[i], kv, "="); alias[kv[2]] = alias[kv[2]] " " kv[1] } }
           function add(   m, j, f) {
             m = split(pkg alias[pkg], names, " ")

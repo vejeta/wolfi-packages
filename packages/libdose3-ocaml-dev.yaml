@@ -9,7 +9,6 @@
 # Conversion notes:
 # - upstream tarball from debian/watch
 # - dh --with ocaml has no direct melange equivalent; review
-# - port debian/rules override_dh_auto_build: dune build -p dose3$(DUNE_EXTRAPROFILE) @install --verbose && make -C doc/manpages man && pod2man --section 8 -release "apt-cudf $(RELEASE)"  		debian/update-cudf-solvers > debian/update-cudf-solvers.
 # - autopkgtests converted to the test pipeline (7 steps)
 package:
   name: libdose3-ocaml-dev
@@ -90,10 +89,16 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/0001-Fix-expected-test-outputs-following-update-of-ocamlg.patch .recipe-files/0002-Add-camlp-streams-to-debGrep-dependencies.patch
-  - name: 'Build (dh-ocaml''s ocaml_dune build system)'
+  - name: Build (from debian/rules override_dh_auto_build)
     runs: |
-      dune build -p dose3,dose3-extra -j $(nproc) @install
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_build: dune build -p dose3$(DUNE_EXTRAPROFILE) @install --verbose && make -C doc/manpages man && pod2man --section 8 -release "apt-cudf $(RELEASE)"  		debian/update-cudf-solvers > debian/update-cudf-solvers.
+      dune build -p dose3,dose3-extra @install --verbose
+      make -C doc/manpages man
+      mkdir -p debian
+      pod2man --section 8 -release "apt-cudf "  		.recipe-files/update-cudf-solvers > debian/update-cudf-solvers.8
+      dune build -p dose3,dose3-extra @doc
+      make -C doc/debcheck.primer
+      make -C doc/apt-external-solvers.primer
+      make -C doc/manpages html
   - name: Install (from debian/rules override_dh_auto_install)
     runs: |
       dune install -p dose3,dose3-extra --destdir=${{targets.destdir}}/ --prefix=/usr --libdir=/usr/lib/ocaml --docdir=/usr/share/ocaml-dune/doc
