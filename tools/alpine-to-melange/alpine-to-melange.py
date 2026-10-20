@@ -848,7 +848,14 @@ class Converter:
             environment["contents"]["packages"].append("python3")
 
         # ---- subpackages -------------------------------------------------
+        self.split_build_deps = []
         subpackages = [s for s in (self.subpackage(entry, name) for entry in apk.words("subpackages")) if s]
+        have = {(d.value if isinstance(d, C) else d) for d in environment["contents"]["packages"]}
+        for d in self.split_build_deps:
+            v = d.value if isinstance(d, C) else d
+            if v not in have:
+                have.add(v)
+                environment["contents"]["packages"].append(C(v, "run while splitting a subpackage"))
 
         # ---- update / test -----------------------------------------------
         if pkg["copyright"][0].get("license", "") in ("Public Domain", "public-domain"):
@@ -1013,6 +1020,10 @@ class Converter:
         deps = [d for d in fdeps if d in own] + self.map_deps([d for d in fdeps if d not in own], "runtime")
         if deps:
             out["dependencies"] = {"runtime": deps}
+        if func and func in self.apk.functions and re.search(r"(?m)^[\t ]*/usr/(?:share|lib)/\S+", self.body(func)):
+            # the split function runs a file of another package (texlive's context: mtxrun.lua from
+            # texmf-dist-context): what it depends on is needed while building
+            self.split_build_deps += [d for d in deps if (d.value if isinstance(d, C) else d) not in own]
         if suffix == "dev":
             deps = self.map_deps(self.apk.words("depends_dev"), "runtime")
             if deps:
