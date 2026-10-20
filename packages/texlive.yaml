@@ -7,6 +7,7 @@
 #
 # Conversion notes:
 # - triggers= not converted: texlive.trigger=/usr/share/texmf-dist texlive-context.trigger=/usr/share/texmf-dist
+# - main source: https://ftp.tu-chemnitz.de/pub/tug/historic/systems/texlive/2026/texlive-20260301-source.tar.xz (--source-url), not the APKBUILD's
 # - builddir=/home/build/_srcdir"/texlive-source-$_commi is not the top directory of the main tarball; review
 # - check() not run (pass --with-check to add it to the build)
 # - subpackage texlive-dbg skipped: debug symbols: use melange's split/debug if needed
@@ -77,8 +78,8 @@ pipeline:
       rmdir texlive
   - uses: fetch
     with:
-      uri: https://github.com/TeX-Live/texlive-source/archive/562901fe3302de1432fb98adcfd4d10a5e140760.tar.gz
-      expected-sha512: 4826ca0ff7ba7cfb9c320260a47a2f6b498918d302f090504c2b2069e38e6149177d01412c98dc89474999d951a9a5bb8aa690d7d8d01e447184a2321f564cc8
+      uri: https://ftp.tu-chemnitz.de/pub/tug/historic/systems/texlive/2026/texlive-20260301-source.tar.xz
+      expected-sha512: c2ea189fee82475e3013e5e6d7bdbbeef80fe33d3636b99b35bf7c8d0ff06b48dcc54d12f4c3959a0fc9e24b80f9c4878a417d4b55ef4880ff238aefbcf189a3
   - uses: patch
     with:
       patches: .recipe-files/texmfmp-fix-format-specifier.patch .recipe-files/fix-fortify-string.patch .recipe-files/kpathsea-getopt-fix.patch

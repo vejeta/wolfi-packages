@@ -739,6 +739,12 @@ class Converter:
                 "  url: https://hackage.haskell.org/\n"
                 "EOF\n")})
         remote = [(f, u) for f, u in sources if u]
+        if getattr(a, "source_url", None) and remote:
+            # --source-url: an upstream release instead of the APKBUILD's main tarball
+            # (texlive: the TeX Live release, where Alpine pins a commit)
+            url = a.source_url.replace("${{package.version}}", version)
+            remote[0] = (url.rsplit("/", 1)[-1], url)
+            self.notes.append("main source: {} (--source-url), not the APKBUILD's".format(a.source_url))
         main_url = None
         builddir = apk.get("builddir") or "{}/{}-{}".format(SRCDIR, name, version)
         self.abuild_builddir = builddir if "$" not in builddir else None
@@ -1138,6 +1144,8 @@ def main(argv=None):
     p.add_argument("--stdout", action="store_true", help="print the recipe instead of writing files")
     p.add_argument("--name", help="override the package name")
     p.add_argument("--version", help="override the package version")
+    p.add_argument("--source-url", help="URL of the main source tarball instead of the APKBUILD's "
+                   "(${{package.version}} is replaced by the version); its checksum needs --download")
     p.add_argument("--with-check", action="store_true", help="run check() as part of the build")
     p.add_argument("--check-wolfi", action="store_true",
                    help="verify dependency names against the Wolfi APKINDEX")
