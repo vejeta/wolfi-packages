@@ -3289,12 +3289,16 @@ class Converter:
             if doc.startswith(("usr/", "debian/tmp/usr/")) and self.upstream_installs:
                 # dh_installdocs finds it in debian/tmp (dune installs usr/doc/<package>)
                 doc = doc[len("debian/tmp/"):] if doc.startswith("debian/tmp/") else doc
-                # usr/doc is not where docs go: move them out of it
-                cmds.append('mkdir -p "{0}"\n{2} {1} "{0}/"'.format(
-                    docdir, shell_path("${{targets.destdir}}", doc), "mv" if doc.startswith("usr/doc/") else "cp -a"))
+                # usr/doc is not where docs go: move them out of it, one by one as dh_installdocs
+                # copies (lwt's usr/doc/*/* has a README.md in each directory)
                 if doc.startswith("usr/doc/"):
-                    cmds.append('rmdir "${{{{targets.destdir}}}}/{}" "${{{{targets.destdir}}}}/usr/doc" '
-                                '2>/dev/null || true'.format(os.path.dirname(doc.rstrip("/"))))
+                    cmds.append('mkdir -p "{0}"\nfor f in {1}; do cp -a "$f" "{0}/"; done\nrm -rf {1}'.format(
+                        docdir, shell_path("${{targets.destdir}}", doc)))
+                else:
+                    cmds.append('mkdir -p "{0}"\ncp -a {1} "{0}/"'.format(docdir, shell_path("${{targets.destdir}}", doc)))
+                if doc.startswith("usr/doc/"):
+                    cmds.append('rmdir {} "${{{{targets.destdir}}}}/usr/doc" 2>/dev/null || true'.format(
+                        shell_path("${{targets.destdir}}", os.path.dirname(doc.rstrip("/")))))
             elif doc and self.upstream_installs and re.match(r"^doc/[^/]+/", doc):
                 # dh_installdocs looks in the source tree and in debian/tmp (opam-installer
                 # --prefix=debian/tmp leaves doc/<package> there)

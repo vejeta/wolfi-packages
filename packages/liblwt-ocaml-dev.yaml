@@ -88,8 +88,9 @@ pipeline:
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/liblwt-ocaml-dev"
-      mv "${{targets.destdir}}"/usr/doc/*/* "${{targets.destdir}}/usr/share/doc/liblwt-ocaml-dev/"
-      rmdir "${{targets.destdir}}/usr/doc/*" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
+      for f in "${{targets.destdir}}"/usr/doc/*/*; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/liblwt-ocaml-dev/"; done
+      rm -rf "${{targets.destdir}}"/usr/doc/*/*
+      rmdir "${{targets.destdir}}"/usr/doc/* "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/liblwt-ocaml-dev
   - name: Usr-merge (sbin into bin)
     runs: |
