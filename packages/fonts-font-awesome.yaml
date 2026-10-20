@@ -8,8 +8,7 @@
 #
 # Conversion notes:
 # - runtime dependency 'fonts-font-awesome-legacy' (Debian 'fonts-font-awesome-legacy') not found in Wolfi; left out
-# - set the upstream tarball URL (see debian/watch or http://fontawesome.io/)
-# - port debian/rules override_dh_install: cp metadata/icons.yml $(DEB_PKG_DIR)/icons.yml && for extdir in $(EXTDIR); do  	    fileext=$${extdir%:*}; filedir=$${extdir#*:};  	    for font in webfonts/*.$${fileext}; do  	        filebase=$$(bas
+# - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/f/fonts-font-awesome/fonts-font-awesome_7.3.0+dfsg.orig.tar.xz), which disappears from the pool when Debian updates
 package:
   name: fonts-font-awesome
   version: '7.3.0'
@@ -34,6 +33,7 @@ environment:
       - py3.13-fonttools-bin  # commands of Debian's python3-fonttools
       - py3-supported-fonttools  # Debian: python3-fonttools
       - py3-yaml  # Debian: python3-yaml
+      - python3  # the interpreter of Debian's python3-* build dependencies
       - coreutils
       - findutils
 pipeline:
@@ -42,24 +42,27 @@ pipeline:
       mkdir -p .recipe-files
       for f in build-fonts.py; do mv fonts-font-awesome/$f .recipe-files/; done
       rmdir fonts-font-awesome 2>/dev/null || true
-  # TODO(debian-to-melange): set the upstream tarball URL (see debian/watch or http://fontawesome.io/)
   - uses: fetch
     with:
-      uri: https://example.invalid/${{package.name}}-${{package.version}}.tar.gz
-      expected-sha256: '0000000000000000000000000000000000000000000000000000000000000000'
+      uri: https://deb.debian.org/debian/pool/main/f/fonts-font-awesome/fonts-font-awesome_${{package.version}}+dfsg.orig.tar.xz
+      expected-sha256: c17ee45997cfe3295b90c07aa7737c7d2c76b2fe67e9b599fadc2005658932fe
   - name: Remove files excluded by Debian (debian/copyright Files-Excluded)
     runs: |
       rm -rf .github css js js-packages otfs scss webfonts
   - name: Build (from debian/rules override_dh_auto_build)
     runs: |
       .recipe-files/build-fonts.py
-  # TODO(debian-to-melange): port debian/rules override_dh_install: cp metadata/icons.yml $(DEB_PKG_DIR)/icons.yml && for extdir in $(EXTDIR); do  	    fileext=$${extdir%:*}; filedir=$${extdir#*:};  	    for font in webfonts/*.$${fileext}; do  	        filebase=$$(bas
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/fonts-font-awesome/fonts"
       mkdir -p "${{targets.destdir}}/usr/share/fonts/truetype/font-awesome"
       mkdir -p "${{targets.destdir}}/usr/share/fonts/woff/font-awesome"
       install -Dm644 LICENSE.txt -t "${{targets.destdir}}"/usr/share/licenses/fonts-font-awesome
+  - name: From debian/rules override_dh_install
+    runs: |
+      mkdir -p ${{targets.destdir}}/usr/share/fonts-font-awesome
+      cp metadata/icons.yml ${{targets.destdir}}/usr/share/fonts-font-awesome/icons.yml
+      for extdir in ttf:truetype woff2:woff; do  	    fileext=${extdir%:*}; filedir=${extdir#*:};  	    for font in webfonts/*.${fileext}; do  	        filebase=$(basename $font);  	        cp $font ${{targets.destdir}}/usr/share/fonts/$filedir/font-awesome/$filebase;  	        ln -s ../../fonts/$filedir/font-awesome/$filebase ${{targets.destdir}}/usr/share/fonts-font-awesome/fonts/$filebase;  	    done;  	done
 update:
   enabled: true
   release-monitor:

@@ -9,7 +9,8 @@
 # Conversion notes:
 # - udeb package(s) left out: fonts-noto-hinted-udeb, fonts-noto-unhinted-udeb
 # - build dependency 'lcdf-typetools' (Debian 'lcdf-typetools') not found in Wolfi; left out
-# - set expected-commit for tag v20201225 (re-run with --download, or git ls-remote)
+# - no tag of 20201225 in https://github.com/googlei18n/noto-fonts (debian/watch mangles upstream versions)
+# - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/f/fonts-noto/fonts-noto_20201225.orig.tar.gz), which disappears from the pool when Debian updates
 # - port debian/rules override_dh_install: find . -path ./debian -prune -o \(  	-name "NotoSansSinhala-Regular.ttf" -o  	-name "NotoSansSinhala-Bold.ttf" -o  	-name "NotoSerifGujarati-Regular.ttf" -o  	-name "NotoSerifGujarati-Bold.ttf"  	\) -
 # - no debian/fonts-noto-unhinted.install; define which files go to this subpackage
 # - no debian/fonts-noto-hinted.install; define which files go to this subpackage
@@ -38,14 +39,12 @@ pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
-      for f in 30-droid-noto-mono.conf 30-droid-noto.conf NotoMono-Regular.ttf; do mv fonts-noto/$f .recipe-files/; done
+      for f in NotoMono_NotoMono-Regular.ttf conf.avail_30-droid-noto-mono.conf conf.avail_30-droid-noto.conf; do mv fonts-noto/$f .recipe-files/; done
       rmdir fonts-noto 2>/dev/null || true
-  # TODO(debian-to-melange): set expected-commit for tag v20201225 (re-run with --download, or git ls-remote)
-  - uses: git-checkout
+  - uses: fetch
     with:
-      repository: https://github.com/googlei18n/noto-fonts
-      tag: v${{package.version}}
-      expected-commit: '0000000000000000000000000000000000000000'
+      uri: https://deb.debian.org/debian/pool/main/f/fonts-noto/fonts-noto_${{package.version}}.orig.tar.gz
+      expected-sha256: 7ef8fc4b10f869de28cfcf3d6cf53345949ed7335d79472810d31787d8aba719
   # TODO(debian-to-melange): port debian/rules override_dh_install: find . -path ./debian -prune -o \(  	-name "NotoSansSinhala-Regular.ttf" -o  	-name "NotoSansSinhala-Bold.ttf" -o  	-name "NotoSerifGujarati-Regular.ttf" -o  	-name "NotoSerifGujarati-Bold.ttf"  	\) -
   - name: Install files
     runs: |
@@ -61,9 +60,9 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/truetype/noto"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*-*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*-*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
           mkdir -p "${{targets.contextdir}}/etc/fonts/conf.avail"
-          mv "${{targets.destdir}}/fonts-noto/30-droid-noto.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a .recipe-files/conf.avail_30-droid-noto.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
     dependencies:
       runtime:
         - fonts-noto-mono
@@ -72,35 +71,35 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/truetype/noto"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*-Black*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*-ExtraBold*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*-Extrabold*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*-SemiBold*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*-Medium*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*-Light*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*-ExtraLight*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*-Thin*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*-*Condensed*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*-Black*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*-ExtraBold*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*-Extrabold*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*-SemiBold*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*-Medium*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*-Light*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*-ExtraLight*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*-Thin*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*-*Condensed*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
   - name: fonts-noto-ui-core
     description: '"No Tofu" font families with large Unicode coverage (UI core)'
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/truetype/noto"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*UI-*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*UI-*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
   - name: fonts-noto-ui-extra
     description: '"No Tofu" font families with large Unicode coverage (UI extra)'
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/truetype/noto"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*UI-Black*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*UI-ExtraBold*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*UI-Extrabold*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*UI-SemiBold*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*UI-Medium*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*UI-Light*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*UI-ExtraLight*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*UI-Thin*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}"/hinted/ttf/*/Noto*UI-*Condensed*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*UI-Black*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*UI-ExtraBold*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*UI-Extrabold*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*UI-SemiBold*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*UI-Medium*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*UI-Light*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*UI-ExtraLight*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*UI-Thin*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/*/Noto*UI-*Condensed*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
   - name: fonts-noto-unhinted
     description: '"No Tofu" font families with large Unicode coverage (unhinted)'
     pipeline:
@@ -112,19 +111,19 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/truetype/noto"
-          mv "${{targets.destdir}}/fonts-noto/NotoMono-Regular.ttf" "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}/hinted/ttf/NotoSansMono/NotoSansMono-Regular.ttf" "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
-          mv "${{targets.destdir}}/hinted/ttf/NotoSansMono/NotoSansMono-Bold.ttf" "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a .recipe-files/NotoMono_NotoMono-Regular.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/NotoSansMono/NotoSansMono-Regular.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
+          cp -a hinted/ttf/NotoSansMono/NotoSansMono-Bold.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/noto/"
           mkdir -p "${{targets.contextdir}}/etc/fonts/conf.avail"
-          mv "${{targets.destdir}}/fonts-noto/30-droid-noto-mono.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a .recipe-files/conf.avail_30-droid-noto-mono.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
   - name: fonts-croscore
     description: Width-compatible fonts for improved on-screen readability
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/truetype/croscore"
-          mv "${{targets.destdir}}"/hinted/ttf/Arimo/Arimo*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/croscore/"
-          mv "${{targets.destdir}}"/hinted/ttf/Cousine/Cousine*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/croscore/"
-          mv "${{targets.destdir}}"/hinted/ttf/Tinos/Tinos*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/croscore/"
+          cp -a hinted/ttf/Arimo/Arimo*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/croscore/"
+          cp -a hinted/ttf/Cousine/Cousine*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/croscore/"
+          cp -a hinted/ttf/Tinos/Tinos*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/croscore/"
   - name: fonts-noto-hinted
     description: Obsolete metapackage to pull in a subset of Noto fonts
     pipeline:
@@ -140,7 +139,6 @@ update:
   github:
     identifier: googlei18n/noto-fonts
     strip-prefix: v
-    use-tag: true
 test:
   environment:
     contents:

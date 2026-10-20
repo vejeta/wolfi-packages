@@ -47,6 +47,24 @@ jobs:
       wave4: ${{ steps.waves.outputs.wave4 }}
       wave5: ${{ steps.waves.outputs.wave5 }}
       wave6: ${{ steps.waves.outputs.wave6 }}
+      wave7: ${{ steps.waves.outputs.wave7 }}
+      wave8: ${{ steps.waves.outputs.wave8 }}
+      wave9: ${{ steps.waves.outputs.wave9 }}
+      wave10: ${{ steps.waves.outputs.wave10 }}
+      wave11: ${{ steps.waves.outputs.wave11 }}
+      wave12: ${{ steps.waves.outputs.wave12 }}
+      wave13: ${{ steps.waves.outputs.wave13 }}
+      wave14: ${{ steps.waves.outputs.wave14 }}
+      wave15: ${{ steps.waves.outputs.wave15 }}
+      wave16: ${{ steps.waves.outputs.wave16 }}
+      wave17: ${{ steps.waves.outputs.wave17 }}
+      wave18: ${{ steps.waves.outputs.wave18 }}
+      wave19: ${{ steps.waves.outputs.wave19 }}
+      wave20: ${{ steps.waves.outputs.wave20 }}
+      wave21: ${{ steps.waves.outputs.wave21 }}
+      wave22: ${{ steps.waves.outputs.wave22 }}
+      wave23: ${{ steps.waves.outputs.wave23 }}
+      wave24: ${{ steps.waves.outputs.wave24 }}
       architectures: ${{ steps.waves.outputs.architectures }}
 
     steps:
@@ -85,9 +103,9 @@ jobs:
           esac
           [ -n "$ARCH_INPUT" ] || ARCH_INPUT="x86_64,aarch64"
           echo "Selection: $sel ($ARCH_INPUT)"
-          result=$(python3 scripts/build-order.py $sel --arch "$ARCH_INPUT")
+          result=$(python3 scripts/build-order.py $sel --arch "$ARCH_INPUT" --max-waves 24)
           echo "$result" | jq .
-          for i in 1 2 3 4 5 6; do
+          for i in $(seq 1 24); do
             echo "wave$i=$(echo "$result" | jq -c ".waves[$((i-1))]")" >> "$GITHUB_OUTPUT"
           done
           echo "architectures=$(echo "$ARCH_INPUT" | jq -R -c 'split(",")')" >> "$GITHUB_OUTPUT"
@@ -146,9 +164,171 @@ jobs:
       wave: 6
       builds: ${{ needs.prepare-build-matrix.outputs.wave6 }}
 
+  wave-7:
+    needs: [prepare-build-matrix, wave-6]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave7 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 7
+      builds: ${{ needs.prepare-build-matrix.outputs.wave7 }}
+
+  wave-8:
+    needs: [prepare-build-matrix, wave-7]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave8 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 8
+      builds: ${{ needs.prepare-build-matrix.outputs.wave8 }}
+
+  wave-9:
+    needs: [prepare-build-matrix, wave-8]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave9 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 9
+      builds: ${{ needs.prepare-build-matrix.outputs.wave9 }}
+
+  wave-10:
+    needs: [prepare-build-matrix, wave-9]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave10 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 10
+      builds: ${{ needs.prepare-build-matrix.outputs.wave10 }}
+
+  wave-11:
+    needs: [prepare-build-matrix, wave-10]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave11 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 11
+      builds: ${{ needs.prepare-build-matrix.outputs.wave11 }}
+
+  wave-12:
+    needs: [prepare-build-matrix, wave-11]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave12 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 12
+      builds: ${{ needs.prepare-build-matrix.outputs.wave12 }}
+
+  wave-13:
+    needs: [prepare-build-matrix, wave-12]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave13 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 13
+      builds: ${{ needs.prepare-build-matrix.outputs.wave13 }}
+
+  wave-14:
+    needs: [prepare-build-matrix, wave-13]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave14 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 14
+      builds: ${{ needs.prepare-build-matrix.outputs.wave14 }}
+
+  wave-15:
+    needs: [prepare-build-matrix, wave-14]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave15 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 15
+      builds: ${{ needs.prepare-build-matrix.outputs.wave15 }}
+
+  wave-16:
+    needs: [prepare-build-matrix, wave-15]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave16 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 16
+      builds: ${{ needs.prepare-build-matrix.outputs.wave16 }}
+
+  wave-17:
+    needs: [prepare-build-matrix, wave-16]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave17 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 17
+      builds: ${{ needs.prepare-build-matrix.outputs.wave17 }}
+
+  wave-18:
+    needs: [prepare-build-matrix, wave-17]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave18 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 18
+      builds: ${{ needs.prepare-build-matrix.outputs.wave18 }}
+
+  wave-19:
+    needs: [prepare-build-matrix, wave-18]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave19 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 19
+      builds: ${{ needs.prepare-build-matrix.outputs.wave19 }}
+
+  wave-20:
+    needs: [prepare-build-matrix, wave-19]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave20 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 20
+      builds: ${{ needs.prepare-build-matrix.outputs.wave20 }}
+
+  wave-21:
+    needs: [prepare-build-matrix, wave-20]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave21 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 21
+      builds: ${{ needs.prepare-build-matrix.outputs.wave21 }}
+
+  wave-22:
+    needs: [prepare-build-matrix, wave-21]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave22 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 22
+      builds: ${{ needs.prepare-build-matrix.outputs.wave22 }}
+
+  wave-23:
+    needs: [prepare-build-matrix, wave-22]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave23 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 23
+      builds: ${{ needs.prepare-build-matrix.outputs.wave23 }}
+
+  wave-24:
+    needs: [prepare-build-matrix, wave-23]
+    if: ${{ !cancelled() && needs.prepare-build-matrix.outputs.wave24 != '[]' }}
+    uses: ./.github/workflows/build-wave.yml
+    secrets: inherit
+    with:
+      wave: 24
+      builds: ${{ needs.prepare-build-matrix.outputs.wave24 }}
+
   build-summary:
     name: Build Summary
-    needs: [wave-1, wave-2, wave-3, wave-4, wave-5, wave-6]
+    needs: [wave-1, wave-2, wave-3, wave-4, wave-5, wave-6, wave-7, wave-8, wave-9, wave-10, wave-11, wave-12, wave-13, wave-14, wave-15, wave-16, wave-17, wave-18, wave-19, wave-20, wave-21, wave-22, wave-23, wave-24]
     runs-on: ubuntu-latest
     if: always()
 
@@ -176,7 +356,7 @@ jobs:
 
   consolidate-cache:
     name: Consolidate Package Cache
-    needs: [prepare-build-matrix, wave-1, wave-2, wave-3, wave-4, wave-5, wave-6]
+    needs: [prepare-build-matrix, wave-1, wave-2, wave-3, wave-4, wave-5, wave-6, wave-7, wave-8, wave-9, wave-10, wave-11, wave-12, wave-13, wave-14, wave-15, wave-16, wave-17, wave-18, wave-19, wave-20, wave-21, wave-22, wave-23, wave-24]
     runs-on: ubuntu-latest
     if: always()
     strategy:

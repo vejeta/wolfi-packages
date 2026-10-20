@@ -1,6 +1,6 @@
 # Wolfi Community Packages
 
-[![Packages](https://img.shields.io/badge/packages-307-brightgreen)](PACKAGES.md)
+[![Packages](https://img.shields.io/badge/packages-306-brightgreen)](PACKAGES.md)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
@@ -18,7 +18,7 @@ packages and `APKINDEX` are published on SourceForge.
 
 ## Available packages
 
-307 recipes, listed with versions and licenses in [PACKAGES.md](PACKAGES.md)
+306 recipes, listed with versions and licenses in [PACKAGES.md](PACKAGES.md)
 (generated from the recipes by `scripts/package-list.py`). By area:
 
 | Area | Packages |

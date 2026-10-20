@@ -32,6 +32,7 @@ environment:
       - zlib-dev  # Debian: zlib1g-dev
       - openssl-dev  # Debian: libssl-dev
       - py3-sphinx  # Debian: python3-sphinx
+      - python3  # the interpreter of Debian's python3-* build dependencies
       - coreutils
       - findutils
 pipeline:

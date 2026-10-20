@@ -378,6 +378,10 @@ class HelperTest(unittest.TestCase):
     def test_upstream_version_plus_digits(self):
         self.assertEqual(d2m.debian_upstream_version("0.35.0+20060710.6"), "0.35.0.20060710.6")
         self.assertEqual(d2m.debian_upstream_version("1.2+git20170224-1"), "1.2_git20170224")
+        self.assertEqual(d2m.debian_upstream_version("2.002+20231012+ds-1"), "2.002.20231012")
+        self.assertEqual(d2m.debian_upstream_version("2.13b171+ds-2"), "2.13_beta171")
+        # the tags keep the +
+        self.assertEqual(d2m.debian_upstream_version("2.002+20231012+ds-1", raw=True), "2.002+20231012")
 
     def test_xml_catalogs(self):
         cats = d2m.xml_catalogs(

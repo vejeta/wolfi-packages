@@ -540,7 +540,8 @@ def parse_changelog(text):
     return m.group(1), m.group(2)
 
 
-def debian_upstream_version(version):
+def debian_upstream_version(version, raw=False):
+    """The apk version of a Debian version; raw: the upstream version as its tags name it."""
     v = version.split(":", 1)[-1]
     if "-" in v:
         v = v.rsplit("-", 1)[0]
@@ -548,7 +549,13 @@ def debian_upstream_version(version):
     # apk versions: 1.2+git20170224 -> 1.2_git20170224, 1.2~rc1 -> 1.2_rc1
     v = re.sub(r"[+~.]?git[.+~]?(\d{8})\b.*$", r"_git\1", v)
     v = re.sub(r"\+nmu(\d+)$", r"_p\1", v)  # non-maintainer uploads of native packages
-    v = re.sub(r"\+(\d[\d.]*)$", r".\1", v)  # 0.35.0+20060710.6 (intltool-debian) -> 0.35.0.20060710.6
+    if raw:
+        return v
+    # 2.13b171 (fonts-stix) -> 2.13_beta171: apk takes a letter suffix only without digits after it
+    v = re.sub(r"(\d)(a|b|rc)(\d+)$", lambda m: "{}_{}{}".format(
+        m.group(1), {"a": "alpha", "b": "beta", "rc": "rc"}[m.group(2)], m.group(3)), v)
+    # 0.35.0+20060710.6 (intltool-debian) -> 0.35.0.20060710.6: apk versions have no +
+    v = re.sub(r"\+(\d[\d.]*)$", r".\1", v)
     return re.sub(r"~(alpha|beta|pre|rc)", r"_\1", v)
 
 
@@ -1997,8 +2004,10 @@ class Converter:
                 if not os.path.isfile(path):
                     return m.group(0)
                 with open(path, "rb") as fh:
-                    self.aux[os.path.basename(rel)] = fh.read()
-                if os.access(path, os.X_OK):
+                    data = self.aux[os.path.basename(rel)] = fh.read()
+                # executable in Debian's tree, or run as a command by the rules (font-awesome's build-fonts.py)
+                if os.access(path, os.X_OK) or (data.startswith(b"#!") and re.match(
+                        r"^\s*(?:\./)?debian/{}\b".format(re.escape(rel)), line)):
                     self.aux_exec.add(os.path.basename(rel))
                 return "{}/{}".format(name, os.path.basename(rel))
             line = re.sub(r"(?<![\w/$.])debian/([\w.+-]+)", aux, line)
@@ -2344,6 +2353,10 @@ class Converter:
             if not chosen:
                 continue
             cand, alt, found = chosen
+            if cand.startswith("texmf-dist-") and alt.startswith("texlive-") and \
+                    not any(o == "texlive" or (isinstance(o, C) and o.value == "texlive") for o in out):
+                # Debian's TeX Live collections depend on texlive-binaries: the programs (latex for auctex)
+                out.append(C("texlive", "the TeX programs, which Debian's {} brings".format(alt)))
             if any(o == cand or (isinstance(o, C) and o.value == cand) for o in out):
                 continue
             mb = re.match(r"^python3-(.+)$", alt)
@@ -2483,6 +2496,7 @@ class Converter:
             version = rules.expand(rules.vars[version_var])
         else:
             version = debian_upstream_version(deb_version or "0")
+            self.tag_version = debian_upstream_version(deb_version or "0", raw=True)
 
         self.version_for_url = version
         # ---- rules variables that feed templated files -> melange vars ------
@@ -2715,6 +2729,10 @@ class Converter:
                 and "perl" not in [e.value if isinstance(e, C) else e for e in env_pkgs]:
             # Debian's build environment has perl (dpkg-dev needs it): moreutils' pod2man
             env_pkgs.append(C("perl", "pod2man in the makefiles; Debian's dpkg-dev brings perl"))
+        names = [e.value if isinstance(e, C) else e for e in env_pkgs]
+        if any(str(n).startswith("py3-") for n in names) and "python3" not in names:
+            # py3-supported-* do not provide python3, which Debian's python3-* bring (font-awesome's build script)
+            env_pkgs.append(C("python3", "the interpreter of Debian's python3-* build dependencies"))
         if bash_scripts(getattr(self, "source_data", None)) and "bash" not in env_pkgs:
             # (aptitude: doc/html-to-text, run while building the documentation)
             env_pkgs.append(C("bash", "the source has bash scripts; Essential in Debian"))
@@ -3349,10 +3367,17 @@ class Converter:
                     self.notes += notes or ["upstream git snapshot of {} (debian/watch), pinned to the last commit "
                                             "of that day".format(snap.group(2))]
                     return steps
-                steps, notes = git_url_checkout_step(repo, version, prefix, resolve=self.args.download)
-                if notes and self.args.download and re.search(r"(?i)uversion-?mangle", watch):
-                    # no tag of Debian's (mangled) version: Debian's copy of the upstream tarball below
-                    self.notes.append("no tag of {} in {} (debian/watch mangles upstream versions)".format(version, repo))
+                tag_version = getattr(self, "tag_version", version) or version
+                steps, notes = git_url_checkout_step(repo, tag_version, prefix, resolve=self.args.download)
+                if tag_version != version:
+                    # the tag names the version with its + (apk's has a dot): the tag as it is
+                    for st in steps:
+                        if isinstance(st, dict):
+                            st["with"]["tag"] = st["with"]["tag"].replace("${{package.version}}", tag_version)
+                if notes and self.args.download:
+                    # no tag of Debian's version (mangled, or a snapshot): Debian's copy of the upstream tarball below
+                    self.notes.append("no tag of {} in {}{}".format(tag_version, repo, " (debian/watch mangles upstream versions)"
+                                                                   if re.search(r"(?i)uversion-?mangle", watch) else ""))
                     steps = None
             if repo and steps:
                 tag = next(st["with"]["tag"] for st in steps if isinstance(st, dict))
@@ -3540,8 +3565,6 @@ class Converter:
         name = source.get("source", "")
         if not upver or not name:
             return None
-        if re.search(r"[+~](dfsg|ds|repack)", upver) and self.read("watch"):
-            return None  # repacked by Debian: debian/watch finds the upstream tarball
         prefix = name[:4] if name.startswith("lib") else name[0]
         for ext in ("gz", "xz", "bz2"):
             url = "https://deb.debian.org/debian/pool/{}/{}/{}/{}_{}.orig.tar.{}".format(

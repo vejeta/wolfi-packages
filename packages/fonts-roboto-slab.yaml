@@ -8,10 +8,11 @@
 #
 # Conversion notes:
 # - build dependency 'py3-cattr' (Debian 'python3-cattr') not found in Wolfi; left out
-# - set expected-commit for tag v2.002+20231012 (re-run with --download, or git ls-remote)
+# - no tag of 2.002+20231012 in https://github.com/googlefonts/robotoslab
+# - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/f/fonts-roboto-slab/fonts-roboto-slab_2.002+20231012+ds.orig.tar.xz), which disappears from the pool when Debian updates
 package:
   name: fonts-roboto-slab
-  version: 2.002+20231012
+  version: '2.002.20231012'
   epoch: 0
   description: 'Google''s signature family of fonts (slab)'
   copyright:
@@ -32,12 +33,10 @@ environment:
       - coreutils
       - findutils
 pipeline:
-  # TODO(debian-to-melange): set expected-commit for tag v2.002+20231012 (re-run with --download, or git ls-remote)
-  - uses: git-checkout
+  - uses: fetch
     with:
-      repository: https://github.com/googlefonts/robotoslab
-      tag: v${{package.version}}
-      expected-commit: '0000000000000000000000000000000000000000'
+      uri: https://deb.debian.org/debian/pool/main/f/fonts-roboto-slab/fonts-roboto-slab_2.002+20231012+ds.orig.tar.xz
+      expected-sha256: c303628a1027058186855ad0ae32a29fa8948184ff5433d8dad36a1e88206134
   - name: Remove files excluded by Debian (debian/copyright Files-Excluded)
     runs: |
       rm -rf .github documentation fonts old scripts
@@ -58,12 +57,13 @@ pipeline:
           mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
         done
       done
+  - name: Remove libtool archives
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
 update:
   enabled: true
-  github:
-    identifier: googlefonts/robotoslab
-    strip-prefix: v
-    use-tag: true
+  release-monitor:
+    identifier: 0  # TODO(debian-to-melange): set the release-monitoring.org project id
 test:
   environment:
     contents:

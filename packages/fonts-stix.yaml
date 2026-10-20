@@ -7,10 +7,11 @@
 # Debian packaging: https://salsa.debian.org/debian/fonts-stix
 #
 # Conversion notes:
-# - set the upstream tarball URL (see debian/watch or https://github.com/stipub/stixfonts)
+# - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/f/fonts-stix/fonts-stix_2.13b171+ds.orig.tar.xz), which disappears from the pool when Debian updates
+# - update: check the tag format of https://github.com/stipub/stixfonts (assumed v2.13_beta171)
 package:
   name: fonts-stix
-  version: 2.13b171
+  version: 2.13_beta171
   epoch: 0
   description: Scientific and Technical Information eXchange fonts
   copyright:
@@ -23,22 +24,26 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - busybox
+      - bash  # the source has bash scripts; Essential in Debian
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
       for f in copyright; do mv fonts-stix/$f .recipe-files/; done
       rmdir fonts-stix 2>/dev/null || true
-  # TODO(debian-to-melange): set the upstream tarball URL (see debian/watch or https://github.com/stipub/stixfonts)
   - uses: fetch
     with:
-      uri: https://example.invalid/${{package.name}}-${{package.version}}.tar.gz
-      expected-sha256: '0000000000000000000000000000000000000000000000000000000000000000'
+      uri: https://deb.debian.org/debian/pool/main/f/fonts-stix/fonts-stix_2.13b171+ds.orig.tar.xz
+      expected-sha256: 2a704ebf7a9da13def00ed78e54d98ffa16a94d231c8f5e12f85e7c1e90302a1
   - name: Remove files excluded by Debian (debian/copyright Files-Excluded)
     runs: |
       rm -rf archive
   - name: Install files
     runs: |
+      mkdir -p "${{targets.destdir}}/usr/share/fonts/opentype/stix"
+      cp -a fonts/static_otf/*.otf "${{targets.destdir}}/usr/share/fonts/opentype/stix/"
+      mkdir -p "${{targets.destdir}}/usr/share/fonts/truetype/stix"
+      cp -a fonts/static_ttf/*.ttf "${{targets.destdir}}/usr/share/fonts/truetype/stix/"
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/fonts-stix/copyright
 update:
   enabled: true

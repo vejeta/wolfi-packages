@@ -9,12 +9,9 @@
 # Conversion notes:
 # - runtime dependency 'emacsen-common' (Debian 'emacsen-common') not found in Wolfi; left out
 # - build dependency 'eperl' (Debian 'eperl') not found in Wolfi; left out
-# - build dependency 'tex-common' (Debian 'tex-common') not found in Wolfi; left out
-# - build dependency 'texlive-latex-base' (Debian 'texlive-latex-base') not found in Wolfi; left out
-# - build dependency 'texlive-latex-recommended' (Debian 'texlive-latex-recommended') not found in Wolfi; left out
-# - set expected-commit for tag release_13.2 (re-run with --download, or git ls-remote)
+# - no tag of 13.2 in https://git.savannah.gnu.org/git/@PACKAGE@.git
+# - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/a/auctex/auctex_13.2.orig.tar.xz), which disappears from the pool when Debian updates
 # - dh --with tex has no direct melange equivalent; review
-# - port debian/rules override_dh_auto_build: chmod -R a+rX debian/ && chmod a+x debian/elcc && $(MAKE) ELCC=$(ELCC) && rm --force auto-loads.el && touch --reference debian/changelog tex.el tex-site.el && $(MAKE) auto-loads.el && $(MAKE) tex-site
 package:
   name: auctex
   version: '13.2'
@@ -108,10 +105,11 @@ environment:
       - emacs
       # TODO(debian-to-melange): eperl is not in Wolfi (Debian: eperl); left out
       - ghostscript
-      # TODO(debian-to-melange): tex-common is not in Wolfi (Debian: tex-common); left out
-      # TODO(debian-to-melange): texlive-latex-base is not in Wolfi (Debian: texlive-latex-base); left out
-      # TODO(debian-to-melange): texlive-latex-recommended is not in Wolfi (Debian: texlive-latex-recommended); left out
-      - texlive-extra-utils  # Wolfi Community Packages
+      - tex-common  # Wolfi Community Packages
+      - texlive  # the TeX programs, which Debian's texlive-latex-base brings
+      - texmf-dist-latex  # Wolfi Community Packages (Debian: texlive-latex-base)
+      - texmf-dist-latexrecommended  # Wolfi Community Packages (Debian: texlive-latex-recommended)
+      - texmf-dist-binextra  # Wolfi Community Packages (Debian: texlive-extra-utils)
       - texinfo
       - coreutils
       - findutils
@@ -119,23 +117,40 @@ pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
-      for f in 0001-doc-Makefile.in-Rationalize-HTML-documentation-targe.patch 0002-doc-Makefile.in-Rationalize-dist-target.patch 0003-TeX-view-program-selection-Customize-for-Debian.patch 0004-TeX-auto-global-Customize-for-Debian.patch 0005-preview-image-type-Customize-for-Debian.patch 0006-Use-UTF-8.patch 0007-Set-timestamp-on-generated-preview-latex.el-file.patch; do mv auctex/$f .recipe-files/; done
+      for f in 0001-doc-Makefile.in-Rationalize-HTML-documentation-targe.patch 0002-doc-Makefile.in-Rationalize-dist-target.patch 0003-TeX-view-program-selection-Customize-for-Debian.patch 0004-TeX-auto-global-Customize-for-Debian.patch 0005-preview-image-type-Customize-for-Debian.patch 0006-Use-UTF-8.patch 0007-Set-timestamp-on-generated-preview-latex.el-file.patch changelog; do mv auctex/$f .recipe-files/; done
       rmdir auctex 2>/dev/null || true
-  # TODO(debian-to-melange): set expected-commit for tag release_13.2 (re-run with --download, or git ls-remote)
-  - uses: git-checkout
+  - uses: fetch
     with:
-      repository: https://git.savannah.gnu.org/git/@PACKAGE@.git
-      tag: release_${{package.version}}
-      expected-commit: '0000000000000000000000000000000000000000'
+      uri: https://deb.debian.org/debian/pool/main/a/auctex/auctex_${{package.version}}.orig.tar.xz
+      expected-sha256: 0332fd9084329c0c5f8b4853b7f870a11bd853fd6d615726f1c90d06175519bf
+  - name: TeX Live set up (the install triggers of texmf-dist and texlive)
+    runs: |
+      d=/usr/share/texmf-dist/tex/generic/config
+      if [ -d $d/lang.d ]; then
+        for ext in def dat dat.lua; do cat $(find $d/lang.d -name "*.$ext" | sort) > $d/language.$ext; done
+      fi
+      mktexlsr >/dev/null 2>&1 || true
+      # updmap.cfg lists the maps of every collection: leave out those not installed
+      yes 2>/dev/null | updmap-sys --syncwithtrees >/dev/null 2>&1 || true
+      updmap-sys >/dev/null 2>&1 || true
+      fmtutil-sys --all >/dev/null 2>&1 || true
   - uses: patch
     with:
       patches: .recipe-files/0001-doc-Makefile.in-Rationalize-HTML-documentation-targe.patch .recipe-files/0002-doc-Makefile.in-Rationalize-dist-target.patch .recipe-files/0003-TeX-view-program-selection-Customize-for-Debian.patch .recipe-files/0004-TeX-auto-global-Customize-for-Debian.patch .recipe-files/0005-preview-image-type-Customize-for-Debian.patch .recipe-files/0006-Use-UTF-8.patch .recipe-files/0007-Set-timestamp-on-generated-preview-latex.el-file.patch
   - runs: |
       autoreconf -fi
   - uses: autoconf/configure
-  - uses: autoconf/make
-  - uses: autoconf/make-install
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_build: chmod -R a+rX debian/ && chmod a+x debian/elcc && $(MAKE) ELCC=$(ELCC) && rm --force auto-loads.el && touch --reference debian/changelog tex.el tex-site.el && $(MAKE) auto-loads.el && $(MAKE) tex-site
+  - name: Build (from debian/rules override_dh_auto_build)
+    runs: |
+      chmod -R a+rX debian/
+      chmod a+x debian/elcc
+      make ELCC=$(pwd)/debian/elcc
+      rm --force auto-loads.el
+      touch --reference .recipe-files/changelog tex.el tex-site.el
+      make auto-loads.el
+      make tex-site.el
+      (cd doc && make auctex.htmls/index.html)
+      (cd doc && make preview-latex.htmls/index.html)
   - name: From debian/rules override_dh_install
     runs: |
       find ${{targets.destdir}}/usr/share/emacs/site-lisp -type f -name \*.elc  		-print0 | xargs --null --no-run-if-empty rm -f
@@ -154,8 +169,10 @@ pipeline:
       cp -a TODO "${{targets.destdir}}/usr/share/doc/auctex/"
       cp -a ChangeLog-preview* "${{targets.destdir}}/usr/share/doc/auctex/"
       cp -a circ.tex "${{targets.destdir}}/usr/share/doc/auctex/"
-      cp -a usr/share/doc/auctex/tex-ref.pdf "${{targets.destdir}}/usr/share/doc/auctex/"
-      cp -a debian/tmp/usr/doc/auctex/* "${{targets.destdir}}/usr/share/doc/auctex/"
+      cp -a "${{targets.destdir}}/usr/share/doc/auctex/tex-ref.pdf" "${{targets.destdir}}/usr/share/doc/auctex/"
+      for f in "${{targets.destdir}}"/usr/doc/auctex/*; do cp -a "$f" "${{targets.destdir}}/usr/share/doc/auctex/"; done
+      rm -rf "${{targets.destdir}}"/usr/doc/auctex/*
+      rmdir "${{targets.destdir}}/usr/doc/auctex" "${{targets.destdir}}/usr/doc" 2>/dev/null || true
       install -Dm644 COPYING -t "${{targets.destdir}}"/usr/share/licenses/auctex
   - name: From debian/rules override_dh_installdocs
     runs: |
@@ -175,6 +192,9 @@ pipeline:
           mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
         done
       done
+  - name: Remove libtool archives
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
 subpackages:
   - name: preview-latex-style
     description: Extraction of elements from LaTeX documents as graphics
@@ -186,11 +206,11 @@ subpackages:
           ln -sf /usr/share/doc/preview-latex-style/preview.pdf "${{targets.contextdir}}/usr/share/texmf/doc/latex/preview/preview.pdf"
           mkdir -p "${{targets.contextdir}}/usr/share/doc/preview-latex-style"
           cp -a latex/README "${{targets.contextdir}}/usr/share/doc/preview-latex-style/"
-          cp -a usr/share/texmf/doc/latex/styles/preview.pdf "${{targets.contextdir}}/usr/share/doc/preview-latex-style/"
+          cp -a "${{targets.destdir}}/usr/share/texmf/doc/latex/styles/preview.pdf" "${{targets.contextdir}}/usr/share/doc/preview-latex-style/"
 update:
   enabled: true
-  git:
-    strip-prefix: release_
+  release-monitor:
+    identifier: 676
 test:
   environment:
     contents:
