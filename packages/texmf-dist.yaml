@@ -45,6 +45,7 @@ pipeline:
       mkdir -p .recipe-files
       mv texmf-dist/* .recipe-files/
       rmdir texmf-dist
+      mkdir extra  # where the second fetch extracts
   - uses: fetch
     with:
       uri: https://ftp.tu-chemnitz.de/pub/tug/historic/systems/texlive/2026/texlive-${{vars.release}}-texmf.tar.xz

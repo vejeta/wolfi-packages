@@ -128,6 +128,7 @@ pipeline:
       mkdir -p .recipe-files
       mv texmf-dist/* .recipe-files/
       rmdir texmf-dist
+      mkdir extra  # where the second fetch extracts
   - uses: fetch
     with:
       uri: {historic}/{year}/texlive-${{{{vars.release}}}}-texmf.tar.xz
