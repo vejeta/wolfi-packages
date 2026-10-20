@@ -63,15 +63,15 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/menhirLib
+  - name: From debian/rules execute_before_dh_auto_build
+    runs: |
+      make -C doc
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
       dune build -p menhirLib,menhirSdk,menhir,menhirCST,menhirGLR -j $(nproc) @install
   - name: Install
     runs: |
       dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" menhirLib menhirSdk menhir menhirCST menhirGLR
-  - name: From debian/rules execute_before_dh_auto_build
-    runs: |
-      make -C doc
   - name: Install files
     runs: |
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/menhir

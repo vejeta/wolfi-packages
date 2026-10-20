@@ -2549,8 +2549,13 @@ class Converter:
                 cmds = self.port_recipe(rules, recipe, name, main["package"])
                 if cmds:
                     step = {"name": "From debian/rules " + target, "runs": "\n".join(cmds) + "\n"}
-                    if re.match(r"^execute_(after_dh_auto_(configure|build|test|install)|before_dh_auto_(build|test|install))$", target) \
-                            or target == "execute_before_dh_install":
+                    if re.match(r"^execute_(after_dh_auto_configure|before_dh_auto_build)$", target):
+                        step["_stage"] = "build"    # before the build (menhir: make -C doc)
+                        pre_install.append(step)
+                    elif re.match(r"^execute_(after_dh_auto_(build|test)|before_dh_auto_(test|install))$", target):
+                        step["_stage"] = "install"  # between the build and the install
+                        pre_install.append(step)
+                    elif re.match(r"^execute_after_dh_auto_install$", target) or target == "execute_before_dh_install":
                         pre_install.append(step)   # before the files are installed (dh_install)
                     else:
                         post_install.append(step)  # on the installed files
@@ -2565,6 +2570,19 @@ class Converter:
             for st in pipeline:
                 if isinstance(st, dict) and str(st.get("uses", "")).startswith(bs + "/"):
                     st.setdefault("with", {})["output-dir"] = next(iter(dirs))
+        # hooks of the build and install steps go at their place in the dh sequence
+        build_re = r"^(Build\b|autoconf/make$|cmake/build$|meson/compile$|cargo/build$|go/build$|perl/make$)"
+        install_re = r"^(Install\b|autoconf/make-install$|cmake/install$|meson/install$|py/pip-build-install$)"
+        for stage, rx in (("build", build_re), ("install", install_re)):
+            for step in [st for st in pre_install if st.get("_stage") == stage]:
+                at = next((i for i, st in enumerate(pipeline) if isinstance(st, dict)
+                           and re.match(rx, str(st.get("name") or st.get("uses") or ""))), None)
+                pre_install.remove(step)
+                del step["_stage"]
+                if at is None:
+                    pre_install.append(step)
+                else:
+                    pipeline.insert(at, step)
         pipeline += pre_install
         pipeline.append(self.install_step(main, True, native, name))
         post_install.sort(key=lambda st: dh_sequence_index(st.get("name", "")))  # stable: rules order otherwise
