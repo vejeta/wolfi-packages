@@ -99,7 +99,6 @@ pipeline:
       mkdir -p ${{targets.outdir}}/libjs-of-ocaml-doc/usr/share/doc/libjs-of-ocaml-doc
       rm -rf ${{targets.outdir}}/libjs-of-ocaml-doc/usr/share/doc/libjs-of-ocaml-doc/api
       rm -rf ${{targets.outdir}}/libjs-of-ocaml-doc/usr/share/doc/libjs-of-ocaml-doc/manual
-      cp -a _build/default/_doc/_html ${{targets.outdir}}/libjs-of-ocaml-doc/usr/share/doc/libjs-of-ocaml-doc/html
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do

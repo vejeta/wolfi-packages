@@ -2101,6 +2101,11 @@ class Converter:
         src_name = src_name or source.get("source")
         fmt = (self.read("source/format") or "").strip()
         native = "native" in fmt or (deb_version is not None and "-" not in deb_version)
+        # the profiles of the build, as dpkg-buildpackage passes them to debian/rules
+        # (nocheck and nodoc are build options too)
+        profiles = sorted(p for p in (getattr(a, "build_profiles", None) or "").split(",") if p) or sorted(BUILD_PROFILES)
+        BUILD_CONTEXT["DEB_BUILD_PROFILES"] = " ".join(profiles)
+        BUILD_CONTEXT["DEB_BUILD_OPTIONS"] = " ".join(p for p in profiles if p in ("nocheck", "nodoc"))
         rules = Rules(self.read("rules") or "")
         for k, v in gencontrol_substvars(rules, source).items():
             # dh_gencontrol -Vname=value: substvars set by debian/rules
