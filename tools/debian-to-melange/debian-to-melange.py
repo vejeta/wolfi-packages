@@ -3460,11 +3460,18 @@ class Converter:
                 if r in ("isolation-machine", "breaks-testbed", "needs-reboot"):
                     self.notes.append("autopkgtest restriction '{}' cannot be honoured by melange test".format(r))
             deps = [d for d in parse_relations(para.get("depends", "@")) if d[0] not in ("@", "@builddeps@")]
-            if "@" in [d[0] for d in parse_relations(para.get("depends", "@"))]:
+            at = "@" in [d[0] for d in parse_relations(para.get("depends", "@"))]
+            if at:
                 # "@" installs the package with its Depends, debconf included
                 deps += [alts for alts in parse_relations(self.main_depends)
                          if any(a in ("debconf", "ucf") for a in alts)]
             mapped = self.map_deps(deps, "test")
+            if at:
+                # ... and every binary package of the source (melange test installs the main one)
+                main_name = self.rename.get(self.main_package, self.main_package)
+                for b in sorted(set(self.rename.values())):
+                    if b != main_name and not re.search(r"-(doc|dbg|udeb)$", b) and b not in packages:
+                        packages.append(C(b, "Debian's @: the binary packages of the source"))
             missing = [d for d in mapped if isinstance(d, Comment)]
             if missing:
                 what = para.get("test-command", "").strip().split("\n")[0][:60] or " ".join(para.get("tests", "").replace(",", " ").split())

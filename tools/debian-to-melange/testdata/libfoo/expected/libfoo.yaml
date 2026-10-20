@@ -157,7 +157,7 @@ test:
         - findutils  # Essential in Debian, so on every testbed
         - grep  # Essential in Debian, so on every testbed
         - sed  # Essential in Debian, so on every testbed
-        - libfoo-dev
+        - libfoo-dev  # Debian's @: the binary packages of the source
         - build-base  # Debian: build-essential
         - pkgconf-dev  # Debian: pkgconf
   pipeline:
