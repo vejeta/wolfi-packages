@@ -3475,6 +3475,22 @@ def watch_tarball_urls(watch, source, version):
     Only plain URLs whose file name holds the version group are handled
     (no page scraping). Several candidates when the extension is a pattern."""
     body = re.sub(r"\\\n", " ", watch)
+    src = re.search(r"(?mi)^Source:\s*(\S+)", watch)
+    pat = re.search(r"(?mi)^Matching-Pattern:\s*(\S+)", watch)
+    if src and pat and not re.search(r"(?mi)^Mode:\s*git", watch):
+        # debian/watch v5: Source (a page) and Matching-Pattern (relative to it)
+        url = urllib.parse.urljoin(src.group(1).split("?", 1)[0], pat.group(1))
+        url = url.replace("@PACKAGE@", source).replace("@ANY_VERSION@", version)
+        exts = [""]
+        if url.endswith("@ARCHIVE_EXT@"):
+            url, exts = url[:-len("@ARCHIVE_EXT@")], list(ARCHIVE_EXTS)
+        out = []
+        # a version-looking directory (gitlab's -/archive/v?\d[\d.]+/) is the tag: with or without v
+        for tag in ("", "v") if re.search(r"v\?\\d", url) else ("",):
+            u = re.sub(r"v\?\\d\[\\d\.\]\+|\\d\[\\d\.\]\+", tag + version, url)
+            if not re.search(r"[()\[\]*+?|^$\\]", u):
+                out += [u + e for e in exts]
+        return out
     for line in body.splitlines():
         line = line.strip()
         if not line or line.startswith("#") or line.startswith("version="):

@@ -401,6 +401,12 @@ class HelperTest(unittest.TestCase):
                                             "DYN: @OCamlDllDir@/dllfoo.so\n"),
                          "usr/lib/ocaml/csexp/META\nusr/lib/ocaml/csexp/*.a\nusr/lib/ocaml/stublibs/dllfoo.so\n")
 
+    def test_watch_v5_matching_pattern(self):
+        watch = ("Version: 5\n\nSource: https://gitlab.inria.fr/fpottier/@PACKAGE@/tags?sort=updated_desc\n"
+                 "Matching-Pattern: -/archive/v?\\d[\\d.]+/@PACKAGE@-@ANY_VERSION@@ARCHIVE_EXT@\n")
+        self.assertEqual(d2m.watch_tarball_urls(watch, "menhir", "20260209")[0],
+                         "https://gitlab.inria.fr/fpottier/menhir/-/archive/20260209/menhir-20260209.tar.gz")
+
     def test_install_entries_expand_braces(self):
         self.assertEqual(list(d2m.install_entries("usr/lib/ocaml/optint/*.{cma,cmxs}\n")),
                          [("usr/lib/ocaml/optint/*.cma", "usr/lib/ocaml/optint", None),

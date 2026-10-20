@@ -7,7 +7,7 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/menhir
 #
 # Conversion notes:
-# - set the upstream tarball URL (see debian/watch or https://gallium.inria.fr/~fpottier/menhir/)
+# - upstream tarball from debian/watch
 # - dh --with ocaml has no direct melange equivalent; review
 # - autopkgtests converted to the test pipeline (1 steps)
 package:
@@ -53,11 +53,10 @@ pipeline:
       mkdir -p .recipe-files
       for f in menhirLib; do mv menhir/$f .recipe-files/; done
       rmdir menhir 2>/dev/null || true
-  # TODO(debian-to-melange): set the upstream tarball URL (see debian/watch or https://gallium.inria.fr/~fpottier/menhir/)
   - uses: fetch
     with:
-      uri: https://example.invalid/${{package.name}}-${{package.version}}.tar.gz
-      expected-sha256: '0000000000000000000000000000000000000000000000000000000000000000'
+      uri: https://gitlab.inria.fr/fpottier/menhir/-/archive/${{package.version}}/menhir-${{package.version}}.tar.gz
+      expected-sha256: 198fed60926d550b15445579f940ad9182b481c3068c03ec400018c5637b0584
   - name: Remove files excluded by Debian (debian/copyright Files-Excluded)
     runs: |
       rm -rf doc/manual.pdf doc/manual.html doc/manual*.png
@@ -133,8 +132,8 @@ test:
     - uses: test/tw/ldd-check
     - uses: fetch
       with:
-        uri: https://example.invalid/${{package.name}}-${{package.version}}.tar.gz
-        expected-sha256: '0000000000000000000000000000000000000000000000000000000000000000'
+        uri: https://gitlab.inria.fr/fpottier/menhir/-/archive/${{package.version}}/menhir-${{package.version}}.tar.gz
+        expected-sha256: 198fed60926d550b15445579f940ad9182b481c3068c03ec400018c5637b0584
     - uses: fetch
       with:
         uri: https://deb.debian.org/debian/pool/main/m/menhir/menhir_20260209+ds-3.debian.tar.xz
