@@ -249,10 +249,15 @@ Fixes found while building these packages go to
 
 - intltool: escape `{` in regexes, which Perl 5.26+ warns about at every run
   ([wolfi-dev/os#78761](https://github.com/wolfi-dev/os/pull/78761))
-- ocaml: depend on gcc and zstd-dev, which `ocamlopt` and programs linked
-  with the OCaml runtime need
+- tcl: install the script library in `usr/lib/tcl9.1`, where programs that
+  embed Tcl (`Tcl_Init`) look for `init.tcl`
+  ([wolfi-dev/os#78762](https://github.com/wolfi-dev/os/pull/78762))
 - ocaml-findlib: keep findlib's `bytes` package, which code written for older
   OCaml still requires
+  ([wolfi-dev/os#78763](https://github.com/wolfi-dev/os/pull/78763))
+- ocaml: depend on gcc and zstd-dev, which `ocamlopt` and programs linked
+  with the OCaml runtime need
+  ([wolfi-dev/os#78764](https://github.com/wolfi-dev/os/pull/78764))
 
 ## Scope
 
