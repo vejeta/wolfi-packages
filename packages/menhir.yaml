@@ -227,7 +227,8 @@ test:
         export AUTOPKGTEST_TMP="$(mktemp -d)"
         export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
-        cat > "$AUTOPKGTEST_TMP/standalone" <<'AUTOPKGTEST_SCRIPT'
+        mkdir -p debian/tests
+        cat > "debian/tests/standalone" <<'AUTOPKGTEST_SCRIPT'
         #!/bin/sh -e
         this=standalone
         indir=debian/tests/calc
@@ -249,5 +250,5 @@ test:
             [ $(echo "(1 + 2 * 10) * 2" | ./calc.native) -eq '42' ]
         fi
         AUTOPKGTEST_SCRIPT
-        chmod +x "$AUTOPKGTEST_TMP/standalone"
-        "$AUTOPKGTEST_TMP/standalone"
+        chmod +x "debian/tests/standalone"
+        "$PWD/debian/tests/standalone"

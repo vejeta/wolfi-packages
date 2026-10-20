@@ -137,7 +137,8 @@ test:
         export AUTOPKGTEST_TMP="$(mktemp -d)"
         export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
-        cat > "$AUTOPKGTEST_TMP/tests" <<'AUTOPKGTEST_SCRIPT'
+        mkdir -p debian/tests
+        cat > "debian/tests/tests" <<'AUTOPKGTEST_SCRIPT'
         #!/bin/bash
         set -e
 
@@ -154,5 +155,5 @@ test:
         echo "* Run tests"
         dune runtest 2>&1
         AUTOPKGTEST_SCRIPT
-        chmod +x "$AUTOPKGTEST_TMP/tests"
-        "$AUTOPKGTEST_TMP/tests"
+        chmod +x "debian/tests/tests"
+        "$PWD/debian/tests/tests"

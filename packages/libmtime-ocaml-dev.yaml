@@ -9,7 +9,6 @@
 # Conversion notes:
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/o/ocaml-mtime/ocaml-mtime_2.2.0.orig.tar.bz2), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
-# - no debian/libmtime-ocaml.install; define which files go to this subpackage
 package:
   name: libmtime-ocaml-dev
   version: '2.2.0'
@@ -61,9 +60,17 @@ subpackages:
   - name: libmtime-ocaml
     description: Monotonic wall-clock time for OCaml (runtime)
     pipeline:
-      # TODO(debian-to-melange): no debian/libmtime-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/mtime ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/mtime && find . -type f \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/mtime/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/mtime/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/mtime/"$p"
+          done; true
+          for a in "${{targets.destdir}}"/usr/lib/ocaml/mtime/lib*.a; do
+            [ -e "$a" ] || continue
+            s=$(basename "$a" .a); s=${s#lib}
+            d="${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll$s.so
+            [ -e "$d" ] && mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/stublibs && mv "$d" "${{targets.contextdir}}"/usr/lib/ocaml/stublibs/
+          done; true
 update:
   enabled: true
   release-monitor:

@@ -1,0 +1,8 @@
+usr/bin
+@OCamlStdlibDir@/uutf/*opam*
+@OCamlStdlibDir@/uutf/*.ml*
+@OCamlStdlibDir@/uutf/*.cmi
+@OCamlStdlibDir@/uutf/*.cmt*
+OPT: @OCamlStdlibDir@/uutf/*.a
+OPT: @OCamlStdlibDir@/uutf/*.cmx
+OPT: @OCamlStdlibDir@/uutf/*.cmxa

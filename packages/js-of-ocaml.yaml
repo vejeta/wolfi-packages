@@ -10,7 +10,6 @@
 # - built with the Debian build profiles nocheck,nodoc
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
 # - dh --with ocaml has no direct melange equivalent; review
-# - no debian/libjs-of-ocaml.install; define which files go to this subpackage
 package:
   name: js-of-ocaml
   version: '6.4.1'
@@ -80,16 +79,16 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/0001-Disable-build-of-toplevel.-bc-.js.patch .recipe-files/0002-Fix-FTBFS-with-dune-3.24.1.patch
+  - name: From debian/rules execute_before_dh_auto_build
+    runs: |
+      rm -f compiler/tests-jsoo/dune         # makes the build fail on amd64
+      rm -f compiler/lib-runtime/tests/dune  # makes the build fail on bytecode architectures
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
       dune build -p js_of_ocaml-compiler,js_of_ocaml,js_of_ocaml-ppx,js_of_ocaml-ppx_deriving_json,js_of_ocaml-lwt,js_of_ocaml-toplevel,js_of_ocaml-tyxml,wasm_of_ocaml-compiler -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" js_of_ocaml-compiler js_of_ocaml js_of_ocaml-ppx js_of_ocaml-ppx_deriving_json js_of_ocaml-lwt js_of_ocaml-toplevel js_of_ocaml-tyxml wasm_of_ocaml-compiler
-  - name: From debian/rules execute_before_dh_auto_build
-    runs: |
-      rm -f compiler/tests-jsoo/dune         # makes the build fail on amd64
-      rm -f compiler/lib-runtime/tests/dune  # makes the build fail on bytecode architectures
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" --etcdir=/etc --datadir=/usr/share/ocaml-dune/data --docdir=/usr/share/ocaml-dune/doc --mandir=/usr/share/ocaml-dune/man js_of_ocaml-compiler js_of_ocaml js_of_ocaml-ppx js_of_ocaml-ppx_deriving_json js_of_ocaml-lwt js_of_ocaml-toplevel js_of_ocaml-tyxml wasm_of_ocaml-compiler
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/js-of-ocaml/examples"
@@ -114,7 +113,79 @@ subpackages:
   - name: libjs-of-ocaml-dev
     description: OCaml bytecode to JavaScript compiler (development files)
     pipeline:
-      - uses: split/dev
+      - runs: |
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-compiler ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-compiler && find . -type f ! \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-compiler/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-compiler/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-compiler/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/js_of_ocaml-compiler; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml && find . -type f ! \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/js_of_ocaml; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx && find . -type f ! \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-ppx/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-ppx/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/js_of_ocaml-ppx; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx_deriving_json ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx_deriving_json && find . -type f ! \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-ppx_deriving_json/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx_deriving_json/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-ppx_deriving_json/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/js_of_ocaml-ppx_deriving_json; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-lwt ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-lwt && find . -type f ! \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-lwt/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-lwt/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-lwt/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/js_of_ocaml-lwt; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-toplevel ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-toplevel && find . -type f ! \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-toplevel/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-toplevel/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-toplevel/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/js_of_ocaml-toplevel; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-tyxml ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-tyxml && find . -type f ! \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-tyxml/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-tyxml/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-tyxml/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/js_of_ocaml-tyxml; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/wasm_of_ocaml-compiler ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/wasm_of_ocaml-compiler && find . -type f ! \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/wasm_of_ocaml-compiler/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/wasm_of_ocaml-compiler/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/wasm_of_ocaml-compiler/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/wasm_of_ocaml-compiler; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
     dependencies:
       runtime:
         - libjs-of-ocaml  # Debian: ${ocaml:Depends}
@@ -133,9 +204,87 @@ subpackages:
   - name: libjs-of-ocaml
     description: OCaml bytecode to JavaScript compiler (runtime)
     pipeline:
-      # TODO(debian-to-melange): no debian/libjs-of-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-compiler ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-compiler && find . -type f \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-compiler/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-compiler/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-compiler/"$p"
+          done; true
+          for a in "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-compiler/lib*.a; do
+            [ -e "$a" ] || continue
+            s=$(basename "$a" .a); s=${s#lib}
+            d="${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll$s.so
+            [ -e "$d" ] && mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/stublibs && mv "$d" "${{targets.contextdir}}"/usr/lib/ocaml/stublibs/
+          done; true
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml && find . -type f \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml/"$p"
+          done; true
+          for a in "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml/lib*.a; do
+            [ -e "$a" ] || continue
+            s=$(basename "$a" .a); s=${s#lib}
+            d="${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll$s.so
+            [ -e "$d" ] && mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/stublibs && mv "$d" "${{targets.contextdir}}"/usr/lib/ocaml/stublibs/
+          done; true
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx && find . -type f \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-ppx/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-ppx/"$p"
+          done; true
+          for a in "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx/lib*.a; do
+            [ -e "$a" ] || continue
+            s=$(basename "$a" .a); s=${s#lib}
+            d="${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll$s.so
+            [ -e "$d" ] && mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/stublibs && mv "$d" "${{targets.contextdir}}"/usr/lib/ocaml/stublibs/
+          done; true
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx_deriving_json ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx_deriving_json && find . -type f \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-ppx_deriving_json/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx_deriving_json/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-ppx_deriving_json/"$p"
+          done; true
+          for a in "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-ppx_deriving_json/lib*.a; do
+            [ -e "$a" ] || continue
+            s=$(basename "$a" .a); s=${s#lib}
+            d="${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll$s.so
+            [ -e "$d" ] && mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/stublibs && mv "$d" "${{targets.contextdir}}"/usr/lib/ocaml/stublibs/
+          done; true
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-lwt ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-lwt && find . -type f \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-lwt/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-lwt/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-lwt/"$p"
+          done; true
+          for a in "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-lwt/lib*.a; do
+            [ -e "$a" ] || continue
+            s=$(basename "$a" .a); s=${s#lib}
+            d="${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll$s.so
+            [ -e "$d" ] && mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/stublibs && mv "$d" "${{targets.contextdir}}"/usr/lib/ocaml/stublibs/
+          done; true
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-toplevel ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-toplevel && find . -type f \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-toplevel/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-toplevel/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-toplevel/"$p"
+          done; true
+          for a in "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-toplevel/lib*.a; do
+            [ -e "$a" ] || continue
+            s=$(basename "$a" .a); s=${s#lib}
+            d="${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll$s.so
+            [ -e "$d" ] && mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/stublibs && mv "$d" "${{targets.contextdir}}"/usr/lib/ocaml/stublibs/
+          done; true
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-tyxml ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-tyxml && find . -type f \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-tyxml/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-tyxml/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/js_of_ocaml-tyxml/"$p"
+          done; true
+          for a in "${{targets.destdir}}"/usr/lib/ocaml/js_of_ocaml-tyxml/lib*.a; do
+            [ -e "$a" ] || continue
+            s=$(basename "$a" .a); s=${s#lib}
+            d="${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll$s.so
+            [ -e "$d" ] && mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/stublibs && mv "$d" "${{targets.contextdir}}"/usr/lib/ocaml/stublibs/
+          done; true
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/wasm_of_ocaml-compiler ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/wasm_of_ocaml-compiler && find . -type f \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/wasm_of_ocaml-compiler/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/wasm_of_ocaml-compiler/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/wasm_of_ocaml-compiler/"$p"
+          done; true
+          for a in "${{targets.destdir}}"/usr/lib/ocaml/wasm_of_ocaml-compiler/lib*.a; do
+            [ -e "$a" ] || continue
+            s=$(basename "$a" .a); s=${s#lib}
+            d="${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll$s.so
+            [ -e "$d" ] && mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/stublibs && mv "$d" "${{targets.contextdir}}"/usr/lib/ocaml/stublibs/
+          done; true
   - name: libjs-of-ocaml-doc
     description: OCaml bytecode to JavaScript compiler (documentation)
     pipeline:

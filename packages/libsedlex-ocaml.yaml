@@ -54,7 +54,7 @@ pipeline:
       dune build -p sedlex -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" sedlex
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" --etcdir=/etc --datadir=/usr/share/ocaml-dune/data --docdir=/usr/share/ocaml-dune/doc --mandir=/usr/share/ocaml-dune/man sedlex
   - name: From debian/rules execute_after_dh_auto_install
     runs: |
       sed -i 's/uchar//g' ${{targets.destdir}}/usr/lib/ocaml/sedlex/META
@@ -80,6 +80,15 @@ subpackages:
           mkdir -p "${{targets.contextdir}}/usr/share/doc/libsedlex-ocaml-dev/examples"
           cp -a examples/dune* "${{targets.contextdir}}/usr/share/doc/libsedlex-ocaml-dev/examples/"
           cp -a examples/*.ml "${{targets.contextdir}}/usr/share/doc/libsedlex-ocaml-dev/examples/"
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/sedlex ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/sedlex && find . -type f ! \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/sedlex/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/sedlex/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/sedlex/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/sedlex; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
     dependencies:
       runtime:
         - libsedlex-ocaml  # Debian: ${ocaml:Depends}
@@ -123,6 +132,11 @@ test:
         repository: https://github.com/ocaml-community/sedlex
         tag: v${{package.version}}
         expected-commit: 8bfec9063cc840b1bda0c4de7fab9670a467fce6
+    - uses: fetch
+      with:
+        uri: https://deb.debian.org/debian/pool/main/o/ocaml-sedlex/ocaml-sedlex_3.8.1-2.debian.tar.xz
+        strip-components: 0
+        expected-sha256: efcded8231023e51f5c53137993136e423517aecc52b973e2fb0949cec010235
     - name: dpkg database (as on a Debian testbed)
       runs: |
         db=/var/lib/dpkg
@@ -160,7 +174,7 @@ test:
         testdir=$(mktemp -d)
         trap "rm -rf ${testdir}" 0 INT QUIT ABRT PIPE TERM
 
-        cp -r "$(dirname "$0")/../../examples" "${testdir}/example"
+        cp -r ""$PWD/debian/tests"/../../examples" "${testdir}/example"
         cd "${testdir}/example"
 
         sed -i 's/sedlex_ppx/sedlex.ppx/g' dune

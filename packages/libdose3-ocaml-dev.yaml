@@ -7,7 +7,7 @@
 # Debian packaging: https://salsa.debian.org/ocaml-team/dose3
 #
 # Conversion notes:
-# - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/d/dose3/dose3_7.0.0.orig.tar.gz), which disappears from the pool when Debian updates
+# - upstream tarball from debian/watch
 # - dh --with ocaml has no direct melange equivalent; review
 # - port debian/rules override_dh_auto_build: dune build -p dose3$(DUNE_EXTRAPROFILE) @install --verbose && make -C doc/manpages man && pod2man --section 8 -release "apt-cudf $(RELEASE)"  		debian/update-cudf-solvers > debian/update-cudf-solvers.
 # - autopkgtests converted to the test pipeline (7 steps)
@@ -74,8 +74,19 @@ pipeline:
       rmdir libdose3-ocaml-dev 2>/dev/null || true
   - uses: fetch
     with:
-      uri: https://deb.debian.org/debian/pool/main/d/dose3/dose3_${{package.version}}.orig.tar.gz
+      uri: https://gitlab.com/irill/dose3/-/archive/${{package.version}}/dose3-${{package.version}}.tar.gz
       expected-sha256: 02db6104db2683483f8309c76e77705b2606803fc5b58ea0a402f9da30a56029
+  - name: TeX Live set up (the install triggers of texmf-dist and texlive)
+    runs: |
+      d=/usr/share/texmf-dist/tex/generic/config
+      if [ -d $d/lang.d ]; then
+        for ext in def dat dat.lua; do cat $(find $d/lang.d -name "*.$ext" | sort) > $d/language.$ext; done
+      fi
+      mktexlsr >/dev/null 2>&1 || true
+      # updmap.cfg lists the maps of every collection: leave out those not installed
+      yes 2>/dev/null | updmap-sys --syncwithtrees >/dev/null 2>&1 || true
+      updmap-sys >/dev/null 2>&1 || true
+      fmtutil-sys --all >/dev/null 2>&1 || true
   - uses: patch
     with:
       patches: .recipe-files/0001-Fix-expected-test-outputs-following-update-of-ocamlg.patch .recipe-files/0002-Add-camlp-streams-to-debGrep-dependencies.patch
@@ -288,7 +299,7 @@ test:
     - uses: test/tw/ldd-check
     - uses: fetch
       with:
-        uri: https://deb.debian.org/debian/pool/main/d/dose3/dose3_${{package.version}}.orig.tar.gz
+        uri: https://gitlab.com/irill/dose3/-/archive/${{package.version}}/dose3-${{package.version}}.tar.gz
         expected-sha256: 02db6104db2683483f8309c76e77705b2606803fc5b58ea0a402f9da30a56029
     - uses: fetch
       with:

@@ -66,13 +66,13 @@ pipeline:
   - name: 'Build (dh-ocaml''s ocaml_dune build system)'
     runs: |
       dune build -p cudf -j $(nproc) @install
-  - name: Install
-    runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" cudf
   - name: From debian/rules execute_after_dh_auto_build
     runs: |
       make doc/cudf-check.1 c-lib
       make c-lib-opt
+  - name: Install
+    runs: |
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" cudf
   - name: From debian/rules execute_after_dh_auto_install
     runs: |
       make -C c-lib/ -e install LIBDIR=/usr/lib INCDIR=/usr/include
@@ -201,7 +201,8 @@ test:
         export AUTOPKGTEST_TMP="$(mktemp -d)"
         export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
-        cat > "$AUTOPKGTEST_TMP/api-ocaml" <<'AUTOPKGTEST_SCRIPT'
+        mkdir -p debian/tests
+        cat > "debian/tests/api-ocaml" <<'AUTOPKGTEST_SCRIPT'
         #!/bin/sh -e
         indir=${PWD}/debian/tests/
         exdir=${PWD}/examples
@@ -222,5 +223,5 @@ test:
             ./parse.native ${exdir}/universe.cudf
         fi
         AUTOPKGTEST_SCRIPT
-        chmod +x "$AUTOPKGTEST_TMP/api-ocaml"
-        "$AUTOPKGTEST_TMP/api-ocaml"
+        chmod +x "debian/tests/api-ocaml"
+        "$PWD/debian/tests/api-ocaml"

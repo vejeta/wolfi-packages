@@ -138,7 +138,8 @@ test:
         export AUTOPKGTEST_TMP="$(mktemp -d)"
         export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
-        cat > "$AUTOPKGTEST_TMP/pathtest" <<'AUTOPKGTEST_SCRIPT'
+        mkdir -p debian/tests
+        cat > "debian/tests/pathtest" <<'AUTOPKGTEST_SCRIPT'
         #!/bin/sh -e
         this=pathtest
         indir=debian/tests
@@ -162,5 +163,5 @@ test:
             echo "OK."
         fi
         AUTOPKGTEST_SCRIPT
-        chmod +x "$AUTOPKGTEST_TMP/pathtest"
-        "$AUTOPKGTEST_TMP/pathtest"
+        chmod +x "debian/tests/pathtest"
+        "$PWD/debian/tests/pathtest"

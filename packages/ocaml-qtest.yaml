@@ -165,6 +165,11 @@ test:
         repository: https://github.com/vincent-hugot/qtest
         tag: v${{package.version}}
         expected-commit: aa9c27211e05ebff1a259750f092caef8e7fbe12
+    - uses: fetch
+      with:
+        uri: https://deb.debian.org/debian/pool/main/o/ocaml-qtest/ocaml-qtest_2.11.2-4.debian.tar.xz
+        strip-components: 0
+        expected-sha256: 298443b765029257df94162e948f9834af0dfd26dc1bc94de078757e22c0de7d
     - name: dpkg database (as on a Debian testbed)
       runs: |
         db=/var/lib/dpkg
@@ -197,7 +202,8 @@ test:
         export AUTOPKGTEST_TMP="$(mktemp -d)"
         export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
-        cat > "$AUTOPKGTEST_TMP/testdirectives" <<'AUTOPKGTEST_SCRIPT'
+        mkdir -p debian/tests
+        cat > "debian/tests/testdirectives" <<'AUTOPKGTEST_SCRIPT'
         #!/bin/bash
         set -e
 
@@ -207,5 +213,5 @@ test:
 
         echo ok
         AUTOPKGTEST_SCRIPT
-        chmod +x "$AUTOPKGTEST_TMP/testdirectives"
-        "$AUTOPKGTEST_TMP/testdirectives"
+        chmod +x "debian/tests/testdirectives"
+        "$PWD/debian/tests/testdirectives"

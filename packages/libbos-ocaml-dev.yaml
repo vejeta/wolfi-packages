@@ -9,7 +9,6 @@
 # Conversion notes:
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/o/ocaml-bos/ocaml-bos_0.3.0.orig.tar.bz2), which disappears from the pool when Debian updates
 # - dh --with ocaml has no direct melange equivalent; review
-# - no debian/libbos-ocaml.install; define which files go to this subpackage
 package:
   name: libbos-ocaml-dev
   version: '0.3.0'
@@ -73,9 +72,17 @@ subpackages:
   - name: libbos-ocaml
     description: Basic OS interaction for OCaml (runtime)
     pipeline:
-      # TODO(debian-to-melange): no debian/libbos-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/bos ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/bos && find . -type f \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/bos/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/bos/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/bos/"$p"
+          done; true
+          for a in "${{targets.destdir}}"/usr/lib/ocaml/bos/lib*.a; do
+            [ -e "$a" ] || continue
+            s=$(basename "$a" .a); s=${s#lib}
+            d="${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll$s.so
+            [ -e "$d" ] && mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/stublibs && mv "$d" "${{targets.contextdir}}"/usr/lib/ocaml/stublibs/
+          done; true
 update:
   enabled: true
   release-monitor:

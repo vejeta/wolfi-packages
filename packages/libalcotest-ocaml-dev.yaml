@@ -72,7 +72,7 @@ pipeline:
       dune build -p alcotest,alcotest-lwt -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" alcotest alcotest-lwt
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" --etcdir=/etc --datadir=/usr/share/ocaml-dune/data --docdir=/usr/share/ocaml-dune/doc --mandir=/usr/share/ocaml-dune/man alcotest alcotest-lwt
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/libalcotest-ocaml-dev/examples"

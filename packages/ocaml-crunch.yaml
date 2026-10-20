@@ -9,7 +9,6 @@
 # Conversion notes:
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
 # - dh --with ocaml has no direct melange equivalent; review
-# - no debian/libcrunch-ocaml.install; define which files go to this subpackage
 package:
   name: ocaml-crunch
   version: '4.1.0'
@@ -47,7 +46,7 @@ pipeline:
       dune build -p crunch -j $(nproc) @install
   - name: Install
     runs: |
-      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" crunch
+      dune install --destdir="${{targets.destdir}}" --prefix=/usr --libdir="$(ocamlc -where)" --etcdir=/etc --datadir=/usr/share/ocaml-dune/data --docdir=/usr/share/ocaml-dune/doc --mandir=/usr/share/ocaml-dune/man crunch
   - name: Install files
     runs: |
       install -Dm644 LICENSE.md -t "${{targets.destdir}}"/usr/share/licenses/ocaml-crunch
@@ -64,7 +63,16 @@ subpackages:
   - name: libcrunch-ocaml-dev
     description: Convert a filesystem into a static OCaml module (dev files)
     pipeline:
-      - uses: split/dev
+      - runs: |
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/crunch ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/crunch && find . -type f ! \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/crunch/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/crunch/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/crunch/"$p"
+          done; true
+          for d in "${{targets.destdir}}"/usr/share/ocaml-dune/*/crunch; do
+            [ -d "$d" ] || continue
+            r=${d#"${{targets.destdir}}"/}
+            mkdir -p "${{targets.contextdir}}"/$(dirname "$r") && mv "$d" "${{targets.contextdir}}"/"$r"
+          done
     dependencies:
       runtime:
         - libcrunch-ocaml  # Debian: ${ocaml:Depends}
@@ -73,9 +81,17 @@ subpackages:
   - name: libcrunch-ocaml
     description: Convert a filesystem into a static OCaml module (runtime files)
     pipeline:
-      # TODO(debian-to-melange): no debian/libcrunch-ocaml.install; define which files go to this subpackage
       - runs: |
-          true
+          [ -d "${{targets.destdir}}"/usr/lib/ocaml/crunch ] && (cd "${{targets.destdir}}"/usr/lib/ocaml/crunch && find . -type f \( -name META -o -name '*.cma' -o -name '*.cmxs' \)) | while read -r p; do
+            mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/crunch/$(dirname "$p")
+            mv "${{targets.destdir}}"/usr/lib/ocaml/crunch/"$p" "${{targets.contextdir}}"/usr/lib/ocaml/crunch/"$p"
+          done; true
+          for a in "${{targets.destdir}}"/usr/lib/ocaml/crunch/lib*.a; do
+            [ -e "$a" ] || continue
+            s=$(basename "$a" .a); s=${s#lib}
+            d="${{targets.destdir}}"/usr/lib/ocaml/stublibs/dll$s.so
+            [ -e "$d" ] && mkdir -p "${{targets.contextdir}}"/usr/lib/ocaml/stublibs && mv "$d" "${{targets.contextdir}}"/usr/lib/ocaml/stublibs/
+          done; true
 update:
   enabled: true
   github:

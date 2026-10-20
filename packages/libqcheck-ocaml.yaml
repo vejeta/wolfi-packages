@@ -411,7 +411,7 @@ test:
         testdir=$(mktemp -d)
         trap "rm -rf ${testdir}" 0 INT QUIT ABRT PIPE TERM
 
-        cp -r "$(dirname "$0")/../../example" "${testdir}/example"
+        cp -r ""$PWD/debian/tests"/../../example" "${testdir}/example"
         cp debian/tests/dune-project-examples "${testdir}/example/dune-project"
 
         cd "${testdir}/example"
