@@ -169,6 +169,16 @@ test:
         repository: https://github.com/example/libfoo
         tag: v${{package.version}}
         expected-commit: '0000000000000000000000000000000000000000'
+    - uses: fetch
+      with:
+        uri: https://deb.debian.org/debian/pool/main/libf/libfoo/libfoo_2.3.4+dfsg-2.debian.tar.xz
+        strip-components: 0
+        expected-sha256: ''  # TODO(debian-to-melange): sha256 of https://deb.debian.org/debian/pool/main/libf/libfoo/libfoo_2.3.4+dfsg-2.debian.tar.xz
+    - name: 'Debian''s patches (autopkgtest tests the patched source)'
+      runs: |
+        sed -e 's/#.*//' -e '/^[[:space:]]*$/d' debian/patches/series | while read -r p opt; do
+          patch ${opt:--p1} -N < "debian/patches/$p"
+        done
     - name: dpkg database (as on a Debian testbed)
       runs: |
         db=/var/lib/dpkg

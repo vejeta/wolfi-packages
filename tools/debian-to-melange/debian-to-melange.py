@@ -1233,23 +1233,31 @@ def essential_script_tools(data, tests=False):
     return found
 
 
-def makefiles_with_werror(data):
-    """Top-level makefiles of the source that build with -Werror."""
+TOP_MAKEFILE = r"^(GNUmakefile|[Mm]akefile|config\.mk|\w+\.mk|Makefile\.(am|in))$"
+
+
+def top_makefiles(data):
+    """{name: content} of the top-level makefiles of a source tarball."""
     if not data:
-        return []
+        return {}
     import io
     import tarfile
-    found = []
+    found = {}
     try:
         with tarfile.open(fileobj=io.BytesIO(data)) as tar:
             for m in tar:
                 parts = m.name.split("/")
-                if m.isfile() and len(parts) == 2 and re.match(r"^(GNUmakefile|[Mm]akefile|config\.mk|\w+\.mk)$", parts[1]) \
-                        and re.search(rb"-Werror\b(?!=)", tar.extractfile(m).read()):
-                    found.append(parts[1])
+                if m.isfile() and len(parts) == 2 and re.match(TOP_MAKEFILE, parts[1]):
+                    found[parts[1]] = tar.extractfile(m).read()
     except (tarfile.TarError, OSError, EOFError):
-        return []
-    return sorted(found)
+        return {}
+    return found
+
+
+def makefiles_with_werror(data):
+    """Top-level makefiles of the source that build with -Werror."""
+    return sorted(n for n, text in top_makefiles(data).items()
+                  if not n.startswith("Makefile.") and re.search(rb"-Werror\b(?!=)", text))
 
 
 def bash_scripts(data):
@@ -2606,6 +2614,11 @@ class Converter:
                 # Debian's liblua5.X.so: Wolfi ships the library without a development link
                 pipeline.append({"name": "Debian's liblua{}.so".format(lua.group(1)), "runs": (
                     "ln -sf liblua-{0}.so.0 /usr/lib/liblua{0}.so\n").format(lua.group(1))})
+        if any(re.search(rb"(^|[\s;(`])(pod2man|pod2text|pod2html|pod2usage)\b", t, re.M)
+               for t in self.source_makefiles().values()) \
+                and "perl" not in [e.value if isinstance(e, C) else e for e in env_pkgs]:
+            # Debian's build environment has perl (dpkg-dev needs it): moreutils' pod2man
+            env_pkgs.append(C("perl", "pod2man in the makefiles; Debian's dpkg-dev brings perl"))
         if bash_scripts(getattr(self, "source_data", None)) and "bash" not in env_pkgs:
             # (aptitude: doc/html-to-text, run while building the documentation)
             env_pkgs.append(C("bash", "the source has bash scripts; Essential in Debian"))
@@ -3663,17 +3676,20 @@ class Converter:
             return bool(self.wolfi.current.get("cmd:{}{}".format("tclsh" if tcl.group(1) == "tcl" else "wish", tcl.group(2))))
         return any(self.wolfi.has(c) for c in dep_candidates(dep)) or bool(self.wolfi.provider_of(dep))
 
-    def tree_makefiles_with_werror(self):
-        found = []
+    def source_makefiles(self):
+        found = top_makefiles(getattr(self, "source_data", None))
         for f in sorted(self.top):
-            if re.match(r"^(GNUmakefile|[Mm]akefile|config\.mk|\w+\.mk)$", f):
+            if f not in found and re.match(TOP_MAKEFILE, f):
                 try:
                     with open(os.path.join(self.tree, f), "rb") as fh:
-                        if re.search(rb"-Werror\b(?!=)", fh.read()):
-                            found.append(f)
+                        found[f] = fh.read()
                 except OSError:
                     pass
         return found
+
+    def tree_makefiles_with_werror(self):
+        return sorted(n for n, text in self.source_makefiles().items()
+                      if not n.startswith("Makefile.") and re.search(rb"-Werror\b(?!=)", text))
 
     def autoreconf_tools(self):
         tools = ["autoconf", "automake"]
@@ -3945,11 +3961,20 @@ class Converter:
             if self.source_steps:
                 # autopkgtest runs in the unpacked source tree
                 packaging = []
-                if any(re.search(r"(?<![\w/])debian/|(?:\$\{?PWD\}?|\$\(pwd\)|`pwd`)/debian/|dpkg-parsechangelog",
-                                 st["runs"]) for st in real) \
-                        and not any("debian.tar" in str(st) or "_{}.tar".format(self.deb_version) in str(st)
-                                    for st in self.source_steps):
+                has_debian = any("debian.tar" in str(st) or "_{}.tar".format(self.deb_version) in str(st)
+                                 for st in self.source_steps)
+                series = [l.split()[0] for l in (self.read("patches/series") or "").splitlines()
+                          if l.strip() and not l.lstrip().startswith("#")]
+                if (series or any(re.search(r"(?<![\w/])debian/|(?:\$\{?PWD\}?|\$\(pwd\)|`pwd`)/debian/|dpkg-parsechangelog",
+                                            st["runs"]) for st in real)) and not has_debian:
                     packaging = [st for st in [self.debian_packaging_step()] if st]
+                if series and (packaging or has_debian):
+                    # the source package autopkgtest unpacks has Debian's patches applied (mmdebstrap's
+                    # testsuite checks hurd-profile.sh, which a patch fixes)
+                    packaging.append({"name": "Debian's patches (autopkgtest tests the patched source)", "runs": (
+                        "sed -e 's/#.*//' -e '/^[[:space:]]*$/d' debian/patches/series | while read -r p opt; do\n"
+                        "  patch ${opt:--p1} -N < \"debian/patches/$p\"\n"
+                        "done\n")})
                 steps = [dict(st) for st in self.source_steps] + packaging + steps
         return steps, packages
 
