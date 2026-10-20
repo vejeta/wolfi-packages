@@ -33,6 +33,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - libbase-ocaml-dev  # Wolfi Community Packages
       - libdune-configurator-ocaml-dev  # Wolfi Community Packages
       - libppx-assert-ocaml-dev  # Wolfi Community Packages
@@ -84,6 +85,9 @@ subpackages:
     dependencies:
       runtime:
         - libjst-config-ocaml  # Debian: ${ocaml:Depends}
+        - libbase-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libdune-configurator-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppx-assert-ocaml-dev  # Debian: ${ocaml:Depends}
 update:
   enabled: true
   github:

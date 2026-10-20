@@ -31,6 +31,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libounit-ocaml-dev  # Wolfi Community Packages
       - libqcheck-ocaml-dev  # Wolfi Community Packages
@@ -93,6 +94,8 @@ subpackages:
     dependencies:
       runtime:
         - libqtest-ocaml  # Debian: ${ocaml:Depends}
+        - libounit-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libqcheck-ocaml-dev  # Debian: ${ocaml:Depends}
   - name: libqtest-ocaml-doc
     description: Documentation for ocaml-qtest
     pipeline:
@@ -166,6 +169,7 @@ test:
     - name: 'autopkgtest: testdirectives'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         cat > "$AUTOPKGTEST_TMP/testdirectives" <<'AUTOPKGTEST_SCRIPT'
         #!/bin/bash

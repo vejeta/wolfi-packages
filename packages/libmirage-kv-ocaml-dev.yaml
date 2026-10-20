@@ -19,6 +19,10 @@ package:
   dependencies:
     runtime:
       - libmirage-kv-ocaml  # Debian: ${ocaml:Depends}
+      - libfmt-ocaml-dev  # Debian: ${ocaml:Depends}
+      - liblwt-ocaml-dev  # Debian: ${ocaml:Depends}
+      - liboptint-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libptime-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -34,6 +38,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libfmt-ocaml-dev  # Wolfi Community Packages
       - liblwt-ocaml-dev  # Wolfi Community Packages

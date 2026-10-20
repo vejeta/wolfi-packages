@@ -23,6 +23,13 @@ package:
         - scripts/pack.ml
   dependencies:
     runtime:
+      - libbase64-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libbz2-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libcudf-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libextlib-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libocamlgraph-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libre-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libzip-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -38,6 +45,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - libbase64-ocaml-dev  # Wolfi Community Packages
       - libbz2-ocaml-dev  # Wolfi Community Packages
       - libcudf-ocaml-dev  # Wolfi Community Packages
@@ -316,6 +324,7 @@ test:
     - name: 'autopkgtest: dose-debcheck'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         set -e
 
@@ -333,6 +342,7 @@ test:
     - name: 'autopkgtest: bug811569'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         # debian bug 811569: accept weird characters in debian field names
 
@@ -352,6 +362,7 @@ test:
     - name: 'autopkgtest: bug790422'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         # debian bug 790422: accept empty input file
 
@@ -371,6 +382,7 @@ test:
     - name: 'autopkgtest: bug867104'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         # debian bug 867104: wanna-build issue with src:perl versioned Provides
 
@@ -390,6 +402,7 @@ test:
     - name: 'autopkgtest: dose-builddebcheck'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         set -e
 
@@ -408,6 +421,7 @@ test:
     - name: 'autopkgtest: bug896084'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         # debian bug 896084: versioned provides and versioned build-dependency
 
@@ -425,6 +439,7 @@ test:
     - name: 'autopkgtest: dose-outdated'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         set -e
 

@@ -33,6 +33,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - help2man
       - libppx-cold-ocaml-dev  # Wolfi Community Packages
       - libppx-compare-ocaml-dev  # Wolfi Community Packages

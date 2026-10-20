@@ -49,6 +49,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libgraphics-ocaml-dev  # Wolfi Community Packages
       - libcmdliner-ocaml-dev  # Wolfi Community Packages
@@ -116,6 +117,18 @@ subpackages:
     dependencies:
       runtime:
         - libjs-of-ocaml  # Debian: ${ocaml:Depends}
+        - ocaml-findlib  # Debian: ${ocaml:Depends}
+        - ocamlfind  # Debian: ${ocaml:Depends}
+        - ocaml-findlib-compat  # Debian: ${ocaml:Depends}
+        - libgraphics-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libcmdliner-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppxlib-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libyojson-ocaml-dev  # Debian: ${ocaml:Depends}
+        - liblwt-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libtyxml-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libreactivedata-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libsedlex-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libmenhir-ocaml-dev  # Debian: ${ocaml:Depends}
   - name: libjs-of-ocaml
     description: OCaml bytecode to JavaScript compiler (runtime)
     pipeline:

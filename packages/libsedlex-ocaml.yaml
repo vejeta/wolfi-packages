@@ -34,6 +34,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libgen-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages
@@ -81,6 +82,9 @@ subpackages:
     dependencies:
       runtime:
         - libsedlex-ocaml  # Debian: ${ocaml:Depends}
+        - libgen-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppxlib-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libmenhir-ocaml-dev  # Debian: ${ocaml:Depends}
 update:
   enabled: true
   github:
@@ -147,6 +151,7 @@ test:
     - name: 'autopkgtest: test-examples'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         set -e
 

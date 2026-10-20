@@ -19,6 +19,11 @@ package:
   dependencies:
     runtime:
       - liblogs-ocaml  # Debian: ${ocaml:Depends}
+      - libtopkg-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libjs-of-ocaml-dev  # Debian: ${ocaml:Depends}
+      - liblwt-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libcmdliner-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libfmt-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:

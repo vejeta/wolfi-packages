@@ -19,6 +19,10 @@ package:
   dependencies:
     runtime:
       - libuutf-ocaml  # Debian: ${ocaml:Depends}
+      - libtopkg-ocaml-dev  # Debian: ${ocaml:Depends}
+      - ocaml-findlib-compat  # Debian: ${ocaml:Depends}
+      - libcmdliner-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libopam-file-format-ocaml-dev  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:

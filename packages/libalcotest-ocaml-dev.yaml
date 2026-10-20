@@ -21,6 +21,13 @@ package:
         - 'examples/*'
   dependencies:
     runtime:
+      - libfmt-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libastring-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libcmdliner-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libre-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libuutf-ocaml-dev  # Debian: ${ocaml:Depends}
+      - liblwt-ocaml-dev  # Debian: ${ocaml:Depends}
+      - liblogs-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -36,6 +43,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libfmt-ocaml-dev  # Wolfi Community Packages
       - libastring-ocaml-dev  # Wolfi Community Packages

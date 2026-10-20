@@ -43,9 +43,6 @@ pipeline:
   - name: Remove files excluded by Debian (debian/copyright Files-Excluded)
     runs: |
       rm -rf __MACOSX OTF *.pdf *.eot *.otf *.ttf *.woff *.woff2
-  - uses: patch
-    with:
-      patches: ''
   # TODO(debian-to-melange): port debian/rules override_dh_auto_build: for otf in $(wildcard instance_otf/*.otf) ;  	do  		sfnt2woff-zopfli $${otf} ;  		woff2_compress $${otf} ;  	done
   - name: Install files
     runs: |

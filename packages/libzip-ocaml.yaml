@@ -157,6 +157,7 @@ test:
     - name: 'autopkgtest: upstream'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         set -e
 

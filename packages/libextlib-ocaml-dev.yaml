@@ -35,6 +35,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - cppo  # Wolfi Community Packages
 pipeline:
@@ -135,6 +136,7 @@ test:
     - name: 'autopkgtest: native-code'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         set -e
 

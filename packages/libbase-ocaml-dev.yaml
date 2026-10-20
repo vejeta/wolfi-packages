@@ -24,6 +24,9 @@ package:
   dependencies:
     runtime:
       - libbase-ocaml  # Debian: ${ocaml:Depends}
+      - libdune-configurator-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libsexplib0-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libocaml-intrinsics-kernel-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -39,6 +42,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libdune-configurator-ocaml-dev  # Wolfi Community Packages
       - libsexplib0-ocaml-dev  # Wolfi Community Packages

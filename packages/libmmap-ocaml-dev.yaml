@@ -19,6 +19,7 @@ package:
   dependencies:
     runtime:
       - libmmap-ocaml  # Debian: ${ocaml:Depends}
+      - libbigarray-compat-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -34,6 +35,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libbigarray-compat-ocaml-dev  # Wolfi Community Packages
 pipeline:

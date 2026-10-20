@@ -20,6 +20,8 @@ package:
   dependencies:
     runtime:
       - libmtime-ocaml  # Debian: ${ocaml:Depends}
+      - libjs-of-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libtopkg-ocaml-dev  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:

@@ -20,6 +20,8 @@ package:
   dependencies:
     runtime:
       - libfpath-ocaml  # Debian: ${ocaml:Depends}
+      - libtopkg-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libastring-ocaml-dev  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:
@@ -132,6 +134,7 @@ test:
     - name: 'autopkgtest: pathtest'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         cat > "$AUTOPKGTEST_TMP/pathtest" <<'AUTOPKGTEST_SCRIPT'
         #!/bin/sh -e

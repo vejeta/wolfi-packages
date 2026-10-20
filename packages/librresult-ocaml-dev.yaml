@@ -19,6 +19,7 @@ package:
   dependencies:
     runtime:
       - librresult-ocaml  # Debian: ${ocaml:Depends}
+      - libtopkg-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:

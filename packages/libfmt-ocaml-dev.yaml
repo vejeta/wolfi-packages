@@ -19,6 +19,8 @@ package:
   dependencies:
     runtime:
       - libfmt-ocaml  # Debian: ${ocaml:Depends}
+      - libtopkg-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libcmdliner-ocaml-dev  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:

@@ -33,6 +33,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - menhir  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: ocaml
 pipeline:

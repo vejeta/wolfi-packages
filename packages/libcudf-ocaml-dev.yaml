@@ -24,6 +24,7 @@ package:
       - ocamlfind  # Debian: ocaml-findlib
       - ocaml-findlib-compat  # Debian: ocaml-findlib
       - libextlib-ocaml-dev  # Wolfi Community Packages
+      - libounit-ocaml-dev  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:
@@ -38,6 +39,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - ocamlbuild
       - libextlib-ocaml-dev  # Wolfi Community Packages
@@ -179,6 +181,7 @@ test:
     - name: 'autopkgtest: cudf-check-universe'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         set -e
 
@@ -186,6 +189,7 @@ test:
     - name: 'autopkgtest: api-ocaml'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         cat > "$AUTOPKGTEST_TMP/api-ocaml" <<'AUTOPKGTEST_SCRIPT'
         #!/bin/sh -e

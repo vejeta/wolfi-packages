@@ -33,6 +33,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - libbase-ocaml-dev  # Wolfi Community Packages
       - libjane-street-headers-ocaml-dev  # Wolfi Community Packages
       - libppx-enumerate-ocaml-dev  # Wolfi Community Packages
@@ -125,6 +126,17 @@ subpackages:
     dependencies:
       runtime:
         - libppx-expect-ocaml  # Debian: ${ocaml:Depends}
+        - libbase-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libjane-street-headers-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppx-enumerate-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppx-hash-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppx-here-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppx-inline-test-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppx-sexp-conv-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppxlib-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libre-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libsexplib0-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libstdio-ocaml-dev  # Debian: ${ocaml:Depends}
 update:
   enabled: true
   github:

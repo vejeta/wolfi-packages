@@ -156,6 +156,7 @@ test:
     - name: 'autopkgtest: build'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         # autopkgtest check: Build and run a program against libthai, to verify that
         # the headers and pkg-config file are installed correctly

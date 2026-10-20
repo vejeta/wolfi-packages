@@ -19,6 +19,9 @@ package:
   dependencies:
     runtime:
       - libtyxml-ocaml  # Debian: ${ocaml:Depends}
+      - ocaml-findlib-compat  # Debian: ${ocaml:Depends}
+      - libuutf-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libre-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -34,6 +37,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - libuutf-ocaml-dev  # Wolfi Community Packages
       - libre-ocaml-dev  # Wolfi Community Packages
       - ocaml-compiler-libs  # Debian: ocaml

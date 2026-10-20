@@ -19,6 +19,8 @@ package:
   dependencies:
     runtime:
       - libbiniou-ocaml  # Debian: ${ocaml:Depends}
+      - libcamlp-streams-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libeasy-format-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -34,6 +36,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libcamlp-streams-ocaml-dev  # Wolfi Community Packages
       - libeasy-format-ocaml-dev  # Wolfi Community Packages

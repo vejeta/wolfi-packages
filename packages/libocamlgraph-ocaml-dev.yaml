@@ -39,6 +39,7 @@ package:
         - src/dominator.mli
   dependencies:
     runtime:
+      - libgraphics-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -54,6 +55,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libgraphics-ocaml-dev  # Wolfi Community Packages
       - libx11-dev

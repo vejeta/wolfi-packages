@@ -22,6 +22,7 @@ package:
       - ocamlfind  # Debian: ocaml-findlib
       - ocaml-findlib-compat  # Debian: ocaml-findlib
       - libcinaps-ocaml  # Debian: ${ocaml:Depends}
+      - libre-ocaml-dev  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:
@@ -36,6 +37,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libre-ocaml-dev  # Wolfi Community Packages
 pipeline:

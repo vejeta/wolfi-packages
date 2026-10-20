@@ -36,6 +36,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - hevea  # Wolfi Community Packages
       - imagemagick-7  # Debian: imagemagick
       - netpbm  # Debian: imagemagick
@@ -167,6 +168,7 @@ test:
     - name: 'autopkgtest: standalone'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         cat > "$AUTOPKGTEST_TMP/standalone" <<'AUTOPKGTEST_SCRIPT'
         #!/bin/sh -e

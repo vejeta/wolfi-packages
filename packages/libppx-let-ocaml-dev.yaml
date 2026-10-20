@@ -22,6 +22,9 @@ package:
       - ocamlfind  # Debian: ocaml-findlib
       - ocaml-findlib-compat  # Debian: ocaml-findlib
       - libppx-let-ocaml  # Debian: ${ocaml:Depends}
+      - libbase-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libppxlib-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libppx-here-ocaml-dev  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:
@@ -36,6 +39,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libbase-ocaml-dev  # Wolfi Community Packages
       - libppxlib-ocaml-dev  # Wolfi Community Packages

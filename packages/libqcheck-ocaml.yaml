@@ -35,6 +35,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libalcotest-ocaml-dev  # Wolfi Community Packages
       - libounit-ocaml-dev  # Wolfi Community Packages
@@ -97,6 +98,8 @@ subpackages:
     dependencies:
       runtime:
         - libqcheck-ocaml  # Debian: ${ocaml:Depends}
+        - libalcotest-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libounit-ocaml-dev  # Debian: ${ocaml:Depends}
   - name: libqcheck-core-ocaml
     description: QuickCheck inspired property-based testing for OCaml (Runtime library)
     pipeline:
@@ -193,6 +196,8 @@ subpackages:
     dependencies:
       runtime:
         - libqcheck-core-ocaml  # Debian: ${ocaml:Depends}
+        - libalcotest-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libounit-ocaml-dev  # Debian: ${ocaml:Depends}
   - name: libqcheck-ounit-ocaml
     description: QCheck integration with OUnit (Runtime library)
     pipeline:
@@ -223,6 +228,8 @@ subpackages:
     dependencies:
       runtime:
         - libqcheck-ounit-ocaml  # Debian: ${ocaml:Depends}
+        - libalcotest-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libounit-ocaml-dev  # Debian: ${ocaml:Depends}
   - name: libqcheck-ocaml-doc
     description: Documentation for ocaml-qcheck
     pipeline:
@@ -299,6 +306,7 @@ test:
     - name: 'autopkgtest: test'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         set -e
 

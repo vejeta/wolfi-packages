@@ -25,6 +25,16 @@ package:
     runtime:
       - libev-dev
       - liblwt-ocaml  # Debian: ${ocaml:Depends}
+      - libdune-ocaml-dev  # Debian: ${ocaml:Depends}
+      - ocaml-findlib  # Debian: ${ocaml:Depends}
+      - ocamlfind  # Debian: ${ocaml:Depends}
+      - ocaml-findlib-compat  # Debian: ${ocaml:Depends}
+      - libreact-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libresult-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libmmap-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libppxlib-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libocplib-endian-ocaml-dev  # Debian: ${ocaml:Depends}
+      - ocaml-compiler-libs  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -40,6 +50,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - libev-dev
       - libdune-ocaml-dev  # Wolfi Community Packages
       - cppo  # Wolfi Community Packages

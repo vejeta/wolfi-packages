@@ -19,6 +19,7 @@ package:
     - license: LGPL-2.1-only
   dependencies:
     runtime:
+      - ocaml-findlib-compat  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -34,6 +35,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
 pipeline:
   - uses: fetch
@@ -131,6 +133,7 @@ test:
     - name: 'autopkgtest: tests'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         cat > "$AUTOPKGTEST_TMP/tests" <<'AUTOPKGTEST_SCRIPT'
         #!/bin/bash

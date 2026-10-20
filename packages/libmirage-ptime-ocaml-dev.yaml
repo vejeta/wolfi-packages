@@ -19,6 +19,7 @@ package:
   dependencies:
     runtime:
       - libmirage-ptime-ocaml  # Debian: ${ocaml:Depends}
+      - libptime-ocaml-dev  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:
@@ -33,6 +34,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libptime-ocaml-dev  # Wolfi Community Packages
 pipeline:

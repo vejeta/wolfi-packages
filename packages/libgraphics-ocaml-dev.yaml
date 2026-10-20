@@ -21,6 +21,7 @@ package:
       - libx11-dev
       - libxft-dev
       - libgraphics-ocaml  # Debian: ${ocaml:Depends}
+      - libdune-ocaml-dev  # Debian: ${ocaml:Depends}
       - ttf-dejavu  # Debian: fontconfig-config depends on fonts-dejavu-core
 environment:
   contents:
@@ -36,6 +37,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libdune-ocaml-dev  # Wolfi Community Packages
       - libx11-dev

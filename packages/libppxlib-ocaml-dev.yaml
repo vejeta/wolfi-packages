@@ -22,6 +22,9 @@ package:
         - 'ast/pprintast.ml*'
   dependencies:
     runtime:
+      - libocaml-compiler-libs-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libppx-derivers-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libsexplib0-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -37,6 +40,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libocaml-compiler-libs-ocaml-dev  # Wolfi Community Packages
       - libppx-derivers-ocaml-dev  # Wolfi Community Packages

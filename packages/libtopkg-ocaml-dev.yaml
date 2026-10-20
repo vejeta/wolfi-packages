@@ -21,6 +21,7 @@ package:
       - ocaml-findlib  # Debian: libfindlib-ocaml-dev
       - ocamlfind  # Debian: libfindlib-ocaml-dev
       - ocaml-findlib-compat  # Debian: libfindlib-ocaml-dev
+      - libopam-file-format-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:

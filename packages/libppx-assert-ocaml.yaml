@@ -33,6 +33,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - libbase-ocaml-dev  # Wolfi Community Packages
       - libppx-cold-ocaml-dev  # Wolfi Community Packages
       - libppx-compare-ocaml-dev  # Wolfi Community Packages
@@ -94,6 +95,12 @@ subpackages:
     dependencies:
       runtime:
         - libppx-assert-ocaml  # Debian: ${ocaml:Depends}
+        - libbase-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppx-cold-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppx-compare-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppx-here-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppx-sexp-conv-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libppxlib-ocaml-dev  # Debian: ${ocaml:Depends}
 update:
   enabled: true
   github:

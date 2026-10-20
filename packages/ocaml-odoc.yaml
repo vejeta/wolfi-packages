@@ -42,6 +42,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - cppo  # Wolfi Community Packages
       - ocaml-crunch  # Wolfi Community Packages
@@ -97,6 +98,14 @@ subpackages:
     dependencies:
       runtime:
         - libodoc-ocaml  # Debian: ${ocaml:Depends}
+        - libcamlp-streams-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libastring-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libfpath-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libcmdliner-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libresult-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libtyxml-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libfmt-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libre-ocaml-dev  # Debian: ${ocaml:Depends}
   - name: libodoc-ocaml
     description: Documentation generator for OCaml (runtime libraries)
     pipeline:
@@ -113,6 +122,14 @@ subpackages:
     dependencies:
       runtime:
         - libodoc-parser-ocaml  # Debian: ${ocaml:Depends}
+        - libcamlp-streams-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libastring-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libfpath-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libcmdliner-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libresult-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libtyxml-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libfmt-ocaml-dev  # Debian: ${ocaml:Depends}
+        - libre-ocaml-dev  # Debian: ${ocaml:Depends}
   - name: libodoc-parser-ocaml
     description: Parser for OCaml documentation comments (runtime files)
     pipeline:
@@ -176,6 +193,7 @@ test:
     - name: 'autopkgtest: odoc-on-odoc'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         set -e
 

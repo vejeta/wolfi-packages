@@ -22,6 +22,10 @@ package:
   dependencies:
     runtime:
       - libppx-hash-ocaml  # Debian: ${ocaml:Depends}
+      - libppx-compare-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libppx-sexp-conv-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libppxlib-jane-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libppxlib-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:
@@ -37,6 +41,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - libppx-compare-ocaml-dev  # Wolfi Community Packages
       - libppx-sexp-conv-ocaml-dev  # Wolfi Community Packages
       - libppxlib-jane-ocaml-dev  # Wolfi Community Packages

@@ -16,6 +16,9 @@ package:
   description: Declarative definition of command line interfaces
   copyright:
     - license: ISC
+  dependencies:
+    runtime:
+      - libresult-ocaml-dev  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:

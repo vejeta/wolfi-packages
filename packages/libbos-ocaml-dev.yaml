@@ -20,6 +20,13 @@ package:
   dependencies:
     runtime:
       - libbos-ocaml  # Debian: ${ocaml:Depends}
+      - libtopkg-ocaml-dev  # Debian: ${ocaml:Depends}
+      - librresult-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libastring-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libfpath-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libfmt-ocaml-dev  # Debian: ${ocaml:Depends}
+      - liblogs-ocaml-dev  # Debian: ${ocaml:Depends}
+      - libmtime-ocaml-dev  # Debian: ${ocaml:Depends}
       # Debian Recommends (not supported by apk): ocaml-findlib
 environment:
   contents:

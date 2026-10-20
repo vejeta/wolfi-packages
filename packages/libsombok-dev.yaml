@@ -8,7 +8,7 @@
 #
 # Conversion notes:
 # - runtime dependency 'libjs-jquery': Debian ships JavaScript libraries separately; Wolfi does not, keep the copy bundled upstream
-# - set expected-commit for tag v2.4.0 (re-run with --download, or git ls-remote)
+# - upstream from debian/watch (GitHub), pinned to the tag's commit
 package:
   name: libsombok-dev
   version: '2.4.0'
@@ -45,12 +45,12 @@ pipeline:
       mkdir -p .recipe-files
       for f in add_tests_suite_data disable_doxygen_search_engine fix_FTCBFS fix_ftbfs_kfreebsd_strepipe fix_tests_suite; do mv libsombok-dev/$f .recipe-files/; done
       rmdir libsombok-dev 2>/dev/null || true
-  # TODO(debian-to-melange): set expected-commit for tag v2.4.0 (re-run with --download, or git ls-remote)
   - uses: git-checkout
     with:
       repository: https://github.com/hatukanezumi/sombok
-      tag: v${{package.version}}
-      expected-commit: '0000000000000000000000000000000000000000'
+      tag: sombok-${{package.version}}
+      expected-commit: 0098d85a037ef5c99a648a3669a077781a45e8cc
+      recurse-submodules: true
   - uses: patch
     with:
       patches: .recipe-files/fix_ftbfs_kfreebsd_strepipe .recipe-files/disable_doxygen_search_engine .recipe-files/fix_tests_suite .recipe-files/add_tests_suite_data .recipe-files/fix_FTCBFS
@@ -107,7 +107,7 @@ update:
   enabled: true
   github:
     identifier: hatukanezumi/sombok
-    strip-prefix: v
+    strip-prefix: sombok-
     use-tag: true
 test:
   environment:

@@ -36,6 +36,7 @@ environment:
       - ocaml-findlib
       - ocamlfind
       - ocaml-findlib-compat
+      - bash
       - ocaml-compiler-libs  # Debian: ocaml
       - libdune-ocaml-dev  # Wolfi Community Packages
 pipeline:
@@ -121,6 +122,7 @@ subpackages:
     dependencies:
       runtime:
         - libparmap-ocaml  # Debian: ${ocaml:Depends}
+        - libdune-ocaml-dev  # Debian: ${ocaml:Depends}
 update:
   enabled: true
   github:

@@ -19,6 +19,7 @@ package:
   dependencies:
     runtime:
       - libastring-ocaml  # Debian: ${ocaml:Depends}
+      - libtopkg-ocaml-dev  # Debian: ${ocaml:Depends}
 environment:
   contents:
     keyring:
