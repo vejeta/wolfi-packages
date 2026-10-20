@@ -340,6 +340,8 @@ jobs:
 
       - name: Display build summary
         run: |
+          # A push that builds nothing (docs only) has no artifacts.
+          mkdir -p all-artifacts
           echo "=== Build Summary ==="
           echo ""
           echo "Total artifacts:"
