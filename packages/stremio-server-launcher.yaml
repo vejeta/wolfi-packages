@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Juan Manuel Méndez Rey <vejeta@gmail.com>
+#
+# Stremio's streaming server for headless use: a home server, a container
+# image, used from web.stremio.com, TVs and phones. Its server.js is not free
+# software and is not in this package: the launcher (stremio-server-launcher.js
+# next to this recipe) downloads it from Stremio on the first start, checks its
+# sha256, keeps it in the data directory and runs it with Node.js. Images built
+# from this package can therefore be published.
+#
+# stremio-server-installer does the download in its post-install script, for
+# the desktop client on an installed system; apko does not run those scripts,
+# and running it while building an image would put server.js into the image.
+# (The stremio-server package, which included server.js, is retired.)
+package:
+  name: stremio-server-launcher
+  version: '4.21.1'
+  epoch: 0
+  description: Stremio's streaming server (downloads server.js on the first start)
+  copyright:
+    - license: GPL-3.0-or-later
+  dependencies:
+    runtime:
+      - nodejs-22
+      - ffmpeg
+      - ca-certificates-bundle
+      # the server runs ps
+      - procps
+
+vars:
+  # the sha256 of https://dl.strem.io/server/v${{package.version}}/desktop/server.js
+  server-sha256: 405eb494d6708406a30e716c3cfb5abae7a5e9c7a8b79446d64c3f821385930f
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - busybox
+
+pipeline:
+  - name: Install the launcher
+    runs: |
+      d="${{targets.destdir}}"/usr/share/stremio-server-launcher
+      mkdir -p "$d"
+      sed -e 's/@VERSION@/${{package.version}}/' -e 's/@SHA256@/${{vars.server-sha256}}/' \
+        stremio-server-launcher/stremio-server-launcher.js > "$d"/stremio-server-launcher.js
+      mkdir -p "${{targets.destdir}}"/usr/bin
+      printf '#!/bin/sh\nexec /usr/bin/node /usr/share/stremio-server-launcher/stremio-server-launcher.js "$@"\n' \
+        > "${{targets.destdir}}"/usr/bin/stremio-server
+      chmod 755 "${{targets.destdir}}"/usr/bin/stremio-server
+
+update:
+  enabled: false
+  manual: true
+  exclude-reason: Stremio publishes no release feed for server.js; bump the version and its sha256 by hand, with stremio-server-installer
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - name: The launcher downloads, verifies and runs the server
+      runs: |
+        export HOME="$(mktemp -d)"
+        stremio-server > "$HOME/log" 2>&1 &
+        pid=$!
+        # the download of server.js first (slow mirrors), then the server's start
+        ok=
+        for i in $(seq 1 300); do
+          # (Wolfi's busybox has no wget: node fetches)
+          if node -e 'fetch("http://127.0.0.1:11470/settings").then(r => r.text())
+                .then(t => require("fs").writeFileSync(process.argv[1], t)).catch(() => process.exit(1))' \
+                "$HOME/settings" 2>/dev/null; then ok=1; break; fi
+          kill -0 "$pid" 2>/dev/null || break
+          sleep 2
+        done
+        cat "$HOME/log"
+        kill "$pid" 2>/dev/null || true
+        [ -n "$ok" ] || { echo "the server did not answer on port 11470"; exit 1; }
+        grep -q '"options"' "$HOME/settings"
+        # downloaded once, into the data directory
+        ls "$HOME"/.stremio-server/server-${{package.version}}.js
+    - name: A wrong checksum is refused
+      runs: |
+        export HOME="$(mktemp -d)"
+        sed 's/const SHA256 = "[0-9a-f]*"/const SHA256 = "0000"/' /usr/share/stremio-server-launcher/stremio-server-launcher.js > "$HOME/bad.js"
+        if node "$HOME/bad.js" > "$HOME/log" 2>&1; then cat "$HOME/log"; exit 1; fi
+        grep -q "checksum mismatch" "$HOME/log"
+        [ ! -e "$HOME"/.stremio-server/server-${{package.version}}.js ]

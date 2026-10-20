@@ -1,6 +1,6 @@
 # Wolfi Community Packages
 
-[![Packages](https://img.shields.io/badge/packages-306-brightgreen)](PACKAGES.md)
+[![Packages](https://img.shields.io/badge/packages-307-brightgreen)](PACKAGES.md)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/vejeta/wolfi-packages)](https://github.com/vejeta/wolfi-packages/commits)
 [![Build Packages](https://github.com/vejeta/wolfi-packages/actions/workflows/build-packages.yml/badge.svg)](https://github.com/vejeta/wolfi-packages/actions)
@@ -18,12 +18,12 @@ packages and `APKINDEX` are published on SourceForge.
 
 ## Available packages
 
-306 recipes, listed with versions and licenses in [PACKAGES.md](PACKAGES.md)
+307 recipes, listed with versions and licenses in [PACKAGES.md](PACKAGES.md)
 (generated from the recipes by `scripts/package-list.py`). By area:
 
 | Area | Packages |
 |------|----------|
-| Media | mpv, vlc, stremio (GTK4) and stremio-qt5, libplacebo, libass9, libbluray, libdvdnav, libdvdread, libcdio, libmatroska, taglib, rubberband, shaderc, zimg, mujs |
+| Media | mpv, vlc, stremio (GTK4) and stremio-qt5, stremio-server-launcher (headless streaming server, downloads server.js on the first start), libplacebo, libass9, libbluray, libdvdnav, libdvdread, libcdio, libmatroska, taglib, rubberband, shaderc, zimg, mujs |
 | GNOME and Qt5 | webkitgtk-6.0, libadwaita, libsoup3, glib-networking, appstream, xdg-dbus-proxy, qt5-qtwebengine and other Qt5 modules |
 | Debian tooling on Wolfi | apt, aptitude, mmdebstrap, debhelper (with dh-autoreconf, strip-nondeterminism, po-debconf), dwz, debootstrap, debconf, ucf, fakeroot, fakechroot, dctrl-tools, debian-archive-keyring, debian-keyring, distro-info-data, arch-test, sequoia-sq, sequoia-sqv, sequoia-chameleon-gnupg |
 | TeX | texlive 2026 (programs) and texmf-dist (the TeX Live 2026 tree, split by collection: 38 collections with their documentation), hevea, auctex, tex-common |
@@ -61,9 +61,9 @@ Browse:     https://sourceforge.net/projects/wolfi/files/
 `apk`, melange and apko append the architecture (`x86_64/`, `aarch64/`) to the
 base URL automatically.
 
-`wolfi.vejeta.com` is the repository's address: it redirects to where the
-packages are stored, SourceForge today, so the storage can change without
-changing the address. Systems set up with
+`wolfi.vejeta.com` is the repository's address: it serves the key and
+redirects to where the packages are stored, SourceForge today, so the
+storage can change without changing the address. Systems set up with
 `https://downloads.sourceforge.net/project/wolfi` keep working; switching
 them to `https://wolfi.vejeta.com` (same key) makes them independent of the
 storage.
@@ -273,7 +273,7 @@ GitHub Actions                       SourceForge                                
 - [`build-packages.yml`](.github/workflows/build-packages.yml): builds the changed recipes, or those given in `package_filter`, in dependency order.
 - [`sign-and-publish.yml`](.github/workflows/sign-and-publish.yml): signs, indexes and publishes a build run (full or `incremental=true`).
 - [`cleanup-old-packages.yml`](.github/workflows/cleanup-old-packages.yml): removes superseded versions.
-- [`repository-url.yml`](.github/workflows/repository-url.yml): checks every week that `wolfi.vejeta.com` serves the indexes and the key.
+- [`repository-url.yml`](.github/workflows/repository-url.yml): checks every week that `wolfi.vejeta.com` serves the indexes (as Go clients fetch them) and the key.
 
 ```bash
 # Build one package and publish it incrementally
@@ -283,9 +283,14 @@ gh workflow run sign-and-publish.yml -f run_id=<RUN_ID> -f incremental=true -R v
 
 SourceForge hosts the packages because it has no per-file size limit
 (qt5-qtwebengine is about 300 MB) and a mirror network.
-`wolfi.vejeta.com` (Apache, `Redirect 302 / https://downloads.sourceforge.net/project/wolfi/`)
-is the address in the documentation, so moving the storage does not change
-what users have configured.
+`wolfi.vejeta.com` is the address in the documentation, so moving the
+storage does not change what users have configured. Its Apache serves the
+signing key itself, over HTTPS, and redirects (302) everything else to
+`http://downloads.sourceforge.net/project/wolfi/`: to http because clients
+written in Go (apko, melange) send a `Referer` when they follow a redirect,
+SourceForge answers a foreign `Referer` with its HTML download page, and Go
+sends none from https to http. The content cannot be altered on the way: apk
+checks the signed `APKINDEX` and the hash of every package.
 
 ## Contact
 
