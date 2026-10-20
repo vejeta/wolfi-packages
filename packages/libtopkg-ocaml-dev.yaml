@@ -46,8 +46,9 @@ pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
-      for f in install_bytecode.sh install_native.sh rules; do mv libtopkg-ocaml-dev/$f .recipe-files/; done
+      for f in copyright gbp.conf install_bytecode.sh install_native.sh installer-generator.ml libtopkg-ocaml-dev.docs libtopkg-ocaml-dev.install.in rules watch; do mv libtopkg-ocaml-dev/$f .recipe-files/; done
       rmdir libtopkg-ocaml-dev 2>/dev/null || true
+      mkdir -p debian && cp -a .recipe-files/. debian/
   - uses: fetch
     with:
       uri: https://deb.debian.org/debian/pool/main/o/ocaml-topkg/ocaml-topkg_${{package.version}}.orig.tar.bz2
@@ -58,13 +59,13 @@ pipeline:
   - name: Install (from debian/rules override_dh_auto_install)
     runs: |
       for a in bytecode native; do  	  mv debian/install_$a.sh debian/install_$a.sh.old;  	done
-      .recipe-files/rules .recipe-files/install_bytecode.sh
-      diff -u debian/install_bytecode.sh.old .recipe-files/install_bytecode.sh
-      diff -u debian/install_native.sh.old .recipe-files/install_native.sh
-      mv debian/install_bytecode.sh.old .recipe-files/install_bytecode.sh
-      mv debian/install_native.sh.old .recipe-files/install_native.sh
-      OCAML_STDLIB_DIR=/usr/lib/ocaml .recipe-files/install_bytecode.sh
-      OCAML_STDLIB_DIR=/usr/lib/ocaml .recipe-files/install_native.sh
+      ocaml debian/installer-generator.ml
+      diff -u debian/install_bytecode.sh.old debian/install_bytecode.sh
+      diff -u debian/install_native.sh.old debian/install_native.sh
+      mv debian/install_bytecode.sh.old debian/install_bytecode.sh
+      mv debian/install_native.sh.old debian/install_native.sh
+      OCAML_STDLIB_DIR=/usr/lib/ocaml debian/install_bytecode.sh
+      OCAML_STDLIB_DIR=/usr/lib/ocaml debian/install_native.sh
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/lib/ocaml/topkg"

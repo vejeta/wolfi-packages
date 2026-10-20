@@ -1676,6 +1676,22 @@ class Converter:
         Returns None when a line still depends on make or debhelper.
         """
         out = []
+        # "debian/rules <target>" (topkg regenerates a file so): that target's recipe
+        inlined = []
+        for raw in lines:
+            m = re.match(r"^\s*[@-]*(?:\$\(MAKE\)\s+-f\s+)?debian/rules\s+(\S+)\s*$", raw)
+            inlined += rules.targets.get(m.group(1), [raw]) if m else [raw]
+        lines = inlined
+        # debian/ paths built from shell variables (debian/install_$a.sh) cannot be rewritten
+        # one by one: keep debian/ and have Debian's files there
+        keep_debian = any(re.search(r"(?<![\w/$.])debian/[\w.+-]*\$", rules.expand(l)) for l in lines)
+        if keep_debian:
+            for f in self._listdir(self.deb):
+                path = os.path.join(self.deb, f)
+                if os.path.isfile(path) and os.path.getsize(path) < 1 << 20 and f not in ("changelog", "control"):
+                    with open(path, "rb") as fh:
+                        self.aux[f] = fh.read()
+            self.debian_dir = True
         for raw in lines:
             line = raw.strip()
             if not line or line.startswith("#"):
@@ -1733,6 +1749,8 @@ class Converter:
             line = line.replace("$$", "$")  # make's escape for the shell's $
             line = line.replace("${{targets.destdir}}/usr/sbin/", "${{targets.destdir}}/usr/bin/")  # usr-merged
             def aux(m):
+                if keep_debian:
+                    return m.group(0)  # Debian's files are copied to debian/
                 rel = m.group(1)
                 path = os.path.join(self.deb, rel)
                 if not os.path.isfile(path):
@@ -2866,6 +2884,9 @@ class Converter:
         move = {"name": "Move the recipe files out of the build tree",
                 "runs": "mkdir -p {d}\nfor f in {files}; do mv {n}/$f {d}/; done\nrmdir {n} 2>/dev/null || true\n".format(
                     d=self.RECIPE_FILES, files=files, n=name)}
+        if getattr(self, "debian_dir", False):
+            # debian/rules works on files in debian/ by computed names
+            move["runs"] += "mkdir -p debian && cp -a {}/. debian/\n".format(self.RECIPE_FILES)
         # first: the sources may contain a file named like the directory
         return [move] + steps
 
@@ -3468,10 +3489,14 @@ class Converter:
                     self.notes.append("autopkgtest '{}': mmdebstrap --mode=fakechroot left out (Wolfi's glibc is newer "
                                       "than the Debian chroot's; host binaries cannot load its libraries)".format(test))
                 shebang = script.split("\n", 1)[0] if script.startswith("#!") else ""
+                tdir = "debian/" + para.get("tests-directory", "tests").strip("/")
                 if shebang and not re.match(r"^#!\s*/bin/sh\s*$", shebang):
-                    # bash, sh -e, python ...: run the script as written, with its interpreter
-                    body = ('cat > "$AUTOPKGTEST_TMP/{0}" <<\'AUTOPKGTEST_SCRIPT\'\n{1}\n{2}AUTOPKGTEST_SCRIPT\n'
-                            'chmod +x "$AUTOPKGTEST_TMP/{0}"\n"$AUTOPKGTEST_TMP/{0}"\n').format(test, shebang, body)
+                    # bash, sh -e, python ...: run the script as written, with its interpreter, from
+                    # where Debian has it ($(dirname "$0")/../../examples in sedlex's tests)
+                    body = ('mkdir -p {3}\ncat > "{3}/{0}" <<\'AUTOPKGTEST_SCRIPT\'\n{1}\n{2}AUTOPKGTEST_SCRIPT\n'
+                            'chmod +x "{3}/{0}"\n"$PWD/{3}/{0}"\n').format(test, shebang, body, tdir)
+                else:
+                    body = re.sub(r'\$\(dirname "?\$0"?\)|`dirname "?\$0"?`', '"$PWD/{}"'.format(tdir), body)
                 steps.append({"name": "autopkgtest: " + test, "runs": env + guard(body)})
         real = [st for st in steps if not isinstance(st, Comment)]
         for st in real:

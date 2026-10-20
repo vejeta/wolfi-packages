@@ -1,0 +1,4 @@
+Version: 5
+
+Source: https://erratique.ch/software/topkg/releases/
+Matching-Pattern: .*topkg-(.+)\.tbz
