@@ -298,8 +298,7 @@ GitHub Actions                       SourceForge                                
 ```
 
 - [`build-packages.yml`](.github/workflows/build-packages.yml): builds the changed recipes, or those given in `package_filter`, in dependency order.
-- [`sign-and-publish.yml`](.github/workflows/sign-and-publish.yml): signs, indexes and publishes a build run (full or `incremental=true`).
-- [`cleanup-old-packages.yml`](.github/workflows/cleanup-old-packages.yml): removes superseded versions.
+- [`sign-and-publish.yml`](.github/workflows/sign-and-publish.yml): signs, indexes and publishes a build run, merged with the packages already published. It keeps the newest `keep_versions` (3) versions of each package, and deletes from SourceForge what the index no longer lists (older versions, retired packages).
 - [`repository-url.yml`](.github/workflows/repository-url.yml): checks every week that `wolfi.vejeta.com` serves the indexes (as Go clients fetch them) and the key.
 
 ```bash

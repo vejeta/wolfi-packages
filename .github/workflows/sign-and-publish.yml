@@ -15,6 +15,11 @@ on:
         description: 'Build workflow run ID (leave empty for latest successful build)'
         required: false
         type: string
+      keep_versions:
+        description: 'Versions of each package to keep'
+        required: false
+        default: '3'
+        type: string
       force_publish:
         description: 'Force publish (ignore build status)'
         required: false
@@ -29,6 +34,10 @@ on:
 permissions:
   contents: read
   actions: read
+
+env:
+  # versions of each package kept in the repository (older ones are deleted)
+  KEEP_VERSIONS: ${{ github.event.inputs.keep_versions || '3' }}
 
 jobs:
   sign-and-publish:
@@ -47,7 +56,7 @@ jobs:
       - name: Install required tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y lftp openssh-client tree
+          sudo apt-get install -y lftp openssh-client rsync tree
 
       - name: Get build run ID
         id: get-run-id
@@ -247,6 +256,10 @@ jobs:
           # including their subpackages, so they leave the APKINDEX
           python3 scripts/remove-retired.py packages/RETIRED repo/x86_64 repo/aarch64
 
+          # Keep the newest versions of each package; the APKINDEX lists only
+          # these, and the sync deletes the others from SourceForge
+          python3 scripts/prune-old-versions.py --keep "${KEEP_VERSIONS}" repo/x86_64 repo/aarch64
+
           # Copy permanent signing public key from local file
           # Extract public key from GitHub Secrets (convert PKCS#8 to PKCS#1 first)
           echo "${{ secrets.APK_SIGNING_KEY }}" > /tmp/melange-pkcs8.rsa
@@ -400,7 +413,25 @@ jobs:
             repo/ \
             jmendezr@frs.sourceforge.net:/home/frs/project/wolfi/
 
-          echo "Repository published to SourceForge successfully!"
+      - name: Delete what the APKINDEX no longer lists from SourceForge
+        run: |
+          # The index is uploaded: delete the package files it does not list
+          # (older versions, retired packages). SourceForge accepts rsync over
+          # SSH but not a shell, so rsync --delete does it, .apk files only;
+          # --ignore-existing keeps it from uploading anything again.
+          for arch in x86_64 aarch64; do
+            remote="jmendezr@frs.sourceforge.net:/home/frs/project/wolfi/$arch/"
+            have=$(find repo/$arch -maxdepth 1 -name '*.apk' | wc -l)
+            there=$(rsync --list-only "$remote" | grep -c '\.apk$' || true)
+            echo "$arch: $have packages in the index, $there on SourceForge"
+            # never empty the repository because a download went wrong
+            if [ ! -f repo/$arch/APKINDEX.tar.gz ] || [ $((have * 2)) -lt "$there" ]; then
+              echo "::warning::$arch: not deleting, the local repository has less than half of SourceForge's packages"
+              continue
+            fi
+            rsync -rv --ignore-existing --delete --include='*.apk' --exclude='*' \
+              repo/$arch/ "$remote" | grep '^deleting ' || echo "nothing to delete"
+          done
 
       - name: Create deployment summary
         run: |
