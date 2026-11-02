@@ -464,19 +464,31 @@ def static_shell(value):
         fields = m.group(1).split(m.group(2))
         n = int(m.group(3))
         return fields[n - 1] if 0 < n <= len(fields) else ""
-    value = re.sub(r"\$\(shell\s+echo\s+\"?([^\s$()|\"]+)\"?\s*\|\s*cut\s+-d\s*'?([^\s'])'?\s+-f\s*(\d+)\s*\)",
+    value = re.sub(r"\$\(shell\s+echo\s+[\"']?([^\s$()|\"']+)[\"']?\s*\|\s*cut\s+-d\s*'?([^\s'])'?\s+-f\s*(\d+)\s*\)",
                    cut, value)
 
     def sed(m):
-        # libskia's MAJOR_VERSION: $(shell echo "$(DEB_VERSION_UPSTREAM)" | sed -E 's/^([0-9]+).*$$/\1/')
+        # libskia's MAJOR_VERSION: $(shell echo "$(DEB_VERSION_UPSTREAM)" | sed -E 's/^([0-9]+).*$$/\1/');
+        # pyclipper's: $(shell echo '$(DEB_VERSION_UPSTREAM)' | sed -e 's/\+[^+]*//') (basic regex)
         pat = m.group(3).replace("$$", "$")
         if not m.group(2):
-            pat = pat.replace("\\(", "(").replace("\\)", ")").replace("+", "\\+")
+            # basic regular expressions: \( \) group, ( ) + ? { } are literal, and so is \+ here
+            out, k = "", 0
+            while k < len(pat):
+                c = pat[k]
+                if c == "\\" and k + 1 < len(pat):
+                    nxt = pat[k + 1]
+                    out += {"(": "(", ")": ")", "{": "{", "}": "}", "+": "\\+", "?": "\\?"}.get(nxt, "\\" + nxt)
+                    k += 2
+                    continue
+                out += "\\" + c if c in "()+?{}|" else c
+                k += 1
+            pat = out
         try:
             return re.sub(pat, re.sub(r"\\(\d)", r"\\g<\1>", m.group(4)), m.group(1), count=0 if m.group(5) else 1)
         except re.error:
             return m.group(0)
-    return re.sub(r"\$\(shell\s+echo\s+\"?([^\s$()|\"]+)\"?\s*\|\s*sed\s+(-E\s+|-r\s+)?(?:-e\s+)?"
+    return re.sub(r"\$\(shell\s+echo\s+[\"']?([^\s$()|\"']+)[\"']?\s*\|\s*sed\s+(-E\s+|-r\s+)?(?:-e\s+)?"
                   r"'s/((?:[^/'\\]|\\.)*)/((?:[^/'\\]|\\.)*)/(g?)'\s*\)", sed, value)
 
 

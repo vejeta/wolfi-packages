@@ -51,7 +51,7 @@ environment:
       - coreutils
       - findutils
   environment:
-    SETUPTOOLS_SCM_PRETEND_VERSION: '''0.14.1'''
+    SETUPTOOLS_SCM_PRETEND_VERSION: '0.14.1'
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
