@@ -93,10 +93,10 @@ pipeline:
   - name: Build (from debian/rules override_dh_auto_build)
     runs: |
       mkdir -p debbuild/shared/
-      gn gen debbuild/shared --args='is_official_build=true  	extra_cflags_cc=string_split(getenv("CXXFLAGS"))  	extra_cflags_c=string_split(getenv("CFLAGS"))  	skia_use_system_expat=true  	skia_use_system_harfbuzz=true  	skia_use_system_icu=true  	skia_use_system_libjpeg_turbo=true  	skia_use_system_libpng=true  	skia_use_system_libwebp=true  	skia_use_system_zlib=true  	skia_use_dng_sdk=false  	skia_use_wuffs=false  	skia_enable_spirv_validation=false is_component_build=true  	extra_ldflags=string_split(getenv("LDFLAGS"))  	skia_so_version=146'
+      gn gen debbuild/shared --args='is_official_build=true extra_cflags_cc=string_split(getenv("CXXFLAGS")) extra_cflags_c=string_split(getenv("CFLAGS")) skia_use_system_expat=true skia_use_system_harfbuzz=true skia_use_system_icu=true skia_use_system_libjpeg_turbo=true skia_use_system_libpng=true skia_use_system_libwebp=true skia_use_system_zlib=true skia_use_dng_sdk=false skia_use_wuffs=false skia_enable_spirv_validation=false is_component_build=true extra_ldflags=string_split(getenv("LDFLAGS")) skia_so_version=146'
       ninja -C debbuild/shared -j $(nproc) --verbose skia
       mkdir -p debbuild/static/
-      gn gen debbuild/static --args='is_official_build=true  	extra_cflags_cc=string_split(getenv("CXXFLAGS"))  	extra_cflags_c=string_split(getenv("CFLAGS"))  	skia_use_system_expat=true  	skia_use_system_harfbuzz=true  	skia_use_system_icu=true  	skia_use_system_libjpeg_turbo=true  	skia_use_system_libpng=true  	skia_use_system_libwebp=true  	skia_use_system_zlib=true  	skia_use_dng_sdk=false  	skia_use_wuffs=false  	skia_enable_spirv_validation=false skia_no_pic=true'
+      gn gen debbuild/static --args='is_official_build=true extra_cflags_cc=string_split(getenv("CXXFLAGS")) extra_cflags_c=string_split(getenv("CFLAGS")) skia_use_system_expat=true skia_use_system_harfbuzz=true skia_use_system_icu=true skia_use_system_libjpeg_turbo=true skia_use_system_libpng=true skia_use_system_libwebp=true skia_use_system_zlib=true skia_use_dng_sdk=false skia_use_wuffs=false skia_enable_spirv_validation=false skia_no_pic=true'
       ninja -C debbuild/static -j $(nproc) --verbose skia
   - name: Install (from debian/rules override_dh_auto_install)
     runs: |

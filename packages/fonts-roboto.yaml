@@ -7,7 +7,6 @@
 # Debian packaging: https://salsa.debian.org/fonts-team/fonts-roboto
 #
 # Conversion notes:
-# - build dependency 'py3-vttlib' (Debian 'python3-vttlib') not found in Wolfi; left out
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
 package:
   name: fonts-roboto
@@ -35,9 +34,10 @@ environment:
       - py3-pip
       - py3-wheel
       - fontmake
+      - py3.13-notofonttools-bin  # commands of Debian's python3-nototools
       - py3-supported-notofonttools  # Debian: python3-nototools
       - py3-supported-setuptools  # Debian: python3-setuptools
-      # TODO(debian-to-melange): py3-vttlib is not in Wolfi (Debian: python3-vttlib); left out
+      - py3-supported-vttlib  # Wolfi Community Packages (Debian: python3-vttlib)
       - coreutils
       - findutils
 pipeline:

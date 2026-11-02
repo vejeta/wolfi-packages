@@ -52,6 +52,9 @@ pipeline:
   - uses: patch
     with:
       patches: .recipe-files/use-system-googletest.patch
+  - name: CMake 4 has no OLD behaviour for policies before 3.5
+    runs: |
+      sed -i -E '/[Cc][Mm][Aa][Kk][Ee]_[Pp][Oo][Ll][Ii][Cc][Yy] *\( *SET +CMP00([0-5][0-9]|6[0-5]) +OLD *\)/d' CMakeLists.txt
   - uses: cmake/configure
     with:
       opts: -DANTLR_BUILD_CPP_TESTS=OFF -DANTLR4_INSTALL=ON

@@ -11,7 +11,7 @@
 # - set expected-commit for tag v2.13.18 (re-run with --download, or git ls-remote)
 # - port debian/rules override_dh_auto_build: # Stage the pass-1 STARR (build-time only, never shipped). The three && # jars are copied under the names the driver expects. && rm -rf $(SEED) && mkdir -p $(SEED)/lib && set -e; for j in $(STARR0_JAR
 # - port debian/rules override_dh_auto_install: # scala-library, scala-reflect and scala-compiler are installed by && # maven-repo-helper (debian/*.poms) as /usr/share/java/<name>-$(VERSION).jar && # and in /usr/share/maven-repo; no unversioned nam
-# - port debian/rules execute_after_dh_link: # Series links (<name>-2.13.jar), and the commands as <cmd>-2.13. && dh_link -pscala-library-2.13  	  usr/share/java/scala-library-$(VERSION).jar usr/share/java/scala-library-$(SERIES).jar  	  usr/sha
+# - port debian/rules execute_after_dh_link: # Series links (<name>-2.13.jar), and the commands as <cmd>-2.13. && dh_link -pscala-library-2.13 usr/share/java/scala-library-$(VERSION).jar usr/share/java/scala-library-$(SERIES).jar usr/share/java/
 # - autopkgtests converted to the test pipeline (1 steps)
 package:
   name: scala-2.13
@@ -193,7 +193,7 @@ pipeline:
       patches: .recipe-files/0001-scaladoc-jquery-from-libjs-jquery.patch .recipe-files/0002-print-trees-diff-without-java-diff-utils.patch
   # TODO(debian-to-melange): port debian/rules override_dh_auto_build: # Stage the pass-1 STARR (build-time only, never shipped). The three && # jars are copied under the names the driver expects. && rm -rf $(SEED) && mkdir -p $(SEED)/lib && set -e; for j in $(STARR0_JAR
   # TODO(debian-to-melange): port debian/rules override_dh_auto_install: # scala-library, scala-reflect and scala-compiler are installed by && # maven-repo-helper (debian/*.poms) as /usr/share/java/<name>-$(VERSION).jar && # and in /usr/share/maven-repo; no unversioned nam
-  # TODO(debian-to-melange): port debian/rules execute_after_dh_link: # Series links (<name>-2.13.jar), and the commands as <cmd>-2.13. && dh_link -pscala-library-2.13  	  usr/share/java/scala-library-$(VERSION).jar usr/share/java/scala-library-$(SERIES).jar  	  usr/sha
+  # TODO(debian-to-melange): port debian/rules execute_after_dh_link: # Series links (<name>-2.13.jar), and the commands as <cmd>-2.13. && dh_link -pscala-library-2.13 usr/share/java/scala-library-$(VERSION).jar usr/share/java/scala-library-$(SERIES).jar usr/share/java/
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/scala-2.13"

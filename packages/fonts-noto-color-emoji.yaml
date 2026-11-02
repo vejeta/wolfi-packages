@@ -43,6 +43,25 @@ environment:
       - coreutils
       - findutils
 pipeline:
+  - name: 'Debian''s names of the commands of python3-nototools (Debian drops .py: add_vs_cmap)'
+    runs: |
+      mkdir -p /usr/local/bin
+      ln -sf /usr/bin/add_vs_cmap.py /usr/local/bin/add_vs_cmap
+      ln -sf /usr/bin/autofix_for_release.py /usr/local/bin/autofix_for_release
+      ln -sf /usr/bin/create_image.py /usr/local/bin/create_image
+      ln -sf /usr/bin/decompose_ttc.py /usr/local/bin/decompose_ttc
+      ln -sf /usr/bin/drop_hints.py /usr/local/bin/drop_hints
+      ln -sf /usr/bin/dump_otl.py /usr/local/bin/dump_otl
+      ln -sf /usr/bin/fix_khmer_and_lao_coverage.py /usr/local/bin/fix_khmer_and_lao_coverage
+      ln -sf /usr/bin/fix_noto_cjk_thin.py /usr/local/bin/fix_noto_cjk_thin
+      ln -sf /usr/bin/generate_sample_text.py /usr/local/bin/generate_sample_text
+      ln -sf /usr/bin/merge_fonts.py /usr/local/bin/merge_fonts
+      ln -sf /usr/bin/merge_noto.py /usr/local/bin/merge_noto
+      ln -sf /usr/bin/noto_lint.py /usr/local/bin/noto_lint
+      ln -sf /usr/bin/scale.py /usr/local/bin/scale
+      ln -sf /usr/bin/subset.py /usr/local/bin/subset
+      ln -sf /usr/bin/subset_symbols.py /usr/local/bin/subset_symbols
+      ln -sf /usr/bin/test_vertical_extents.py /usr/local/bin/test_vertical_extents
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files

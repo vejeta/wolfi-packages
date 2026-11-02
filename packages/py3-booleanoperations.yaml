@@ -41,8 +41,6 @@ environment:
       - python3
       - py3-supported-setuptools-scm  # Debian: python3-setuptools-scm
       - py3-supported-wheel  # Debian: python3-wheel
-      - coreutils
-      - findutils
   environment:
     SETUPTOOLS_SCM_PRETEND_VERSION: ${{package.version}}
 pipeline:
@@ -54,9 +52,6 @@ pipeline:
     runs: |
       mkdir -p "${{targets.destdir}}/usr/share/doc/py3-booleanoperations"
       cp -a README.rst "${{targets.destdir}}/usr/share/doc/py3-booleanoperations/"
-  - name: From debian/rules execute_after_dh_clean
-    runs: |
-      rm Lib/booleanOperations/_version.py
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do

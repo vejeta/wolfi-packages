@@ -48,7 +48,7 @@ pipeline:
       pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=1 --name=dh-make-scala dh-make-scala man/dh-make-scala.1
       pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=5 --name=scala-build scala-build.pod man/scala-build.5
       pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=7 --name=dh-scala dh-scala.pod man/dh-scala.7
-      pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=3pm --name=Debian::Debhelper::Buildsystem::scala  	  lib/Debian/Debhelper/Buildsystem/scala.pm man/Debian::Debhelper::Buildsystem::scala.3pm
+      pod2man --center=dh-scala --release=${{package.version}} --date=$(date -u -d @${SOURCE_DATE_EPOCH} +%F) --section=3pm --name=Debian::Debhelper::Buildsystem::scala lib/Debian/Debhelper/Buildsystem/scala.pm man/Debian::Debhelper::Buildsystem::scala.3pm
   - name: Install files
     runs: |
       mkdir -p "${{targets.destdir}}/usr/bin"

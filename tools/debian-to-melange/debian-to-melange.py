@@ -439,6 +439,24 @@ MAKE_FUNCTIONS = {
 }
 
 
+# Debian packages that install their commands without the upstream suffix, which
+# Wolfi keeps; Debian's patches call them by its names
+DEBIAN_COMMAND_SUFFIXES = {
+    "python3-nototools": (".py", "Debian drops .py: add_vs_cmap"),
+}
+
+
+def removed_cmake_policies(text):
+    """Does the project set a policy older than CMake 3.5 to OLD (an error in CMake 4)?"""
+    return bool(re.search(r"(?i)cmake_policy\s*\(\s*SET\s+CMP00([0-5]\d|6[0-5])\s+OLD", text))
+
+
+def old_cmake_minimum(text):
+    """Does cmake_minimum_required ask for a CMake older than 3.5?"""
+    m = re.search(r"(?i)cmake_minimum_required\s*\(\s*VERSION\s+(\d+)\.(\d+)", text)
+    return bool(m) and (int(m.group(1)), int(m.group(2))) < (3, 5)
+
+
 def static_shell(value):
     """$(shell echo WORD | cut -d C -f N) on a known word (antlr4-cpp-runtime's
     DEB_VERSION_UPSTREAM_ORIG, in a package name): its value."""
@@ -914,8 +932,12 @@ class Rules:
     def _join_continuations(lines):
         out, buf = [], ""
         for line in lines:
+            if buf:
+                # make joins a continued line with one space, without the next line's
+                # indentation (libskia's GN arguments, which gn reads with no tabs)
+                line = line.lstrip(" \t")
             if line.endswith("\\"):
-                buf += line[:-1] + " "
+                buf += line[:-1].rstrip(" \t") + " "
                 continue
             out.append(buf + line)
             buf = ""
@@ -1110,7 +1132,8 @@ def binary_to_source(binary):
 
 
 # Upstream files the converter reads (build tool detection, Python metadata).
-UPSTREAM_FILES = ("configure.ac", "autogen.sh", "pyproject.toml", "setup.cfg", "setup.py", "Makefile", "GNUmakefile")
+UPSTREAM_FILES = ("configure.ac", "autogen.sh", "pyproject.toml", "setup.cfg", "setup.py", "Makefile", "GNUmakefile",
+                  "CMakeLists.txt")
 
 
 def python_requirements(tree):
@@ -1895,6 +1918,7 @@ class Converter:
         self.debian_nested = {}  # flat aux name -> its path in debian/ (debian/scripts/foo)
         self.pipeline_env = {}   # variables debian/rules sets for dh_auto_* run as a pipeline
         self.filled_by_rules = set()  # subpackages debian/rules installs files into (dh_install -pPKG FILE DIR)
+        self.command_links = []  # steps that give Wolfi's commands the names Debian's packages give them
         self.install_excludes = {}  # Debian binary package (or "*") -> dh_install -X patterns
         self.rename = {}       # Debian binary package name -> melange package name
         self.upstream_installs = True  # does the build system install into destdir?
@@ -2932,6 +2956,17 @@ class Converter:
         if any(str(n).startswith("py3-") for n in names) and "python3" not in names:
             # py3-supported-* do not provide python3, which Debian's python3-* bring (font-awesome's build script)
             env_pkgs.append(C("python3", "the interpreter of Debian's python3-* build dependencies"))
+        for deb, (suffix, why) in DEBIAN_COMMAND_SUFFIXES.items():
+            if any(alt == deb for alts in parse_relations(source.get("build-depends")) for alt in alts):
+                provider = next((p for d in env_pkgs for p in [d.value if isinstance(d, C) else d]
+                                 if isinstance(p, str) and p.endswith("-bin")
+                                 and any(v == p for k, v in self.wolfi.providers.items() if k.endswith(suffix))), None)
+                cmds = sorted(k[4:] for k, v in self.wolfi.providers.items()
+                              if v == provider and k.startswith("cmd:") and k.endswith(suffix))
+                if cmds:
+                    self.command_links.append({"name": "Debian's names of the commands of {} ({})".format(deb, why), "runs": (
+                        "mkdir -p /usr/local/bin\n" + "".join(
+                            "ln -sf /usr/bin/{0} /usr/local/bin/{1}\n".format(c, c[:-len(suffix)]) for c in cmds))})
         makefile = next((self.read_tree(f) for f in ("GNUmakefile", "Makefile") if self.read_tree(f)), "")
         if re.search(r"\$\(shell\s+which\b", makefile) and "which" not in env_pkgs:
             # debianutils' which is Essential in Debian; busybox in Wolfi has none
@@ -3053,6 +3088,14 @@ class Converter:
             if bs == "autoconf" and self.needs_autoreconf(source):
                 pipeline.append({"runs": "autoreconf -fi\n"})
             opts = rules.configure_opts() + self.libexec_opts(bs, binaries)
+            if bs == "cmake" and old_cmake_minimum(self.read_tree("CMakeLists.txt") or ""):
+                # Wolfi's CMake 4 refuses projects that want CMake < 3.5
+                opts.append("-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
+            if bs == "cmake" and removed_cmake_policies(self.read_tree("CMakeLists.txt") or "") and \
+                    not any(isinstance(st, dict) and "CMake 4" in st.get("name", "") for st in pipeline):
+                # CMake 4 has no OLD behaviour for policies before 3.5 (antlr4-cpp-runtime: CMP0054 OLD)
+                pipeline.append({"name": "CMake 4 has no OLD behaviour for policies before 3.5", "runs": (
+                    "sed -i -E '/[Cc][Mm][Aa][Kk][Ee]_[Pp][Oo][Ll][Ii][Cc][Yy] *\\( *SET +CMP00([0-5][0-9]|6[0-5]) +OLD *\\)/d' CMakeLists.txt\n")})
             entry = {"uses": BUILD_PIPELINES[bs][0]}
             if opts:
                 entry["with"] = {"opts": " ".join(opts)}
@@ -3075,6 +3118,14 @@ class Converter:
             if bs == "autoconf" and self.needs_autoreconf(source):
                 pipeline.append({"runs": "autoreconf -fi\n"})
             opts = rules.configure_opts() + self.libexec_opts(bs, binaries)
+            if bs == "cmake" and old_cmake_minimum(self.read_tree("CMakeLists.txt") or ""):
+                # Wolfi's CMake 4 refuses projects that want CMake < 3.5
+                opts.append("-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
+            if bs == "cmake" and removed_cmake_policies(self.read_tree("CMakeLists.txt") or "") and \
+                    not any(isinstance(st, dict) and "CMake 4" in st.get("name", "") for st in pipeline):
+                # CMake 4 has no OLD behaviour for policies before 3.5 (antlr4-cpp-runtime: CMP0054 OLD)
+                pipeline.append({"name": "CMake 4 has no OLD behaviour for policies before 3.5", "runs": (
+                    "sed -i -E '/[Cc][Mm][Aa][Kk][Ee]_[Pp][Oo][Ll][Ii][Cc][Yy] *\\( *SET +CMP00([0-5][0-9]|6[0-5]) +OLD *\\)/d' CMakeLists.txt\n")})
             for i, step in enumerate(BUILD_PIPELINES[bs]):
                 entry = {"uses": step}
                 if i == 0 and opts:
@@ -3125,7 +3176,7 @@ class Converter:
                 if target == "override_dh_auto_install":
                     pipeline += self.override_steps(ported[target], "Install (from debian/rules override_dh_auto_install)")
                 continue
-            if re.search(r"_dh_(lintian|installchangelogs|compress|fixperms|missing|strip|dwz|shlibdeps|makeshlibs|gencontrol|builddeb|md5sums)$", target):
+            if re.search(r"_dh_(lintian|installchangelogs|compress|fixperms|missing|strip|dwz|shlibdeps|makeshlibs|gencontrol|builddeb|md5sums|clean|auto_clean)(-arch|-indep)?$", target):
                 continue  # Debian packaging checks and bookkeeping (execute_before/after_*)
             tool = re.sub(r"-(indep|arch)$", "", target[len("override_"):])
             calls = [l.strip().lstrip("@-") for l in recipe if l.strip() and not l.strip().startswith("#")]
@@ -3327,6 +3378,7 @@ class Converter:
         if self.pipeline_env:
             environment.setdefault("environment", {}).update(self.pipeline_env)
         recipe["environment"] = environment
+        pipeline[:0] = self.command_links
         recipe["pipeline"] = [p for p in pipeline if p]
         if subpackages:
             recipe["subpackages"] = subpackages
