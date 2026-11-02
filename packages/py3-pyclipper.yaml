@@ -41,6 +41,8 @@ environment:
       - busybox
       - py3-supported-build-base-dev
       - python3
+      - py3-supported-cython  # Debian: cython3
+      - py3-supported-setuptools-scm  # commands of Debian's python3-setuptools-scm
       - py3-supported-setuptools-scm  # Debian: python3-setuptools-scm
   environment:
     SETUPTOOLS_SCM_PRETEND_VERSION: '''1.4.0'''

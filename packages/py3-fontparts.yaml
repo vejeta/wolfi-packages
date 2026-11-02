@@ -42,13 +42,16 @@ environment:
       - py3-supported-defcon  # Wolfi Community Packages (Debian: python3-defcon)
       - py3-supported-fontmath  # Wolfi Community Packages (Debian: python3-fontmath)
       - py3-supported-fontpens  # Wolfi Community Packages (Debian: python3-fontpens)
+      - py3-supported-fonttools  # commands of Debian's python3-fonttools
       - py3-supported-fonttools  # Debian: python3-fonttools
+      - py3-supported-setuptools-scm  # commands of Debian's python3-setuptools-scm
       - py3-supported-setuptools-scm  # Debian: python3-setuptools-scm
+      - py3-supported-sphinx  # commands of Debian's python3-sphinx
       - py3-supported-sphinx  # Debian: python3-sphinx
       - coreutils
       - findutils
   environment:
-    SETUPTOOLS_SCM_PRETEND_VERSION: ${{package.version}}
+    SETUPTOOLS_SCM_PRETEND_VERSION: '''0.14.1'''
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -64,10 +67,7 @@ pipeline:
       patches: .recipe-files/Backport-beginPath-change.patch .recipe-files/remove-external-fonts-in-doc.patch
   - name: From debian/rules execute_before_dh_sphinxdoc
     runs: |
-      PYTHONPATH=./Lib sphinx-build documentation/source debian/python-fontparts-doc/usr/share/doc/fontparts/html/
-  - name: From debian/rules execute_after_dh_clean
-    runs: |
-      rm -fv Lib/fontParts/_version.py
+      PYTHONPATH=./Lib python3 -m sphinx documentation/source debian/python-fontparts-doc/usr/share/doc/fontparts/html/
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do

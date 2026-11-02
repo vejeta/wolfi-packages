@@ -3434,7 +3434,12 @@ class Converter:
             if v == "python3-dev" and getattr(self, "python_compiled", False):
                 continue  # py3-supported-build-base-dev has every version's headers
             if v and re.match(r"^py3\.\d+-.+-bin$", v):
-                continue  # commands of one Python: they clash with the other versions' build-base
+                # commands of one Python: they clash with the other versions' build-base; the
+                # module for every version instead (cython3 -> py3-supported-cython: pyclipper)
+                sup = "py3-supported-" + re.sub(r"^py3\.\d+-(.+)-bin$", r"\1", v)
+                if self.wolfi.has(sup) and sup not in [None if isinstance(x, Comment) else val(x) for x in keep]:
+                    keep.append(C(sup, d.comment if isinstance(d, C) else "module of " + v))
+                continue
             if v and v.startswith("py3-") and not v.startswith("py3-supported-") \
                     and self.wolfi.has("py3-supported-" + v[4:]):
                 d = C("py3-supported-" + v[4:], d.comment if isinstance(d, C) else "Debian: python3-" + v[4:])
