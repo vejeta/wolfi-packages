@@ -11,7 +11,7 @@
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/f/fonts-freefont/fonts-freefont_20211204+svn4273.orig.tar.gz), which disappears from the pool when Debian updates
 package:
   name: fonts-freefont-otf
-  version: 20211204+svn4273
+  version: 20211204_svn4273
   epoch: 0
   description: Freefont Serif, Sans and Mono OpenType fonts
   copyright:
@@ -35,15 +35,29 @@ environment:
       - py3-supported-numpy  # Debian: python3-numpy
       - coreutils
       - findutils
+      - bash  # debian/ scripts are bash scripts; Essential in Debian
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
-      for f in FreeSans-Use-Adobe-Glyph-List.patch fix-python3-tweaks.patch; do mv fonts-freefont-otf/$f .recipe-files/; done
+      for f in FreeSans-Use-Adobe-Glyph-List.patch XftConfig clean copyright fix-python3-tweaks.patch fonts-freefont-otf.docs fonts-freefont-otf.install fonts-freefont-ttf.docs fonts-freefont-ttf.install fonts-freefont-udeb.install rules salsa-ci.yml scripts_ConvertFont.ff scripts_ConvertOTFont.ff scripts_FreeSans-strip scripts_README.strip_glyphs scripts_convertfonts.sh scripts_strip_glyphs.pe scripts_stripfonts.sh watch; do mv fonts-freefont-otf/$f .recipe-files/; done
       rmdir fonts-freefont-otf 2>/dev/null || true
+      mkdir -p debian && cp -a .recipe-files/. debian/
+      mkdir -p debian/scripts
+      mv debian/scripts_ConvertFont.ff debian/scripts/ConvertFont.ff
+      mv debian/scripts_ConvertOTFont.ff debian/scripts/ConvertOTFont.ff
+      mv debian/scripts_FreeSans-strip debian/scripts/FreeSans-strip
+      mv debian/scripts_README.strip_glyphs debian/scripts/README.strip_glyphs
+      mv debian/scripts_convertfonts.sh debian/scripts/convertfonts.sh
+      mv debian/scripts_strip_glyphs.pe debian/scripts/strip_glyphs.pe
+      mv debian/scripts_stripfonts.sh debian/scripts/stripfonts.sh
+      # the scripts are executable in Debian's tree
+      find debian -type f | while read -r f; do if head -c2 "$f" | grep -q '#!'; then chmod +x "$f"; fi; done
+      # what Debian's scripts install into debian/tmp is the package's
+      mkdir -p "${{targets.destdir}}" && ln -sfn "${{targets.destdir}}" debian/tmp
   - uses: fetch
     with:
-      uri: https://deb.debian.org/debian/pool/main/f/fonts-freefont/fonts-freefont_${{package.version}}.orig.tar.gz
+      uri: https://deb.debian.org/debian/pool/main/f/fonts-freefont/fonts-freefont_20211204+svn4273.orig.tar.gz
       expected-sha256: 41d21ea08cdb64f208dd452c8a6251bfd84bc585baa35eb6378d0ae7a4d7a39e
   - uses: patch
     with:
@@ -66,13 +80,16 @@ pipeline:
           mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
         done
       done
+  - name: Remove libtool archives
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
 subpackages:
   - name: fonts-freefont-ttf
     description: Freefont Serif, Sans and Mono Truetype fonts
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/truetype/freefont"
-          mv "${{targets.destdir}}"/sfd/*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/freefont/"
+          cp -a sfd/*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/freefont/"
           mkdir -p "${{targets.contextdir}}/usr/share/doc/fonts-freefont-ttf"
           cp -a AUTHORS "${{targets.contextdir}}/usr/share/doc/fonts-freefont-ttf/"
           cp -a README "${{targets.contextdir}}/usr/share/doc/fonts-freefont-ttf/"

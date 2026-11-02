@@ -1,0 +1,26 @@
+From: Bastian Germann <bage@debian.org>
+Date: Mon, 5 Oct 2026 22:41:26 +0200
+Subject: Backport beginPath change
+
+Backport two lines from upstream e8def5ca31f816bfa12855d58a60b024db2342a6
+---
+--- a/Lib/fontParts/test/test_component.py
++++ b/Lib/fontParts/test/test_component.py
+@@ -700,7 +700,7 @@ class TestComponent(unittest.TestCase):
+         pointPen = DigestPointPen()
+         glyph.drawPoints(pointPen)
+         expected = (
+-            ('beginPath', None),
++            'beginPath',
+             ((0, 0), u'line', False, 'point 0'),
+             ((0, 100), u'line', False, 'point 1'),
+             ((100, 100), u'line', False, 'point 2'),
+@@ -739,7 +739,7 @@ class TestComponent(unittest.TestCase):
+         pointPen = DigestPointPen()
+         glyph.drawPoints(pointPen)
+         expected = (
+-            ('beginPath', None),
++            'beginPath',
+             ((0, 0), u'line', False, 'point 0'),
+             ((0, 200), u'line', False, 'point 1'),
+             ((200, 200), u'line', False, 'point 2'),

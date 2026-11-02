@@ -1,0 +1,45 @@
+#!/bin/sh
+# Build the local-only scala-2.13-stage0 .deb used by the one-time bootstrap
+# build (build profile pkg.scala.stage0). It holds upstream's pinned STARR
+# jars, checked against the checksums below; see debian/README.source.
+# This is a maintainer tool, run by hand. It is not used by debian/rules and
+# the .deb it produces is never uploaded.
+#
+# Usage: debian/make-stage0-deb OUTDIR
+set -e
+
+STARR=2.13.17
+BASE=https://repo1.maven.org/maven2/org/scala-lang
+
+OUT=${1:?usage: $0 OUTDIR}
+mkdir -p "$OUT"
+OUT=$(cd "$OUT" && pwd)
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT
+
+ROOT=$WORK/root
+mkdir -p "$ROOT/DEBIAN" "$ROOT/usr/share/scala-2.13-stage0"
+
+for a in library reflect compiler; do
+	curl -fsSL -o "$WORK/scala-$a.jar" "$BASE/scala-$a/$STARR/scala-$a-$STARR.jar"
+done
+
+( cd "$WORK" && sha256sum -c - ) <<EOF
+b7822c4225243215f185925724a6edff92cf18777a136cc738276c4446fac76c  scala-library.jar
+734533897bcfabe7a6e7fa09dbee165b257b0396e14e8a57c75111db8e04bb98  scala-reflect.jar
+073ab364dc902519719bd6b9463562128abc5881d2a2e4b7a5e2d04cdd7bc025  scala-compiler.jar
+EOF
+
+install -m644 "$WORK"/scala-*.jar "$ROOT/usr/share/scala-2.13-stage0/"
+
+cat > "$ROOT/DEBIAN/control" <<EOF
+Package: scala-2.13-stage0
+Version: $STARR
+Architecture: all
+Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.org>
+Description: Scala $STARR STARR jars for bootstrapping src:scala-2.13 (local only)
+ Upstream's pinned STARR, used once by the pkg.scala.stage0 build profile.
+ Not for the archive.
+EOF
+
+dpkg-deb --root-owner-group --build "$ROOT" "$OUT/scala-2.13-stage0_${STARR}_all.deb"

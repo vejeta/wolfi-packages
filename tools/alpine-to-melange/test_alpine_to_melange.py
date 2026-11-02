@@ -229,5 +229,19 @@ class AppliedPatchesTest(unittest.TestCase):
                          ["done.patch"])
 
 
+class CargoLockTest(unittest.TestCase):
+
+    def test_top_level_cargo_lock(self):
+        import tarfile
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+            for name, data in (("sq-1.4.1/vendor/x/Cargo.lock", b"nested"),
+                               ("sq-1.4.1/Cargo.lock", b'[[package]]\nname = "openssl-sys"\nversion = "0.9.117"\n')):
+                info = tarfile.TarInfo(name)
+                info.size = len(data)
+                tar.addfile(info, io.BytesIO(data))
+        self.assertIn('version = "0.9.117"', a2m.cargo_lock(buf.getvalue()))
+
+
 if __name__ == "__main__":
     unittest.main()

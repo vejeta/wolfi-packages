@@ -12,3 +12,7 @@ fonts-font-awesome x86_64  # fontTools needs brotli for WOFF2 (no py3-brotli in 
 fonts-font-awesome aarch64
 fonts-roboto-slab x86_64   # Debian's font build (gftools) fails on Wolfi
 fonts-roboto-slab aarch64
+fonts-inter x86_64         # needs py3-skia-pathops (libskia): not ported, nothing depends on fonts-inter
+fonts-inter aarch64
+fonts-cantarell x86_64     # needs afdko (the antlr4 tool, a Maven build): not ported, nothing depends on it
+fonts-cantarell aarch64

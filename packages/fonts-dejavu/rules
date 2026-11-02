@@ -1,0 +1,22 @@
+#!/usr/bin/make -f
+
+include /usr/share/dpkg/pkg-info.mk
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	make full-ttf
+	sh debian/scripts/generate-udeb.sh
+	touch --no-create --date="$(shell date --utc --date=@${SOURCE_DATE_EPOCH} --iso-8601=seconds)" build/*.ttf
+
+override_dh_auto_clean:
+	$(RM) -rf tmp/ build/ udeb-generated/ udeb-build/
+	$(RM) -f debian/stamp-common-build
+	dh_auto_clean
+
+execute_after_dh_install:
+	sh debian/scripts/generate-web.sh
+
+override_dh_installchangelogs:
+	dh_installchangelogs NEWS

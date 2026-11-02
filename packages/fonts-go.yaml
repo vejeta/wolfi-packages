@@ -10,7 +10,7 @@
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/f/fonts-go/fonts-go_0~20170330.orig.tar.xz), which disappears from the pool when Debian updates
 package:
   name: fonts-go
-  version: '0~20170330'
+  version: 0_git20170330
   epoch: 0
   description: High-quality WGL4 TrueType fonts for Go project
   copyright:
@@ -31,10 +31,24 @@ pipeline:
       rmdir fonts-go 2>/dev/null || true
   - uses: fetch
     with:
-      uri: https://deb.debian.org/debian/pool/main/f/fonts-go/fonts-go_${{package.version}}.orig.tar.xz
+      uri: 'https://deb.debian.org/debian/pool/main/f/fonts-go/fonts-go_0~20170330.orig.tar.xz'
       expected-sha256: cc0bff4d503ccfa96b465e9a62847161ad46b1150463c361a5b95fc14c7e12cd
+      strip-components: 0
   - name: Install files
     runs: |
+      mkdir -p "${{targets.destdir}}/usr/share/fonts/fonts-go"
+      cp -a Go-Bold-Italic.ttf "${{targets.destdir}}/usr/share/fonts/fonts-go/"
+      cp -a Go-Bold.ttf "${{targets.destdir}}/usr/share/fonts/fonts-go/"
+      cp -a Go-Italic.ttf "${{targets.destdir}}/usr/share/fonts/fonts-go/"
+      cp -a Go-Medium-Italic.ttf "${{targets.destdir}}/usr/share/fonts/fonts-go/"
+      cp -a Go-Medium.ttf "${{targets.destdir}}/usr/share/fonts/fonts-go/"
+      cp -a Go-Mono-Bold-Italic.ttf "${{targets.destdir}}/usr/share/fonts/fonts-go/"
+      cp -a Go-Mono-Bold.ttf "${{targets.destdir}}/usr/share/fonts/fonts-go/"
+      cp -a Go-Mono-Italic.ttf "${{targets.destdir}}/usr/share/fonts/fonts-go/"
+      cp -a Go-Mono.ttf "${{targets.destdir}}/usr/share/fonts/fonts-go/"
+      cp -a Go-Regular.ttf "${{targets.destdir}}/usr/share/fonts/fonts-go/"
+      cp -a Go-Smallcaps.ttf "${{targets.destdir}}/usr/share/fonts/fonts-go/"
+      cp -a Go-Smallcaps-Italic.ttf "${{targets.destdir}}/usr/share/fonts/fonts-go/"
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/fonts-go/copyright
 update:
   enabled: true

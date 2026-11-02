@@ -1,0 +1,28 @@
+#!/bin/sh
+# Smoke test: compile and run a small program with the installed Scala 2.13
+# commands (scalac-2.13, scala-2.13), and generate its documentation with
+# scaladoc-2.13.
+set -e
+
+WORK="${AUTOPKGTEST_TMP:-$(mktemp -d)}"
+cd "$WORK"
+
+cat > Hello.scala <<'EOF'
+object Hello {
+  def main(args: Array[String]): Unit = {
+    val xs = List(1, 2, 3).map(_ + 1)
+    println(s"Scala ${util.Properties.versionNumberString} says: " + xs.mkString(", "))
+  }
+}
+EOF
+
+scalac-2.13 Hello.scala
+scala-2.13 Hello > out.txt
+cat out.txt
+grep -q "^Scala 2\.13\..* says: 2, 3, 4$" out.txt
+
+mkdir doc
+scaladoc-2.13 -d doc Hello.scala
+test -s doc/index.html
+test -s doc/lib/jquery.min.js
+echo "smoke test: PASS"

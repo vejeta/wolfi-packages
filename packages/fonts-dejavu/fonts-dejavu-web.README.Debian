@@ -1,0 +1,25 @@
+How to use fonts-dejavu-web
+===========================
+
+1. Install javascript-common:
+
+   $ sudo apt install javascript-common
+
+2. Enable javascript-common (apache):
+
+   $ sudo a2enconf javascript-common
+   $ sudo apache2 restart
+
+3. Use the following HTML code in your Web sites to use DejaVu fonts:
+
+   <link href="/javascript/fonts-dejavu/fonts-dejavu.css" rel="stylesheet" />
+
+   Browsers will automatically select woff2 if supported or fallback to woff or
+   truetype.
+
+4. Additionally use the following CSS stylesheet if you're using bootstrap to
+   use DejaVu as default font:
+
+   <link href="/javascript/fonts-dejavu/bootstrap.css" rel="stylesheet" />
+
+ -- Daniel Baumann <daniel.baumann@progress-linux.org>  Tue, 31 Jan 2023 17:58:18 +0100

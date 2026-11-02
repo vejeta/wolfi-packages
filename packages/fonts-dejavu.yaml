@@ -8,9 +8,7 @@
 #
 # Conversion notes:
 # - udeb package(s) left out: fonts-dejavu-udeb, fonts-dejavu-mono-udeb
-# - build dependency 'sfnt2woff-zopfli' (Debian 'sfnt2woff-zopfli') not found in Wolfi; left out
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/f/fonts-dejavu/fonts-dejavu_2.37.orig.tar.bz2), which disappears from the pool when Debian updates
-# - port debian/rules override_dh_auto_build: make full-ttf && sh debian/scripts/generate-udeb.sh && touch --no-create --date="$(shell date --utc --date=@${SOURCE_DATE_EPOCH} --iso-8601=seconds)" build/*.ttf
 package:
   name: fonts-dejavu
   version: '2.37'
@@ -35,7 +33,7 @@ environment:
       - fontforge
       - perl-font-ttf  # Debian: libfont-ttf-perl
       - perl
-      # TODO(debian-to-melange): sfnt2woff-zopfli is not in Wolfi (Debian: sfnt2woff-zopfli); left out
+      - sfnt2woff-zopfli  # Wolfi Community Packages
       - woff2
       - coreutils
       - findutils
@@ -43,27 +41,35 @@ pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
       mkdir -p .recipe-files
-      for f in 0002-fontconfig-remove-generic-name-assignment-and-aliasi.patch upstream-homepage.patch; do mv fonts-dejavu/$f .recipe-files/; done
+      for f in 0002-fontconfig-remove-generic-name-assignment-and-aliasi.patch copyright fonts-dejavu-core.docs fonts-dejavu-core.install fonts-dejavu-core.links fonts-dejavu-core.maintscript fonts-dejavu-extra.install fonts-dejavu-mono-udeb.install fonts-dejavu-mono.docs fonts-dejavu-mono.install fonts-dejavu-mono.links fonts-dejavu-udeb.install fonts-dejavu-web.README.Debian fonts-dejavu-web.install fonts-dejavu-web.links javascript_bootstrap.css javascript_fonts-dejavu.css rules salsa-ci.yml scripts_README.strip_glyphs scripts_generate-udeb.sh scripts_generate-web.sh scripts_strip_glyphs.pe upstream-homepage.patch watch; do mv fonts-dejavu/$f .recipe-files/; done
       rmdir fonts-dejavu 2>/dev/null || true
+      mkdir -p debian && cp -a .recipe-files/. debian/
+      mkdir -p debian/javascript debian/scripts
+      mv debian/javascript_bootstrap.css debian/javascript/bootstrap.css
+      mv debian/javascript_fonts-dejavu.css debian/javascript/fonts-dejavu.css
+      mv debian/scripts_README.strip_glyphs debian/scripts/README.strip_glyphs
+      mv debian/scripts_generate-udeb.sh debian/scripts/generate-udeb.sh
+      mv debian/scripts_generate-web.sh debian/scripts/generate-web.sh
+      mv debian/scripts_strip_glyphs.pe debian/scripts/strip_glyphs.pe
+      # the scripts are executable in Debian's tree
+      find debian -type f | while read -r f; do if head -c2 "$f" | grep -q '#!'; then chmod +x "$f"; fi; done
+      # what Debian's scripts install into debian/tmp is the package's
+      mkdir -p "${{targets.destdir}}" && ln -sfn "${{targets.destdir}}" debian/tmp
   - uses: fetch
     with:
       uri: https://deb.debian.org/debian/pool/main/f/fonts-dejavu/fonts-dejavu_${{package.version}}.orig.tar.bz2
       expected-sha256: 4b21c5203f792343d5e90ab1cb0cf07e99887218abe3d83cd9a98cea9085e799
   - uses: patch
     with:
-      patches: .recipe-files/upstream-homepage.patch .recipe-files/0002-fontconfig-remove-generic-name-assignment-and-aliasi.patch
-  - runs: |
-      make -j$(nproc)
-      if make -s -n install >/dev/null 2>&1; then
-        make install DESTDIR="${{targets.destdir}}" PREFIX=/usr
-      fi
-  # TODO(debian-to-melange): port debian/rules override_dh_auto_build: make full-ttf && sh debian/scripts/generate-udeb.sh && touch --no-create --date="$(shell date --utc --date=@${SOURCE_DATE_EPOCH} --iso-8601=seconds)" build/*.ttf
+      patches: debian/upstream-homepage.patch debian/0002-fontconfig-remove-generic-name-assignment-and-aliasi.patch
+  - name: Build (from debian/rules override_dh_auto_build)
+    runs: |
+      make full-ttf
+      sh debian/scripts/generate-udeb.sh
+      touch --no-create --date="$(date --utc --date=@${SOURCE_DATE_EPOCH} --iso-8601=seconds)" build/*.ttf
   - name: Install files
     runs: |
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/fonts-dejavu
-  - name: From debian/rules execute_after_dh_install
-    runs: |
-      sh debian/scripts/generate-web.sh
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
@@ -72,25 +78,28 @@ pipeline:
           mkdir -p "$d/usr/bin" && mv "$d/$s"/* "$d/usr/bin/" 2>/dev/null; rmdir "$d/$s"
         done
       done
+  - name: Remove libtool archives
+    runs: |
+      find "${{targets.destdir}}" -name "*.la" -delete
 subpackages:
   - name: fonts-dejavu-core
     description: Vera font family derivate with additional characters
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu"
-          mv "${{targets.destdir}}/build/DejaVuSans-Bold.ttf" "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
-          mv "${{targets.destdir}}/build/DejaVuSans.ttf" "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
-          mv "${{targets.destdir}}/build/DejaVuSerif-Bold.ttf" "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
-          mv "${{targets.destdir}}/build/DejaVuSerif.ttf" "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
+          cp -a build/DejaVuSans-Bold.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
+          cp -a build/DejaVuSans.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
+          cp -a build/DejaVuSerif-Bold.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
+          cp -a build/DejaVuSerif.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
           mkdir -p "${{targets.contextdir}}/etc/fonts/conf.avail"
-          mv "${{targets.destdir}}/fontconfig/20-unhint-small-dejavu-lgc-sans.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
-          mv "${{targets.destdir}}/fontconfig/20-unhint-small-dejavu-lgc-serif.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
-          mv "${{targets.destdir}}/fontconfig/20-unhint-small-dejavu-sans.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
-          mv "${{targets.destdir}}/fontconfig/20-unhint-small-dejavu-serif.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
-          mv "${{targets.destdir}}/fontconfig/57-dejavu-sans.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
-          mv "${{targets.destdir}}/fontconfig/57-dejavu-serif.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
-          mv "${{targets.destdir}}/fontconfig/58-dejavu-lgc-sans.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
-          mv "${{targets.destdir}}/fontconfig/58-dejavu-lgc-serif.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a fontconfig/20-unhint-small-dejavu-lgc-sans.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a fontconfig/20-unhint-small-dejavu-lgc-serif.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a fontconfig/20-unhint-small-dejavu-sans.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a fontconfig/20-unhint-small-dejavu-serif.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a fontconfig/57-dejavu-sans.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a fontconfig/57-dejavu-serif.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a fontconfig/58-dejavu-lgc-sans.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a fontconfig/58-dejavu-lgc-serif.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
           mkdir -p "${{targets.contextdir}}/etc/fonts/conf.d"
           ln -sf /etc/fonts/conf.avail/20-unhint-small-dejavu-lgc-sans.conf "${{targets.contextdir}}/etc/fonts/conf.d/20-unhint-small-dejavu-lgc-sans.conf"
           ln -sf /etc/fonts/conf.avail/20-unhint-small-dejavu-lgc-serif.conf "${{targets.contextdir}}/etc/fonts/conf.d/20-unhint-small-dejavu-lgc-serif.conf"
@@ -115,12 +124,12 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu"
-          mv "${{targets.destdir}}"/build/DejaVuSansMono*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
+          cp -a build/DejaVuSansMono*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
           mkdir -p "${{targets.contextdir}}/etc/fonts/conf.avail"
-          mv "${{targets.destdir}}/fontconfig/20-unhint-small-dejavu-lgc-sans-mono.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
-          mv "${{targets.destdir}}/fontconfig/20-unhint-small-dejavu-sans-mono.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
-          mv "${{targets.destdir}}/fontconfig/57-dejavu-sans-mono.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
-          mv "${{targets.destdir}}/fontconfig/58-dejavu-lgc-sans-mono.conf" "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a fontconfig/20-unhint-small-dejavu-lgc-sans-mono.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a fontconfig/20-unhint-small-dejavu-sans-mono.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a fontconfig/57-dejavu-sans-mono.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
+          cp -a fontconfig/58-dejavu-lgc-sans-mono.conf "${{targets.contextdir}}/etc/fonts/conf.avail/"
           mkdir -p "${{targets.contextdir}}/etc/fonts/conf.d"
           ln -sf /etc/fonts/conf.avail/20-unhint-small-dejavu-lgc-sans-mono.conf "${{targets.contextdir}}/etc/fonts/conf.d/20-unhint-small-dejavu-lgc-sans-mono.conf"
           ln -sf /etc/fonts/conf.avail/20-unhint-small-dejavu-sans-mono.conf "${{targets.contextdir}}/etc/fonts/conf.d/20-unhint-small-dejavu-sans-mono.conf"
@@ -138,11 +147,11 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu"
-          mv "${{targets.destdir}}"/build/DejaVu*Condensed*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
-          mv "${{targets.destdir}}"/build/DejaVu*ExtraLight.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
-          mv "${{targets.destdir}}"/build/DejaVu*Italic.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
-          mv "${{targets.destdir}}"/build/DejaVuSans-*Oblique.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
-          mv "${{targets.destdir}}"/build/DejaVu*Math*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
+          cp -a build/DejaVu*Condensed*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
+          cp -a build/DejaVu*ExtraLight.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
+          cp -a build/DejaVu*Italic.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
+          cp -a build/DejaVuSans-*Oblique.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
+          cp -a build/DejaVu*Math*.ttf "${{targets.contextdir}}/usr/share/fonts/truetype/dejavu/"
     dependencies:
       runtime:
         - fonts-dejavu-core
@@ -151,10 +160,19 @@ subpackages:
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/share/javascript/fonts-dejavu"
-          mv "${{targets.destdir}}"/debian/javascript/* "${{targets.contextdir}}/usr/share/javascript/fonts-dejavu/"
+          cp -a debian/javascript/* "${{targets.contextdir}}/usr/share/javascript/fonts-dejavu/"
           ln -sf /usr/share/fonts/truetype/dejavu "${{targets.contextdir}}/usr/share/javascript/fonts-dejavu/ttf"
           ln -sf /usr/share/fonts/woff/dejavu "${{targets.contextdir}}/usr/share/javascript/fonts-dejavu/woff"
           ln -sf /usr/share/fonts/woff2/dejavu "${{targets.contextdir}}/usr/share/javascript/fonts-dejavu/woff2"
+      - name: 'debian/<package> are the packages'' trees, as after dh_install'
+        runs: |
+          mkdir -p "${{targets.outdir}}/fonts-dejavu-core" && rm -rf debian/fonts-dejavu-core && ln -s "${{targets.outdir}}/fonts-dejavu-core" debian/fonts-dejavu-core
+          mkdir -p "${{targets.outdir}}/fonts-dejavu-mono" && rm -rf debian/fonts-dejavu-mono && ln -s "${{targets.outdir}}/fonts-dejavu-mono" debian/fonts-dejavu-mono
+          mkdir -p "${{targets.outdir}}/fonts-dejavu-extra" && rm -rf debian/fonts-dejavu-extra && ln -s "${{targets.outdir}}/fonts-dejavu-extra" debian/fonts-dejavu-extra
+          mkdir -p "${{targets.outdir}}/fonts-dejavu-web" && rm -rf debian/fonts-dejavu-web && ln -s "${{targets.outdir}}/fonts-dejavu-web" debian/fonts-dejavu-web
+      - name: From debian/rules execute_after_dh_install
+        runs: |
+          sh debian/scripts/generate-web.sh
     dependencies:
       runtime:
         - fonts-dejavu

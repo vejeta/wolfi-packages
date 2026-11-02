@@ -1,0 +1,1 @@
+debian/poms/scala-compiler.pom.xml --has-package-version --java-lib --no-usj-versionless --artifact=debian/buildout2/jars/scala-compiler.jar

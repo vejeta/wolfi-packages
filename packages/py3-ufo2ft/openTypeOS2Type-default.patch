@@ -1,0 +1,181 @@
+From: Bastian Germann <bage@debian.org>
+Subject: Let openTypeOS2Type default to no restrictions
+
+Align the font restrictions better with DFSG.
+---
+--- a/Lib/ufo2ft/fontInfoData.py
++++ b/Lib/ufo2ft/fontInfoData.py
+@@ -380,7 +380,7 @@ staticFallbackData = dict(
+     openTypeOS2FamilyClass=[0, 0],
+     openTypeOS2UnicodeRanges=None,
+     openTypeOS2CodePageRanges=None,
+-    openTypeOS2Type=[2],
++    openTypeOS2Type=[],
+     openTypeOS2SubscriptXSize=None,
+     openTypeOS2SubscriptYSize=None,
+     openTypeOS2SubscriptXOffset=None,
+--- a/tests/data/DSv5/MutatorSansVariable_Weight-CFF2.ttx
++++ b/tests/data/DSv5/MutatorSansVariable_Weight-CFF2.ttx
+@@ -64,7 +64,7 @@
+     <xAvgCharWidth value="500"/>
+     <usWeightClass value="300"/>
+     <usWidthClass value="5"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/DSv5/MutatorSansVariable_Weight-TTF.ttx
++++ b/tests/data/DSv5/MutatorSansVariable_Weight-TTF.ttx
+@@ -78,7 +78,7 @@
+     <xAvgCharWidth value="500"/>
+     <usWeightClass value="300"/>
+     <usWidthClass value="5"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/DSv5/MutatorSansVariable_Weight_Width-CFF2.ttx
++++ b/tests/data/DSv5/MutatorSansVariable_Weight_Width-CFF2.ttx
+@@ -64,7 +64,7 @@
+     <xAvgCharWidth value="500"/>
+     <usWeightClass value="300"/>
+     <usWidthClass value="1"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/DSv5/MutatorSansVariable_Weight_Width-TTF.ttx
++++ b/tests/data/DSv5/MutatorSansVariable_Weight_Width-TTF.ttx
+@@ -78,7 +78,7 @@
+     <xAvgCharWidth value="500"/>
+     <usWeightClass value="300"/>
+     <usWidthClass value="1"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/DSv5/MutatorSansVariable_Width-CFF2.ttx
++++ b/tests/data/DSv5/MutatorSansVariable_Width-CFF2.ttx
+@@ -64,7 +64,7 @@
+     <xAvgCharWidth value="500"/>
+     <usWeightClass value="400"/>
+     <usWidthClass value="1"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/DSv5/MutatorSansVariable_Width-TTF.ttx
++++ b/tests/data/DSv5/MutatorSansVariable_Width-TTF.ttx
+@@ -78,7 +78,7 @@
+     <xAvgCharWidth value="500"/>
+     <usWeightClass value="400"/>
+     <usWidthClass value="1"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/DSv5/MutatorSerifVariable_Width-CFF2.ttx
++++ b/tests/data/DSv5/MutatorSerifVariable_Width-CFF2.ttx
+@@ -64,7 +64,7 @@
+     <xAvgCharWidth value="500"/>
+     <usWeightClass value="400"/>
+     <usWidthClass value="1"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/DSv5/MutatorSerifVariable_Width-TTF.ttx
++++ b/tests/data/DSv5/MutatorSerifVariable_Width-TTF.ttx
+@@ -78,7 +78,7 @@
+     <xAvgCharWidth value="500"/>
+     <usWeightClass value="400"/>
+     <usWidthClass value="1"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/TestVariableFont-CFF2-cffsubr.ttx
++++ b/tests/data/TestVariableFont-CFF2-cffsubr.ttx
+@@ -64,7 +64,7 @@
+     <xAvgCharWidth value="580"/>
+     <usWeightClass value="350"/>
+     <usWidthClass value="5"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/TestVariableFont-CFF2-post3.ttx
++++ b/tests/data/TestVariableFont-CFF2-post3.ttx
+@@ -64,7 +64,7 @@
+     <xAvgCharWidth value="580"/>
+     <usWeightClass value="350"/>
+     <usWidthClass value="5"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/TestVariableFont-CFF2-useProductionNames.ttx
++++ b/tests/data/TestVariableFont-CFF2-useProductionNames.ttx
+@@ -64,7 +64,7 @@
+     <xAvgCharWidth value="580"/>
+     <usWeightClass value="350"/>
+     <usWidthClass value="5"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/TestVariableFont-CFF2.ttx
++++ b/tests/data/TestVariableFont-CFF2.ttx
+@@ -64,7 +64,7 @@
+     <xAvgCharWidth value="580"/>
+     <usWeightClass value="350"/>
+     <usWidthClass value="5"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/TestVariableFont-TTF-post3.ttx
++++ b/tests/data/TestVariableFont-TTF-post3.ttx
+@@ -78,7 +78,7 @@
+     <xAvgCharWidth value="580"/>
+     <usWeightClass value="350"/>
+     <usWidthClass value="5"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/TestVariableFont-TTF-useProductionNames.ttx
++++ b/tests/data/TestVariableFont-TTF-useProductionNames.ttx
+@@ -78,7 +78,7 @@
+     <xAvgCharWidth value="580"/>
+     <usWeightClass value="350"/>
+     <usWidthClass value="5"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>
+--- a/tests/data/TestVariableFont-TTF.ttx
++++ b/tests/data/TestVariableFont-TTF.ttx
+@@ -78,7 +78,7 @@
+     <xAvgCharWidth value="580"/>
+     <usWeightClass value="350"/>
+     <usWidthClass value="5"/>
+-    <fsType value="00000000 00000100"/>
++    <fsType value="00000000 00000000"/>
+     <ySubscriptXSize value="650"/>
+     <ySubscriptYSize value="600"/>
+     <ySubscriptXOffset value="0"/>

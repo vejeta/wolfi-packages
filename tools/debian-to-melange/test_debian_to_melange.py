@@ -375,11 +375,28 @@ class HelperTest(unittest.TestCase):
         self.assertEqual(rules.configure_opts(), ["-Dfoo=true", "-Dbar=1.2"])
         self.assertEqual(rules.template_substitutions(), {"postinst": ("postinst.in", {"@V@": "V"})})
 
+    def test_single_top_directory(self):
+        import io
+        import tarfile
+
+        def tarball(names):
+            buf = io.BytesIO()
+            with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+                for name in names:
+                    tar.addfile(tarfile.TarInfo(name), io.BytesIO(b""))
+            return buf.getvalue()
+        self.assertTrue(d2m.single_top_directory(tarball(["pkg-1.0/a", "pkg-1.0/src/b"])))
+        self.assertFalse(d2m.single_top_directory(tarball(["Go-Bold.ttf", "Go-Mono.ttf"])))
+        self.assertFalse(d2m.single_top_directory(tarball(["lobstertwo v2.0/src/a.otf", "__MACOSX/x"])))
+
     def test_upstream_version_plus_digits(self):
         self.assertEqual(d2m.debian_upstream_version("0.35.0+20060710.6"), "0.35.0.20060710.6")
         self.assertEqual(d2m.debian_upstream_version("1.2+git20170224-1"), "1.2_git20170224")
         self.assertEqual(d2m.debian_upstream_version("2.002+20231012+ds-1"), "2.002.20231012")
         self.assertEqual(d2m.debian_upstream_version("2.13b171+ds-2"), "2.13_beta171")
+        self.assertEqual(d2m.debian_upstream_version("20211204+svn4273-2"), "20211204_svn4273")
+        self.assertEqual(d2m.debian_upstream_version("0~20170330-2"), "0_git20170330")
+        self.assertEqual(d2m.debian_upstream_version("146.20260602~git.3476902+dfsg-5"), "146.20260602")
         # the tags keep the +
         self.assertEqual(d2m.debian_upstream_version("2.002+20231012+ds-1", raw=True), "2.002+20231012")
 

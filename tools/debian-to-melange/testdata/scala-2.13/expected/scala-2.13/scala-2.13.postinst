@@ -1,0 +1,27 @@
+#!/bin/sh
+
+set -e
+
+priority=2133
+bindir=/usr/share/scala-2.13/bin
+mandir=/usr/share/scala-2.13/man/man1
+
+case "$1" in
+    configure)
+        update-alternatives \
+            --install /usr/bin/scala    scala    $bindir/scala $priority \
+            --slave   /usr/bin/scalac   scalac   $bindir/scalac \
+            --slave   /usr/bin/scaladoc scaladoc $bindir/scaladoc \
+            --slave   /usr/bin/fsc      fsc      $bindir/fsc \
+            --slave   /usr/bin/scalap   scalap   $bindir/scalap \
+            --slave   /usr/share/man/man1/scala.1.gz    scala.1.gz    $mandir/scala.1.gz \
+            --slave   /usr/share/man/man1/scalac.1.gz   scalac.1.gz   $mandir/scalac.1.gz \
+            --slave   /usr/share/man/man1/scaladoc.1.gz scaladoc.1.gz $mandir/scaladoc.1.gz \
+            --slave   /usr/share/man/man1/fsc.1.gz      fsc.1.gz      $mandir/fsc.1.gz \
+            --slave   /usr/share/man/man1/scalap.1.gz   scalap.1.gz   $mandir/scalap.1.gz
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

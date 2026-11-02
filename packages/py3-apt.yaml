@@ -43,19 +43,12 @@ environment:
       - perl
       - dpkg-dev
       - apt  # Wolfi Community Packages
-      - apt-utils  # Wolfi Community Packages
-      - distro-info-data  # Wolfi Community Packages
-      - fakeroot  # Wolfi Community Packages
       - libapt-pkg-dev  # Wolfi Community Packages
       - python3-dev  # Debian: python3-all-dev
       - py3-supported-distutils-extra  # Wolfi Community Packages (Debian: python3-distutils-extra)
       - py3-supported-setuptools  # Debian: python3-setuptools
       - py3.13-sphinx-bin  # commands of Debian's python3-sphinx
       - py3-supported-sphinx  # Debian: python3-sphinx
-      - gnupg
-      - gnupg-dirmngr  # Debian: dirmngr
-      - pycodestyle  # Wolfi Community Packages
-      - pyflakes3  # Wolfi Community Packages
       - coreutils
       - findutils
   environment:
@@ -83,10 +76,6 @@ pipeline:
   - name: Install files
     runs: |
       install -Dm644 .recipe-files/copyright "${{targets.destdir}}"/usr/share/doc/py3-apt/copyright
-  - name: From debian/rules override_dh_installdocs
-    runs: |
-      mkdir -p "${{targets.destdir}}/usr/share/doc/py3-apt"
-      cp -a python3-apt "${{targets.destdir}}/usr/share/doc/py3-apt/"
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
@@ -134,6 +123,8 @@ test:
       packages:
         - busybox
         - python3
+        - py3-apt-common  # Debian's @: the binary packages of the source
+        - py3-apt-dev  # Debian's @: the binary packages of the source
         - apt-utils  # Wolfi Community Packages
         - binutils
         - fakeroot  # Wolfi Community Packages
@@ -142,12 +133,16 @@ test:
         - pyflakes3  # Wolfi Community Packages
         - gnupg
         - distro-info-data  # Wolfi Community Packages
+        - python3-dev
+        - lsb-release-minimal  # Debian: lsb-release
+        - iso-codes
         - bash  # Essential in Debian, so on every testbed
         - coreutils  # Essential in Debian, so on every testbed
         - diffutils  # Essential in Debian, so on every testbed
         - dpkg  # Essential in Debian, so on every testbed
         - findutils  # Essential in Debian, so on every testbed
         - grep  # Essential in Debian, so on every testbed
+        - gzip  # Essential in Debian, so on every testbed
         - sed  # Essential in Debian, so on every testbed
   pipeline:
     - runs: |
@@ -165,11 +160,12 @@ test:
       runs: |
         db=/var/lib/dpkg
         mkdir -p "$db/info" && touch "$db/status"
-        awk -v db="$db" -v aliases='dirmngr=gnupg-dirmngr libc-bin=glibc libc6=glibc perl-base=perl python3-all=python3' '
+        awk -v db="$db" -v aliases='dirmngr=gnupg-dirmngr libc-bin=glibc libc6=glibc lsb-release=lsb-release-minimal perl-base=perl python3-all=python3' '
           BEGIN { n = split(aliases, a, " "); for (i = 1; i <= n; i++) { split(a[i], kv, "="); alias[kv[2]] = alias[kv[2]] " " kv[1] } }
           function add(   m, j, f) {
             m = split(pkg alias[pkg], names, " ")
             for (j = 1; j <= m; j++) {
+              if (seen[names[j]]++) continue  # one entry per name: dpkg rejects duplicates
               f = db "/info/" names[j] ".list"
               printf "%s", files > f; close(f)
               gsub(/_/, "~", ver)
@@ -188,6 +184,13 @@ test:
           # po-debconf's translatable fields (_Description, __Choices) in the C locale
           [ -f "$t" ] && sed '/^#/d; s/^__*//' "$t" > "$db/info/python3-apt.templates" && break
         done
+        # / and /tmp as on a Debian testbed: sandboxes may make / 0700 (apt's _apt reads below it)
+        chmod 755 / 2>/dev/null || true
+        chmod 1777 /tmp 2>/dev/null || true
+        # base-files' vendor (dpkg-vendor, dpkg-buildpackage)
+        mkdir -p /etc/dpkg/origins
+        [ -e /etc/dpkg/origins/debian ] || printf 'Vendor: Debian\nVendor-URL: https://www.debian.org/\nBugs: debbugs://bugs.debian.org\n' > /etc/dpkg/origins/debian
+        [ -e /etc/dpkg/origins/default ] || ln -s debian /etc/dpkg/origins/default
     - name: py3versions (as on a Debian testbed)
       runs: |
         mkdir -p /usr/local/bin
@@ -200,6 +203,7 @@ test:
     - name: 'autopkgtest: run-tests'
       runs: |
         export AUTOPKGTEST_TMP="$(mktemp -d)"
+        export LANG="${LANG:-C.UTF-8}"
         set +o pipefail 2>/dev/null || true
         set -e
 

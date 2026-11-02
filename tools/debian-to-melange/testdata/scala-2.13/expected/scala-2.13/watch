@@ -1,0 +1,9 @@
+Version: 5
+Mode: git
+Source: https://github.com/scala/scala.git
+# This source package is the Scala 2.13 series.
+Matching-Pattern: refs/tags/v(2\.13\.[\d.]+)
+Dversionmangle: s/\+ds\d*$//
+Repack: 1
+Repacksuffix: +ds
+Compression: xz

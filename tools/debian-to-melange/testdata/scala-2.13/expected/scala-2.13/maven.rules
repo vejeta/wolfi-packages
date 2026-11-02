@@ -1,0 +1,3 @@
+org.scala-lang * * s/2\.13\..*/2.13.x/ * *
+org.scala-lang.modules scala-asm * s/.*/debian/ * *
+org.jline jline * s/.*/debian/ * *

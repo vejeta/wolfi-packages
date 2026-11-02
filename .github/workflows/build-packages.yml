@@ -340,6 +340,8 @@ jobs:
 
       - name: Display build summary
         run: |
+          # A push that builds nothing (docs only) has no artifacts.
+          mkdir -p all-artifacts
           echo "=== Build Summary ==="
           echo ""
           echo "Total artifacts:"
@@ -385,7 +387,7 @@ jobs:
       - name: Consolidate packages into cache directory
         run: |
           echo "=== Consolidating packages into cache ==="
-          mkdir -p ./consolidated-cache/${{ matrix.arch }}
+          mkdir -p ./consolidated-cache/${{ matrix.arch }} artifacts
 
           # Count existing cached packages
           EXISTING_COUNT=$(find ./consolidated-cache/${{ matrix.arch }} -name "*.apk" 2>/dev/null | wc -l || echo "0")

@@ -1,0 +1,22 @@
+From: Boyuan Yang <byang@debian.org>
+Date: Mon, 8 Apr 2024 22:29:26 -0400
+Subject: Circumvent doctest failure due to float digits
+
+Bug: https://github.com/robotools/fontPens/issues/41
+---
+ Lib/fontPens/penTools.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/Lib/fontPens/penTools.py
++++ b/Lib/fontPens/penTools.py
+@@ -156,8 +156,8 @@
+     0.0
+     >>> estimateQuadraticCurveLength((0, 0), (50, 0), (80, 0)) # collinear points
+     80.0
+-    >>> estimateQuadraticCurveLength((0, 0), (50, 20), (100, 40)) # collinear points
+-    107.70329614269009
++    >>> round(estimateQuadraticCurveLength((0, 0), (50, 20), (100, 40)), 11) # collinear points
++    107.70329614269
+     >>> estimateQuadraticCurveLength((0, 0), (0, 100), (100, 0))
+     153.6861437729263
+     >>> estimateQuadraticCurveLength((0, 0), (50, -10), (80, 50))

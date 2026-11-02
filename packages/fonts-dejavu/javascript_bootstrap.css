@@ -1,0 +1,16 @@
+// bootstrap.css
+
+html,
+body,
+.tooltip,
+.popover {
+  font-family: 'DejaVuSans';
+}
+
+pre,
+code,
+kbd,
+samp,
+.text-monospace {
+  font-family: 'DejaVuSansMono';
+}

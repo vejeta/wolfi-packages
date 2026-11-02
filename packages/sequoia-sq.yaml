@@ -30,7 +30,7 @@ environment:
       - rust  # Alpine: cargo
       - cargo-auditable
       - clang  # Alpine: clang-dev
-      - openssl-3.6-dev  # Alpine: openssl-dev; openssl-sys predates OpenSSL 4
+      - openssl-dev
       - sqlite-dev
       - bzip2
       - capnproto
@@ -87,7 +87,14 @@ subpackages:
   - name: sequoia-sq-doc
     description: Command-line frontends for Sequoia (doc)
     pipeline:
-      - uses: split/alldocs
+      - runs: |
+          for d in usr/share/doc usr/share/man usr/share/info usr/share/html usr/share/sgml \
+                   usr/share/licenses usr/share/gtk-doc usr/share/devhelp usr/share/help; do
+            [ "$d" = usr/share/licenses ] && continue  # Wolfi keeps the license in the package
+            [ -d "${{targets.destdir}}/$d" ] || continue
+            mkdir -p "${{targets.contextdir}}/$(dirname $d)"
+            mv "${{targets.destdir}}/$d" "${{targets.contextdir}}/$d"
+          done
   - name: sequoia-sq-bash-completion
     description: Command-line frontends for Sequoia (bash-completion)
     pipeline:

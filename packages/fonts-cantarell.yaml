@@ -43,6 +43,7 @@ environment:
       # TODO(debian-to-melange): py3-ufo2ft is not in Wolfi (Debian: python3-ufo2ft); left out
       # TODO(debian-to-melange): py3-ufolib2 is not in Wolfi (Debian: python3-ufolib2); left out
       # TODO(debian-to-melange): py3-uharfbuzz is not in Wolfi (Debian: python3-uharfbuzz); left out
+      - python3  # the interpreter of Debian's python3-* build dependencies
 pipeline:
   - uses: fetch
     with:

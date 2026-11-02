@@ -1,0 +1,5 @@
+build/DejaVu*Condensed*.ttf usr/share/fonts/truetype/dejavu
+build/DejaVu*ExtraLight.ttf usr/share/fonts/truetype/dejavu
+build/DejaVu*Italic.ttf usr/share/fonts/truetype/dejavu
+build/DejaVuSans-*Oblique.ttf usr/share/fonts/truetype/dejavu
+build/DejaVu*Math*.ttf usr/share/fonts/truetype/dejavu

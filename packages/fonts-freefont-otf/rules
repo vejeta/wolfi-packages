@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	dh_auto_build -- ttf otf ".SHELLFLAGS=-o pipefail -c"
+	# Strip the fonts for the udeb
+	sh debian/scripts/stripfonts.sh
+
+override_dh_auto_test:
+#	$(MAKE) tests

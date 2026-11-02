@@ -1,0 +1,21 @@
+From: Nilesh Patra <nilesh@debian.org>
+Date: Fri, 25 Oct 2024 15:07:04 -0400
+Subject: Remove setuptools_git_ls_files as install-req as this is un-needed
+
+Last-Update: 2025-12-16
+---
+ pyproject.toml | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/pyproject.toml b/pyproject.toml
+index 8b63d75..591a65e 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -3,7 +3,6 @@ requires = [
+     "setuptools",
+     "wheel",
+     "setuptools_scm",
+-    "setuptools_git_ls_files",
+     "cython",
+ ]
+ 
