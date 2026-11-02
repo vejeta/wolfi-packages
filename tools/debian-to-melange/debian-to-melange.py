@@ -3366,8 +3366,13 @@ class Converter:
             sp["pipeline"] = self.rewrite_recipe_paths(name, sp.get("pipeline", []))
 
         data = None
-        if self.python_module and name.startswith("py3-") and all(
-                b.get("architecture", "any") == "all" for b in binaries):
+        # pure Python, or one compiled extension package (pyclipper): Wolfi builds both
+        # once per Python version, which the packages that depend on them need
+        if self.python_module and name.startswith("py3-") and (
+                all(b.get("architecture", "any") == "all" for b in binaries) or
+                all(re.match(r"^python3-", b["package"]) for b in binaries if b.get("architecture", "any") != "all")
+                and sum(b.get("architecture", "any") != "all" for b in binaries) == 1):
+            self.python_compiled = any(b.get("architecture", "any") != "all" for b in binaries)
             data = self.python_versions(name, pkg, environment, pipeline, subpackages, test, melange_vars)
 
         recipe = {"package": pkg}
@@ -3426,6 +3431,8 @@ class Converter:
             v = None if isinstance(d, Comment) else val(d)
             if v in ("build-base", "python3", "py3-pip", "py3-wheel", "py3-setuptools", "py3-supported-setuptools"):
                 continue
+            if v == "python3-dev" and getattr(self, "python_compiled", False):
+                continue  # py3-supported-build-base-dev has every version's headers
             if v and re.match(r"^py3\.\d+-.+-bin$", v):
                 continue  # commands of one Python: they clash with the other versions' build-base
             if v and v.startswith("py3-") and not v.startswith("py3-supported-") \
@@ -3433,7 +3440,9 @@ class Converter:
                 d = C("py3-supported-" + v[4:], d.comment if isinstance(d, C) else "Debian: python3-" + v[4:])
             keep.append(d)
         uses_python = True  # debian/rules may run the source's own Python scripts (doc-debtags)
-        env[:] = [keep[0], "py3-supported-build-base"] + (["python3"] if uses_python else []) + keep[1:]
+        # (with the headers and a compiler for a compiled extension)
+        base = "py3-supported-build-base-dev" if getattr(self, "python_compiled", False) else "py3-supported-build-base"
+        env[:] = [keep[0], base] + (["python3"] if uses_python else []) + keep[1:]
 
         pipeline[:] = [st for st in pipeline if not (isinstance(st, dict) and st.get("uses") == "py/pip-build-install")]
         for st in pipeline:
@@ -3467,7 +3476,8 @@ class Converter:
             "description": "${{vars.pypi-package}} installed for python${{range.key}}",
             "dependencies": {"provider-priority": "${{range.value}}",
                              "provides": ["py3-${{vars.pypi-package}}"]},
-            "pipeline": [{"uses": "py/pip-build-install", "with": {"python": "python${{range.key}}"}}]
+            "pipeline": [{"uses": "py/pip-build-install", "with": {"python": "python${{range.key}}"}}] +
+                        ([{"uses": "strip"}] if getattr(self, "python_compiled", False) else [])
             + ([{"runs": "\n".join(lic) + "\n"}] if lic else []),
             "test": {"pipeline": [{"uses": "python/import",
                                    "with": {"python": "python${{range.key}}", "import": "${{vars.import}}"}}]},
