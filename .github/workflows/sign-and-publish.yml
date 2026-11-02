@@ -35,6 +35,12 @@ permissions:
   contents: read
   actions: read
 
+# One publish at a time: each merges with what the previous one uploaded and
+# deletes what its own index does not list
+concurrency:
+  group: sign-and-publish
+  cancel-in-progress: false
+
 env:
   # versions of each package kept in the repository (older ones are deleted)
   KEEP_VERSIONS: ${{ github.event.inputs.keep_versions || '3' }}
