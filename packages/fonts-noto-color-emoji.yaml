@@ -38,6 +38,7 @@ environment:
       - py3-supported-notofonttools  # Debian: python3-nototools
       - zopfli
       - python3  # the interpreter of Debian's python3-* build dependencies
+      - which  # the Makefile runs which; Essential in Debian (debianutils)
       - bash  # the source has bash scripts; Essential in Debian
       - coreutils
       - findutils
@@ -64,6 +65,10 @@ pipeline:
   - name: Install files
     runs: |
       install -Dm644 LICENSE -t "${{targets.destdir}}"/usr/share/licenses/fonts-noto-color-emoji
+  - name: From debian/rules override_dh_install
+    runs: |
+      mkdir -p "${{targets.destdir}}/usr/share/fonts/truetype/noto"
+      cp -a NotoColorEmoji.ttf "${{targets.destdir}}/usr/share/fonts/truetype/noto/"
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do

@@ -8,7 +8,6 @@
 #
 # Conversion notes:
 # - upstream download not reachable; using Debian's copy of the upstream tarball (https://deb.debian.org/debian/pool/main/a/antlr4-cpp-runtime/antlr4-cpp-runtime_4.10+dfsg.orig.tar.xz), which disappears from the pool when Debian updates
-# - no debian/libantlr4-runtime4.10.install; define which files go to this subpackage
 # - autopkgtests converted to the test pipeline (1 steps)
 package:
   name: libantlr4-runtime-dev
@@ -34,6 +33,8 @@ environment:
       - pkgconf-dev  # Debian: pkg-config
       - util-linux-dev  # Debian: uuid-dev
       - bash  # the source has bash scripts; Essential in Debian
+      - coreutils
+      - findutils
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -63,6 +64,10 @@ pipeline:
       mkdir -p "${{targets.destdir}}/usr/share/doc/libantlr4-runtime-dev"
       cp -a "${{targets.destdir}}/usr/share/doc/libantlr4/README.md" "${{targets.destdir}}/usr/share/doc/libantlr4-runtime-dev/"
       install -Dm644 LICENSE.txt -t "${{targets.destdir}}"/usr/share/licenses/libantlr4-runtime-dev
+  - name: From debian/rules override_dh_install
+    runs: |
+      mkdir -p "${{targets.outdir}}/libantlr4-runtime4.10/usr/lib"
+      mv "${{targets.destdir}}"/usr/lib/*.so.* "${{targets.outdir}}/libantlr4-runtime4.10/usr/lib/"
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
@@ -76,7 +81,6 @@ subpackages:
   - name: libantlr4-runtime4.10
     description: ANTLR Parser Generator - C++ runtime support (shared library)
     pipeline:
-      # TODO(debian-to-melange): no debian/libantlr4-runtime4.10.install; define which files go to this subpackage
       - runs: |
           true
 update:

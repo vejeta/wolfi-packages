@@ -8,7 +8,7 @@
 #
 # Conversion notes:
 # - upstream from debian/watch (GitHub), pinned to the tag's commit
-# - Wolfi Python layout: py3.X-defcon for Python 3.10, 3.11, 3.12, 3.13, 3.14
+# - Wolfi Python layout: py3.X-defcon for Python 3.11, 3.12, 3.13
 package:
   name: py3-defcon
   version: '0.12.2'
@@ -28,11 +28,9 @@ vars:
 data:
   - name: py-versions
     items:
-      3.14: '314'
       3.13: '313'
       3.12: '312'
       3.11: '311'
-      3.10: '310'
 environment:
   contents:
     keyring:
@@ -66,7 +64,7 @@ pipeline:
       expected-commit: 488f79ad0588c2ce6d939758be9c607078d1d45d
   - name: From debian/rules execute_before_dh_sphinxdoc
     runs: |
-      PYTHONPATH=Lib sphinx-build -b html documentation/source/ ${{targets.destdir}}/usr/share/doc/defcon/html/
+      PYTHONPATH=Lib python3 -m sphinx -b html documentation/source/ ${{targets.destdir}}/usr/share/doc/defcon/html/
   - name: Usr-merge (sbin into bin)
     runs: |
       for d in "${{targets.destdir}}" "${{targets.outdir}}"/*; do
@@ -101,11 +99,9 @@ subpackages:
     description: meta package providing ${{vars.pypi-package}} for supported python versions.
     dependencies:
       runtime:
-        - py3.10-${{vars.pypi-package}}
         - py3.11-${{vars.pypi-package}}
         - py3.12-${{vars.pypi-package}}
         - py3.13-${{vars.pypi-package}}
-        - py3.14-${{vars.pypi-package}}
     test:
       environment:
         contents:

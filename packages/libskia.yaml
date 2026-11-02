@@ -71,6 +71,9 @@ environment:
       - coreutils
       - findutils
       - python3
+  environment:
+    FULL_VERSION: '146.20260602'
+    MAJOR_VERSION: '146'
 pipeline:
   - name: Move the recipe files out of the build tree
     runs: |
@@ -90,16 +93,16 @@ pipeline:
   - name: Build (from debian/rules override_dh_auto_build)
     runs: |
       mkdir -p debbuild/shared/
-      gn gen debbuild/shared --args='is_official_build=true  	extra_cflags_cc=string_split(getenv("CXXFLAGS"))  	extra_cflags_c=string_split(getenv("CFLAGS"))  	skia_use_system_expat=true  	skia_use_system_harfbuzz=true  	skia_use_system_icu=true  	skia_use_system_libjpeg_turbo=true  	skia_use_system_libpng=true  	skia_use_system_libwebp=true  	skia_use_system_zlib=true  	skia_use_dng_sdk=false  	skia_use_wuffs=false  	skia_enable_spirv_validation=false is_component_build=true  	extra_ldflags=string_split(getenv("LDFLAGS"))  	skia_so_version=$(echo "146.20260602" | sed -E 's/^([0-9]+).*$/\1/')'
+      gn gen debbuild/shared --args='is_official_build=true  	extra_cflags_cc=string_split(getenv("CXXFLAGS"))  	extra_cflags_c=string_split(getenv("CFLAGS"))  	skia_use_system_expat=true  	skia_use_system_harfbuzz=true  	skia_use_system_icu=true  	skia_use_system_libjpeg_turbo=true  	skia_use_system_libpng=true  	skia_use_system_libwebp=true  	skia_use_system_zlib=true  	skia_use_dng_sdk=false  	skia_use_wuffs=false  	skia_enable_spirv_validation=false is_component_build=true  	extra_ldflags=string_split(getenv("LDFLAGS"))  	skia_so_version=146'
       ninja -C debbuild/shared -j $(nproc) --verbose skia
       mkdir -p debbuild/static/
       gn gen debbuild/static --args='is_official_build=true  	extra_cflags_cc=string_split(getenv("CXXFLAGS"))  	extra_cflags_c=string_split(getenv("CFLAGS"))  	skia_use_system_expat=true  	skia_use_system_harfbuzz=true  	skia_use_system_icu=true  	skia_use_system_libjpeg_turbo=true  	skia_use_system_libpng=true  	skia_use_system_libwebp=true  	skia_use_system_zlib=true  	skia_use_dng_sdk=false  	skia_use_wuffs=false  	skia_enable_spirv_validation=false skia_no_pic=true'
       ninja -C debbuild/static -j $(nproc) --verbose skia
   - name: Install (from debian/rules override_dh_auto_install)
     runs: |
-      install -D -m 0755 debbuild/shared/libskia.so ${{targets.destdir}}/usr/lib/libskia.so.$(echo "146.20260602" | sed -E 's/^([0-9.]+).*$/\1/')
-      ln -s libskia.so.$(echo "146.20260602" | sed -E 's/^([0-9.]+).*$/\1/') ${{targets.destdir}}/usr/lib/libskia.so.$(echo "146.20260602" | sed -E 's/^([0-9]+).*$/\1/')
-      ln -s libskia.so.$(echo "146.20260602" | sed -E 's/^([0-9]+).*$/\1/') ${{targets.destdir}}/usr/lib/libskia.so
+      install -D -m 0755 debbuild/shared/libskia.so ${{targets.destdir}}/usr/lib/libskia.so.146.20260602
+      ln -s libskia.so.146.20260602 ${{targets.destdir}}/usr/lib/libskia.so.146
+      ln -s libskia.so.146 ${{targets.destdir}}/usr/lib/libskia.so
       install -D -m 0644 debbuild/static/libskia.a ${{targets.destdir}}/usr/lib/libskia.a
       python3 bin/install-headers.py --src include/ --dest ${{targets.destdir}}/usr/include/skia --ignore '.*/android/.*' --ignore include/codec/SkRawDecoder.h --ignore include/codec/SkJpegxlDecoder.h --ignore include/codec/SkAvifDecocer.h
       mkdir -p ${{targets.destdir}}/usr/include/skia

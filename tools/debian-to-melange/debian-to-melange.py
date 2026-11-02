@@ -439,6 +439,29 @@ MAKE_FUNCTIONS = {
 }
 
 
+def static_shell(value):
+    """$(shell echo WORD | cut -d C -f N) on a known word (antlr4-cpp-runtime's
+    DEB_VERSION_UPSTREAM_ORIG, in a package name): its value."""
+    def cut(m):
+        fields = m.group(1).split(m.group(2))
+        n = int(m.group(3))
+        return fields[n - 1] if 0 < n <= len(fields) else ""
+    value = re.sub(r"\$\(shell\s+echo\s+\"?([^\s$()|\"]+)\"?\s*\|\s*cut\s+-d\s*'?([^\s'])'?\s+-f\s*(\d+)\s*\)",
+                   cut, value)
+
+    def sed(m):
+        # libskia's MAJOR_VERSION: $(shell echo "$(DEB_VERSION_UPSTREAM)" | sed -E 's/^([0-9]+).*$$/\1/')
+        pat = m.group(3).replace("$$", "$")
+        if not m.group(2):
+            pat = pat.replace("\\(", "(").replace("\\)", ")").replace("+", "\\+")
+        try:
+            return re.sub(pat, re.sub(r"\\(\d)", r"\\g<\1>", m.group(4)), m.group(1), count=0 if m.group(5) else 1)
+        except re.error:
+            return m.group(0)
+    return re.sub(r"\$\(shell\s+echo\s+\"?([^\s$()|\"]+)\"?\s*\|\s*sed\s+(-E\s+|-r\s+)?(?:-e\s+)?"
+                  r"'s/((?:[^/'\\]|\\.)*)/((?:[^/'\\]|\\.)*)/(g?)'\s*\)", sed, value)
+
+
 def make_functions(value):
     """Evaluate make's text functions whose arguments hold no references left
     (libskia: -j $(or $(patsubst parallel=%,%,$(filter parallel=%,)),"1")); $(shell ...)
@@ -907,7 +930,7 @@ class Rules:
             name = m.group(1) or m.group(2)
             default = BUILD_CONTEXT.get(name, m.group(0)) if context else m.group(0)
             return self.expand(self.vars.get(name, MAKE_DEFAULTS.get(name, default)), depth + 1, context)
-        return make_functions(re.sub(r"\$\((\w+)\)|\$\{(\w+)\}", repl, value))
+        return make_functions(static_shell(re.sub(r"\$\((\w+)\)|\$\{(\w+)\}", repl, value)))
 
     def buildsystem(self):
         m = re.search(r"--buildsystem[= ](\S+)", self.dh_args)
@@ -993,7 +1016,7 @@ def norm_path(path):
     path = path.strip("/")
     # Debian's Tcl packages (usr/lib/tcltk/<triplet>/expect5.45.4): Wolfi's tcl looks in usr/lib
     path = re.sub(r"(^|/)lib/tcltk/(?:\*|\$[({]DEB_HOST_MULTIARCH[)}]|[a-z0-9_]+-linux-gnu[a-z]*)(/|$)", r"\1lib\2", path)
-    path = re.sub(r"(^|/)lib/(?:\*(?=/)|\$[({]DEB_HOST_MULTIARCH[)}]|[a-z0-9_]+-linux-gnu[a-z]*)(/|$)",
+    path = re.sub(r"(^|/)lib/(?:\*(?=/)|\$[({]DEB_HOST_MULTIARCH[)}]|\$\{\{host\.triplet\.gnu\}\}|[a-z0-9_]+-linux-gnu[a-z]*)(/|$)",
                   r"\1lib\2", path).rstrip("/")
     # Perl modules: Debian's vendor directories are Wolfi's vendor_perl, and
     # Wolfi's man pages of modules end in .3 (Debian: .3pm)
@@ -1087,7 +1110,7 @@ def binary_to_source(binary):
 
 
 # Upstream files the converter reads (build tool detection, Python metadata).
-UPSTREAM_FILES = ("configure.ac", "autogen.sh", "pyproject.toml", "setup.cfg", "setup.py")
+UPSTREAM_FILES = ("configure.ac", "autogen.sh", "pyproject.toml", "setup.cfg", "setup.py", "Makefile", "GNUmakefile")
 
 
 def python_requirements(tree):
@@ -1871,6 +1894,7 @@ class Converter:
         self.aux_exec = set()  # those of them that are executable in debian/
         self.debian_nested = {}  # flat aux name -> its path in debian/ (debian/scripts/foo)
         self.pipeline_env = {}   # variables debian/rules sets for dh_auto_* run as a pipeline
+        self.filled_by_rules = set()  # subpackages debian/rules installs files into (dh_install -pPKG FILE DIR)
         self.install_excludes = {}  # Debian binary package (or "*") -> dh_install -X patterns
         self.rename = {}       # Debian binary package name -> melange package name
         self.upstream_installs = True  # does the build system install into destdir?
@@ -1919,6 +1943,14 @@ class Converter:
                 mods.append(mod)
         own = {n for n in self.top if not n.startswith(".")}
         return [m for m in mods if m not in own]
+
+    def read_tree(self, name):
+        """A top-level file of the upstream source, or None."""
+        try:
+            with open(os.path.join(self.tree, name), encoding="utf-8", errors="replace") as fh:
+                return fh.read()
+        except OSError:
+            return None
 
     def debian_file(self, path):
         """debian/<file> named by a packaging file: copied next to the recipe."""
@@ -2076,7 +2108,7 @@ class Converter:
                             out.append('install -Dm644 {} -t "${{{{targets.destdir}}}}/usr/share/man/man{}"'.format(page, sec.group(1)))
                     continue
                 inst = re.match(r"^dh_install\s+(.*)$", line)
-                words = shlex.split(rules.expand(inst.group(1))) if inst else []
+                words = shlex.split(self.multiarch(rules.expand(inst.group(1)))) if inst else []
                 files = [w for w in words if not w.startswith("-")]
                 if inst and len(files) >= 2 and all(w in ("-p", "--package") or w.startswith(("-p", "--package="))
                                                     or not w.startswith("-") for w in words):
@@ -2089,7 +2121,17 @@ class Converter:
                     root = "${{targets.destdir}}" if pkg == deb_pkg else \
                         "${{{{targets.outdir}}}}/{}".format(self.rename.get(pkg, pkg))
                     dest = usr_merge(norm_path(files[-1]))
-                    out.append('mkdir -p "{0}/{1}"\ncp -a {2} "{0}/{1}/"'.format(root, dest, " ".join(files[:-1])))
+                    srcs = [usr_merge(norm_path(f)) for f in files[:-1]]
+                    if pkg != deb_pkg:
+                        self.filled_by_rules.add(self.rename.get(pkg, pkg))
+                    if self.upstream_installs and all(re.match(r"^(usr|etc|lib|var|opt)/", f) for f in srcs):
+                        # what the build installed (antlr4-cpp-runtime: usr/lib/*.so.* into the library package)
+                        if root == "${{targets.destdir}}":
+                            continue  # already there
+                        out.append('mkdir -p "{0}/{1}"\nmv {2} "{0}/{1}/"'.format(
+                            root, dest, " ".join(shell_path("${{targets.destdir}}", f) for f in srcs)))
+                    else:
+                        out.append('mkdir -p "{0}/{1}"\ncp -a {2} "{0}/{1}/"'.format(root, dest, " ".join(files[:-1])))
                     continue
                 if re.match(r"^dh_auto_|^dh_(install|link)\b", line):
                     return None
@@ -2890,6 +2932,11 @@ class Converter:
         if any(str(n).startswith("py3-") for n in names) and "python3" not in names:
             # py3-supported-* do not provide python3, which Debian's python3-* bring (font-awesome's build script)
             env_pkgs.append(C("python3", "the interpreter of Debian's python3-* build dependencies"))
+        makefile = next((self.read_tree(f) for f in ("GNUmakefile", "Makefile") if self.read_tree(f)), "")
+        if re.search(r"\$\(shell\s+which\b", makefile) and "which" not in env_pkgs:
+            # debianutils' which is Essential in Debian; busybox in Wolfi has none
+            # (fonts-noto-color-emoji: ifeq (, $(shell which $(TTX))))
+            env_pkgs.append(C("which", "the Makefile runs which; Essential in Debian (debianutils)"))
         if bash_scripts(getattr(self, "source_data", None)) and "bash" not in env_pkgs:
             # (aptitude: doc/html-to-text, run while building the documentation)
             env_pkgs.append(C("bash", "the source has bash scripts; Essential in Debian"))
@@ -3112,8 +3159,10 @@ class Converter:
                 if cmds:
                     post_install.append({"name": "From debian/rules " + target, "runs": "\n".join(cmds) + "\n"})
                 continue
-            if calls and all(re.match(r"^({}|dh_missing)\b".format(re.escape(tool)), c) for c in calls):
-                continue  # only adjusts how the same debhelper tool runs
+            if calls and all(re.match(r"^({}|dh_missing)\b".format(re.escape(tool)), c) for c in calls) and \
+                    not (tool == "dh_install" and not all(self.dh_install_options(rules.expand(c))
+                                                          for c in calls if c.startswith("dh_install"))):
+                continue  # only adjusts how the same debhelper tool runs (not dh_install FILE... DIR)
             if target.startswith(("override_dh_auto_test", "override_dh_strip", "override_dh_shlibdeps",
                                   "override_dh_makeshlibs", "override_dh_gencontrol", "override_dh_builddeb",
                                   "override_dh_dwz", "override_dh_installchangelogs", "override_dh_compress",
@@ -3335,6 +3384,10 @@ class Converter:
         env[:] = [keep[0], "py3-supported-build-base"] + (["python3"] if uses_python else []) + keep[1:]
 
         pipeline[:] = [st for st in pipeline if not (isinstance(st, dict) and st.get("uses") == "py/pip-build-install")]
+        for st in pipeline:
+            if isinstance(st, dict) and isinstance(st.get("runs"), str):
+                # without py3.X-sphinx-bin (left out above), Sphinx runs as a module (defcon's docs)
+                st["runs"] = re.sub(r"(?<![\w/.-])sphinx-build\b", "python3 -m sphinx", st["runs"])
         # py3-foo is never installed (provides pick py3.X-foo): the license
         # goes with each py3.X-foo.
         dest = '"${{targets.destdir}}"/usr/share/'
@@ -4103,7 +4156,7 @@ class Converter:
         filled = "${{{{targets.outdir}}}}/{}".format(sub["name"])
         if cmds:
             sub["pipeline"] = [{"runs": "\n".join(cmds) + "\n"}]
-        elif any(filled in l for ls in self.ported_install for l in ls):
+        elif any(filled in l for ls in self.ported_install for l in ls) or sub["name"] in self.filled_by_rules:
             # debian/rules installs straight into this package
             sub["pipeline"] = [{"runs": "true\n"}]
         elif b.get("section", "").endswith("metapackages") or re.match(r"(?i)^meta-?package", desc) \
