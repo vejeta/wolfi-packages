@@ -3457,6 +3457,10 @@ class Converter:
                 d = C("py3-supported-" + v[4:], d.comment if isinstance(d, C) else "Debian: python3-" + v[4:])
             keep.append(d)
         uses_python = True  # debian/rules may run the source's own Python scripts (doc-debtags)
+        # each once: a -bin package left out above and the module itself can both
+        # stand for the same py3-supported-foo
+        seen = set()
+        keep = [d for d in keep if isinstance(d, Comment) or not (val(d) in seen or seen.add(val(d)))]
         # (with the headers and a compiler for a compiled extension)
         base = "py3-supported-build-base-dev" if getattr(self, "python_compiled", False) else "py3-supported-build-base"
         env[:] = [keep[0], base] + (["python3"] if uses_python else []) + keep[1:]
