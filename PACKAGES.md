@@ -287,7 +287,7 @@ groups them by area.
 | [py3-ufolib2](packages/py3-ufolib2.yaml) | 0.18.1 | Unified Font Object (UFO) fonts library | Apache-2.0 AND MIT | 6 |
 | [py3-ufonormalizer](packages/py3-ufonormalizer.yaml) | 0.6.3 | Normalize the XML and other data inside of a UFO | BSD-3-Clause | 12 |
 | [py3-ufoprocessor](packages/py3-ufoprocessor.yaml) | 1.14.1 | Process and generate Unified Font Object (UFO) files | MIT | 6 |
-| [py3-uharfbuzz](packages/py3-uharfbuzz.yaml) | 0.55.0 | Streamlined Cython bindings for the HarfBuzz shaping engine | Apache-2.0 AND SIL-1.1 AND MIT AND SIL-1.1 | 5 |
+| [py3-uharfbuzz](packages/py3-uharfbuzz.yaml) | 0.56.1 | Streamlined Cython bindings for the HarfBuzz shaping engine | Apache-2.0 AND SIL-1.1 AND MIT AND SIL-1.1 | 5 |
 | [py3-vttlib](packages/py3-vttlib.yaml) | 0.11.0 | Python library to extract VTT (Microsoft Visual TrueType) font hinting data | MIT | 6 |
 | [qt5-qtdeclarative](packages/qt5-qtdeclarative.yaml) | 5.15.17 | Qt5 - QtDeclarative (QML/QtQuick) components | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 | 2 |
 | [qt5-qtquickcontrols](packages/qt5-qtquickcontrols.yaml) | 5.15.17 | Qt5 - QtQuick Controls 1 components | LGPL-3.0-only OR GPL-3.0-only WITH Qt-GPL-exception-1.0 | 2 |

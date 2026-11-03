@@ -18,7 +18,9 @@ Which recipes are built:
 
 With --skip-published URL, a recipe that is selected only because the
 tooling changed (or by --all) is left out for an architecture when the
-repository at URL already has that version and epoch. Recipes whose own
+repository at URL already has that version and epoch. URL can also be a
+directory with ARCH/APKINDEX.tar.gz (the indexes fetched over SFTP, which
+SourceForge does not count as downloads). Recipes whose own
 files changed, and the --canary recipes, are always built.
 
 Each wave is a list of {"package", "arch"} builds for the architectures in
@@ -113,11 +115,16 @@ def changed_recipes(ref, recipes):
 
 
 def published(url, arch):
-    """{(origin, version)} in the APKINDEX at URL/ARCH, or None if unreachable."""
+    """{(origin, version)} in the APKINDEX at URL/ARCH (or in a local directory
+    of indexes, DIR/ARCH/APKINDEX.tar.gz), or None if unreachable."""
     try:
-        with urllib.request.urlopen("{}/{}/APKINDEX.tar.gz".format(url.rstrip("/"), arch),
-                                    timeout=60) as resp:
-            blob = resp.read()
+        if os.path.isdir(url):
+            with open(os.path.join(url, arch, "APKINDEX.tar.gz"), "rb") as fh:
+                blob = fh.read()
+        else:
+            with urllib.request.urlopen("{}/{}/APKINDEX.tar.gz".format(url.rstrip("/"), arch),
+                                        timeout=60) as resp:
+                blob = resp.read()
         with tarfile.open(fileobj=io.BytesIO(blob), mode="r:gz") as tar:
             text = tar.extractfile("APKINDEX").read().decode("utf-8", "replace")
     except (OSError, tarfile.TarError, KeyError, gzip.BadGzipFile) as exc:
@@ -200,7 +207,7 @@ def main(argv=None):
     sel.add_argument("--changed-from", metavar="REF")
     ap.add_argument("--packages-dir", default="packages")
     ap.add_argument("--arch", default="x86_64", help="comma-separated architectures")
-    ap.add_argument("--skip-published", metavar="URL",
+    ap.add_argument("--skip-published", metavar="URL_OR_DIR",
                     help="repository whose published versions need no rebuild")
     ap.add_argument("--canary", default="", help="recipes always built (comma-separated)")
     ap.add_argument("--max-waves", type=int, default=6)

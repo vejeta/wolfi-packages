@@ -81,6 +81,7 @@ jobs:
           ARCH_INPUT: ${{ github.event.inputs.architectures }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE: ${{ github.event.before }}
+          SOURCEFORGE_SSH_KEY: ${{ secrets.SOURCEFORGE_SSH_KEY }}
         run: |
           pip install --quiet pyyaml
           # Pull requests and pushes build the recipes they change; manual
@@ -89,7 +90,25 @@ jobs:
           # When the build tooling changes, pull requests and pushes rebuild
           # only what is not published yet, plus a few canary recipes; a
           # manual run without a filter rebuilds everything.
-          reuse="--skip-published https://downloads.sourceforge.net/project/wolfi --canary mujs,libxmlb,appstream"
+          # The published indexes, fetched over SFTP when CI has the key
+          # (SourceForge does not count those as downloads)
+          published=https://downloads.sourceforge.net/project/wolfi
+          if [ -n "$SOURCEFORGE_SSH_KEY" ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq lftp >/dev/null
+            mkdir -p ~/.ssh && chmod 700 ~/.ssh
+            printf '%s\n' "$SOURCEFORGE_SSH_KEY" > ~/.ssh/sourceforge_wolfi_rsa
+            chmod 600 ~/.ssh/sourceforge_wolfi_rsa
+            ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts 2>/dev/null
+            printf 'Host frs.sourceforge.net\n  User jmendezr\n  IdentityFile ~/.ssh/sourceforge_wolfi_rsa\n' >> ~/.ssh/config
+            chmod 600 ~/.ssh/config
+            mkdir -p published-index/x86_64 published-index/aarch64
+            if lftp -c "set net:max-retries 3; open sftp://frs.sourceforge.net; \
+                  get /home/frs/project/wolfi/x86_64/APKINDEX.tar.gz -o published-index/x86_64/APKINDEX.tar.gz; \
+                  get /home/frs/project/wolfi/aarch64/APKINDEX.tar.gz -o published-index/aarch64/APKINDEX.tar.gz"; then
+              published=published-index
+            fi
+          fi
+          reuse="--skip-published $published --canary mujs,libxmlb,appstream"
           case "$EVENT" in
             pull_request) sel="--changed-from $PR_BASE $reuse" ;;
             push)

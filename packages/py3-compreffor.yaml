@@ -40,9 +40,7 @@ environment:
       - python3
       - py3-supported-cython  # Debian: cython3
       - py3-supported-fonttools  # commands of Debian's python3-fonttools
-      - py3-supported-fonttools  # Debian: python3-fonttools
       - py3-supported-setuptools-scm  # commands of Debian's python3-setuptools-scm
-      - py3-supported-setuptools-scm  # Debian: python3-setuptools-scm
   environment:
     SETUPTOOLS_SCM_PRETEND_VERSION: ${{package.version}}
 pipeline:

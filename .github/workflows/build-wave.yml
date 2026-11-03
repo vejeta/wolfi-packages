@@ -76,10 +76,11 @@ jobs:
           # Download official Wolfi signing key for repository verification
           curl -fsSL --retry 5 --retry-all-errors -o wolfi-signing.rsa.pub https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
 
-          # Public key of this repository's published packages (SourceForge),
-          # used to resolve in-repo dependencies that are not in the cache
+          # Public key of this repository's published packages, used to
+          # resolve in-repo dependencies that are not in the cache; served by
+          # wolfi.vejeta.com itself, not counted as a SourceForge download
           curl -fsSL --retry 5 --retry-all-errors -o vejeta-wolfi.rsa.pub \
-            https://downloads.sourceforge.net/project/wolfi/keys/vejeta-wolfi.rsa.pub
+            https://wolfi.vejeta.com/keys/vejeta-wolfi.rsa.pub
 
           # Verify keys were created
           ls -lh melange.rsa melange.rsa.pub wolfi-signing.rsa.pub vejeta-wolfi.rsa.pub
@@ -115,6 +116,56 @@ jobs:
             echo "No packages in cache; in-repo dependencies resolve from the published SourceForge repository"
           fi
 
+      - name: Fetch the published packages this build needs (SFTP)
+        # SourceForge counts HTTP downloads of the files as user downloads, so
+        # CI fetches what it needs over SFTP, which it does not count. Without
+        # the key (pull requests from forks) melange downloads them over HTTP.
+        env:
+          SOURCEFORGE_SSH_KEY: ${{ secrets.SOURCEFORGE_SSH_KEY }}
+        run: |
+          if [ -z "$SOURCEFORGE_SSH_KEY" ]; then
+            echo "No SourceForge key: published packages come from downloads.sourceforge.net"
+            exit 0
+          fi
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp >/dev/null
+          pip install --quiet pyyaml
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SOURCEFORGE_SSH_KEY" > ~/.ssh/sourceforge_wolfi_rsa
+          chmod 600 ~/.ssh/sourceforge_wolfi_rsa
+          ssh-keyscan -H frs.sourceforge.net >> ~/.ssh/known_hosts 2>/dev/null
+          printf 'Host frs.sourceforge.net\n  User jmendezr\n  IdentityFile ~/.ssh/sourceforge_wolfi_rsa\n' >> ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+          # any failure here falls back to HTTP (no ./published repository)
+          trap 'echo "::warning::fetching over SFTP failed; using downloads.sourceforge.net"; rm -rf ./published; exit 0' ERR
+          arch=${{ matrix.arch }}
+          dir=./published/$arch
+          mkdir -p "$dir"
+          remote=/home/frs/project/wolfi/$arch
+          lftp -c "set net:max-retries 3; open sftp://frs.sourceforge.net; get $remote/APKINDEX.tar.gz -o published-APKINDEX.tar.gz"
+          python3 scripts/published-deps.py published-APKINDEX.tar.gz packages/${{ matrix.package }}.yaml > needed.txt
+          echo "$(wc -l < needed.txt) published package(s) needed:"
+          cat needed.txt
+          if [ -s needed.txt ]; then
+            {
+              echo "set net:max-retries 3"
+              echo "open sftp://frs.sourceforge.net"
+              echo "lcd $dir"
+              sed "s|^|get $remote/|" needed.txt
+            } > fetch.lftp
+            lftp -f fetch.lftp
+            cp melange.rsa "$dir/"
+            docker run --rm -v "$PWD/$dir":/work -w /work alpine:latest \
+              sh -c "apk add --no-cache apk-tools abuild && \
+                apk index --allow-untrusted -o APKINDEX.tar.gz *.apk && \
+                abuild-sign -k /work/melange.rsa APKINDEX.tar.gz"
+            rm "$dir/melange.rsa"
+          else
+            # nothing of this repository is needed: an empty repository stands
+            # for it, so melange does not go to SourceForge
+            touch "$dir/.empty"
+          fi
+
       - name: Download packages built by earlier waves
         if: inputs.wave > 1
         uses: actions/download-artifact@v4
@@ -141,6 +192,15 @@ jobs:
 
       - name: Build package with Melange
         run: |
+          # The published packages: fetched over SFTP above, or else from
+          # SourceForge over HTTP
+          PUBLISHED_REPO="--repository-append https://downloads.sourceforge.net/project/wolfi"
+          if [ -f ./published/${{ matrix.arch }}/APKINDEX.tar.gz ]; then
+            PUBLISHED_REPO="--repository-append ./published"
+          elif [ -f ./published/${{ matrix.arch }}/.empty ]; then
+            PUBLISHED_REPO=""
+          fi
+
           # Packages from earlier waves of this run, when there are any
           EARLIER_REPO=""
           if [ -f ./earlier-waves/${{ matrix.arch }}/APKINDEX.tar.gz ]; then
@@ -175,7 +235,7 @@ jobs:
             $EARLIER_REPO \
             --repository-append https://packages.wolfi.dev/os \
             --repository-append ./consolidated-cache \
-            --repository-append https://downloads.sourceforge.net/project/wolfi \
+            $PUBLISHED_REPO \
             --pipeline-dir pipelines \
             --generate-index \
             --out-dir ./build-output \
